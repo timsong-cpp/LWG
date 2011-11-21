@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-11-21 at 14:11:31 UTC</p>
+<p>Revised 2011-11-21 at 23:11:18 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -735,7 +735,7 @@ So, actually <em>both</em> <tt>regex_constants::match_default</tt> and
 of the fixes suggested by <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3110.html">n3110</a>.
 </p>
 
-<p><i>[
+<blockquote>
 <p>
 Add the following sentence to 28.5.2 [re.matchflag]  paragraph 1:
 </p>
@@ -746,8 +746,7 @@ rules of the grammar specified for the regular expression object, modified accor
 Table 136 for any bitmask elements set. <ins>Type <tt>regex_constants::match_flag_type</tt> also defines the 
 constants <tt>regex_constants::match_default</tt> and <tt>regex_constants::format_default</tt>.</ins>
 </p></blockquote>
-]</i></p>
-
+</blockquote>
 
 <p><i>[
 2011 Bloomington
@@ -1570,7 +1569,7 @@ Apply the resolution proposed by the 2010-10-29 comment in <a href="lwg-active.h
 <hr>
 <h3><a name="2016"></a>2016. <tt>Allocators</tt> must be no-throw <i>swappable</i></h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2010-11-17 <b>Last modified:</b> 2011-11-21</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2010-11-17 <b>Last modified:</b> 2011-11-19</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -1608,6 +1607,17 @@ respectively, are imposed on the allocator types.</li>
 situation described twice in p. 8 and p. 9 (undefined behaviour unless <tt>a.get_allocator() == b.get_allocator()</tt>
 or <tt>allocator_traits&lt;allocator_type&gt;::propagate_on_container_swap::value == true</tt>), which should be cleaned up.</li>
 </ol>
+
+<p><i>[2011-04-08 Pablo comments]</i></p>
+
+<p>
+I'm implementing a version of list now and I actually do find it impossible to write an exception-safe assignment 
+operator unless I can assume that allocator assignment does not throw.  (The problem is that I use a sentinel node 
+and I need to allocate a new sentinel using the new allocator without destroying the old one -- then swap the 
+allocator and sentinel pointer in atomically, without risk of an exception leaving one inconsistent with the other.
+<p/>
+Please update the proposed resolution to add the nothrow requirement to copy-assignment.
+</p>
 
 
 
@@ -1687,12 +1697,12 @@ when the client container is swapped. <ins>See Note B, below.</ins></td>
 
 <blockquote><p>
 <ins>Note B: If <tt>X::propagate_on_container_copy_assignment::value</tt> is true, <tt>X</tt> shall 
-satisfy the <tt>CopyAssignable</tt> requirements (Table 39  [copyassignable]). 
-If <tt>X::propagate_on_container_move_assignment::value</tt> is true, <tt>X</tt> shall satisfy the 
-<tt>MoveAssignable</tt> requirements (Table 38  [moveassignable]) and the move operation
-shall not throw exceptions. If <tt>X::propagate_on_container_swap::value</tt> is true, lvalues of 
-<tt>X</tt> shall be swappable (17.6.3.2 [swappable.requirements]) and the <tt>swap</tt> operation 
-shall not throw exceptions.</ins>
+satisfy the <tt>CopyAssignable</tt> requirements (Table 39  [copyassignable]) and the copy 
+operation shall not throw exceptions. If <tt>X::propagate_on_container_move_assignment::value</tt> is 
+true, <tt>X</tt> shall satisfy the <tt>MoveAssignable</tt> requirements (Table 38  [moveassignable]) 
+and the move operation shall not throw exceptions. If <tt>X::propagate_on_container_swap::value</tt> is 
+true, lvalues of <tt>X</tt> shall be swappable (17.6.3.2 [swappable.requirements]) and the <tt>swap</tt> 
+operation shall not throw exceptions.</ins>
 </p></blockquote>
 </li>
 
@@ -2717,7 +2727,7 @@ template&lt;class R, class T, class... Args&gt;
 <hr>
 <h3><a name="2049"></a>2049. <tt>is_destructible</tt> is underspecified</h3>
 <p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-04-18 <b>Last modified:</b> 2011-11-21</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-04-18 <b>Last modified:</b> 2011-11-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -2796,19 +2806,60 @@ After discussion about to to handle the exceptional cases of reference types, fu
 and <tt>void</tt> types, Howard supplied proposed wording.
 </p>
 
+<p><i>[
+2011-08-20 Daniel comments and provides alternatives wording
+]</i></p>
 
-<p><b>Proposed resolution:</b></p>
 
+<p>
+The currently proposed wording would have the consequence that 
+<em>every</em> array type is not destructible, because the pseudo-destructor
+requires a scalar type with the effect that the expression
+</p><blockquote><pre>
+std::declval&lt;T&amp;&gt;().~T()
+</pre></blockquote><p>
+is not well-formed for e.g. <tt>T</tt> equal to <tt>int[3]</tt>. The intuitive
+solution to fix this problem would be to adapt the object type case to refer to 
+the expression
+</p><blockquote><pre>
+std::declval&lt;U&amp;&gt;().~U()
+</pre></blockquote><p>
+with <tt>U</tt> equal to <tt>remove_all_extents&lt;T&gt;::type</tt>, but that
+would have the effect that arrays of unknown bounds would be destructible, if 
+the element type is destructible, which was not the case before (This was 
+intentionally covered by the special "For a complete type T" rule in
+the FDIS).
+<p/>
+Suggestion: Use the following definition instead:
+</p>
+<blockquote><p>
+Let <tt>U</tt> be <tt>remove_all_extents&lt;T&gt;::type</tt>.<br/>
+For incomplete types and function types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>false</tt>.<br/>
+For object types, if the expression <tt>std::declval&lt;U&amp;&gt;().~U()</tt> is well-formed<br/>
+when treated as an unevaluated operand (Clause 5), then <tt>is_destructible&lt;T&gt;::value</tt><br/>
+is <tt>true</tt>, otherwise it is <tt>false</tt>.<br/>
+For reference types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>true</tt>.
+</p></blockquote>
+<p>
+This wording also harmonizes with the "unevaluated operand" phrase
+used in other places, there does not exist the definition of an
+"unevaluated context"
+<p/>
+<em>Note:</em> In the actually proposed wording this wording has been slightly reordered with the same effects. 
+</p>
+
+<p><strong>Howard's (old) proposed resolution:</strong></p>
+<blockquote class="note">
 <p>
 Update 20.9.4.3 [meta.unary.prop], table 49:
 </p>
 
 <table border="1">
 <tr>
-<td><tt>template &lt;class T>
+<td><tt>template &lt;class T&gt;
 struct is_destructible;</tt></td>
 <td>
-<del>For a complete type <tt>T</tt> and given <tt>template &lt;class U> struct test { U u; };</tt>, <tt>test&lt;T>:: ̃test()</tt> is not deleted.
+<del>For a complete type <tt>T</tt> and given <tt>template &lt;class U&gt; struct test { U u; };</tt>, <tt>test&lt;T&gt;::~test()</tt> is not deleted.
 </del>
 <br/>
 <ins>
@@ -2825,6 +2876,37 @@ For function types, <tt>is_destructible&lt;T>::value</tt> is <tt>false</tt>.
 <td><tt>T</tt> shall be a complete type, (possibly cv-qualified) <tt>void</tt>, or an array of unknown bound.</td>
 </tr>
 </table>
+</blockquote>
+<p>
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+
+<p>
+Update 20.9.4.3 [meta.unary.prop], table 49:
+</p>
+
+<table border="1">
+<tr>
+<td><tt>template &lt;class T&gt;
+struct is_destructible;</tt></td>
+<td>
+<del>For a complete type <tt>T</tt> and given <tt>template &lt;class U&gt; struct test { U u; };</tt>, <tt>test&lt;T&gt;::~test()</tt> is not deleted.
+</del>
+<br/>
+<ins>
+For reference types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>true</tt>.<br/>
+For incomplete types and function types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>false</tt>.<br/>
+For object types and given <tt>U</tt> equal to <tt>remove_all_extents&lt;T&gt;::type</tt>,<br/> 
+if the expression <tt>std::declval&lt;U&amp;&gt;().~U()</tt> is well-formed when treated as an<br/>
+unevaluated operand (Clause 5 [expr]), then <tt>is_destructible&lt;T&gt;::value</tt> is <tt>true</tt>,<br/>
+otherwise it is <tt>false</tt>.<br/>
+</ins>
+</td>
+<td><tt>T</tt> shall be a complete type, (possibly cv-qualified) <tt>void</tt>, or an array of unknown bound.</td>
+</tr>
+</table>
 
 
 
@@ -2834,7 +2916,7 @@ For function types, <tt>is_destructible&lt;T>::value</tt> is <tt>false</tt>.
 <hr>
 <h3><a name="2052"></a>2052. Mixup between <tt>mapped_type</tt> and <tt>value_type</tt> for associative containers</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2011-05-04 <b>Last modified:</b> 2011-11-21</p>
+ <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2011-05-04 <b>Last modified:</b> 2011-11-20</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -2872,25 +2954,58 @@ Not even an exhaustive list of problem locations. No reason to doubt issue.
 Pablo agrees to provide wording.
 </p>
 
+<p><i>[
+2011-09-04 Pablo Halpern provides improved wording
+]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
 <p>
-In section  [associative.reqmnts] table 102 and 23.2.5 [unord.req], table 103, make the following text replacements:
+In both section 23.2.4 [associative.reqmts] Table 102 and 23.2.5 [unord.req], Table 103, make the following text replacements:
 </p>
 
 <table border="1">
-<tr> <td>Original text, in FDIS</td>                   <td>Replacement text</td> </tr>
-<tr> <td><tt>T</tt> is CopyInsertable</td>             <td><tt>value_type</tt> is CopyInsertable</td> </tr>
-<tr> <td><tt>T</tt> shall be CopyInsertable</td>       <td><tt>value_type</tt> shall be CopyInsertable</td> </tr>
-<tr> <td><tt>T</tt> shall be MoveInsertable</td>       <td><tt>value_type</tt> shall be MoveInsertable</td> </tr>
-<tr> <td><tt>T</tt> shall be EmplaceConstructible</td> <td><tt>value_type</tt> shall be EmplaceConstructible</td> </tr>
-<tr> <td><tt>T</tt> object</td>                        <td><tt>value_type</tt> object</td> </tr>
+<tr> <td>Original text, in FDIS</td> <td>Replacement text</td> </tr>
+
+<tr> 
+<td><tt>T</tt> is CopyInsertable into <tt>X</tt> and <tt>CopyAssignable</tt>.</td>
+<td><tt>value_type</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>, <tt>key_type</tt> is <tt>CopyAssignable</tt>, and
+<tt>mapped_type</tt> is <tt>CopyAssignable</tt> (for containers having a <tt>mapped_type</tt>)</td>    
+</tr>
+
+<tr> 
+<td><tt>T</tt> is <tt>CopyInsertable</tt></td>                                                
+<td><tt>value_type</tt> is CopyInsertable</td> 
+</tr>
+
+<tr> 
+<td><tt>T</tt> shall be <tt>CopyInsertable</tt></td>                                          
+<td><tt>value_type</tt> shall be CopyInsertable</td> 
+</tr>
+
+<tr> 
+<td><tt>T</tt> shall be <tt>MoveInsertable</tt></td>                                          
+<td><tt>value_type</tt> shall be MoveInsertable</td> 
+</tr>
+
+<tr> 
+<td><tt>T</tt> shall be <tt>EmplaceConstructible</tt></td>                                    
+<td><tt>value_type</tt> shall be EmplaceConstructible</td> 
+</tr>
+
+<tr> 
+<td><tt>T</tt> object</td>                                                                    
+<td><tt>value_type</tt> object</td> 
+</tr>
 </table>
 
 <p><i>[
-<b>Notes to the editor</b>: The above are carefully selected phrases that can be used for global
-search-and-replace within the specified sections without accidentally making changes to correct uses <tt>T</tt>.
+<b>Notes to the editor</b>: The above are carefully selected 
+phrases that can be used for global search-and-replace within 
+the specified sections without accidentally making changes to 
+correct uses <tt>T</tt>.
 ]</i></p>
 
 
@@ -2978,7 +3093,7 @@ convertible to <tt>duration</tt>.
 <hr>
 <h3><a name="2056"></a>2056. <tt>future_errc</tt> enums start with value 0 (invalid value for <tt>broken_promise</tt>)</h3>
 <p><b>Section:</b> 30.6.1 [futures.overview] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-05-18 <b>Last modified:</b> 2011-11-21</p>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-05-18 <b>Last modified:</b> 2011-11-22</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -3031,7 +3146,7 @@ Is this resolution overspecified? These seem to be all implementation-defined. H
 </p><p>
 PJP proxy says: over-specified. boo.
 </p><p>
-Other error codes: look for is_error_code_enum specializations. Only one exists <tt>io_errc</tt>
+Other error codes: look for <tt>is_error_code_enum</tt> specializations. Only one exists <tt>io_errc</tt>
 </p><p>
 Peter: I don't see any other parts of the standard that specify error codes where we have to do something similar.
 </p><p>
@@ -3922,15 +4037,15 @@ Agreed to fix in principle, but believe that <tt>make_shared</tt> and
 should be separated.  Pablo and Stefanus to provide revised wording.
 </p>
 
-<p><strong>Daniel's (old) proposed resolution</strong></p>
+<p><strong>Daniel's (old) proposed resolution:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to the FDIS.</p>
 
 <ol>
-<li>Change the following paragraphs of 20.7.2.2.6 [util.smartptr.shared.create] as indicated (The suggested
+<li><p>Change the following paragraphs of 20.7.2.2.6 [util.smartptr.shared.create] as indicated (The suggested
 removal of the last sentence of p1 is not strictly required to resolve this issue, but is still recommended,
-because it does not say anything new but may give the impression that it says something new):</li>
-
-<blockquote><pre>
+because it does not say anything new but may give the impression that it says something new):
+</p><blockquote><pre>
 template&lt;class T, class... Args&gt; shared_ptr&lt;T&gt; make_shared(Args&amp;&amp;... args);
 template&lt;class T, class A, class... Args&gt;
   shared_ptr&lt;T&gt; allocate_shared(const A&amp; a, Args&amp;&amp;... args);
@@ -3968,8 +4083,11 @@ allocation. [ <i>Note</i>: This provides efficiency equivalent to an intrusive s
 bookkeeping structures such as the reference counts. &mdash; <i>end note</i> ]
 </p>
 </blockquote></blockquote>
-
+</li>
 </ol>
+</blockquote>
+<p>
+</p>
 
 
 
@@ -3977,10 +4095,10 @@ bookkeeping structures such as the reference counts. &mdash; <i>end note</i> ]
 <p>This wording is relative to the FDIS.</p>
 
 <ol>
-<li>Change the following paragraphs of 20.7.2.2.6 [util.smartptr.shared.create] as indicated (The suggested
+<li><p>Change the following paragraphs of 20.7.2.2.6 [util.smartptr.shared.create] as indicated (The suggested
 removal of the last sentence of p1 is not strictly required to resolve this issue, but is still recommended,
-because it does not say anything new but may give the impression that it says something new):</li>
-
+because it does not say anything new but may give the impression that it says something new):
+</p>
 <blockquote><pre>
 template&lt;class T, class... Args&gt; shared_ptr&lt;T&gt; make_shared(Args&amp;&amp;... args);
 <del>template&lt;class T, class A, class... Args&gt;
@@ -4020,9 +4138,10 @@ provides efficiency equivalent to an intrusive smart pointer. &mdash; <i>end not
 <p/>
 -7- [ <i>Note</i>: <del>These functions</del><ins>This function</ins> will typically allocate more memory than <tt>sizeof(T)</tt> to allow for internal
 bookkeeping structures such as the reference counts. &mdash; <i>end note</i> ]
-
 </p>
-<li>Add the following <ins>new paragraph</ins>:</li>
+</li>
+<li><p>Add the following <ins>new paragraph</ins>:
+</p>
 <blockquote><pre>
 template&lt;class T, class A, class... Args&gt;
   shared_ptr&lt;T&gt; allocate_shared(const A&amp; a, Args&amp;&amp;... args);
@@ -4061,10 +4180,96 @@ perform no more than one memory allocation.
 <p/>
 -7- [ <i>Note</i>: These functions will typically allocate more memory than <tt>sizeof(T)</tt> to allow for internal
 bookkeeping structures such as the reference counts. &mdash; <i>end note</i> ]
+</p>
+</li>
+</ol>
 
+
+
+
+
+<hr>
+<h3><a name="2071"></a>2071. <tt>std::valarray</tt> move-assignment</h3>
+<p><b>Section:</b> 26.6.2.3 [valarray.assign] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2011-05-05 <b>Last modified:</b> 2011-11-22</p>
+<p><b>View all other</b> <a href="lwg-index.html#valarray.assign">issues</a> in [valarray.assign].</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Yesterday I noticed that the language we have in the FDIS about <tt>std::valarray</tt> move assignment 
+is inconsistent with the resolution of LWG 675. Indeed, we guarantee constant complexity (vs linear 
+complexity). We also want it to be noexcept, that is more subtle, but again it's at variance with all 
+the containers.
+<p/>
+Also, even if we suppose that LWG <a href="lwg-defects.html#675">675</a> applies only to the containers proper, I don't think the current 
+"as if by calling resize(v.size())" is internally consistent with the noexcept requirement.
+<p/>
+So, what do we really want for <tt>std::valarray</tt>? Shall we maybe just strike or fix the as-if, consider it 
+some sort of pasto from the copy-assignment text, thus keep the noexcept and constant complexity requirements 
+(essentially the whole operation would boild down to a swap of POD data members). Or LWG <a href="lwg-defects.html#675">675</a> should be 
+explicitly extended to <tt>std::valarray</tt> too? In that case both noexcept and constant complexity 
+would go, I think, and the operation would boil down to the moral equivalent of <tt>clear()</tt> (which 
+doesn't really exist in this case) + <tt>swap</tt>?
 </p>
 
-</ol>
+<p>
+Howard: I agree the current wording is incorrect.  The complexity should be linear in <tt>size()</tt> (not 
+<tt>v.size()</tt>) because the first thing this operator needs to do is <tt>resize(0)</tt> (or <tt>clear()</tt> 
+as you put it).
+<p/>
+I think we can keep the <tt>noexcept</tt>.
+<p/>
+As for proper wording, here's a first suggestion:
+</p><blockquote><p>
+<i>Effects</i>: <tt>*this</tt> obtains the value of <tt>v</tt>. The value of <tt>v</tt> after the assignment 
+is not specified.
+<p/>
+<i>Complexity</i>: linear.
+</p></blockquote><p>
+</p>
+
+<p>
+Daniel: I believe the difference in regard to noexcept for Containers and valarray
+is related to the fact that for containers we allow element-wise move-assignment 
+of types that may throw during a move and that we allow such containers to use 
+move-assign instead of a handle-swap. The move-assignment itself can be considered 
+as a wide-contract function. According to my understanding <tt>valarray</tt> element 
+types shall not throw exceptions during operations but with some ugly weasel 
+wording added in 26.6.1 [valarray.syn] p6:
+<p/>
+"These library functions are permitted to throw a <tt>bad_alloc</tt> (18.6.2.1)
+exception if there are not sufficient resources available to carry out
+the operation. Note that the exception is not mandated."
+<p/>
+It seems to me that the intention of <tt>valarray</tt>s always was to minimize
+the chances of such exceptions and it's easy to realize that with some constraints 
+on implementations e.g. enforce handle-swap or use element-wise swap only of elements 
+moves cannot throw. (They are actually not required to be constrained as of my 
+reading, because it looks as if it would be OK, if an out-of-memory problem of 
+<tt>valarray</tt> could simply end in program termination according to the above wording).
+<p/>
+I certainly agree that the current description of the effects of <tt>valarray</tt>
+in regard to "as-if resize" and the complexity (should be linear) are simply wrong and 
+should be fixed. I would rather prefer to keep the noexcept here.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<p>In 26.6.2.3 [valarray.assign] update as follows:</p>
+
+<blockquote><pre>
+valarray&lt;T&gt;&amp; operator=(valarray&lt;T&gt;&amp;&amp; v) noexcept;
+</pre><blockquote><p>
+3 <i>Effects</i>: <tt>*this</tt> obtains the value of <tt>v</tt>. <del>If the length of <tt>v</tt> 
+is not equal to the length of <tt>*this</tt>, resizes <tt>*this</tt> to make the two arrays the 
+same length, as if by calling <tt>resize(v.size())</tt>, before performing the assignment.</del><ins>The 
+value of <tt>v</tt> after the assignment is not specified.</ins>
+<p/>
+4 <i>Complexity</i>: <del>Constant</del><ins>Linear</ins>.
+</p></blockquote></blockquote>
+
 
 
 
