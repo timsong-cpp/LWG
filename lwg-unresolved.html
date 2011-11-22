@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-11-22 at 05:11:11 UTC</p>
+<p>Revised 2011-11-22 at 20:11:57 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -4194,6 +4194,7 @@ bookkeeping structures such as the reference counts. &mdash; <i>end note</i> ]
 <p><b>Section:</b> 26.6.2.3 [valarray.assign] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2011-05-05 <b>Last modified:</b> 2011-11-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#valarray.assign">issues</a> in [valarray.assign].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -4230,28 +4231,7 @@ is not specified.
 </p>
 
 <p>
-Daniel: I believe the difference in regard to noexcept for Containers and valarray
-is related to the fact that for containers we allow element-wise move-assignment 
-of types that may throw during a move and that we allow such containers to use 
-move-assign instead of a handle-swap. The move-assignment itself can be considered 
-as a wide-contract function. According to my understanding <tt>valarray</tt> element 
-types shall not throw exceptions during operations but with some ugly weasel 
-wording added in 26.6.1 [valarray.syn] p6:
-<p/>
-"These library functions are permitted to throw a <tt>bad_alloc</tt> (18.6.2.1)
-exception if there are not sufficient resources available to carry out
-the operation. Note that the exception is not mandated."
-<p/>
-It seems to me that the intention of <tt>valarray</tt>s always was to minimize
-the chances of such exceptions and it's easy to realize that with some constraints 
-on implementations e.g. enforce handle-swap or use element-wise swap only of elements 
-moves cannot throw. (They are actually not required to be constrained as of my 
-reading, because it looks as if it would be OK, if an out-of-memory problem of 
-<tt>valarray</tt> could simply end in program termination according to the above wording).
-<p/>
-I certainly agree that the current description of the effects of <tt>valarray</tt>
-in regard to "as-if resize" and the complexity (should be linear) are simply wrong and 
-should be fixed. I would rather prefer to keep the noexcept here.
+See also reflector discussion startin with c++std-lib-30690.
 </p>
 
 
@@ -4271,6 +4251,107 @@ value of <tt>v</tt> after the assignment is not specified.</ins>
 4 <i>Complexity</i>: <del>Constant</del><ins>Linear</ins>.
 </p></blockquote></blockquote>
 
+
+
+
+
+
+<hr>
+<h3><a name="2072"></a>2072. Unclear wording about capacity of temporary buffers</h3>
+<p><b>Section:</b> 20.6.11 [temporary.buffer] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Kazutoshi Satoda <b>Opened:</b> 2011-08-10 <b>Last modified:</b> 2011-11-22</p>
+<p><b>View all other</b> <a href="lwg-index.html#temporary.buffer">issues</a> in [temporary.buffer].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+According to 20.6.11 [temporary.buffer] p1+2:
+
+</p><blockquote><pre>
+template &lt;class T&gt;
+pair&lt;T*, ptrdiff_t&gt; get_temporary_buffer(ptrdiff_t n) noexcept;
+</pre><blockquote><p>
+-1- <i>Effects</i>: Obtains a pointer to storage sufficient to store up to <tt>n</tt> adjacent <tt>T</tt> 
+objects. It is implementation-defined whether over-aligned types are supported (3.11).
+<p/>
+-2- <i>Returns</i>: A pair containing the buffer's address and capacity (in the units of <tt>sizeof(T)</tt>), 
+or a pair of 0 values if no storage can be obtained or if <tt>n &lt;= 0</tt>.
+</p></blockquote></blockquote>
+<p>
+I read this as prohibiting to return a buffer of which capacity is less than <tt>n</tt>, because 
+such a buffer is not sufficient to store <tt>n</tt> objects.
+<p/>
+The corresponding description in <a href="http://www.sgi.com/tech/stl/get_temporary_buffer.html">SGI STL</a> 
+is clear on this point, but I think it is a bit too verbose:
+</p>
+
+<blockquote class="note"><p>
+(for the return value, a pair <tt>P</tt>) [...] the buffer pointed to by <tt>P.first</tt> is large enough 
+to hold <tt>P.second</tt> objects of type <tt>T</tt>. <tt>P.second</tt> is greater than or equal to 0, 
+and less than or equal to <tt>len</tt>.
+</p></blockquote>
+
+<p>
+There seems to be two different targets of the "up to n" modification:
+The capacity of obtained buffer, and the actual number that the caller
+will store into the buffer.
+<p/>
+First I read as the latter, and got surprised seeing that libstdc++
+implementation can return a smaller buffer. I started searching about
+<tt>get_temporary_buffer()</tt>. After reading a quote from TC++PL at
+<a href="http://stackoverflow.com/questions/3264299/why-do-i-need-stdget-temporary-buffer">stackoverflow</a>, 
+I realized that the former is intended.
+<p/>
+Such misinterpretation seems common:
+</p>
+<ul>
+<li>The above question is likely started from same misinterpretation.</li>
+<li><p>JIS standard (Japanese translation of ISO&#47;IEC standard) says nothing
+    like "up to". I think the editor misinterpreted the original wording,
+    and omitted words for "up to" as it is redundant. (If a buffer is
+    sufficient to store <tt>n</tt> objects, it is also sufficient to store
+    up to <tt>n</tt> objects.)</p></li>
+<li><p>Rogue Wave implementation doesn't return smaller buffer, instead, it
+    can return larger buffer on some circumstances. Apache 
+	<a href="http://stdcxx.apache.org/">STDCXX</a> is a derived version of that
+    implementation, and <a href="https://stdcxx.apache.org/doc/stdlibref/get-temporary-buffer.html">publicly accessible</a>:
+</p>
+<blockquote class="note"><p>
+Specializations of the <tt>get_temporary_buffer()</tt> function template
+attempt to allocate a region of storage sufficiently large to store at
+least <tt>n</tt> adjacent objects of type <tt>T</tt>.
+</p></blockquote>
+<p>
+I know one commercial compiler package based on Rogue Wave implementation, 
+and its implementation is essentially same as the above.
+</p>
+</li>
+</ul>
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2073"></a>2073. Library exceptions that take string arguments</h3>
+<p><b>Section:</b> 19.2 [std.exceptions], 19.5.6 [syserr.syserr], 27.5.3.1.1 [ios::failure] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Eelis van der Weegen <b>Opened:</b> 2011-08-16 <b>Last modified:</b> 2011-11-22</p>
+<p><b>View all other</b> <a href="lwg-index.html#std.exceptions">issues</a> in [std.exceptions].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+This is an extension issue for LWG to add constructor overloads that take a 
+<tt>string</tt> by an rvalue reference in order to move the string into the 
+exception.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
