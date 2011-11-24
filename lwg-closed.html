@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Closed Issues List (Revision D77)</h1>
-<p>Revised 2011-11-24 at 20:11:08 UTC</p>
+<p>Revised 2011-11-24 at 21:11:11 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2003(E)</p>
   <p>Also see:</p>
@@ -62,12 +62,13 @@
 <ul>
 <li>D77: 2011-09-06 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>56 open issues, up by 12.</li>
-<li>1549 closed issues, up by 0.</li>
-<li>1605 issues total, up by 12.</li>
+<li>57 open issues, up by 13.</li>
+<li>1550 closed issues, up by 1.</li>
+<li>1607 issues total, up by 14.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 12 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>.</li>
+<li>Added the following NAD issue: <a href="lwg-closed.html#2084">2084</a>.</li>
+<li>Added the following 13 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -46566,6 +46567,86 @@ This is an unfortunate change of behavior between C++03 and C++11, but is consis
 
 <p>
 There may be an issue for Core/EWG to look at, so that some simple <tt>=default</tt> syntax could be used that would do the right thing.  If such a facility became availabile, LWG might revisit this issue.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2084"></a>2084. <tt>basic_string</tt> use of <tt>charT*</tt></h3>
+<p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2011-09-11 <b>Last modified:</b> 2011-11-24</p>
+<p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
+<p><b>View all other</b> <a href="lwg-index.html#basic.string">issues</a> in [basic.string].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+For C++11 we gave all of the containers, including basic_string new generalized pointer types:
+</p>
+
+<blockquote><pre>
+typedef typename allocator_traits&lt;Allocator&gt;::pointer       pointer:
+typedef typename allocator_traits&lt;Allocator&gt;::const_pointer const_pointer;
+</pre></blockquote>
+
+<p>
+However, the constructors, assignment, and member functions still traffic exclusively in terms 
+of <tt>const charT*</tt>, for example:
+</p>
+
+<blockquote><pre>
+basic_string(const charT* s, const Allocator&amp; a = Allocator());
+</pre></blockquote>
+
+<p>
+Was this an oversight? Did we mean instead:
+</p>
+
+<blockquote><pre>
+basic_string(const_pointer s, const Allocator&amp; a = Allocator());
+</pre></blockquote>
+
+<p><b>Rationale:</b></p><p>
+It's intentional. <tt>char_traits</tt> assumes that all elements of
+a string can be accessed indirect on plain pointers. So <tt>basic_string</tt> 
+doesn't support allocators with fancy pointers or references. And we meant 
+to do that.
+<p/>
+Let's take the constructor example you called out:
+</p>
+
+<blockquote><pre>
+basic_string(const charT* s, const Allocator&amp; a = Allocator());
+</pre></blockquote>
+
+<p>
+This constructor allows us to create a <tt>basic_string</tt> object from a string literal.  
+If we were to change the pointer type, that would no longer be possible.
+<p/>
+There is no issue here, as the implementation of the constructor must make a 
+copy of the string pointed-to by the pointer 's' rather than adopt ownership of 
+that buffer. It is that internal copy that must make use of the <tt>allocator::pointer</tt> type.
+<p/>
+Now what about the return value of '<tt>c_str()</tt>', should that return an <tt>allocator::pointer</tt>?
+<p/>
+Again, the answer (I believe) is 'no' because this is the function that allows us 
+to pass the string's contents to a legacy&#47;OS 'C' API. It is deliberately returning 
+a raw pointer for a reason.
+<p/>
+There was an issue where <tt>vector::data</tt> was changed to return an <tt>allocator::pointer</tt>
+to the internal buffer, and this was changed back exactly because this was intended 
+to support passing to external APIs.
+<p/>
+Do we have a use-case where the pointer type of internal data structures of our 
+containers (notably <tt>basic_string</tt> and <tt>vector</tt>) need to be exposed through a public API?  
+All my current use-cases for <tt>allocator::pointer</tt> are specific to the implementation 
+of containers themselves.
 </p>
 
 
