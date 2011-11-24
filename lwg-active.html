@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2011-11-22</td>
+  <td align="left">2011-11-24</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D77)</h1>
-<p>Revised 2011-11-22 at 22:11:55 UTC</p>
+<p>Revised 2011-11-24 at 00:11:24 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2003(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D77: 2011-09-06 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>49 open issues, up by 5.</li>
+<li>54 open issues, up by 10.</li>
 <li>1549 closed issues, up by 0.</li>
-<li>1598 issues total, up by 5.</li>
+<li>1603 issues total, up by 10.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 5 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>.</li>
+<li>Added the following 10 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -5728,6 +5728,7 @@ template&lt;class R, class T, class... Args&gt;
 <h3><a name="2049"></a>2049. <tt>is_destructible</tt> is underspecified</h3>
 <p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
  <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-04-18 <b>Last modified:</b> 2011-11-22</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -8582,6 +8583,345 @@ Implementing the latter might be a challenge on LL-SC machines or lead
 to space overheads I suppose, see the cacheline sharing example above.
 </li>
 </ol>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2076"></a>2076. Bad <tt>CopyConstructible</tt> requirement in set constructors</h3>
+<p><b>Section:</b> 23.4.6.2 [set.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2011-08-20 <b>Last modified:</b> 2011-11-23</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+23.4.6.2 [set.cons] paragraph 4 says: 
+</p>
+
+<blockquote><p>
+<i>Requires</i>: If the iterator’s dereference operator returns an lvalue or a non-const rvalue, 
+then <tt>Key</tt> shall be <tt>CopyConstructible</tt>.
+</p></blockquote>
+
+<p>
+I'm confused why a "non-const rvalue" for the return value of the iterator
+would require <tt>CopyConstructible</tt>; isn't that exactly the situation 
+when you'd want to apply the move constructor?
+<p/>
+The corresponding requirement for <tt>multimap</tt> seems better in that regard
+([multimap.cons] paragraph 3):
+</p>
+<blockquote><p>
+Requires: If the iterator’s dereference operator returns an lvalue or a const rvalue 
+<tt>pair&lt;key_type, mapped_type&gt;</tt>, then both <tt>key_type</tt> and mapped_type 
+shall be <tt>CopyConstructible</tt>.
+</p></blockquote>
+<p>
+Obviously, if I have a const rvalue, I can't apply the move constructor (which will 
+likely attempt modify its argument).
+<p/>
+Dave Abrahams:
+<p/>
+I think you are right.
+Proposed resolution: drop "non-" from 23.4.6.2 [set.cons] paragraph 3.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<p>
+Change 23.4.6.2 [set.cons] p3 as follows:
+</p> 
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+  set(InputIterator first, InputIterator last,
+    const Compare&amp; comp = Compare(), const Allocator&amp; = Allocator());
+</pre><blockquote><p>
+-3- Effects: Constructs an empty set using the specified comparison object and allocator, and inserts
+elements from the range [<tt>first,last</tt>).
+<p/>
+-4- <i>Requires</i>: If the iterator’s dereference operator returns an lvalue or a <del>non-</del>const rvalue, 
+then <tt>Key</tt> shall be <tt>CopyConstructible</tt>.
+<p/>
+-5- <i>Complexity</i>: Linear in <tt>N</tt> if the range [<tt>first,last</tt>) is already sorted using 
+<tt>comp</tt> and otherwise <tt>N logN</tt>, where <tt>N</tt> is <tt>last - first</tt>.
+</p></blockquote></blockquote>
+
+
+
+
+
+<hr>
+<h3><a name="2077"></a>2077. Further incomplete constraints for type traits</h3>
+<p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-08-20 <b>Last modified:</b> 2011-11-24</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The currently agreed on proposed wording for <a href="lwg-active.html#2015">2015</a> using 
+<tt>remove_all_extents&lt;T&gt;::type</tt> instead of the "an array of 
+unknown bound" terminology in the precondition should be extended to 
+some further entries especially in Table 49, notably the 
+<tt>is_*constructible</tt>, <tt>is_*assignable</tt>, and 
+<tt>is_*destructible</tt> entries. To prevent ODR violations, incomplete
+element types of arrays must be excluded for value-initialization and
+destruction for example. Construction and assignment has to be honored, 
+when we have array-to-pointer conversions or pointer conversions of
+incomplete pointees in effect.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2078"></a>2078. Throw specification of <tt>async()</tt> incomplete</h3>
+<p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-08-29 <b>Last modified:</b> 2011-11-24</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The current throw specification of <tt>async()</tt> does state:
+</p>
+<blockquote><p>
+-6- <i>Throws</i>: <tt>system_error</tt> if policy is <tt>launch::async</tt> and 
+the implementation is unable to start a new thread.
+</p></blockquote>
+<p>
+First it seems not clear whether this only applies if policy equals 
+<tt>launch::async</tt> of if the <tt>async</tt> launch mode flag is set 
+(if <tt>policy|launch::async!=0</tt>)
+<p/>
+In the discussion Lawrence Crowl also wrote:
+</p>
+<blockquote><p>
+    More generally, I think what we want to say is that if the
+    implementation cannot successfully execute on one of the policies
+    allowed, then it must choose another. The principle would apply
+    to implementation-defined policies as well.
+</p></blockquote>
+
+<p>
+Peter Sommerlad:
+</p>
+<blockquote><p>
+Should not throw. That was the intent. "is async" meat exactly.
+</p></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2079"></a>2079. Required <tt>pow()</tt> overloads</h3>
+<p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Steve Clamage <b>Opened:</b> 2011-08-29 <b>Last modified:</b> 2011-11-24</p>
+<p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+LWG issue <a href="lwg-defects.html#550">550</a> removed the functions:
+</p>
+<blockquote><pre>
+float       pow(float, int);
+double      pow(double, int);
+long double pow(long double, int);
+</pre></blockquote>
+<p>
+from header <tt>&lt;cmath&gt;</tt>. This change does not seem to be mentioned in Annex C, C.2.14.
+<p/>
+Howard:
+</p>
+<blockquote><p>
+N3290 26.8 [c.math]&#47;p11 says:
+</p><blockquote>
+<p>
+Moreover, there shall be additional overloads sufficient to ensure:
+</p>
+<ol>
+<li>If any argument corresponding to a <tt>double</tt> parameter has type <tt>long double</tt>, 
+then all arguments corresponding to <tt>double</tt> parameters are effectively cast to 
+<tt>long double</tt>.
+</li>
+<li>Otherwise, if any argument corresponding to a <tt>double</tt> parameter has type <tt>double</tt> 
+or an integer type, then all arguments corresponding to <tt>double</tt> parameters are effectively 
+cast to <tt>double</tt>.
+</li>
+<li>Otherwise, all arguments corresponding to <tt>double</tt> parameters are effectively cast to 
+<tt>float</tt>.
+</li>
+</ol>
+</blockquote>
+<p>
+From C99 7.12.7.4 we have:
+</p>
+<blockquote><pre>
+double pow(double, double);
+</pre></blockquote>
+<p>
+26.8 [c.math]&#47;p11&#47;b2 says that if the client calls <tt>pow(2.0f, 2)</tt>, then the 
+<tt>int</tt> for second argument causes the following effective call to be made:
+</p>
+<blockquote><pre>
+pow(static_cast&lt;double&gt;(2.0f), static_cast&lt;double&gt;(2)) -&gt; double
+</pre></blockquote>
+<p>
+The first sentence of p11 implies that this is done by supplying the following additional overload:
+</p>
+<blockquote><pre>
+double pow(float, int);
+</pre></blockquote>
+<p>
+If the client calls <tt>pow(2.0, 2)</tt>, then the same reasoning (b2 again) implies the following 
+additional overload:
+</p>
+<blockquote><pre>
+double pow(double, int);
+</pre></blockquote>
+<p>
+If the client calls <tt>pow(2.0l, 2)</tt>, then b1 implies the following additional overload:
+</p>
+<blockquote><pre>
+long double pow(long double, int);
+</pre></blockquote>
+<p>
+In all, p11 implies hundreds (perhaps thousands?) of extra overloads.  All but one of which is a superset 
+of the overloads required by C++98&#47;03 (that one being <tt>pow(float, int)</tt> which had its return 
+type changed from <tt>float</tt> to <tt>double</tt>).
+<p/>
+In practice, at least some vendors implement p11 by using templated overloads as opposed to ordinary overloads.
+</p></blockquote>
+
+<p>
+Steven Clamage:
+</p>
+<blockquote><p>
+Thanks. I didn't see that those extra overloads were actually implied by p11, despite the first sentence. 
+Without examples, the point is a bit subtle (at least for me).
+</p></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2080"></a>2080. Specify when <tt>once_flag</tt> becomes invalid</h3>
+<p><b>Section:</b> 30.4.4 [thread.once] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-08-30 <b>Last modified:</b> 2011-11-24</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+In function <tt>call_once</tt> 30.4.4.2 [thread.once.callonce]
+paragraph 4 and 5 specify for <tt>call_once()</tt>:
+</p>
+
+<blockquote>
+<p>
+<i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception]), 
+or any exception thrown by <tt>func</tt>.
+<p/>
+<i>Error conditions</i>:
+</p>
+<ul>
+<li><tt>invalid_argument</tt> &mdash; if the <tt>once_flag</tt> object is no longer valid.</li>
+</ul>
+</blockquote>
+
+<p>
+However, nowhere in 30.4.4 [thread.once] is specified, when a once-flag becomes invalid.
+<p/>
+As far as I know this happens if the flag is used for different functions. So we either have to have 
+to insert a sentence&#47;paragraph in
+</p>
+<blockquote><p>
+30.4.4.2 Function call_once [thread.once.callonce]
+</p></blockquote>
+<p>
+or
+</p>
+<blockquote><p>
+30.4.4 Call once [thread.once]
+</p></blockquote>
+<p>
+explaining when a <tt>once_flag</tt> becomes invalidated or we should state as error condition something like:
+</p>
+
+<ul>
+<li><tt>invalid_argument</tt> &mdash; if the <tt>func</tt> used in combination with the <tt>once_flag</tt> is different 
+from a previously passed <tt>func</tt> for the same <tt>once_flag</tt>
+</li>
+</ul>
+
+<p>
+Anthony Williams:
+</p>
+<blockquote>
+<p>
+A <tt>once_flag</tt> is invalidated if you destroy it (e.g. it is an automatic object, or heap 
+allocated and deleted, etc.)
+<p/>
+If the library can detect that this is the case then it will throw this exception. If it cannot 
+detect such a case then it will never be thrown.
+</p>
+</blockquote>
+
+<p>
+Jonathan Wakely:
+</p>
+<blockquote>
+<p>
+I have also wondered how that error can happen in C++, where the type
+system will reject a non-callable type being passed to <tt>call_once()</tt> and
+should prevent a <tt>once_flag</tt> being used after its destructor runs.
+<p/>
+If a <tt>once_flag</tt> is used after its destructor runs then it is indeed
+undefined behaviour, so implementations are already free to throw any
+exception (or set fire to a printer) without the standard saying so.
+<p/>
+My assumption was that it's an artefact of basing the API on pthreads,
+which says:
+</p>
+<blockquote>
+<p>
+The <tt>pthread_once()</tt> function may fail if:
+<p/>
+<tt>[EINVAL]</tt>  If either <tt>once_control</tt> or <tt>init_routine</tt> is invalid.
+</p>
+</blockquote>
+</blockquote>
+
+<p>
+Pete Becker:
+</p>
+<blockquote><p>
+Yes, probably. We had to clean up several UNIXisms that were in the original design.
+</p></blockquote>
 
 
 
