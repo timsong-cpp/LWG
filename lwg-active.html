@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D77)</h1>
-<p>Revised 2011-11-26 at 12:11:17 UTC</p>
+<p>Revised 2011-11-26 at 14:11:25 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2003(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D77: 2011-09-06 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>60 open issues, up by 16.</li>
+<li>62 open issues, up by 18.</li>
 <li>1550 closed issues, up by 1.</li>
-<li>1610 issues total, up by 17.</li>
+<li>1612 issues total, up by 19.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2084">2084</a>.</li>
-<li>Added the following 16 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>, <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2086">2086</a>, <a href="lwg-active.html#2087">2087</a>.</li>
+<li>Added the following 18 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>, <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2086">2086</a>, <a href="lwg-active.html#2087">2087</a>, <a href="lwg-active.html#2088">2088</a>, <a href="lwg-active.html#2089">2089</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -9548,6 +9548,162 @@ for the class <tt>error_category</tt>. The object’s <tt>name</tt> virtual functi
 </li>
 </ol>
 
+
+
+
+
+
+<hr>
+<h3><a name="2088"></a>2088. <tt>std::terminate</tt> problem</h3>
+<p><b>Section:</b> 18.8.3 [exception.terminate] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-09-25 <b>Last modified:</b> 2011-11-26</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Andrzej Krzemienski reported the following on comp.std.c++:
+</p>
+<blockquote>
+<p>
+In N3290, which is to become the official standard, in 18.8.3.4 [terminate],
+paragraph 1 reads
+</p>
+<blockquote><p>
+<i>Remarks</i>: Called by the implementation when exception handling must
+be abandoned for any of several reasons (15.5.1), in effect immediately after 
+evaluating the <em>throw-expression</em> (18.8.3.1). May also be called directly by the 
+program.
+</p></blockquote>
+<p>It is not clear what is "in effect". It was clear in previous drafts where paragraphs 
+1 and 2 read:
+</p>
+<blockquote><p>
+Called by the implementation when exception handling must be
+abandoned for any of several reasons (15.5.1). May also be called directly
+by the program.
+<p/>
+<i>Effects</i>: Calls the <tt>terminate_handler</tt> function in effect
+immediately after evaluating the <em>throw-expression</em> (18.8.3.1), if called by the
+implementation, or calls the current terminate_handler function,
+if called by the program.
+</p>
+</blockquote>
+<p>
+It was changed by N3189. The same applies to function unexpected (D. 11.4, paragraph 1).
+<p/>
+Assuming the previous wording is still intended, the wording can be read
+"unless <tt>std::terminate</tt> is called by the program, we will use the handler
+that was in effect immediately after evaluating the throw-expression".
+<p/>
+  This assumes that there is some throw-expression connected to every
+  situation that triggers the call to <tt>std::terminate</tt>. But this is not
+  the case:
+</p>
+<ul>
+<li>
+  In case <tt>std::thread</tt> is assigned to or destroyed while being joinable
+  there is no throw-expression involved.
+</li>
+<li>
+  In case <tt>std::unexpected</tt> is called by the program, <tt>std::terminate</tt> is
+  triggered by the implementation - no throw-expression involved.
+</li>
+<li>
+  In case a destructor throws during stack unwinding we have two throw-expressions 
+  involved.
+ </li>
+ </ul>
+<p>
+Which one is referred to?
+<p/>
+In case <tt>std::nested_exception::rethrow_nested</tt> is called for an object that has 
+captured no exception, there is no throw-expression involved directly (and may no throw 
+be involved even indirectly).
+<p/>
+Next, 18.8.3.1 [terminate.handler], paragraph 2 says 
+</p>
+<blockquote><p>
+<i>Required behavior</i>: A <tt>terminate_handler</tt> shall terminate execution
+of the program without returning to the caller.
+</p></blockquote>
+<p>
+This seems to allow that the function may exit by throwing an
+exception (because word "return" implies a normal return).
+<p/>
+One could argue that words "terminate execution of the program" are sufficient,
+but then why "without returning to the caller" would be mentioned. In
+case such handler throws, noexcept specification in function <tt>std::terminate</tt> 
+is violated, and <tt>std::terminate</tt> would be called recursively - should 
+<tt>std::abort</tt> not be called in case of recursive <tt>std::terminate</tt> 
+call? On the other hand some controlled recursion could be useful, like in the 
+<a href="http://cplusplus.co.il/2010/03/21/catching-uncaught-exceptions-within-terminate/">following technique</a>.
+</p>
+</blockquote>
+
+<p>
+The here mentioned wording changes by N3189 in regard to 18.8.3.4 [terminate] p1 
+were done for a better separation of effects (Effects element) and additional normative 
+wording explanations (Remarks element), there was no meaning change intended. Further,
+there was already a defect existing in the previous wording, which was not updated when 
+further situations where defined, when <tt>std::terminate</tt> where supposed to be 
+called by the implementation. 
+<p/>
+The part
+<p/>
+"in effect immediately after evaluating the throw-expression"
+<p/>
+should be removed and the quoted reference to 18.8.3.1 [terminate.handler] 
+need to be part of the effects element where it refers to the current <tt>terminate_handler</tt> 
+function, so should be moved just after
+<p/>
+"Effects: Calls the current <tt>terminate_handler</tt> function."
+<p/>
+It seems ok to allow a termination handler to exit via an exception, but the 
+suggested idiom should better be replaced by a more simpler one based on
+evaluating the current exception pointer in the terminate handler, e.g.
+</p>
+<blockquote><pre>
+void our_terminate (void) {
+  std::exception_ptr p = std::current_exception();
+  if (p) {
+    ... // OK to rethrow and to determine it's nature
+  } else {
+    ... // Do something else
+  }
+}
+</pre></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2089"></a>2089. <tt>std::allocator::construct</tt> should use uniform initialization</h3>
+<p><b>Section:</b> 20.6.8 [allocator.traits] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2011-10-07 <b>Last modified:</b> 2011-11-26</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+When the <tt>EmplaceConstructible</tt> requirement is used to initialize an object, 
+direct initialization occurs, i.e. the argument list needs to match a constructor. 
+Initializing an aggregate or using a <tt>std::initializer_list</tt> constructor with 
+emplace (or other initialization by perfect forwarding) requires naming the 
+initialized type and moving a temporary. This is a result of <tt>std::allocator</tt> 
+not using the list initialization syntax. The body of <tt>std::allocator&lt;T&gt;::construct</tt> 
+should be changed to
+</p>
+<blockquote><pre>
+::new( ptr ) T{ std::forward&lt;Args&gt;( args ) ... };
+</pre></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
