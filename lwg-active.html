@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D77)</h1>
-<p>Revised 2011-11-26 at 11:11:08 UTC</p>
+<p>Revised 2011-11-26 at 12:11:17 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2003(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D77: 2011-09-06 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>59 open issues, up by 15.</li>
+<li>60 open issues, up by 16.</li>
 <li>1550 closed issues, up by 1.</li>
-<li>1609 issues total, up by 16.</li>
+<li>1610 issues total, up by 17.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2084">2084</a>.</li>
-<li>Added the following 15 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>, <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2086">2086</a>.</li>
+<li>Added the following 16 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>, <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2086">2086</a>, <a href="lwg-active.html#2087">2087</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -9436,6 +9436,117 @@ Otherwise, all <ins>arithmetic</ins> arguments corresponding to <tt>double</tt> 
 </li>
 </ol>
 </blockquote>
+
+
+
+
+
+
+<hr>
+<h3><a name="2087"></a>2087. <tt>iostream_category()</tt> and <tt>noexcept</tt></h3>
+<p><b>Section:</b> 27.5 [iostreams.base] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-09-22 <b>Last modified:</b> 2011-11-26</p>
+<p><b>View all other</b> <a href="lwg-index.html#iostreams.base">issues</a> in [iostreams.base].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+In <tt>&lt;system_error&gt;</tt> we have:
+</p>
+
+<blockquote><pre>
+const error_category&amp; generic_category() noexcept;
+const error_category&amp; system_category() noexcept;
+</pre></blockquote>
+
+<p>
+In <tt>&lt;future&gt;</tt> we have:
+</p>
+
+<blockquote><pre>
+const error_category&amp; future_category() noexcept;
+</pre></blockquote>
+
+<p>
+But in <tt>&lt;ios&gt;</tt> we have:
+</p>
+
+<blockquote><pre>
+const error_category&amp; iostream_category();
+</pre></blockquote>
+
+<p>
+Is there any reason that <tt>iostream_category()</tt> is not declared with 
+<tt>noexcept</tt> or is this an oversight?
+</p>
+
+<p>
+Daniel:
+<p/>
+This looks like an oversight to me. We made the above
+mentioned changes as part of noexcept-ifying the thread
+library but <tt>iostream_category()</tt> was skipped, so it seems
+to be forgotten. There should be no reason, why it cannot
+be <tt>noexcept</tt>. When doing so, we should also make these functions
+<tt>noexcept</tt> (similar to corresponding overloads):
+</p>
+<blockquote><pre>
+error_code make_error_code(io_errc e);
+error_condition make_error_condition(io_errc e);
+</pre></blockquote>
+
+<p>
+Suggested wording provided by Daniel.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<ol><li>
+<p>Change 27.5.1 [iostreams.base.overview], header <tt>&lt;ios&gt;</tt> synopsis 
+as indicated:
+</p>
+<blockquote><pre>
+#include &lt;iosfwd&gt;
+namespace std {
+  [&hellip;]
+  error_code make_error_code(io_errc e) <ins>noexcept</ins>;
+  error_condition make_error_condition(io_errc e) <ins>noexcept</ins>;
+  const error_category&amp; iostream_category() <ins>noexcept</ins>;
+}
+</pre></blockquote>
+
+</li>
+<li>
+<p>Change the prototype declarations in 27.5.6.5 [error.reporting] as indicated:
+</p>
+<blockquote><pre>
+error_code make_error_code(io_errc e) <ins>noexcept</ins>;
+</pre></blockquote><blockquote>
+<p>
+-1- <i>Returns</i>: <tt>error_code(static_cast&lt;int&gt;(e), iostream_category())</tt>.
+</p>
+</blockquote><blockquote><pre>
+error_condition make_error_condition(io_errc e) <ins>noexcept</ins>;
+</pre></blockquote><blockquote>
+<p>
+-2- <i>Returns</i>: <tt>error_condition(static_cast&lt;int&gt;(e), iostream_category())</tt>.
+</p>
+</blockquote><blockquote><pre>
+const error_category&amp; iostream_category() <ins>noexcept</ins>;
+</pre></blockquote><blockquote>
+<p>
+-3- <i>Returns</i>: A reference to an object of a type derived from class <tt>error_category</tt>.
+<p/>
+-4- The object’s <tt>default_error_condition</tt> and <tt>equivalent</tt> virtual functions shall behave as specified
+for the class <tt>error_category</tt>. The object’s <tt>name</tt> virtual function shall return a pointer to the string
+<tt>"iostream"</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
 
 
 
