@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D77)</h1>
-<p>Revised 2011-11-27 at 20:11:38 UTC</p>
+<p>Revised 2011-11-27 at 21:11:00 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2003(E)</p>
   <p>Also see:</p>
@@ -10297,6 +10297,10 @@ the template argument <tt>F</tt> cannot be deduced as (possibly <i>cv</i>)
 this constraint is already implied because <tt>packaged_task</tt> is not 
 copyable and the template constructors require that "invoking a copy of <tt>f</tt> 
 shall behave the same as invoking <tt>f</tt>".
+<p/>
+Daniel points out that the variadic constructor of <tt>std::thread</tt>
+described in 30.3.1.2 [thread.thread.constr] has a similar problem and 
+suggests a similar wording change, which has been integrated below.
 </p>
 
 
@@ -10304,13 +10308,40 @@ shall behave the same as invoking <tt>f</tt>".
 <p><b>Proposed resolution:</b></p>
 <p>This wording is relative to the FDIS.</p>
 
-<p>Change  as indicated:</p>
+<ol>
+<li><p>Insert a new Remarks element to 30.3.1.2 [thread.thread.constr] around p3 as indicated:</p>
 
 <blockquote><pre>
-
+template &lt;class F, class ...Args&gt; explicit thread(F&amp;&amp; f, Args&amp;&amp;... args);
 </pre></blockquote>
 <p>
+-3- <i>Requires</i>: <tt>F</tt> and each <tt>Ti</tt> in <tt>Args</tt> shall satisfy the <tt>MoveConstructible</tt> 
+requirements. <tt><i>INVOKE</i>(<i>DECAY_COPY</i> ( std::forward&lt;F&gt;(f)), <i>DECAY_COPY</i> (std::forward&lt;Args&gt;(args))...)</tt> 
+(20.8.2) shall be a valid expression.
+<p/>
+<ins>-?- <i>Remarks</i>: This constructor shall not participate in overload resolution if <tt>decay&lt;F&gt;::type</tt> 
+is the same type as <tt>std::thread</tt>.</ins>
 </p>
+</li>
+
+<li><p>Insert a new Remarks element to 30.6.9.1 [futures.task.members] around p2 as indicated:</p>
+
+<blockquote><pre>
+template &lt;class F&gt;
+  packaged_task(F&amp;&amp; f);
+template &lt;class F, class Allocator&gt;
+  explicit packaged_task(allocator_arg_t, const Allocator&amp; a, F&amp;&amp; f);
+</pre></blockquote>
+<p>
+-2- <i>Requires</i>: <tt><i>INVOKE</i>(f, t1, t2, ..., tN, R)</tt>, where <tt>t1, t2, ..., tN</tt> are values of the corresponding
+types in <tt>ArgTypes...</tt>, shall be a valid expression. Invoking a copy of <tt>f</tt> shall behave the same as invoking <tt>f</tt>.
+<p/>
+<ins>-?- <i>Remarks</i>: These constructors shall not participate in overload resolution if <tt>decay&lt;F&gt;::type</tt> 
+is the same type as <tt>std::packaged_task&lt;R(ArgTypes...)&gt;</tt>.</ins>
+</p>
+</li>
+
+</ol>
 
 
 
