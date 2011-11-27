@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D77)</h1>
-<p>Revised 2011-11-27 at 20:11:04 UTC</p>
+<p>Revised 2011-11-27 at 20:11:38 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2003(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D77: 2011-09-06 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>69 open issues, up by 25.</li>
+<li>70 open issues, up by 26.</li>
 <li>1550 closed issues, up by 1.</li>
-<li>1619 issues total, up by 26.</li>
+<li>1620 issues total, up by 27.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2084">2084</a>.</li>
-<li>Added the following 25 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>, <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2086">2086</a>, <a href="lwg-active.html#2087">2087</a>, <a href="lwg-active.html#2088">2088</a>, <a href="lwg-active.html#2089">2089</a>, <a href="lwg-active.html#2090">2090</a>, <a href="lwg-active.html#2091">2091</a>, <a href="lwg-active.html#2092">2092</a>, <a href="lwg-active.html#2093">2093</a>, <a href="lwg-active.html#2094">2094</a>, <a href="lwg-active.html#2095">2095</a>, <a href="lwg-active.html#2096">2096</a>.</li>
+<li>Added the following 26 New issues: <a href="lwg-active.html#2071">2071</a>, <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2073">2073</a>, <a href="lwg-active.html#2074">2074</a>, <a href="lwg-active.html#2075">2075</a>, <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2077">2077</a>, <a href="lwg-active.html#2078">2078</a>, <a href="lwg-active.html#2079">2079</a>, <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2081">2081</a>, <a href="lwg-active.html#2082">2082</a>, <a href="lwg-active.html#2083">2083</a>, <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2086">2086</a>, <a href="lwg-active.html#2087">2087</a>, <a href="lwg-active.html#2088">2088</a>, <a href="lwg-active.html#2089">2089</a>, <a href="lwg-active.html#2090">2090</a>, <a href="lwg-active.html#2091">2091</a>, <a href="lwg-active.html#2092">2092</a>, <a href="lwg-active.html#2093">2093</a>, <a href="lwg-active.html#2094">2094</a>, <a href="lwg-active.html#2095">2095</a>, <a href="lwg-active.html#2096">2096</a>, <a href="lwg-active.html#2097">2097</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -10138,6 +10138,8 @@ packaged_task() noexcept;
 </pre><blockquote>
 <p>
 -1- <i>Effects</i>: constructs a <tt>packaged_task</tt> object with no shared state and no stored task.
+<p/>
+<ins>-?- [<i>Note</i>: <tt>a</tt> is not used &mdash; <i>end note</i>]</ins>
 </p>
 </blockquote></blockquote>
 <p>[&hellip;]</p>
@@ -10252,6 +10254,63 @@ the returned value is moved, otherwise it is copied.</del>
 </p>
 </li>
 </ul>
+
+
+
+
+
+
+<hr>
+<h3><a name="2097"></a>2097. <tt>packaged_task</tt> constructors should be constrained</h3>
+<p><b>Section:</b> 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-02 <b>Last modified:</b> 2011-11-27</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.task.members">issues</a> in [futures.task.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+With the proposed resolution of <a href="lwg-active.html#2067">2067</a>, this no longer selects the
+copy constructor:
+</p>
+<blockquote><pre>
+std::packaged_task&lt;void()&gt; p1;
+std::packaged_task&lt;void()&gt; p2(p1);
+</pre></blockquote>
+<p>
+Instead this constructor is a better match:
+</p>
+<blockquote><pre>
+template &lt;class F&gt;
+ explicit packaged_task(F&amp;&amp; f);
+</pre></blockquote>
+<p>
+This attempts to package a <tt>packaged_task</tt>, which internally tries to
+copy <tt>p2</tt>, which fails because the copy constructor is deleted. For at
+least one implementation the resulting error message is much less
+helpful than the expected "cannot call deleted function" because it
+happens after instantiating several more templates rather than in the
+context where the constructor is called.
+<p/>
+I believe the solution is to constrain to the template constructors so
+the template argument <tt>F</tt> cannot be deduced as (possibly <i>cv</i>)
+<tt>packaged_task&amp;</tt> or <tt>packaged_task</tt>.  It could be argued 
+this constraint is already implied because <tt>packaged_task</tt> is not 
+copyable and the template constructors require that "invoking a copy of <tt>f</tt> 
+shall behave the same as invoking <tt>f</tt>".
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<p>Change  as indicated:</p>
+
+<blockquote><pre>
+
+</pre></blockquote>
+<p>
+</p>
 
 
 

@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-11-27 at 20:11:04 UTC</p>
+<p>Revised 2011-11-27 at 20:11:38 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -6146,6 +6146,8 @@ packaged_task() noexcept;
 </pre><blockquote>
 <p>
 -1- <i>Effects</i>: constructs a <tt>packaged_task</tt> object with no shared state and no stored task.
+<p/>
+<ins>-?- [<i>Note</i>: <tt>a</tt> is not used &mdash; <i>end note</i>]</ins>
 </p>
 </blockquote></blockquote>
 <p>[&hellip;]</p>
@@ -6260,6 +6262,63 @@ the returned value is moved, otherwise it is copied.</del>
 </p>
 </li>
 </ul>
+
+
+
+
+
+
+<hr>
+<h3><a name="2097"></a>2097. <tt>packaged_task</tt> constructors should be constrained</h3>
+<p><b>Section:</b> 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-02 <b>Last modified:</b> 2011-11-27</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.task.members">issues</a> in [futures.task.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+With the proposed resolution of <a href="lwg-active.html#2067">2067</a>, this no longer selects the
+copy constructor:
+</p>
+<blockquote><pre>
+std::packaged_task&lt;void()&gt; p1;
+std::packaged_task&lt;void()&gt; p2(p1);
+</pre></blockquote>
+<p>
+Instead this constructor is a better match:
+</p>
+<blockquote><pre>
+template &lt;class F&gt;
+ explicit packaged_task(F&amp;&amp; f);
+</pre></blockquote>
+<p>
+This attempts to package a <tt>packaged_task</tt>, which internally tries to
+copy <tt>p2</tt>, which fails because the copy constructor is deleted. For at
+least one implementation the resulting error message is much less
+helpful than the expected "cannot call deleted function" because it
+happens after instantiating several more templates rather than in the
+context where the constructor is called.
+<p/>
+I believe the solution is to constrain to the template constructors so
+the template argument <tt>F</tt> cannot be deduced as (possibly <i>cv</i>)
+<tt>packaged_task&amp;</tt> or <tt>packaged_task</tt>.  It could be argued 
+this constraint is already implied because <tt>packaged_task</tt> is not 
+copyable and the template constructors require that "invoking a copy of <tt>f</tt> 
+shall behave the same as invoking <tt>f</tt>".
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<p>Change  as indicated:</p>
+
+<blockquote><pre>
+
+</pre></blockquote>
+<p>
+</p>
 
 
 
