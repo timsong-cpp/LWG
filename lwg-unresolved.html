@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-11-28 at 22:11:42 UTC</p>
+<p>Revised 2011-11-28 at 22:11:53 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -4809,6 +4809,7 @@ incomplete pointees in effect.
 <h3><a name="2078"></a>2078. Throw specification of <tt>async()</tt> incomplete</h3>
 <p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-08-29 <b>Last modified:</b> 2011-11-24</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
 <p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -6430,6 +6431,64 @@ in the variable parameter list of the function definition (the one just before t
 <del>with</del><ins>of</ins> a type that is not compatible with the type that results when passing an argument for 
 which there is no parameter, the behavior is undefined.
 </p></blockquote>
+
+
+
+
+
+
+<hr>
+<h3><a name="2100"></a>2100. timed waiting functions cannot timeout if <tt>launch::async</tt> policy used</h3>
+<p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-14 <b>Last modified:</b> 2011-11-28</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+30.6.8 [futures.async] p5 says
+</p>
+
+<blockquote>
+<p>
+If the implementation chooses the <tt>launch::async</tt> policy,
+</p>
+<ul><li>a call to a waiting function on an asynchronous return object that shares the 
+shared state created by this <tt>async</tt> call shall block until the associated thread has
+completed, as if joined (30.3.1.5 [thread.thread.member]);</li>
+</ul>
+</blockquote>
+
+<p>
+That should say a non-timed waiting function, otherwise, calling a timed waiting function 
+can block indefinitely waiting for the associated thread to complete, rather than timing 
+out after the specified time.
+<p/>
+Since <tt>std::thread</tt> does not provide a <tt>timed_join()</tt> function (nor does
+Pthreads, making it impossible on many platforms) there is no way for a timed waiting 
+function to try to join but return early due to timeout, therefore timed waiting 
+functions either cannot guarantee to timeout or cannot be used to meet the requirement 
+to block until the thread is joined.  In order to allow timed waiting functions to
+timeout the requirement should only apply to non-timed waiting functions.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<p>Change 30.6.8 [futures.async] p5 as indicated:</p>
+
+<blockquote>
+<p>
+If the implementation chooses the <tt>launch::async</tt> policy,
+</p>
+<ul><li>a call to a <ins>non-timed</ins> waiting function on an asynchronous return object 
+that shares the shared state created by this <tt>async</tt> call shall block until the 
+associated thread has completed, as if joined (30.3.1.5 [thread.thread.member]);</li>
+</ul>
+</blockquote>
 
 
 
