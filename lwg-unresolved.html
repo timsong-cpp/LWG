@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-11-28 at 18:11:14 UTC</p>
+<p>Revised 2011-11-28 at 18:11:51 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -5052,7 +5052,7 @@ Yes, probably. We had to clean up several UNIXisms that were in the original des
 <hr>
 <h3><a name="2081"></a>2081. <tt>Allocator</tt> requirements should include <tt>CopyConstructible</tt></h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-08-30 <b>Last modified:</b> 2011-11-24</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-08-30 <b>Last modified:</b> 2011-11-28</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -5089,6 +5089,27 @@ constructors, the requirements should include <tt>CopyConstructible</tt>.
 <td>
 <tt>X a1(a);<br/>
 <ins>X a1 = a;</ins></tt>
+</td>
+<td>
+</td>
+<td>
+Shall not exit via an exception.<br/>
+post: <tt>a1 == a</tt>
+</td>
+<td>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X a1(move(a));<br/>
+<ins>X a1 = move(a);</ins></tt>
 </td>
 <td>
 </td>
@@ -6174,94 +6195,6 @@ to <tt>*this</tt>.
 </pre><blockquote>
 <p>
 </p></blockquote></blockquote>
-
-
-
-
-
-
-<hr>
-<h3><a name="2096"></a>2096. Incorrect constraints of <tt>future::get</tt> in regard to <tt>MoveAssignable</tt></h3>
-<p><b>Section:</b> 30.6.6 [futures.unique_future] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-11-02 <b>Last modified:</b> 2011-11-27</p>
-<p><b>View all other</b> <a href="lwg-index.html#futures.unique_future">issues</a> in [futures.unique_future].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-30.6.6 [futures.unique_future] paragraph 15 says the following:
-</p>
-<blockquote><pre>
-R future::get();
-</pre></blockquote>
-<p>
-&hellip;
-<p/>
--15- <i>Returns</i>:
-</p>
-<ul>
-<li>
-<p><tt>future::get()</tt> returns the value stored in the object’s shared state. If the type of the value is
-<tt>MoveAssignable</tt> the returned value is moved, otherwise it is copied.
-<p/>
-&hellip;
-</p>
-</li>
-</ul>
-<p>
-There are some problems with the description:
-<p/>
-"If the type of the value is <tt>MoveAssignable</tt> the returned value is moved, otherwise it is copied."
-</p>
-<ol>
-<li>It seems to impose unrealistic constraints on implementations, because how could an implementor 
-recognize whether a user-defined type satisfies the semantics of <tt>MoveAssignable</tt>? This should be
-based solely on a pure expression-based requirement, if this is an requirement for implementations.
-</li>
-<li>
-Reducing <tt>MoveAssignable</tt> to the plain expression part <tt>std::is_move_assignable</tt> 
-would solvs (1), but raises another question, namely why a <em>move-assignment</em> should be relevant
-for a function return based on the value stored in the future state? We would better fall back to
-<tt>std::is_move_constructible</tt> instead.
-</li>
-<li><p>The last criticism I have is about the part
-<p/>
-"the returned value is moved, otherwise it is copied"
-<p/>
-because an implementation won't be able to recognize what the user-defined type 
-will do during an expression that is prepared by the implementation. I think the 
-wording is intended to <em>allow</em> a move by seeding with an rvalue expression via
-<tt>std::move</tt> (or equivalent), else the result will be an effective
-copy construction.
-</p>
-</li>
-</ol>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to the FDIS.</p>
-
-<p>Change 30.6.6 [futures.unique_future] paragraph 15 as indicated:</p>
-
-<blockquote><pre>
-R future::get();
-</pre></blockquote>
-<p>
-&hellip;
-<p/>
--15- <i>Returns</i>:
-</p>
-<ul>
-<li>
-<p><tt>future::get()</tt> returns the value <ins><tt>v</tt></ins> stored in the object’s shared 
-state <ins>as <tt>std::move(v)</tt></ins>. <del>If the type of the value is <tt>MoveAssignable</tt> 
-the returned value is moved, otherwise it is copied.</del>
-<p/>
-&hellip;
-</p>
-</li>
-</ul>
 
 
 
