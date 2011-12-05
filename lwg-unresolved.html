@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-12-05 at 18:12:59 UTC</p>
+<p>Revised 2011-12-05 at 21:12:14 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -5936,7 +5936,7 @@ it should be worded the same way.
 <hr>
 <h3><a name="2093"></a>2093. Throws clause of <tt>condition_variable::wait</tt> with predicate</h3>
 <p><b>Section:</b> 30.5.1 [thread.condition.condvar] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2011-10-27 <b>Last modified:</b> 2011-12-03</p>
+ <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2011-10-27 <b>Last modified:</b> 2011-12-05</p>
 <p><b>View all other</b> <a href="lwg-index.html#thread.condition.condvar">issues</a> in [thread.condition.condvar].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -6067,6 +6067,47 @@ as specified in 20.11.7 [time.clock] do not throw exceptions. &mdash; <i>end not
 
 </li>
 
+<li><p>Change 30.4.1.3 [thread.timedmutex.requirements] as indicated:</p>
+
+<p>
+-3- The expression <tt>m.try_lock_for(rel_time)</tt> shall be well-formed and have the following semantics:
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Effects</i>: The function attempts to obtain ownership of the mutex within the relative timeout (30.2.4 [thread.req.timing])
+specified by <tt>rel_time</tt>. If the time specified by <tt>rel_time</tt> is less than or equal to <tt>rel_time.zero()</tt>, the
+function attempts to obtain ownership without blocking (as if by calling <tt>try_lock()</tt>). The function
+shall return within the timeout specified by <tt>rel_time</tt> only if it has obtained ownership of the mutex
+object. [<i>Note</i>: As with <tt>try_lock()</tt>, there is no guarantee that ownership will be obtained if the lock
+is available, but implementations are expected to make a strong effort to do so. &mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+<p/>
+-8- <i>Synchronization</i>: If <tt>try_lock_for()</tt> returns <tt>true</tt>, prior <tt>unlock()</tt> operations on the same object
+<i>synchronize with</i> (1.10 [intro.multithread]) this operation.
+<p/>
+-9- <i>Throws</i>: <ins>timeout-related exceptions (30.2.4 [thread.req.timing]).</ins><del>Nothing</del>.
+<p/>
+-10- The expression <tt>m.try_lock_until(abs_time)</tt> shall be well-formed and have the following semantics:
+<p/>
+[&hellip;]
+<p/>
+-12- <i>Effects</i>: The function attempts to obtain ownership of the mutex. If <tt>abs_time</tt> has already passed, the
+function attempts to obtain ownership without blocking (as if by calling <tt>try_lock()</tt>). The function
+shall return before the absolute timeout (30.2.4 [thread.req.timing]) specified by <tt>abs_time</tt> only 
+if it has obtained ownership of the mutex object. [<i>Note</i>: As with <tt>try_lock()</tt>, there is no guarantee 
+that ownership will be obtained if the lock is available, but implementations are expected to make a strong effort 
+to do so. &mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+<p/>
+-15- <i>Synchronization</i>: If <tt>try_lock_until()</tt> returns true, prior <tt>unlock()</tt> operations on the same object
+<i>synchronize with</i> (1.10 [intro.multithread]) this operation.
+<p/>
+-16- <i>Throws</i>: <ins>timeout-related exceptions (30.2.4 [thread.req.timing]).</ins><del>Nothing</del>.
+</p>
+</li>
+
 <li><p>Change 30.5.1 [thread.condition.condvar] as indicated:</p>
 
 <blockquote><pre>
@@ -6076,7 +6117,7 @@ template &lt;class Predicate&gt;
 <p>
 [&hellip;]
 <p/>
--15- <i>Effects</i>:
+-15- <i>Effects</i>: <ins>Equivalent to:</ins>
 </p>
 <blockquote><pre>
 while (!pred())
@@ -6093,6 +6134,44 @@ timeout-related exceptions (30.2.4 [thread.req.timing]), or any exception thrown
 </blockquote></blockquote>
 
 <blockquote><pre>
+template &lt;class Clock, class Duration&gt;
+  cv_status wait_until(unique_lock&lt;mutex&gt;&amp; lock,
+                       const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-23- <i>Throws</i>: <tt>std::system_error</tt> when an exception is required (30.2.2 [thread.req.exception])
+<ins>or timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+template &lt;class Rep, class Period&gt;
+  cv_status wait_for(unique_lock&lt;mutex&gt;&amp; lock,
+                     const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-26- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
+</p>
+<blockquote><pre>
+return wait_until(lock, chrono::steady_clock::now() + rel_time);
+</pre></blockquote>
+<p>
+[&hellip;]
+<p/>
+-29- <i>Throws</i>: <tt>std::system_error</tt> when an exception is required (30.2.2 [thread.req.exception])
+<ins>or timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
 template &lt;class Clock, class Duration, class Predicate&gt;
   bool wait_until(unique_lock&lt;mutex&gt;&amp; lock,
                   const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time,
@@ -6101,7 +6180,7 @@ template &lt;class Clock, class Duration, class Predicate&gt;
 <p>
 [&hellip;]
 <p/>
--32- <i>Effects</i>:
+-32- <i>Effects</i>: <ins>Equivalent to:</ins>
 </p>
 <blockquote><pre>
 while (!pred())
@@ -6130,7 +6209,7 @@ template &lt;class Rep, class Period, class Predicate&gt;
 <p>
 [&hellip;]
 <p/>
--39- <i>Effects</i>: as if
+-39- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
 </p>
 <blockquote><pre>
 return wait_until(lock, chrono::steady_clock::now() + rel_time, std::move(pred));
@@ -6154,6 +6233,19 @@ timeout-related exceptions (30.2.4 [thread.req.timing]), or any exception thrown
 <li><p>Change 30.5.2 [thread.condition.condvarany] as indicated:</p>
 
 <blockquote><pre>
+template &lt;class Lock, class Predicate&gt;
+  void wait(Lock&amp; lock, Predicate pred);
+</pre><blockquote>
+<p>
+-14- <i>Effects</i>: <ins>Equivalent to:</ins>
+</p>
+<blockquote><pre>
+while (!pred())
+  wait(lock);
+</pre></blockquote>
+</blockquote></blockquote>
+
+<blockquote><pre>
 template &lt;class Lock, class Clock, class Duration&gt;
   cv_status wait_until(Lock&amp; lock, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
 </pre><blockquote>
@@ -6174,7 +6266,7 @@ template &lt;class Lock, class Rep, class Period&gt;
 <p>
 [&hellip;]
 <p/>
--20- <i>Effects</i>: as if
+-20- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
 </p>
 <blockquote><pre>
 return wait_until(lock, chrono::steady_clock::now() + rel_time);
@@ -6194,7 +6286,7 @@ template &lt;class Lock, class Clock, class Duration, class Predicate&gt;
   bool wait_until(Lock&amp; lock, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time, Predicate pred);
 </pre><blockquote>
 <p>
--25- <i>Effects</i>:
+-25- <i>Effects</i>: <ins>Equivalent to:</ins>
 </p>
 <blockquote><pre>
 while (!pred())
@@ -6203,9 +6295,11 @@ while (!pred())
 return true;
 </pre></blockquote>
 <p>
-<del>-26- <i>Returns</i>: <tt>pred()</tt></del>
+-26- <del><i>Returns</i>: <tt>pred()</tt></del><ins>[<i>Note</i>: There is no blocking if <tt>pred()</tt> is initially <tt>true</tt>, 
+even if the timeout has already expired. &mdash; <i>end note</i>]</ins>
 <p/>
-[&hellip;]
+-27- [<i>Note</i>: The returned value indicates whether the predicate evaluates to <tt>true</tt> regardless of whether the
+timeout was triggered. <i>end note</i>]
 </p>
 </blockquote></blockquote>
 
@@ -6214,25 +6308,28 @@ template &lt;class Lock, class Rep, class Period, class Predicate&gt;
   bool wait_for(Lock&amp; lock, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time, Predicate pred);
 </pre><blockquote>
 <p>
-[&hellip;]
-<p/>
--28- <i>Effects</i>: as if
+-28- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
 </p>
 <blockquote><pre>
 return wait_until(lock, chrono::steady_clock::now() + rel_time, std::move(pred));
 </pre></blockquote>
 <p>
-[&hellip;]
+<del>-29- [<i>Note</i>: There is no blocking if <tt>pred()</tt> is initially <tt>true</tt>, 
+even if the timeout has already expired. &mdash; <i>end note</i>]</del>
+<del>-30- <i>Postcondition</i>: <tt>lock</tt> is locked by the calling thread.</del>
 <p/>
 <del>-31- <i>Returns</i>: <tt>pred()</tt></del>
 <p/>
-[&hellip;]
+<del>-32- [<i>Note</i>: The returned value indicates whether the predicate evaluates to <tt>true</tt> 
+regardless of whether the timeout was triggered. &mdash; <i>end note</i>]</del>
 <p/>
--33- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception])<ins>, 
-timeout-related exceptions (30.2.4 [thread.req.timing]), or any exception thrown by <tt>pred</tt></ins>.
+<del>-33- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception]).</del>
 <p/>
-[&hellip;]
+<del>-34- <i>Error conditions</i>:</del>
 </p>
+<ul>
+<li><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></li>
+</ul>
 </blockquote></blockquote>
 
 </li>
