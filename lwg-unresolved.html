@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-12-08 at 22:12:31 UTC</p>
+<p>Revised 2011-12-09 at 17:12:57 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -5677,7 +5677,7 @@ for the class <tt>error_category</tt>. The object’s <tt>name</tt> virtual functi
 <hr>
 <h3><a name="2088"></a>2088. <tt>std::terminate</tt> problem</h3>
 <p><b>Section:</b> 18.8.3 [exception.terminate] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-09-25 <b>Last modified:</b> 2011-11-26</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-09-25 <b>Last modified:</b> 2011-12-09</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -5705,7 +5705,7 @@ by the program.
 <p/>
 <i>Effects</i>: Calls the <tt>terminate_handler</tt> function in effect
 immediately after evaluating the <em>throw-expression</em> (18.8.3.1), if called by the
-implementation, or calls the current terminate_handler function,
+implementation, or calls the current <tt>terminate_handler</tt> function,
 if called by the program.
 </p>
 </blockquote>
@@ -5793,6 +5793,14 @@ void our_terminate (void) {
   }
 }
 </pre></blockquote>
+
+<p><i>[2011-12-09: Daniel comments]</i></p>
+
+
+<p>
+A related issue is <a href="lwg-active.html#2111">2111</a>.
+</p>
+
 
 
 
@@ -8137,6 +8145,79 @@ elements by <del>swapping with or</del> moving from elements that were originall
 </p>
 </blockquote></blockquote>
 
+
+
+
+
+
+<hr>
+<h3><a name="2111"></a>2111. Which <tt>unexpected</tt>&#47;<tt>terminate</tt> handler is called from the exception handling runtime?</h3>
+<p><b>Section:</b> 18.8.3.4 [terminate], D.13.3 [unexpected] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2011-12-06 <b>Last modified:</b> 2011-12-09</p>
+<p><b>View all other</b> <a href="lwg-index.html#terminate">issues</a> in [terminate].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Prior to N3242, modified by N3189, we said this about <tt>unexpected()</tt>:
+</p>
+
+<blockquote><p>
+<i>Effects</i>: Calls the <tt>unexpected_handler</tt> function in effect immediately after evaluating the throw-expression 
+(D.13.1), if called by the implementation, or calls the current <tt>unexpected_handler</tt>, if called by the program.
+</p></blockquote>
+
+<p>
+and this about <tt>terminate()</tt>:
+</p>
+
+<blockquote><p>
+<i>Effects</i>: Calls the <tt>terminate_handler</tt> function in effect immediately after evaluating the throw-expression (18.8.3.1), 
+if called by the implementation, or calls the current <tt>terminate_handler</tt> function, if called by the program.
+</p></blockquote>
+
+<p>
+But now in both places we say:
+</p>
+
+<blockquote><p>
+Calls the current <tt>unexpected_handler</tt> function.
+</p></blockquote>
+
+<p>
+and:
+</p>
+
+<blockquote><p>
+Calls the current <tt>terminate</tt> function.
+</p></blockquote>
+
+<p>
+The difference is that in C++98&#47;03 if a destructor reset a handler during stack unwinding, that new handler was 
+not called if the unwinding later led to <tt>unexpected()</tt> or <tt>terminate()</tt> being called.  But these new 
+words say that this new handler <em>is</em> called. This is an ABI-breaking change in the way exceptions are handled.  
+Was this change intentional?
+<p/>
+N3189 was mainly about introducing exception safety and getters for the handlers. I don't recall the issue of 
+<em>which</em> handler gets called being part of the discussion.
+<p/>
+I propose that we revert to the C++98&#47;03 behavior in this regard, lest ABI's such as the Itanium ABI are invalidated.  
+A mechanical way to do this is to revert bullets 9 and 12 of N3189.
+</p>
+
+<p><i>[2011-12-09: Daniel comments]</i></p>
+
+
+<p>
+There was no such semantic change intended. It was an unfortunate side effect whan trying to better separate different
+responsibilities in the previous wording.
+<p/>
+A related issue is <a href="lwg-active.html#2088">2088</a>.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
