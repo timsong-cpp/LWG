@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2011-12-17 at 14:12:29 UTC</p>
+<p>Revised 2011-12-17 at 16:12:06 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -8402,7 +8402,7 @@ An implementation shall not declare any class or any member function signature a
 <hr>
 <h3><a name="2114"></a>2114. Incorrect "<em>contextually</em> convertible to <tt>bool</tt>" requirements</h3>
 <p><b>Section:</b> 17.6.3.3 [nullablepointer.requirements], 24.2.3 [input.iterators], 24.2.7 [random.access.iterators], 25.1 [algorithms.general], 25.4 [alg.sorting], 30.2.1 [thread.req.paramname] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2011-12-16</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2011-12-17</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -8428,15 +8428,15 @@ direct-initialization context (In addition to "normal" direct-initialization con
 operands of logical operations as well as <tt>if</tt> or <tt>switch</tt> conditions also 
 belong to this special context).
 <p/>
-One example for these new requirements is input iterator, which imposes that <tt>X</tt> shall be 
-<tt>EqualityComparable</tt> but specifies that the expression
+One example for these new requirements are input iterators which satisfy <tt>EqualityComparable</tt> 
+but also specify that the expression
 </p>
 <blockquote><pre>
 a != b
 </pre></blockquote>
 <p>
-shall be just "contextually convertible to <tt>bool</tt>". The same discrepancy exists for requirement 
-set <tt>NullablePointer</tt> in regard to inequality expressions.
+shall be just "<strong>contextually</strong> convertible to <tt>bool</tt>". The same discrepancy 
+exists for requirement set <tt>NullablePointer</tt> in regard to several equality-related expressions.
 <p/>
 For random access iterators we have
 </p>
@@ -8444,13 +8444,13 @@ For random access iterators we have
 <tt>a &lt; b</tt>      contextually convertible to <tt>bool</tt>
 </p></blockquote>
 <p>
-(and all derived comparison functions), so strictly speaking we could have a random access 
+as well as for all derived comparison functions, so strictly speaking we could have a random access 
 iterator that does not satisfy the <tt>LessThanComparable</tt> requirements, which looks like an
 artifact to me.
 <p/>
-Even if we keep all existing requirements based on <tt>LessThanComparable</tt> or
-<tt>EqualityComparable</tt> we still have the problem that some current specifications are actually
-based on the assumption of implicit convertibility instead of "explicit convertibility", e.g. 
+Even if we keep with the existing requirements based on <tt>LessThanComparable</tt> or
+<tt>EqualityComparable</tt> we still would have the problem that some current specifications 
+are actually  based on the assumption of implicit convertibility instead of "explicit convertibility", e.g. 
 20.7.1.4 [unique.ptr.special] p3:
 </p>
 <blockquote><pre>
@@ -8463,36 +8463,43 @@ bool operator!=(const unique_ptr&lt;T1, D1&gt;&amp; x, const unique_ptr&lt;T2, D
 </p>
 </blockquote></blockquote>
 <p>
-Similar omissions exist in 20.7.1.2.2 [unique.ptr.single.dtor] p2, 20.7.1.2.3 [unique.ptr.single.asgn] p9,
+Similar examples exist in 20.7.1.2.2 [unique.ptr.single.dtor] p2, 20.7.1.2.3 [unique.ptr.single.asgn] p9,
 20.7.1.2.4 [unique.ptr.single.observers] p1+3+8, etc.
 <p/>
-In all these places the right fix seems to be to replace the current requirement on the return type
-of comparison functions (but <em>not</em> of the conversion of a <tt>NullablePointer</tt> to <tt>bool</tt>!)
-to "convertible to <tt>bool</tt>".
+In all these places the expressions involving comparison functions (but <em>not</em> those of the conversion 
+of a <tt>NullablePointer</tt> to <tt>bool</tt>!) assume to be "convertible to <tt>bool</tt>". I think this
+is a very natural assumption and all delegations of the comparison functions of some type <tt>X</tt> to some
+other API type <tt>Y</tt> in third-party code does so assuming that copy-initialization semantics will
+just work.
 <p/>
-The actual reason for using the newer terminology can be rooted back to LWG <a href="lwg-defects.html#556">556</a>. My working hypotheses 
+The actual reason for using the newer terminology can be rooted back to LWG <a href="lwg-defects.html#556">556</a>. My hypotheses 
 is that the resolution of that issue also needs a slight correction. Why so?
 <p/>
 The reason for opening that issue were worries based on the previous "convertible to <tt>bool</tt>"
-wording that expressions like "<tt>!pred(a, b)</tt>" might not be well-formed in those situations, because
+wording. An expressions like "<tt>!pred(a, b)</tt>" might not be well-formed in those situations, because
 <tt>operator!</tt> might not be accessible or might have an unusual semantics (and similarly for other logical
-operations). Because this can indeed happen with unusual proxy types, the idea was that the evaluation of 
+operations). This can indeed happen with unusual proxy return types, so the idea was that the evaluation of 
 <tt>Predicate</tt>, <tt>BinaryPredicate</tt> (25.1 [algorithms.general] p8+9), and <tt>Compare</tt> 
 (25.4 [alg.sorting] p2) should be defined based on contextual conversion to <tt>bool</tt>. 
-Unfortunately this alone <em>only</em> is insufficient: In addition, we <em>also</em> want the predicates 
+Unfortunately this <em>alone</em> is not sufficient: In addition, I think, we <em>also</em> want the predicates 
 to be (implicitly) convertible to <tt>bool</tt>! Without this wording, several conditions are plain wrong, 
 e.g. 25.2.5 [alg.find] p2, which talks about "<tt>pred(*i) != false</tt>" (<tt>find_if</tt>) and 
 "<tt>pred(*i) == false</tt>" (<tt>find_if_not</tt>). These expressions are not within a boolean context! 
 <p/>
-A final observation is that we have a <em>second</em> definition for a <tt>Predicate</tt> in 
-30.2.1 [thread.req.paramname] p2:
+While we could simply fix all these places by proper wording to be considered in a "contextual conversion to
+<tt>bool</tt>", I think that this is not the correct solution: Many third-party libraries already refer to
+the previous C++03 <tt>Predicate</tt> definition &mdash; it actually predates C++98 and is as old as the 
+<a href="http://www.sgi.com/tech/stl/Predicate.html">SGI specification</a>. It seems to be a high price to
+pay to switch to direct initialization here instead of fixing a completely different specification problem.
+<p/>
+A final observation is that we have another definition for a <tt>Predicate</tt> in 30.2.1 [thread.req.paramname] p2:
 </p>
 <blockquote><p>
 If a parameter is <tt>Predicate</tt>, <tt>operator()</tt> applied to the actual template argument shall return a value that
 is convertible to <tt>bool</tt>.
 </p></blockquote>
 <p>
-The problem here is not so much that we have two different definitions of <tt>Predicate</tt> in the standard - this 
+The problem here is not that we have two different definitions of <tt>Predicate</tt> in the standard &mdash; this 
 is confusing, but this fact alone is not a defect. The first (minor) problem is that this definition does not properly 
 apply to function objects that are function pointers, because <tt>operator()</tt> is not defined in a strict sense. 
 But the actually worse second problem is that this wording has the very <tt>same</tt> problem that has originally lead to
@@ -8503,7 +8510,11 @@ while (!pred())
   wait(lock);
 </pre></blockquote>
 <p>
-The negation expression here looks very familiar to the example provided in LWG <a href="lwg-defects.html#556">556</a>.
+The negation expression here looks very familiar to the example provided in LWG <a href="lwg-defects.html#556">556</a> and is sensitive
+to the same "unusual proxy" problem. Changing the 30.2.1 [thread.req.paramname] wording to a corresponding
+"contextual conversion to <tt>bool</tt>" wouldn't work either, because existing specifications rely on "convertible
+to <tt>bool</tt>", e.g. 30.5.1 [thread.condition.condvar] p32+33+42 or 30.5.2 [thread.condition.condvarany] 
+p25+26+32+33.
 <p/>
 To summarize: I believe that LWG <a href="lwg-defects.html#556">556</a> was not completely resolved. A pessimistic interpretation is,
 that even with the current wording based on "contextually convertible to <tt>bool</tt>" the actual problem of that 
