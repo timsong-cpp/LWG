@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-01-15 at 20:01:47 UTC</p>
+<p>Revised 2012-01-15 at 21:01:57 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -9394,6 +9394,154 @@ Note that the flag <tt>ate</tt> on both platforms appends "hello" to <tt>s</tt>.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2122"></a>2122. <tt>merge()</tt> stability for lists versus forward lists</h3>
+<p><b>Section:</b> 23.3.5.5 [list.ops], 23.3.4.6 [forwardlist.ops] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2012-01-15 <b>Last modified:</b> 2012-01-15</p>
+<p><b>View all other</b> <a href="lwg-index.html#list.ops">issues</a> in [list.ops].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+<tt>forward_list::merge()</tt> is specified in  23.3.4.6 [forwardlist.ops], p19 as follows:
+</p>
+<blockquote><p>
+This operation shall be stable: for equivalent elements in the two lists,
+the elements from <tt>*this</tt> shall always precede the elements from <tt>x</tt>.
+</p></blockquote>
+<p>
+But <tt>list::merge()</tt> is only specified in 23.3.5.5 [list.ops], p24 as follows:
+</p>
+<blockquote><p>
+<i>Remarks</i>: Stable.
+</p></blockquote>
+<p>
+Note that in general we define "stable" only for algorithms (see  [defns.stable] and 
+17.6.5.7 [algorithm.stable]) so for member function we should explain it everywhere we use it.
+<p/>
+Thus for lists we have to add:
+</p>
+<blockquote><p>
+Stable: for equivalent elements in the two lists, the elements from the list always precede the elements
+from the argument list.
+</p></blockquote>
+<p>
+This, BTW, was the specification we had with C++03.
+<p/>
+In addition, I wonder whether we also have some guarantees regarding stability saying that the order 
+of equivalent elements of each list merged remains stable (which would be my interpretation of just 
+saying "stable", BTW).
+<p/>
+Thus, I'd expect that for equivalent elements we guarantee that
+</p>
+<ul>
+ <li> we first have all element of <tt>*this</tt> (in the same order as on entry)</li>
+ <li> and then all elements of the passed argument (in the same order as on entry).</li>
+</ul>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<ol>
+<li>
+<p>Change 23.3.5.5 [list.ops] as indicated:</p>
+
+<blockquote><pre>
+void                          merge(list&lt;T,Allocator&gt;&amp; x);
+void                          merge(list&lt;T,Allocator&gt;&amp;&amp; x);
+template &lt;class Compare&gt; void merge(list&lt;T,Allocator&gt;&amp; x, Compare comp);
+template &lt;class Compare&gt; void merge(list&lt;T,Allocator&gt;&amp;&amp; x, Compare comp);</pre>
+<blockquote><p>
+[&hellip;]
+<p/>
+-24- <i>Remarks</i>: <del>Stable</del><ins>This operation shall be stable: for equivalent elements 
+in the two lists, the elements from <tt>*this</tt> shall always precede the elements from <tt>x</tt>
+and the order of equivalent elements of <tt>*this</tt> and <tt>x</tt> remains stable</ins>. If 
+<tt>(&amp;x != this)</tt> the range <tt>[x.begin(), x.end())</tt> 
+is empty after the merge. No elements are copied by this operation. The behavior is undefined if 
+<tt>this-&gt;get_allocator() != x.get_allocator()</tt>.
+</p></blockquote></blockquote>
+</li>
+
+<li>
+<p>Change 23.3.4.6 [forwardlist.ops] as indicated:</p>
+
+<blockquote><pre>
+void merge(forward_list&lt;T,Allocator&gt;&amp; x);
+void merge(forward_list&lt;T,Allocator&gt;&amp;&amp; x);
+template &lt;class Compare&gt; void merge(forward_list&lt;T,Allocator&gt;&amp; x, Compare comp);
+template &lt;class Compare&gt; void merge(forward_list&lt;T,Allocator&gt;&amp;&amp; x, Compare comp);</pre>
+<blockquote><p>
+[&hellip;]
+<p/>
+-19- <i>Effects</i>: Merges <tt>x</tt> into <tt>*this</tt>. This operation shall be stable: for 
+equivalent elements in the two lists, the elements from <tt>*this</tt> shall always precede the 
+elements from <tt>x</tt> <ins>and the order of equivalent elements of <tt>*this</tt> and <tt>x</tt> 
+remains stable</ins>. <tt>x</tt> is empty after the merge. If an exception is thrown other 
+than by a comparison there are no effects. Pointers and references to the moved elements of <tt>x</tt> 
+now refer to those same elements but as members of <tt>*this</tt>. Iterators referring
+to the moved elements will continue to refer to their elements, but they now behave as iterators into
+<tt>*this</tt>, not into <tt>x</tt>.
+</p></blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2123"></a>2123. <tt>merge()</tt> allocator requirements for lists versus forward lists</h3>
+<p><b>Section:</b> 23.3.4.6 [forwardlist.ops] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2012-01-15 <b>Last modified:</b> 2012-01-15</p>
+<p><b>View other</b> <a href="lwg-index-open.html#forwardlist.ops">active issues</a> in [forwardlist.ops].</p>
+<p><b>View all other</b> <a href="lwg-index.html#forwardlist.ops">issues</a> in [forwardlist.ops].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Sub-clause 23.3.5.5 [list.ops], p24 states for lists:
+</p>
+<blockquote><p>
+The behavior is undefined if <tt>this-&gt;get_allocator() != x.get_allocator()</tt>.
+</p></blockquote>
+<p>
+But there is nothing like that for forward lists in 23.3.4.6 [forwardlist.ops],
+although I would expect the same undefined behavior there.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<ol>
+<li>
+<p>Add a new paragraph after 23.3.4.6 [forwardlist.ops] p19 as indicated:</p>
+
+<blockquote><pre>
+void merge(forward_list&lt;T,Allocator&gt;&amp; x);
+void merge(forward_list&lt;T,Allocator&gt;&amp;&amp; x);
+template &lt;class Compare&gt; void merge(forward_list&lt;T,Allocator&gt;&amp; x, Compare comp);
+template &lt;class Compare&gt; void merge(forward_list&lt;T,Allocator&gt;&amp;&amp; x, Compare comp);</pre>
+<blockquote><p>
+[&hellip;]
+<p/>
+-19- <i>Effects</i>: [&hellip;]
+<p/>
+<ins>-?- <i>Remarks</i>: The behavior is undefined if <tt>this-&gt;get_allocator() != x.get_allocator()</tt>.</ins>
+</p></blockquote></blockquote>
+</li>
+</ol>
+
 
 
 
