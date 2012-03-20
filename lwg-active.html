@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D79)</h1>
-<p>Revised 2012-03-20 at 20:03:55 UTC</p>
+<p>Revised 2012-03-20 at 22:03:38 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -12789,7 +12789,7 @@ and properly defined.
 <hr>
 <h3><a name="2140"></a>2140. Meaning of <tt>notify_all_at_thread_exit</tt> synchronization requirement?</h3>
 <p><b>Section:</b> 30.5 [thread.condition] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-03-06 <b>Last modified:</b> 2012-03-14</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-03-06 <b>Last modified:</b> 2012-03-20</p>
 <p><b>View all other</b> <a href="lwg-index.html#thread.condition">issues</a> in [thread.condition].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12811,9 +12811,54 @@ meaningful for completion of destructors for non-library objects. Presumably the
 destructors special here.
 </p>
 
+<p><i>[2012-03-09 Jeffrey Yasskin comments:]</i></p>
+
+
+<p>
+I think the text should say that "<tt>notify_all_at_thread_exit</tt> and destructor calls are sequenced before
+the <tt>lk.unlock()</tt>", and leave it at that, unless there's a funny implementation I haven't thought of.
+</p>
+
+<p><i>[2012-03-19 Hans Boehm comments:]</i></p>
+
+
+<p>
+I think the synchronization clause should just be replaced with (modulo wording tweaks):
+<p/>
+"The implied <tt>lk.unlock()</tt> call is sequenced after the destruction of all objects with thread storage duration 
+associated with the current thread."
+<p/>
+as Jeffrey suggested.
+<p/>
+To use this correctly, the notifying thread has to essentially acquire the lock, set a variable indicating it's done, 
+call <tt>notify_all_at_thread_exit()</tt>, while the waiting thread acquires the lock, and repeatedly waits on the 
+cv until the variable is set, and then releases the lock.  That ensures that we have the proper synchronizes with 
+relationship as a result of the lock.
+</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol><li><p>Modify 30.5 [thread.condition] p8 as indicated:</p>
+
+<blockquote>
+<pre>
+void notify_all_at_thread_exit(condition_variable&amp; cond, unique_lock&lt;mutex&gt; lk);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-8- <i>Synchronization</i>: <del>The call to <tt>notify_all_at_thread_exit</tt> and the completion of the destructors for
+all the current thread's variables of thread storage duration synchronize with (1.10 [intro.multithread]) 
+calls to functions waiting on <tt>cond</tt></del> <ins>The implied <tt>lk.unlock()</tt> call is sequenced after the 
+destruction of all objects with thread storage duration associated with the current thread</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
+
 
 
 
