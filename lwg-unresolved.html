@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-07-22 at 16:07:41 UTC</p>
+<p>Revised 2012-07-22 at 20:07:59 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -9950,6 +9950,57 @@ and said initializations must be valid even when <tt>T</tt> is not default-const
 -4- Member function <tt>swap()</tt> shall have a <em>noexcept-specification</em> which is equivalent to 
 <tt>noexcept(true)</tt>.
 </p></blockquote>
+
+
+
+
+
+<hr>
+<h3><a name="2158"></a>2158. Conditional copy&#47;move in <tt>std::vector</tt></h3>
+<p><b>Section:</b> 23.3.6.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2012-07-22</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+There are various operations on <tt>std::vector</tt> that can cause elements of the vector to be 
+moved from one location to another. A move operation can use either rvalue or const lvalue as 
+argument; the choice depends on the value of <tt>!is_nothrow_move_constructible&lt;T&gt;::value &amp;&amp;
+is_copy_constructible&lt;T&gt;::value</tt>, where <tt>T</tt> is the element type. Thus, some operations 
+on <tt>std::vector</tt> (e.g. 'resize' with single parameter, 'reserve', 'emplace_back') should have 
+conditional requirements. For example, let's consider the requirement for 'reserve' in N3376 &ndash; 
+23.3.6.3 [vector.capacity]&#47;2:
+</p>
+<blockquote><p>
+<i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+</p></blockquote>
+<p>
+This requirement is not sufficient if an implementation is free to select copy constructor when 
+<tt>!is_nothrow_move_constructible&lt;T&gt;::value &amp;&amp; is_copy_constructible&lt;T&gt;::value</tt> 
+evaluates to true. Unfortunately, <tt>is_copy_constructible</tt> cannot reliably determine whether 
+<tt>T</tt> is really copy-constructible. A class may contain public non-deleted copy constructor whose 
+definition does not exist or cannot be instantiated successfully (e.g., 
+<tt>std::vector&lt;std::unique_ptr&lt;int&gt;&gt;</tt> has copy constructor, but this type is not 
+copy-constructible). Thus, the actual requirements should be:
+</p>
+<ul>
+<li><p>
+if <tt>!is_nothrow_move_constructible&lt;T&gt;::value &amp;&amp; is_copy_constructible&lt;T&gt;::value</tt> 
+then <tt>T</tt> shall be <tt>CopyInsertable</tt> into <tt>*this</tt>;
+</p></li>
+<li><p>
+otherwise <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+</p></li>
+</ul>
+<p>
+Maybe it would be useful to introduce a new name for such conditional requirement (in addition to 
+"<tt>CopyInsertable</tt>" and "<tt>MoveInsertable</tt>").
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
