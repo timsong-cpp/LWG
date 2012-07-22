@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-07-22 at 14:07:38 UTC</p>
+<p>Revised 2012-07-22 at 16:07:41 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -9893,6 +9893,63 @@ But for this case the two sides of the equation are equal, so <tt>insert</tt> ca
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2157"></a>2157. How does <tt>std::array&lt;T,0&gt;</tt> initialization work when <tt>T</tt> is not default-constructible?</h3>
+<p><b>Section:</b> 23.3.2.8 [array.zero] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2012-07-22</p>
+<p><b>View all other</b> <a href="lwg-index.html#array.zero">issues</a> in [array.zero].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Objects of <tt>std::array&lt;T,N&gt;</tt> are supposed to be initialized with aggregate initialization (when 
+not the destination of a copy or move). This clearly works when <tt>N</tt> is positive. What happens when <tt>N</tt> 
+is zero?  To continue using an (inner) set of braces for initialization, a <tt>std::array&lt;T,0&gt;</tt> implementation 
+must have an array member of at least one element, and let default initialization take care of those secret elements.  
+This cannot work when <tt>T</tt> has a set of constructors and the default constructor is deleted from that set.
+Solution: Add a new paragraph in 23.3.2.8 [array.zero]:
+</p>
+<blockquote><p>
+The unspecified internal structure of array for this case shall allow initializations like:
+</p>
+<blockquote><pre>
+array&lt;T, 0&gt; a = { };
+</pre></blockquote>
+<p>
+and said initializations must be valid even when <tt>T</tt> is not default-constructible.
+</p></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<p>Add the following new paragraph between the current 23.3.2.8 [array.zero] p1 and p2:</p>
+
+<blockquote><p>
+-1- <tt>array</tt> shall provide support for the special case <tt>N == 0</tt>.
+<p/>
+<ins>-?- The unspecified internal structure of <tt>array</tt> for this case shall allow initializations like:</ins>
+</p>
+<blockquote><pre>
+<ins>array&lt;T, 0&gt; a = { };</ins>
+</pre></blockquote>
+<p>
+<ins>and said initializations must be valid even when <tt>T</tt> is not default-constructible.</ins>
+<p/>
+-2- In the case that <tt>N == 0</tt>, <tt>begin() == end() ==</tt> unique value. The return value of 
+<tt>data()</tt> is unspecified.
+<p/>
+-3- The effect of calling <tt>front()</tt> or <tt>back()</tt> for a zero-sized array is undefined.
+<p/>
+-4- Member function <tt>swap()</tt> shall have a <em>noexcept-specification</em> which is equivalent to 
+<tt>noexcept(true)</tt>.
+</p></blockquote>
 
 
 
