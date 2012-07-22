@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-07-22 at 20:07:59 UTC</p>
+<p>Revised 2012-07-22 at 21:07:06 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -8872,6 +8872,8 @@ the flags specified in <tt>f</tt>. If an exception is thrown, <tt>*this</tt> is 
 <h3><a name="2138"></a>2138. <tt>atomic_flag::clear</tt> should not accept <tt>memory_order_consume</tt></h3>
 <p><b>Section:</b> 29.7 [atomics.flag] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Ben Viglietta <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2012-03-19</p>
+<p><b>View other</b> <a href="lwg-index-open.html#atomics.flag">active issues</a> in [atomics.flag].</p>
+<p><b>View all other</b> <a href="lwg-index.html#atomics.flag">issues</a> in [atomics.flag].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -10001,6 +10003,96 @@ Maybe it would be useful to introduce a new name for such conditional requiremen
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2159"></a>2159. <tt>atomic_flag</tt> initialization</h3>
+<p><b>Section:</b> 29.7 [atomics.flag] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2012-05-24 <b>Last modified:</b> 2012-07-22</p>
+<p><b>View other</b> <a href="lwg-index-open.html#atomics.flag">active issues</a> in [atomics.flag].</p>
+<p><b>View all other</b> <a href="lwg-index.html#atomics.flag">issues</a> in [atomics.flag].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+29.7 [atomics.flag]&#47;4 describes the <tt>ATOMIC_FLAG_INIT</tt>, but it's not quite clear about a 
+couple of points:
+</p>
+<ol>
+<li><p>
+it's said that <tt>ATOMIC_FLAG_INIT</tt> "can be used to initialize an object of type <tt>atomic_flag</tt>" 
+and the following example:
+</p>
+<blockquote><pre>
+atomic_flag guard = ATOMIC_FLAG_INIT;
+</pre></blockquote>
+<p>
+is presented. It's not clear whether the macro can also be used in the other initialization contexts:
+</p>
+<blockquote><pre>
+atomic_flag guard ATOMIC_FLAG_INIT; 
+atomic_flag guard {ATOMIC_FLAG_INIT};
+
+struct A { atomic_flag flag; A(); };
+A::A() : flag (ATOMIC_FLAG_INIT); 
+A::A() : flag {ATOMIC_FLAG_INIT};
+</pre></blockquote>
+<p>
+Please also note that examples are non-normative, according to the ISO directives, meaning that the wording 
+presents no normative way to use the macro.
+</p>
+</li>
+
+<li><p>
+it's said that "It is unspecified whether an uninitialized <tt>atomic_flag</tt> object has an initial state 
+of set or clear.". I believe the use of "uninitialized" is inappropriate. First of all, if an object is 
+uninitialized it is obvious that we cannot assert anything about its state. Secondly, it doesn't address the 
+following cases:
+</p>
+<blockquote><pre>
+atomic_flag a; // object is "initialized" by trivial default constructor
+atomic_flag a {}; // object is value-initialized
+static atomic_flag a; // object is zero-initialized
+</pre></blockquote>
+<p>
+strictly speaking a trivial constructor "initializes" the object, although it doesn't actually initialize the 
+sub-objects.
+</p></li>
+</ol>
+<p>
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<p>Change 29.7 [atomics.flag]&#47;4 as follows:</p>
+
+<blockquote><p>
+The macro <tt>ATOMIC_FLAG_INIT</tt> shall be defined in such a way that it can be used to initialize an object of
+type <tt>atomic_flag</tt> to the clear state.  <ins>The macro can be used in the form:</ins>
+</p>
+<blockquote><pre>
+<ins>atomic_flag guard = ATOMIC_FLAG_INIT;</ins>
+</pre></blockquote>
+<p>
+<ins>It's unspecified whether the macro can be used in other initialization contexts.</ins> For a static-duration object, 
+that initialization shall be static. <del>It is unspecified whether an uninitialized</del> <ins>Unless initialized 
+with <tt>ATOMIC_FLAG_INIT</tt>, it is unspecified whether an</ins> <tt>atomic_flag</tt> object has an initial state 
+of set or clear. <del><i>[ Example:</i></del>
+</p>
+<blockquote><pre>
+<del>atomic_flag guard = ATOMIC_FLAG_INIT;</del>
+</pre></blockquote>
+<p>
+<del>&mdash; <i>end example ]</i></del>
+</p>
+</blockquote>
+
 
 
 
