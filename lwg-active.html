@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2012-07-23</td>
+  <td align="left">2012-08-05</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D79)</h1>
-<p>Revised 2012-07-23 at 21:07:54 UTC</p>
+<p>Revised 2012-08-05 at 11:08:50 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -13750,15 +13750,32 @@ corresponding conditions hold: <tt>!(*i &lt; *j)</tt> or <tt>comp(*i, *j) == fal
 
 
 <hr>
-<h3><a name="2151"></a>2151. <tt>basic_string::swap</tt> semantics ignore allocators</h3>
+<h3><a name="2151"></a>2151. <tt>basic_string&lt;&gt;::swap</tt> semantics ignore allocators</h3>
 <p><b>Section:</b> 21.4.1 [string.require] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-07-22</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-08-05</p>
 <p><b>View other</b> <a href="lwg-index-open.html#string.require">active issues</a> in [string.require].</p>
 <p><b>View all other</b> <a href="lwg-index.html#string.require">issues</a> in [string.require].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
+In C++11, <tt>basic_string</tt> is not described as a "container", and is not governed by the allocator-aware 
+container semantics described in sub-clause 23.2 [container.requirements]; as a result, and 
+requirements or contracts for the <tt>basic_string</tt> interface must be documented in Clause 
+21 [strings].
+<p/>
+Sub-clause 21.4.6.8 [string::swap] defines the <tt>swap</tt> member function with no requirements, and
+with guarantees to execute in constant time without throwing. Fulfilling such a contract is not reasonable 
+in the presence of unequal non-propagating allocators.
+<p/>
+In contrast, 23.2.1 [container.requirements.general] p7 declares the behavior of member <tt>swap</tt> 
+for containers with unequal non-propagating allocators to be undefined.
+<p/>
+Resolution proposal:
+<p/>
+Additional language from Clause 23 [containers] should probably be copied to Clause 
+21 [strings]. I will refrain from an exactly recommendation, however, as I am raising further
+issues related to the language in Clause 23 [containers].
 </p>
 
 
@@ -13772,11 +13789,45 @@ corresponding conditions hold: <tt>!(*i &lt; *j)</tt> or <tt>comp(*i, *j) == fal
 <hr>
 <h3><a name="2152"></a>2152. Instances of standard container types are not swappable</h3>
 <p><b>Section:</b> 17.6.3.2 [swappable.requirements], 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-07-22</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-08-05</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
+Sub-clause 17.6.3.2 [swappable.requirements] defines two notions of swappability: a binary version defining
+when two objects are <em>swappable with</em> one another, and a unary notion defining whether an object is 
+<em>swappable</em> (without qualification), with the latter definition requiring that the object satisfy the 
+former with respect to all values of the same type.
+<p/>
+Let <tt>T</tt> be a container type based on a non-propagating allocator whose instances do not necessarily 
+compare equal. Then sub-clause 23.2.1 [container.requirements.general] p7 implies that no object <tt>t</tt> 
+of type <tt>T</tt> is swappable (by the unary definition).
+<p/>
+Throughout the standard it is the unary definition of "swappable" that is listed as a requirement (with the 
+exceptions of 20.2.2 [utility.swap] p4, 20.3.2 [pairs.pair] p31, 20.4.2.3 [tuple.swap] p2, 
+25.3.3 [alg.swap] p2, and 25.3.3 [alg.swap] p6, which use the binary definition). This renders 
+many of the mutating sequence algorithms of sub-clause 25.3 [alg.modifying.operations], for example, 
+inapplicable to sequences of standard container types, even where every element of the sequence is swappable 
+with every other.
+<p/>
+Note that this concern extends beyond standard containers to all future allocator-based types.
+<p/>
+Resolution proposal:
+<p/>
+I see two distinct straightforward solutions:
+</p>
+<ol style="list-style-type:lower-roman">
+<li>Modify the requirements of algorithms from sub-clause 25.3 [alg.modifying.operations], and all other
+places that reference the unary "swappable" definition, to instead use the binary "swappable with" definition 
+(over a domain appropriate to the context). The unary definition of "swappable" could then be removed from the 
+standard.
+</li>
+<li>Modify sub-clause 23.2.1 [container.requirements.general] such that objects of standard container types 
+are "swappable" by the unary definition.
+</li>
+</ol>
+<p>
+I favor the latter solution, for reasons detailed in the following issue.
 </p>
 
 
@@ -13790,11 +13841,47 @@ corresponding conditions hold: <tt>!(*i &lt; *j)</tt> or <tt>comp(*i, *j) == fal
 <hr>
 <h3><a name="2153"></a>2153. Narrowing of the non-member <tt>swap</tt> contract</h3>
 <p><b>Section:</b> 20.2.2 [utility.swap], 17.6.3.2 [swappable.requirements], 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-07-22</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-08-05</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
+Section 20.2.2 [utility.swap] defines a non-member 'swap' function with defined behavior for
+all <tt>MoveConstructible</tt> and <tt>MoveAssignable</tt> types. It does not guarantee
+constant-time complexity or <tt>noexcept</tt> in general, however this definition does
+render all objects of <tt>MoveConstructible</tt> and <tt>MoveAssignable</tt> type swappable
+(by the unary definition of sub-clause 17.6.3.2 [swappable.requirements]) in the absence of 
+specializations or overloads.
+<p/>
+The overload of the non-member <tt>swap</tt> function defined in Table 96, however,
+defines semantics incompatible with the generic non-member <tt>swap</tt> function,
+since it is defined to call a member <tt>swap</tt> function whose semantics are
+undefined for some values of <tt>MoveConstructible</tt> and <tt>MoveAssignable</tt> types.
+<p/>
+The obvious (perhaps naive) interpretation of sub-clause 17.6.3.2 [swappable.requirements] is as a guide to
+the "right" semantics to provide for a non-member <tt>swap</tt> function (called in
+the context defined by 17.6.3.2 [swappable.requirements] p3) in order to provide interoperable
+user-defined types for generic programming. The standard container types don't follow these guidelines.
+<p/>
+More generally, the design in the standard represents a classic example of "contract narrowing". It 
+is entirely reasonable for the contract of a particular <tt>swap</tt> overload to provide <em>more</em> 
+guarantees, such as constant-time execution and <tt>noexcept</tt>, than are provided by the <tt>swap</tt> 
+that is provided for any <tt>MoveConstructible</tt> and <tt>MoveAssignable</tt> types, but it is <em>not</em> 
+reasonable for such an overload to fail to live up to the guarantees it provides for general types when 
+it is applied to more specific types. Such an overload or specialization in generic programming is akin 
+to an override of an inherited virtual function in OO programming: violating a superclass contract in a
+subclass may be legal from the point of view of the language, but it is poor design and can easily lead 
+to errors. While we cannot prevent user code from providing overloads that violate the more general 
+<tt>swap</tt> contract, we can avoid doing so within the library itself.
+<p/>
+My proposed resolution is to draw a sharp distinction between member <tt>swap</tt> functions, which provide 
+optimal performance but idiosyncratic contracts, and non-member <tt>swap</tt> functions, which should always 
+fulfill at least the contract of 20.2.2 [utility.swap] and thus render objects swappable. The member 
+<tt>swap</tt> for containers with non-propagating allocators, for example, would offer constant-time
+guarantees and <tt>noexcept</tt> but would only offer defined behavior for values with allocators that compare 
+equal; non-member <tt>swap</tt> would test allocator equality and then dispatch to either member <tt>swap</tt> or 
+<tt>std::swap</tt> depending on the result, providing defined behavior for all values (and rendering the type
+"swappable"), but offering neither the constant-time nor the <tt>noexcept</tt> guarantees.
 </p>
 
 
