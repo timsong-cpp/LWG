@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D79)</h1>
-<p>Revised 2012-08-05 at 20:08:15 UTC</p>
+<p>Revised 2012-08-05 at 21:08:42 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -14531,7 +14531,6 @@ or <tt>comp(*j, *i) == false</tt>.
 <h3><a name="2164"></a>2164. What are the semantics of <tt>vector.emplace(vector.begin(), vector.back())</tt>?</h3>
 <p><b>Section:</b> 23.3.6.5 [vector.modifiers], 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2012-07-07 <b>Last modified:</b> 2012-08-05</p>
-<p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -14605,22 +14604,56 @@ is not correct.
 
 <hr>
 <h3><a name="2165"></a>2165. <tt>std::atomic&lt;X&gt;</tt> requires <tt>X</tt> to be nothrow default constructible</h3>
-<p><b>Section:</b> 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+<p><b>Section:</b> 29.5 [atomics.types.generic], 29.6 [atomics.types.operations] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-07-19 <b>Last modified:</b> 2012-08-05</p>
-<p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
-<p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
+<p><b>View all other</b> <a href="lwg-index.html#atomics.types.generic">issues</a> in [atomics.types.generic].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
+As raised in c++std-lib-32781, this fails to compile even though the default constructor is not used:
 </p>
 <blockquote><pre>
+#include &lt;atomic&gt;
+
+struct X {
+  X() noexcept(false) {}
+  X(int) { }
+};
+
+std::atomic&lt;X&gt; x(3);
+</pre></blockquote>
+<p>This is because <tt>atomic&lt;T&gt;</tt>'s default constructor is declared to be non-throwing and 
+is explicitly-defaulted on its first declaration:
+</p>
+<blockquote><pre>
+atomic() noexcept = default;
 </pre></blockquote>
 <p>
+This is ill-formed if the implicitly-declared default constructor would not be non-throwing.
 <p/>
+Possible solutions:
 </p>
-<blockquote><pre>
-</pre></blockquote>
+<ol>
+<li>
+Add nothrow default constructible to requirements for template argument of the generic <tt>atomic&lt;T&gt;</tt>
+</li>
+<li>
+Remove <tt>atomic&lt;T&gt;::atomic()</tt> from the overload set if <tt>T</tt> is not nothrow default constructible.
+</li>
+<li>
+Remove <tt>noexcept</tt> from <tt>atomic&lt;T&gt;::atomic()</tt>, allowing it to be
+deduced (but the default constructor is intended to be always noexcept)
+</li>
+<li>
+Do not default <tt>atomic&lt;T&gt;::atomic()</tt> on its first declaration (but makes the default constructor 
+user-provided and so prevents <tt>atomic&lt;T&gt;</tt> being trivial)
+</li>
+<li>
+A core change to allow the mismatched exception specification if the default constructor isn't used 
+(see c++std-core-21990)
+</li>
+</ol>
 
 
 
