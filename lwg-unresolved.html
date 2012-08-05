@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-08-05 at 13:08:20 UTC</p>
+<p>Revised 2012-08-05 at 16:08:43 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -997,6 +997,7 @@ shall throw any exceptions.
 <h3><a name="2012"></a>2012. Associative maps should insert <tt>pair</tt>, not <tt>tuple</tt></h3>
 <p><b>Section:</b> 23.4 [associative] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2010-10-29 <b>Last modified:</b> 2012-03-10</p>
+<p><b>View other</b> <a href="lwg-index-open.html#associative">active issues</a> in [associative].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative">issues</a> in [associative].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -10485,6 +10486,141 @@ While I agree that required reverse-destruction would better mimic the natural b
 suggestion would be to restore the effects of the previous wording <em>in regard to the destruction order</em>, 
 because otherwise several currently existing implementations would be broken just because of this
 additional requirement.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2161"></a>2161. <tt>const</tt> equivalence of <tt>std::map</tt></h3>
+<p><b>Section:</b> 23.4 [associative], 23.5 [unord] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Bjarne Stroustrup <b>Opened:</b> 2012-06-18 <b>Last modified:</b> 2012-08-05</p>
+<p><b>View other</b> <a href="lwg-index-open.html#associative">active issues</a> in [associative].</p>
+<p><b>View all other</b> <a href="lwg-index.html#associative">issues</a> in [associative].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+As described in the reflector discussion c++std-core-21860 consider the following example:
+</p>
+<blockquote><pre>
+map&lt;const int,int&lt; mci{};
+map&lt;int,int&lt; mi = mci; // ??
+mci[1] = 2;
+mi[1] = 2;
+</pre></blockquote>
+<p>
+Should it be required that the marked initialization is well-formed? As a possible solution
+this could be realized by an alias template:
+</p>
+<blockquote><pre>
+template &lt;class K, class T&gt;
+struct OriginalMap { [&hellip;] };
+
+template &lt;class K, class T&gt;
+using ImprovedMap = OriginalMap&lt;const K, T&gt;;
+</pre></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2162"></a>2162. <tt>allocator_traits::max_size</tt> missing <tt>noexcept</tt></h3>
+<p><b>Section:</b> 17.6.3.5 [allocator.requirements], 20.6.8.2 [allocator.traits.members], 20.6.8 [allocator.traits] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Bo Persson <b>Opened:</b> 2012-07-03 <b>Last modified:</b> 2012-08-05</p>
+<p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
+<p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+N3376 describes in 20.6.8.2 [allocator.traits.members]/7
+</p>
+<blockquote><pre>
+static size_type max_size(Alloc&amp; a);
+</pre>
+<p>
+<i>Returns</i>: <tt>a.max_size()</tt> if that expression is well-formed; otherwise, <tt>numeric_limits&lt;size_type&gt;::max()</tt>.
+</p>
+</blockquote>
+<p>
+The <tt>max_size</tt> function is supposed to call one of two functions that are both <tt>noexcept</tt>. 
+To make this intermediate function useful for containers, it should preserve the <tt>noexcept</tt> attribute.
+<p/>
+Proposed changes:
+<p/>
+In 20.6.8 [allocator.traits] and 20.6.8.2 [allocator.traits.members]/7, change the function signature to
+</p>
+<blockquote><pre>
+static size_type max_size(Alloc&amp; a) noexcept;
+</pre></blockquote>
+
+<p><i>[2012-08-05 Daniel comments]</i></p>
+
+<p>
+On the first sight this does not seem like a defect of the specification, because the Allocator requirements in 
+17.6.3.5 [allocator.requirements] (Table 28) do not impose a no-throw requirement onto <tt>max_size()</tt>; 
+the table just describes the fall-back implementation for <tt>max_size()</tt> if a given allocator does 
+not provide such a function.
+<p/>
+<tt>std::allocator</tt> as a special model of this concept and is allowed to increase the exception-guarantees 
+for <tt>max_size()</tt>, but this does not imply a corresponding rules for other allocators.
+<p/>
+Furthermore, <tt>max_size()</tt> of Containers is <em>not</em> specified in terms of 
+<tt>Allocator::max_size()</tt>, so again this is not a real contradiction.
+<p/>
+Nonetheless I think that the following stronger decision should be considered:
+</p>
+<ol>
+<li><p>
+Require that for all Allocators (as specified in 17.6.3.5 [allocator.requirements]) <tt>max_size()</tt> 
+never throws an exception. This would it make much more useful to call this function in situations where no 
+exception should leave the context.
+</p></li>
+<li><p>
+Require that for all Allocators (as specified in 17.6.3.5 [allocator.requirements]) <tt>max_size()</tt>
+can be called on const allocator object. Together with the previous item this would allow an implementation 
+of a container's <tt>max_size()</tt> function to delegate to the allocator's <tt>max_size()</tt> function.
+</p></li>
+</ol>
+<p>
+In regard to the second statement it should be mentioned that there are two current specification
+deviations from that in the draft:
+</p>
+<ol>
+<li><p>
+The synopsis of 20.6.8 [allocator.traits] uses a const allocator argument as part of the signature
+of the <tt>max_size</tt> function.
+</p></li>
+
+<li><p>
+Both the synopsis of 20.12.1 [allocator.adaptor.syn] and the member specification in
+20.12.4 [allocator.adaptor.members] p8 declare <tt>scoped_allocator_adaptor::max_size</tt>
+as const member function, but this function delegates to 
+</p>
+<blockquote><pre>
+allocator_traits&lt;OuterAlloc&gt;::max_size(outer_allocator())
+</pre></blockquote>
+<p>
+where <tt>outer_allocator()</tt> resolves to the member function overload returning a
+<tt>const outer_allocator_type&amp;</tt>.
+</p>
+</li>
+</ol>
+
+<p>
+The question arises whether these current defects actually point to a defect in the Allocator
+requirements and should be fixed there.
 </p>
 
 
