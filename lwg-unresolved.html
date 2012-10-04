@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-10-04 at 22:10:08 UTC</p>
+<p>Revised 2012-10-04 at 22:10:12 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -12940,6 +12940,42 @@ situation, alerting the user that this code is ambigious.
 </p></blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2193"></a>2193. Default constructors for standard library containers are explicit</h3>
+<p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-10-04 <b>Last modified:</b> 2012-10-05</p>
+<p><b>View all other</b> <a href="lwg-index.html#containers">issues</a> in [containers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Most (all?) of the standard library containers have explicit default constructors. Consequently:
+</p>
+<blockquote><pre>
+std::set&lt;int&gt; s1 = { 1, 2 }; // ok
+std::set&lt;int&gt; s2 = { 1 }; // ok
+std::set&lt;int&gt; s3 = {}; // ill-formed, copy-list-initialization selected an explicit constructor
+</pre></blockquote>
+<p>
+Note that Clang + libc++ rejects the declaration of <tt>s3</tt> for this reason. This cannot possibly match the intent.
+</p>
+<p>
+Suggested fix: apply this transformation throughout the standard library:
+</p>
+<blockquote><pre>
+<ins>set() : set(Compare()) {}</ins>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
