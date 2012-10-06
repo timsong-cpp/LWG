@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D80)</h1>
-<p>Revised 2012-10-06 at 11:10:36 UTC</p>
+<p>Revised 2012-10-06 at 18:10:03 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D80: 2012-09-24 post-Portland mailing<ul>
 <li><b>Summary:</b><ul>
-<li>142 open issues, up by 6.</li>
+<li>143 open issues, up by 7.</li>
 <li>1576 closed issues, up by 0.</li>
-<li>1718 issues total, up by 6.</li>
+<li>1719 issues total, up by 7.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 6 New issues: <a href="lwg-active.html#2190">2190</a>, <a href="lwg-active.html#2191">2191</a>, <a href="lwg-active.html#2192">2192</a>, <a href="lwg-active.html#2193">2193</a>, <a href="lwg-active.html#2194">2194</a>, <a href="lwg-active.html#2195">2195</a>.</li>
+<li>Added the following 7 New issues: <a href="lwg-active.html#2190">2190</a>, <a href="lwg-active.html#2191">2191</a>, <a href="lwg-active.html#2192">2192</a>, <a href="lwg-active.html#2193">2193</a>, <a href="lwg-active.html#2194">2194</a>, <a href="lwg-active.html#2195">2195</a>, <a href="lwg-active.html#2196">2196</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -8746,7 +8746,7 @@ associated thread has completed, as if joined (30.3.1.5 [thread.thread.member]);
 <hr>
 <h3><a name="2101"></a>2101. Some transformation types can produce impossible types</h3>
 <p><b>Section:</b> 20.9.7 [meta.trans] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-11-18 <b>Last modified:</b> 2012-03-10</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-11-18 <b>Last modified:</b> 2012-10-06</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -8804,7 +8804,7 @@ support concepts <tt>PointeeType</tt> and <tt>ReferentType</tt> defined in
 </p>
 
 
-<p><i>[21012, Kona]</i></p>
+<p><i>[2012-02-10, Kona]</i></p>
 
 <p>
 Move to NAD.
@@ -8839,18 +8839,77 @@ other working groups free to produce the 'right' answer that we can then follow 
 changing the meaning of exisitng, well-defined programs.
 </p>
 
-<p><i>[21012, post-Kona]</i></p>
+<p><i>[2012-02-10, post-Kona]</i></p>
 
 <p>
-Move back to Open.  Daniel is concerned that this is not an issue we can simply ignore,
+Move back to Open. Daniel is concerned that this is not an issue we can simply ignore,
 further details to follow.
 </p>
 
+<p><i>[2012-10-06, Daniel comments]</i></p>
 
+<p>
+This issue really should be resolved as a defect: First, the argument that "forming these obscure types"
+should "allow an error to propagate" is inconsistent with the exact same "obscure type" that would be formed
+when <tt>std::add_lvalue_reference&lt;void&gt;</tt> wouldn't have an extra rules for <tt>void</tt> types, which
+also cannot form references. The originally proposed resolution attempts to apply the same solution for the same 
+common property of <tt>void</tt> types and function types with <em>cv</em>-qualifiers or <em>ref</em>-qualifier.
+These functions had the property of <tt>ReferentType</tt> during concept time (see 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#749">CWG 749</a> bullet three for the final 
+wording).
+<p/>
+I also would like to warn about so-called "obscure" types: The problem is that these can occur as the side effect
+of finding a best match overload of function templates, where this type is exactly correct for one of these
+overloads, but causes a deep (not-sfinae-friendly) error for others where one of these traits are part of the 
+signature.
+<p/>
+Existing experience with <tt>void</tt> types shows, that this extra rule is not so unexpected. Further, any usage 
+of the result types of these traits as argument types or return types of functions would make these ill-formed 
+(and in a template context would be sfinaed away), so the expected effects are rarely unnoticed. Checking
+all existing explicit usages of the traits <tt>add_rvalue_reference</tt>, <tt>add_lvalue_reference</tt>, and
+<tt>add_pointer</tt> didn't show any example where the error would be silent: <tt>add_rvalue_reference</tt>
+is used to specify the return value of <tt>declval()</tt> and the instantiation of <tt>declval&lt;void() const&gt;()</tt>
+would be invalid, because of the attempt to return a function type. Similarly, <tt>add_lvalue_reference</tt>
+is used to specify the return type of <tt>unique_ptr&lt;T&gt;::operator*()</tt>. Again, any instantiation with 
+<tt>void() const</tt> wouldn't remain unnoticed. The trait <tt>add_pointer</tt> is used to specify the trait
+<tt>std::decay</tt> and this is an interesting example, because it is well-formed when instantiated with <tt>void</tt> 
+types, too, and is heavily used throughout the library specification. All use-cases would not be negatively affected 
+by the suggested acceptance of function types with <em>cv</em>-qualifiers or <em>ref</em>-qualifier, because they involve 
+types that are either function arguments, function parameters or types were references are formed from.
+<p/>
+The alternative would be to add an additional extra rule that doesn't define a type member 'type' when
+we have a function type with <em>cv</em>-qualifiers or <em>ref</em>-qualifier. This is better than the
+current state but it is not superior than the proposal to specify the result as the original type, because
+both variants are sfinae-friendly. A further disadvantage of the "non-type" approach here would be that any
+usage of <tt>std::decay</tt> would require special protection against these function types, because 
+instantiating <tt>std::decay&lt;void() const&gt;</tt> again would lead to a deep, sfinae-unfriendly error.
+<p/>
+The following example demonstrates the problem: Even though the second <tt>f</tt> template is the best final
+match here, the first one will be instantiated. During that process <tt>std::decay&lt;T&gt;::type</tt>
+becomes instantiated as well and will raise a deep error, because as part of the implementation the trait
+<tt>std::add_pointer&lt;void() const&gt;</tt> becomes instantiated:
+</p>
+<blockquote><pre>
+#include &lt;type_traits&gt;
 
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to the FDIS.</p>
+template&lt;class T&gt;
+typename std::decay&lt;T&gt;::type f(T&amp;&amp; t);
 
+template&lt;class T, class U&gt;
+U f(U u);
+
+int main() {
+  f&lt;void() const&gt;(0);
+}
+</pre></blockquote>
+<p>
+When the here proposed resolution would be applied this program would be well-formed and selects the expected function.
+</p>
+
+<p>
+Previous resolution:
+</p>
+<blockquote class="note">
 <ol>
 <li><p>Change Table 53 &mdash; "Reference modifications" in 20.9.7.2 [meta.trans.ref] as indicated:</p>
 
@@ -8925,6 +8984,109 @@ struct add_pointer;</tt>
 <ins>If <tt>T</tt> names a function type that has <i>cv</i>-qualifiers or a <i>ref</i>-qualifier<br/>
 then the member typedef <tt>type</tt> shall name <tt>T</tt>; otherwise, it<br/> 
 shall name the same type as</ins> <tt>remove_reference&lt;T&gt;::type*</tt>.
+</td>
+</tr>
+
+</table>
+
+</li>
+</ol>
+</blockquote>
+
+<p>
+The following revised proposed resolution defines - in the absense of a proper core language definition - a new
+term <em>referencable type</em> as also suggested by the resolution for LWG <a href="lwg-active.html#2196">2196</a> as an
+umbrella for void types and function types with <em>cv</em>-qualifiers or <em>ref</em>-qualifier. This simplifies
+and minimizes the requires wording changes.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<ol>
+<li><p>Add the following new definition to 17.3 [definitions] as indicated:</p>
+<p><b>referencable type</b></p>
+<blockquote><p>
+An object type, a function type that does not have <em>cv</em>-qualifiers or a <em>ref</em>-qualifier, or a reference type.
+[<i>Note</i>: The term describes a type to which a reference can be created, including reference types. &mdash; <i>end note</i>]
+</p></blockquote>
+</li>
+
+<li><p>Change Table 53 &mdash; "Reference modifications" in 20.9.7.2 [meta.trans.ref] as indicated:</p>
+
+<table border="1">
+<caption>Table 53 &mdash; Reference modifications</caption>
+<tr>
+<th>Template</th>
+<th>Comments</th>
+</tr> 
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;<br/>
+struct<br/>
+add_lvalue_reference;</tt>
+</td>
+<td>
+If <tt>T</tt> names <del>an object <tt>type</tt> or function type</del><ins>a referencable type</ins><br/>
+then the member typedef <tt>type</tt><br/>
+shall name <tt>T&amp;</tt>; otherwise, <del>if <tt>T</tt> names a type “rvalue reference to <tt>T1</tt>” then<br/>
+the member typedef <tt>type</tt> shall name <tt>T1&amp;</tt>; otherwise,</del> <tt>type</tt> shall name <tt>T</tt>.<br/>
+<ins>[ <i>Note</i>: This rule reflects the semantics of reference collapsing (8.3.2 [dcl.ref]). &mdash; <i>end note</i> ]</ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;<br/>
+struct<br/>
+add_rvalue_reference;</tt>
+</td>
+<td>
+If <tt>T</tt> names <del>an object <tt>type</tt> or function type</del><ins>a referencable type</ins><br/>
+then the member typedef <tt>type</tt><br/>
+shall name <tt>T&amp;&amp;</tt>; otherwise, <tt>type</tt> shall name <tt>T</tt>. [ <i>Note</i>: This rule reflects<br/>
+the semantics of reference collapsing (8.3.2 [dcl.ref]). For example, when a type <tt>T</tt><br/>
+names a type <tt>T1&amp;</tt>, the type <tt>add_rvalue_reference&lt;T&gt;::type</tt> is not an<br/>
+rvalue reference. &mdash; <i>end note</i> ]
+</td>
+</tr>
+</table>
+
+</li>
+
+<li><p>Change Table 56 &mdash; "Pointer modifications" in 20.9.7.5 [meta.trans.ptr] as indicated:</p>
+
+<table border="1">
+<caption>Table 56 &mdash; Pointer modifications</caption>
+<tr>
+<th>Template</th>
+<th>Comments</th>
+</tr> 
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;<br/>
+struct add_pointer;</tt>
+</td>
+<td>
+<ins>If <tt>T</tt> names a referencable type or a (possibly <i>cv</i>-qualified) <tt>void</tt> type then<br/></ins>
+<del>T</del><ins>t</ins>he member typedef <tt>type</tt> shall name the same type as<br/>
+<tt>remove_reference&lt;T&gt;::type*</tt><ins>; otherwise, <tt>type</tt> shall name <tt>T</tt></ins>.
 </td>
 </tr>
 
@@ -17153,6 +17315,314 @@ The class template <tt>match_results</tt> shall satisfy the requirements of an a
 sequence container, as specified in 23.2.3 [sequence.reqmts], except that only operations defined for 
 const-qualified sequence containers <ins>that are not constructors</ins> are supported.
 </p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2196"></a>2196. Specification of <tt>is_*[copy/move]_[constructible/assignable]</tt> unclear for non-referencable types</h3>
+<p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2012-10-06</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The pre-conditions for the type <tt>is_copy_constructible</tt> allow for argument types were the language forbids forming
+a reference, namely <tt>void</tt> types and function types that have <em>cv</em>-qualifiers or a <em>ref</em>-qualifier.
+<p/>
+But the current wording in Table 49 defining the predicate condition,
+</p>
+<blockquote><p>
+<tt>is_constructible&lt;T, const T&amp;&gt;::value</tt> is <tt>true</tt>.
+</p></blockquote>
+<p>
+leaves it open whether such argument types would (a) create a well-formed instantiation of the trait template or if so (b) what
+the outcome of the trait evaluation would be, as an example consider <tt>std::is_copy_constructible&lt;void&gt;</tt>.
+<p/>
+Current implementations differ, e.g. gcc accepts the instantiation and returns a false result for all these types. VS 2012
+also accepts <tt>void</tt> types but returns true for them.
+<p/>
+I would suggest that the wording clarifies that the instantiation would be valid for these types and I also would strongly 
+prefer the outcome that the trait would always return false for these types. The latter seems rather natural
+to me, because there is no way to define a variable of void type or function type at all, so it would be surprising
+to return a positive result for copy or move construction if no other construction can be successful. It is also not 
+possible to assign to a any of these values (because there is no way to form lvalues of them), so the same argumentation 
+should be applied to the <tt>is_copy/move_assignable</tt> traits as well.
+<p/>
+To reduce the amount of wording changes and repetitions, I suggest to define the term <em>referencable type</em> in 
+sub-clause 17.3 [definitions] or alternatively in the core language to describe types to which references
+can be created. This definition corresponds to what the support concept <tt>ReferentType</tt> intended to describe 
+during concept time.
+<p/>
+In addition, LWG issue <a href="lwg-active.html#2101">2101</a> could also take advantage of the definition of a <em>referencable type</em>.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Add the following new definition to 17.3 [definitions] as indicated:</p>
+<p><b>referencable type</b></p>
+<blockquote><p>
+An object type, a function type that does not have <em>cv</em>-qualifiers or a <em>ref</em>-qualifier, or a reference type.
+[<i>Note</i>: The term describes a type to which a reference can be created, including reference types. &mdash; <i>end note</i>]
+</p></blockquote>
+</li>
+
+<li><p>Change Table 49 as indicated:</p>
+
+<table border="1">
+<caption>Table 49 &mdash; Type property predicates</caption>
+<tr>
+<th>Template</th>
+<th>Condition</th>
+<th>Preconditions</th>
+</tr> 
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_copy_constructible;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_constructible&lt;T,</tt><br/>
+<tt>const T&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_move_constructible;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_constructible&lt;T,</tt><br/>
+<tt>T&amp;&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_copy_assignable;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_assignable&lt;T&amp;,</tt><br/>
+<tt>const T&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_move_assignable;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_assignable&lt;T&amp;,</tt><br/>
+<tt>T&amp;&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_trivially_copy_constructible;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_trivially_constructible&lt;T,</tt><br/>
+<tt>const T&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_trivially_move_constructible;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_trivially_constructible&lt;T,</tt><br/>
+<tt>T&amp;&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_trivially_copy_assignable;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_trivially_assignable&lt;T&amp;,</tt><br/>
+<tt>const T&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_trivially_move_assignable;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_trivially_assignable&lt;T&amp;,</tt><br/>
+<tt>T&amp;&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_nothrow_copy_constructible;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_nothrow_constructible&lt;T,</tt><br/>
+<tt>const T&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_nothrow_move_constructible;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_nothrow_constructible&lt;T,</tt><br/>
+<tt>T&amp;&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_nothrow_copy_assignable;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_nothrow_assignable&lt;T&amp;,</tt><br/>
+<tt>const T&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_nothrow_move_assignable;</tt>
+</td>
+<td>
+<ins><tt>T</tt> is a referencable type and</ins><br/>
+<tt>is_nothrow_assignable&lt;T&amp;,</tt><br/>
+<tt>T&amp;&amp;&gt;::value</tt> is true.
+</td>
+<td>
+<tt>T</tt> shall be a complete type,<br/>
+(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
+array of unknown bound.
+</td>
+</tr>
+
+</table>
+
 </li>
 </ol>
 
