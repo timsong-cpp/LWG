@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-10-04 at 22:10:12 UTC</p>
+<p>Revised 2012-10-06 at 11:10:36 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -12584,7 +12584,7 @@ when no more concurrency can be effectively exploited. &mdash; <i>end note</i>]
 <hr>
 <h3><a name="2187"></a>2187. <tt>vector&lt;bool&gt;</tt> is missing <tt>emplace</tt> and <tt>emplace_back</tt> member functions</h3>
 <p><b>Section:</b> 23.3.7 [vector.bool] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-09-21 <b>Last modified:</b> 2012-09-23</p>
+ <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-09-21 <b>Last modified:</b> 2012-10-05</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.bool">issues</a> in [vector.bool].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12840,7 +12840,7 @@ Also, the requirements for move-assignment should refer to Table 141. Further it
 <hr>
 <h3><a name="2192"></a>2192. Validity and return type of <tt>std::abs(0u)</tt> is unclear</h3>
 <p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2012-10-05</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2012-10-06</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -12885,7 +12885,7 @@ can lead to the following possible conclusions:
 static_assert(std::is_same&lt;decltype(std::abs(0u)), double&gt;(), "Oops");
 
 int main() {
-  std::abs(0u);
+  std::abs(0u); // Calls std::abs(double)
 }
 </pre></blockquote>
 <p>
@@ -12903,27 +12903,28 @@ might be ill-formed because of two conflicting requirements for the return type 
 </p>
 
 <p>
-It seems to me that at least one of these outcomes is not intended, personally I think that both
+It seems to me that at least the second outcome is not intended, personally I think that both
 are unfortunate: In contrast to all other floating-point functions explicitly listed in sub-clause 
 26.8 [c.math], the <tt>abs</tt> overloads have a special and well-defined meaning for 
 signed integers and thus have explicit overloads returning a signed integral type. I also believe that 
-there is no problem accepting that <tt>std::fabs(0u)</tt> is well-defined with return type double, 
+there is no problem accepting that <tt>std::fabs(0u)</tt> is well-defined with return type <tt>double</tt>, 
 because the leading 'f' clearly signals that we have a floating point function here. But the expected 
 return type of <tt>std::abs(0u)</tt> seems less than clear to me. A very reasonable answer could be that 
-this has the same type as it's argument type, alternatively it could be a "reasonably" chosen signed 
-integer type, or - finally - a floating point type. It should also be noted, that the corresponding
+this has the same type as its argument type, alternatively it could be a reasonably chosen signed 
+integer type, or a floating point type. It should also be noted, that the corresponding
 "generic type function" rule set from C99/C1x in 7.25 p2+3 is restricted to the floating-point functions
 from <tt>&lt;math.h&gt;</tt> and <tt>&lt;complex.h&gt;</tt>, so cannot be applied to the <tt>abs</tt>
 functions (but to the <tt>fabs</tt> functions!).
 <p/>
-Selecting a signed integer return type for unsigned input values is also problematic: The directly
+Selecting a signed integer return type for unsigned input values can also problematic: The directly
 corresponding signed integer type would give half of the possible argument values an implementation-defined
 result value. Choosing the first signed integer value that can represent all positive values would solve this
-problem for <tt>unsigned int</tt>, but there would be no clear answer for the input type <tt>unsigned long long</tt>.
+problem for <tt>unsigned int</tt>, but there would be no clear answer for the input type <tt>std::uintmax_t</tt>.
 </p>
 <p>
 Based on this it seems to me that the C++03 state in regard to unsigned integer values was the better
-situation, alerting the user that this code is ambigious. 
+situation, alerting the user that this code is ambigious at the moment (This might be change with different core-language
+rules as described in N3387).
 </p>
 
 
@@ -12948,7 +12949,7 @@ situation, alerting the user that this code is ambigious.
 <hr>
 <h3><a name="2193"></a>2193. Default constructors for standard library containers are explicit</h3>
 <p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-10-04 <b>Last modified:</b> 2012-10-05</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-10-04 <b>Last modified:</b> 2012-10-06</p>
 <p><b>View all other</b> <a href="lwg-index.html#containers">issues</a> in [containers].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12973,9 +12974,352 @@ explicit set(const Compare&amp; comp<del> = Compare()</del>,
              const Allocator&amp; = Allocator());
 </pre></blockquote>
 
+<p><i>[
+2012-10-06: Daniel adds concrete wording.
+]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<p>The more general criterion for performing the suggested transformation was: Any type with an initializer-list 
+constructor that also has an explicit default constructor.</p>
+
+<ol>
+<li><p>Change class template <tt>basic_string</tt> synopsis, 21.4 [basic.string] p5 as indicated:</p>
+<blockquote><pre>
+<ins>basic_string() : basic_string(Allocator()) {}</ins>
+explicit basic_string(const Allocator&amp; a<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 21.4.2 [string.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit basic_string(const Allocator&amp; a<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>deque</tt> synopsis, 23.3.3.1 [deque.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>deque() : deque(Allocator()) {}</ins>
+explicit deque(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.3.2 [deque.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit deque(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>forward_list</tt> synopsis, 23.3.4.1 [forwardlist.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>forward_list() : forward_list(Allocator()) {}</ins>
+explicit forward_list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.4.2 [forwardlist.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit forward_list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>list</tt> synopsis, 23.3.5.1 [list.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>list() : list(Allocator()) {}</ins>
+explicit list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.5.2 [list.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>vector</tt> synopsis, 23.3.6.1 [vector.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>vector() : vector(Allocator()) {}</ins>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.6.2 [vector.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template specialization <tt>vector&lt;bool&gt;</tt> synopsis, 23.3.7 [vector.bool] p1 as indicated:</p>
+<blockquote><pre>
+<ins>vector() : vector(Allocator()) {}</ins>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>map</tt> synopsis, 23.4.4.1 [map.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>map() : map(Compare()) {}</ins>
+explicit map(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.4.2 [map.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit map(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>multimap</tt> synopsis, 23.4.5.1 [multimap.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>multimap() : multimap(Compare()) {}</ins>
+explicit multimap(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.5.2 [multimap.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit multimap(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>set</tt> synopsis, 23.4.6.1 [set.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>set() : set(Compare()) {}</ins>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.6.2 [set.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>multiset</tt> synopsis, 23.4.7.1 [multiset.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>multiset() : multiset(Compare()) {}</ins>
+explicit multiset(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.7.2 [multiset.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit multiset(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_map</tt> synopsis, 23.5.4.1 [unord.map.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_map() : unordered_map(<i>see below</i>) {}</ins>
+explicit unordered_map(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.4.2 [unord.map.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_map() : unordered_map(<i>see below</i>) {}</ins>
+explicit unordered_map(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_multimap</tt> synopsis, 23.5.5.1 [unord.multimap.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multimap() : unordered_multimap(<i>see below</i>) {}</ins>
+explicit unordered_multimap(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.5.2 [unord.multimap.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multimap() : unordered_multimap(<i>see below</i>) {}</ins>
+explicit unordered_multimap(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_set</tt> synopsis, 23.5.6.1 [unord.set.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_set() : unordered_set(<i>see below</i>) {}</ins>
+explicit unordered_set(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.6.2 [unord.set.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_set() : unordered_set(<i>see below</i>) {}</ins>
+explicit unordered_set(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_multiset</tt> synopsis, 23.5.7.1 [unord.multiset.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multiset() : unordered_multiset(<i>see below</i>) {}</ins>
+explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.7.2 [unord.multiset.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multiset() : unordered_multiset(<i>see below</i>) {}</ins>
+explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2194"></a>2194. Impossible container requirements for adaptor types</h3>
+<p><b>Section:</b> 23.6 [container.adaptors] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Sebastian Mach <b>Opened:</b> 2012-10-05 <b>Last modified:</b> 2012-10-06</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.adaptors">issues</a> in [container.adaptors].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The <tt>stack</tt> class template does not have an member type <tt>iterator</tt>, and therefore instantiations do not 
+meet the general container requirements as described in 23.2.1 [container.requirements.general]. But 
+23.6.1 [container.adaptors.general] p1 says:
+</p>
+<blockquote><p>
+The headers <tt>&lt;queue&gt;</tt> and <tt>&lt;stack&gt;</tt> define the container adaptors <tt>queue</tt>, 
+<tt>priority_queue</tt>, and <tt>stack</tt>. These container adaptors meet the requirements for sequence containers.
+</p></blockquote>
+<p>
+Since sequence containers is a subset of general containers, this imposes requirements on the container adaptors that
+are not satisfied.
+</p>
+<p>
+<u>Daniel Kr&uuml;gler</u>: The wording change was performed as an editorial reorganization as requested
+by <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3296.html#GB116">GB 116</a> occuring first in
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3242.pdf">N3242</a>, as a side-effect it 
+does now make the previous implicit C++03 classification to [lib.sequences]/1 more obvious. As the NB comment
+noticed, the adaptors really are not sequences nor containers, so this wording needs to be fixed.
+The most simple way to realize that is to strike the offending sentence.
+</p>
+
+<p><i>[
+Daniel adds concrete wording.
+]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change 23.6.1 [container.adaptors.general] p1 as indicated:</p>
+<blockquote><p>
+-1- The headers <tt>&lt;queue&gt;</tt> and <tt>&lt;stack&gt;</tt> define the container adaptors <tt>queue</tt>, 
+<tt>priority_queue</tt>, and <tt>stack</tt>. <del>These container adaptors meet the requirements for sequence containers.</del>
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2195"></a>2195. Missing constructors for <tt>match_results</tt></h3>
+<p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2012-10-06</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The requirement expressed in 28.10 [re.results] p2
+</p>
+<blockquote><p>
+The class template <tt>match_results</tt> shall satisfy the requirements of an allocator-aware container and of a
+sequence container, as specified in 23.2.3 [sequence.reqmts], except that only operations defined for 
+const-qualified sequence containers are supported.
+</p></blockquote>
+<p>
+can be read to require the existence of the described constructors from as well, but they do not exist in the
+synopsis. 
+<p/>
+The missing sequence constructors are: 
+</p>
+<blockquote><pre>
+match_results(initializer_list&lt;value_type&gt;);
+match_results(size_type, const value_type&amp;);
+template&lt;class InputIterator&gt; match_results(InputIterator, InputIterator);
+</pre></blockquote>
+<p>
+The missing allocator-aware container constructors are:
+</p>
+<blockquote><pre>
+match_results(const match_results&amp;, const Allocator&amp;);
+match_results(match_results&amp;&amp;, const Allocator&amp;);
+</pre></blockquote>
+<p>
+It should be clarified, whether (a) constructors are an exception of above mentioned operations or (b) whether
+at least some of them (like those accepting a <tt>match_results</tt> value and an allocator) should be added.
+<p/>
+As visible in several places of the standard (including the core language), constructors seem usually to be considered 
+as "operations" and they certainly can be invoked for const-qualified objects.
+<p/>
+The below given proposed resolution applies only the minimum necessary fix, i.e. it excludes constructors from
+above requirement. 
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change 28.10 [re.results] p2 as indicated:</p>
+<blockquote><p>
+The class template <tt>match_results</tt> shall satisfy the requirements of an allocator-aware container and of a
+sequence container, as specified in 23.2.3 [sequence.reqmts], except that only operations defined for 
+const-qualified sequence containers <ins>that are not constructors</ins> are supported.
+</p></blockquote>
+</li>
+</ol>
+
 
 
 
