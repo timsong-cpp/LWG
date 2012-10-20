@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-10-19 at 07:10:17 UTC</p>
+<p>Revised 2012-10-20 at 00:10:49 UTC</p>
 <h2>Tentative Issues</h2>
 <hr>
 <h3><a name="2005"></a>2005. <tt>unordered_map::insert(T&amp;&amp;)</tt> protection should apply to <tt>map</tt> too</h3>
@@ -1218,6 +1218,942 @@ requirements of a constant random access iterator (24.2.7) whose <tt>value_type<
 member function <tt>resize(size_t, T)</tt> (26.6.2.8 [valarray.members]) is called for that array or until
 the lifetime of that array ends, whichever happens first.
 </ins></p>
+
+
+
+
+
+<hr>
+<h3><a name="2106"></a>2106. <tt>move_iterator</tt> wrapping iterators returning prvalues</h3>
+<p><b>Section:</b> 24.5.3 [move.iterators] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-11-30 <b>Last modified:</b> 2012-10-19</p>
+<p><b>View all other</b> <a href="lwg-index.html#move.iterators">issues</a> in [move.iterators].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Shouldn't <tt>move_iterator</tt> be specialized so that if the iterator it wraps
+returns a prvalue when dereferenced, the <tt>move_iterator</tt> also returns by
+value? Otherwise, it creates a dangling reference.
+<p/>
+Howard: I believe just changing <tt>move_iterator&lt;I&gt;::reference</tt> would do.
+A direction might be testing on <tt>is_reference&lt;iterator_traits&lt;I&gt;::reference&gt;</tt>, 
+or <tt>is_reference&lt;decltype(*declval&lt;I&gt;())&gt;</tt>.
+<p/>
+Daniel: I would prefer to use a consistent style among the iterator adaptors, so I
+suggest to keep with the <tt>iterator_traits</tt> typedefs if possible. 
+</p>
+<blockquote><pre>
+using reference = typename conditional&lt;
+  is_reference&lt;typename iterator_traits&lt;Iterator&gt;::reference&gt;::value,
+  value_type&amp;&amp;,
+  value_type
+&gt;::type;
+</pre></blockquote>
+<p>
+We might also want to ensure that if <tt>Iterator</tt>'s <tt>reference</tt> type <em>is</em>
+a reference, the referent is equal to <tt>value_type</tt> (after removal of <i>cv</i>-qualifiers). 
+In <em>general</em> we have no such guarantee.
+<p/>
+Marc: In the default case where we don't return <tt>value_type&amp;&amp;</tt>, should we use 
+<tt>value_type</tt> or should we keep the <tt>reference</tt> type of the wrapped iterator?
+<p/>
+Daniel: This suggestion looks appealing at first, but the problem here is that using this typedef
+can make it impossible for <tt>move_iterator</tt> to satisfy its contract, which means returning
+an rvalue of the value type (Currently it says rvalue-reference, but this must be fixed as of
+this issue anyway). I think that user-code can reasonably expect that when it has constructed
+an object <tt>m</tt> of <tt>move_iterator&lt;It&gt;</tt>, where <tt>It</tt> is a valid 
+mutable iterator type, the expression
+</p>
+<blockquote><pre>
+<span style="color:#C80000;font-weight:bold">It::value_type&amp;&amp; rv = *m;</span>
+</pre></blockquote>
+<p>
+is well-formed.
+<p/>
+Let's set <tt>R</tt> equal to <tt>iterator_traits&lt;Iterator&gt;::reference</tt>
+in the following. We can discuss the following situations:
+</p>
+<ol><li><tt>R</tt> is a reference type: We can only return the corresponding xvalue of <tt>R</tt>,
+if <tt>value_type</tt> is reference-related to the referent type, else this is presumably no
+forward iterator and we cannot say much about it, except that it must be convertible to
+<tt>value_type</tt>, so it better should return a prvalue.</li>
+<li><tt>R</tt> is not a reference type: In this case we can rely on a conversion to
+<tt>value_type</tt> again, but not much more. Assume we would return <tt>R</tt> directly,
+this might turn out to have a conversion to an lvalue-reference type of the value type (for
+example). If that is the case, this would indirectly violate the contract of 
+<tt>move_iterator</tt>.</li>
+</ol>
+<p>
+In regard to the first scenario I suggest that implementations are simply required to
+check that <tt>V2 = remove_cv&lt;remove_reference&lt;R&gt;::type&gt;::type</tt> is equal
+to the value type <tt>V1</tt> as a criterion to return this reference as an xvalue, in all other
+cases it should return the value type directly as prvalue.
+<p/>
+The additional advantage of this strategy is, that we always ensure that <tt>reference</tt> has 
+the correct <i>cv</i>-qualification, if <tt>R</tt> is a real reference.
+<p/>
+It is possible to improve this a bit by indeed supporting reference-related types,
+this would require to test <tt>is_same&lt;V1, V2&gt;::value || is_base_of&lt;V1, V2&gt;::value</tt> 
+instead. I'm unsure whether (a) this additional effort is worth it and (b) a strict reading of
+the forward iterator requirements seems not to allow to return a reference-related type (Whether 
+this is a defect or not is another question).
+</p>
+
+<p><i>[2011-12-05: Marc Glisse comments and splits into two resolution alternatives]</i></p>
+
+
+<p>
+I guess I am looking at the speed of:
+</p>
+<blockquote><pre>
+value_type x;
+x = *m;
+</pre></blockquote>
+<p>
+(copy construction would likely trigger copy elision and thus be neutral)
+
+instead of the validity of:
+</p>
+<blockquote><pre>
+value_type&amp;&amp; x = *m;
+</pre></blockquote>
+<p>
+In this sense, Daniels earlier proposition that ignored <tt>value_type</tt> and just did 
+switch_lvalue_ref_to_rvalue_ref&lt;reference&gt; was easier to understand (and it didn't 
+require thinking about reference related types).
+<p/>
+The currently proposed resolution has been split into two alternatives.
+</p>
+
+
+<p><i>[2012, Kona]</i></p>
+
+<p>
+Move to Review.
+</p>
+<p>
+Alisdair: This only applies to input iterators, so keep that in mind when thinking about this.
+</p>
+<p>
+STL: I see what B is doing, but not A.
+</p>
+<p>
+Howard: I agree.
+</p>
+<p>
+Alisdair: Should we use <tt>add_rvalue_reference</tt>?
+</p>
+<p>
+STL: No, we do not want reference collapsing.
+</p>
+<p>
+STL: Re A, messing with the CV qualification scares me.
+</p>
+<p>
+Alisdair: Agree. That would break my intent.
+</p>
+<p>
+STL: Actually I don't think it's actually wrong, but I still don't see what it's doing.
+</p>
+<p>
+Alisdair: A is picking the value type, B is picking the proxy type.
+</p>
+<p>
+Howard: I like returning the proxy type.
+</p>
+<p>
+STL: Returning a reference (B) seems right, because the requirements say "reference".
+I suspect that B works correctly if you have a move iterator wrapping a move iterator
+wrapping a thing.  I think that A would mess up the type in the middle.
+</p>
+<p>
+Considerable discussion about which version is correct, checking various examples.
+</p>
+<p>
+STL: Still think B is right. Still don't understand A. In A we are losing the proxyness.
+</p>
+<p>
+Howard: Agree 100%. We don't want to lose the proxy. If it's const, so be it.
+</p>
+<p>
+STL: B is also understandable by mortals.
+</p>
+<p>
+Howard: Remove to review, keep A but move it out of the proposed resolution area
+(but keep it for rational).
+</p>
+<p>
+Alisdair: Adding an explanatory note might be a good idea, if someone wants to write one.
+</p>
+<p>
+Walter: Concerned about losing the word "reference" in p.1.
+</p>
+<p>
+Howard: <tt>move_iterator</tt> will return an xvalue or a prvalue, both of which are rvalues.
+</p>
+
+<p><i>[Proposed resolution A, rejected in preference to the currently proposed resolution (B)
+
+<ol>
+<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
+
+<blockquote><p>
+Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
+except that its dereference operator implicitly converts the value returned by the underlying iterator’s
+dereference operator to an rvalue <del>reference</del><ins>of the value type</ins>. Some generic algorithms 
+can be called with move iterators to replace copying with moving.
+</p></blockquote>
+</li>
+
+<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+    typedef Iterator pointer;
+    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
+    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
+24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
+
+<blockquote><p>
+<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt> and
+let <tt><i>V</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::value_type</tt>. If 
+<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt> and if 
+<tt>remove_cv&lt;remove_reference&lt;<i>R</i>&gt;::type&gt;::type</tt> is the same type as <tt><i>V</i></tt>, 
+the template instantiation <tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type 
+named <tt>reference</tt> as a synonym for <tt>remove_reference&lt;<i>R</i>&gt;::type&amp;&amp;</tt>, 
+otherwise as a synonym for <tt><i>V</i></tt>.</ins>
+</p></blockquote>
+</li>
+</ol>
+
+]</i></p>
+
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+AJM wonders if the implied trait might be useful elsewhere, and worth adding to type traits as a
+transformation type trait.
+</p>
+
+<p>
+Suspicion that the Range SG might find such a trait useful, but wait until there is clear additional
+use of such a trait before standardizing.
+</p>
+
+<p>
+Minor wording tweak to use <tt>add_rvalue_reference</tt> rather than manually adding the <tt>&amp;&amp;</tt>,
+then move to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<p><strong>This section shows two mutually exclusive resolutions &mdash; only one can
+be picked!</strong></p>
+
+<ol>
+<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
+
+<blockquote><p>
+Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
+except that its dereference operator implicitly converts the value returned by the underlying iterator’s
+dereference operator to an rvalue <del>reference</del>. Some generic algorithms 
+can be called with move iterators to replace copying with moving.
+</p></blockquote>
+</li>
+
+<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+    typedef Iterator pointer;
+    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
+    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
+24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
+
+<blockquote><p>
+<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If 
+<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt>, the template instantiation 
+<tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named <tt>reference</tt> 
+as a synonym for <tt>add_rvalue_reference&lt;<i>R</i>&gt;::type</tt>, otherwise as a synonym
+for <tt><i>R</i></tt>.</ins>
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2109"></a>2109. Incorrect requirements for <tt>hash</tt> specializations</h3>
+<p><b>Section:</b> 19.5.5 [syserr.hash], 20.7.2.6 [util.smartptr.hash], 20.8.12 [unord.hash], 20.13.1 [type.index.synopsis], 21.6 [basic.string.hash], 23.3.7 [vector.bool], 30.3.1.1 [thread.thread.id] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-04 <b>Last modified:</b> 2012-10-19</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+20.7.2.6 [util.smartptr.hash] p2 is specified as follows:
+</p>
+
+<blockquote><p>
+<i>Requires</i>: the template specializations shall meet the requirements of class template 
+<tt>hash</tt> (20.8.12).
+</p></blockquote>
+
+<p>
+The problem here is the usage of a <i>Requires</i> element, which is actually a pre-condition
+that a <em>user</em> of a component has to satisfy. But the intent of this wording is actually
+to be a requirement on implementations. The <i>Requires</i> element should be removed here and
+the wording should be improved to say what it was intended for.
+<p/>
+We have similar situations in basically all other places where the specification of library-provided
+<tt>hash</tt> specializations is defined. Usually, the <i>Requires</i> element is incorrect. In the
+special case of <tt>hash&lt;unique_ptr&lt;T, D&gt;&gt;</tt> the implementation depends on 
+the behaviour of <tt>hash</tt> specializations, that could be user-provided. In this case
+the specification needs to separate the requirements on these specializations and those
+that are imposed on the implementation.
+</p>
+
+
+<p><i>[2012, Kona]</i></p>
+
+<p>
+Update wording and move to Review.
+</p>
+<p>
+Believe a simpler formulation is to simply string the term <i>Requires:</i> and leave the
+current wording intact, rather than strike the whole clause and replace it.
+</p>
+
+<p><i>[Originally proposed wording for reference
+<ol>
+<li><p>Change 19.5.5 [syserr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;error_code&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;system_error&gt;</tt> provides a definition for a specialization of the 
+template <tt>hash&lt;error_code&gt;</tt>. The requirements for the members of 
+this specialization are given in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.5.3 [bitset.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;size_t N&gt; struct hash&lt;bitset&lt;N&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;bitset&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>bitset&lt;N&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.7.2.6 [util.smartptr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class T, class D&gt; struct hash&lt;unique_ptr&lt;T, D&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;memory&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>unique_ptr&lt;T, D&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>. For an object <tt>p</tt> of type 
+<tt>UP</tt>, where <tt>UP</tt> is <tt>unique_ptr&lt;T, D&gt;</tt>, 
+<tt>hash&lt;UP&gt;()(p)</tt> shall evaluate to the same value as 
+<tt>hash&lt;typename UP::pointer&gt;()(p.get())</tt>. <del>The specialization 
+<tt>hash&lt;typename UP::pointer&gt;</tt> shall be well-formed.</del>
+<p/>
+<ins>-?- <i>Requires</i>: The specialization <tt>hash&lt;typename UP::pointer&gt;</tt> 
+shall be well-formed and well-defined [<i>Note:</i> the general requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]) are implied &mdash; 
+<i>end note</i>].</ins>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;memory&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>shared_ptr&lt;T&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>. For an object <tt>p</tt> of type 
+<tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> 
+shall evaluate to the same value as <tt>hash&lt;T*&gt;()(p.get())</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.8.12 [unord.hash] p2 as indicated: [<i>Comment</i>: For unknown
+reasons the extended integer types are not mentioned here, which looks like an oversight to
+me and makes also the wording more complicated. See <a href="lwg-active.html#2119">2119</a> for this part
+of the problem. &mdash; <i>end comment</i>]</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;bool&gt;;
+template &lt;&gt; struct hash&lt;char&gt;;
+[&hellip;]
+template &lt;&gt; struct hash&lt;long double&gt;;
+template &lt;class T&gt; struct hash&lt;T*&gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: the template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;functional&gt;</tt> provides definitions for specializations of the 
+<tt>hash</tt> class template for each <i>cv</i>-unqualified arithmetic type except 
+for the extended integer types. This header also provides a definition for a partial 
+specialization of the <tt>hash</tt> class template for any pointer type. The 
+requirements for the members of these specializations are given in sub-clause 
+20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.13.4 [type.index.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;type_index&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;typeindex&gt;</tt> provides a definition for a specialization of the 
+template <tt>hash&lt;type_index&gt;</tt>. The requirements for the members 
+of this specialization are given in sub-clause 20.8.12 [unord.hash]</ins>. For 
+an object <tt>index</tt> of type <tt>type_index</tt>, <tt>hash&lt;type_index&gt;()(index)</tt> 
+shall evaluate to the same result as <tt>index.hash_code()</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 21.6 [basic.string.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;string&gt;;
+template &lt;&gt; struct hash&lt;u16string&gt;;
+template &lt;&gt; struct hash&lt;u32string&gt;;
+template &lt;&gt; struct hash&lt;wstring&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;string&gt;</tt> provides definitions for specializations of the 
+<tt>hash</tt> class template for the types <tt>string</tt>, <tt>u16string</tt>,
+<tt>u32string</tt>, and <tt>wstring</tt>. The requirements for the members 
+of these specializations are given in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 23.3.7 [vector.bool] p7 as indicated:</p>
+
+<blockquote><pre>
+template &lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt; &gt;;
+</pre><blockquote>
+<p>
+-7- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;vector&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>vector&lt;bool, Allocator&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 30.3.1.1 [thread.thread.id] p14 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;thread::id&gt;;
+</pre><blockquote>
+<p>
+-14- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;thread&gt;</tt> provides a definition for a specialization of the 
+template <tt>hash&lt;thread::id&gt;</tt>. The requirements for the members of this 
+specialization are given in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+</ol>
+]</i></p>
+
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+No further wording issues, so move to Tentatively Ready (post meeting issues processing).
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+<ol>
+<li><p>Change 19.5.5 [syserr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;error_code&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash].
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.5.3 [bitset.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;size_t N&gt; struct hash&lt;bitset&lt;N&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.7.2.6 [util.smartptr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class T, class D&gt; struct hash&lt;unique_ptr&lt;T, D&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]). For an object <tt>p</tt> of type 
+<tt>UP</tt>, where <tt>UP</tt> is <tt>unique_ptr&lt;T, D&gt;</tt>, 
+<tt>hash&lt;UP&gt;()(p)</tt> shall evaluate to the same value as 
+<tt>hash&lt;typename UP::pointer&gt;()(p.get())</tt>.  <del>The specialization 
+<tt>hash&lt;typename UP::pointer&gt;</tt> shall be well-formed.</del>
+<p/>
+<ins>-?- <i>Requires</i>: The specialization <tt>hash&lt;typename UP::pointer&gt;</tt> 
+shall be well-formed and well-defined, and shall meet the requirements of class template
+<tt>hash</tt> (20.8.12 [unord.hash]).</ins>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]). For an object <tt>p</tt> of type 
+<tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> 
+shall evaluate to the same value as <tt>hash&lt;T*&gt;()(p.get())</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.8.12 [unord.hash] p2 as indicated: [<i>Comment</i>: For unknown
+reasons the extended integer types are not mentioned here, which looks like an oversight to
+me and makes also the wording more complicated. See <a href="lwg-active.html#2119">2119</a> for this part
+of the problem. &mdash; <i>end comment</i>]</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;bool&gt;;
+template &lt;&gt; struct hash&lt;char&gt;;
+[&hellip;]
+template &lt;&gt; struct hash&lt;long double&gt;;
+template &lt;class T&gt; struct hash&lt;T*&gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: t</del><ins>T</ins>he template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.13.4 [type.index.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;type_index&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]). For 
+an object <tt>index</tt> of type <tt>type_index</tt>, <tt>hash&lt;type_index&gt;()(index)</tt> 
+shall evaluate to the same result as <tt>index.hash_code()</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 21.6 [basic.string.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;string&gt;;
+template &lt;&gt; struct hash&lt;u16string&gt;;
+template &lt;&gt; struct hash&lt;u32string&gt;;
+template &lt;&gt; struct hash&lt;wstring&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 23.3.7 [vector.bool] p7 as indicated:</p>
+
+<blockquote><pre>
+template &lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt; &gt;;
+</pre><blockquote>
+<p>
+-7- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 30.3.1.1 [thread.thread.id] p14 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;thread::id&gt;;
+</pre><blockquote>
+<p>
+-14- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2167"></a>2167. Copy assignment requirements of Containers</h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
+ <b>Submitter:</b> Dean Michael Berris <b>Opened:</b> 2012-07-13 <b>Last modified:</b> 2012-10-19</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Table 96 defines the general requirement for copy assignment (row 23, page 704) as:
+</p>
+
+<table border="1">
+<caption>Table 96 &mdash; Container requirements</caption>
+
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational semantics</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr> 
+
+<tr>
+<td>
+<tt>r = a</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+post: <tt>r == a.</tt>
+</td>
+<td>
+linear
+</td>
+</tr>
+
+</table>
+
+<p>
+However there is no requirement that <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>.
+</p>
+
+<p><i>[2012, Portland: Move to Tentatively NAD]</i></p>
+
+<p>
+Howard notes that this may be a difficult requirement for <tt>std::array</tt>
+</p>
+
+<p>
+We already have this requirement for allocator aware containers, and
+<tt>std::array</tt> already adds the appropriate extra requirement.
+</p>
+
+<p>
+We say the necessary things in the necessary places, but the container requirements
+continue to cause confusion in where we sometimes say things.  Consensus is that
+this issue remains NAD though.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change Table 96 &mdash; "Container requirements" in 23.2.1 [container.requirements.general]:</p>
+
+<table border="1">
+<caption>Table 96 &mdash; Container requirements</caption>
+
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational semantics</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr> 
+
+<tr>
+<td>
+<tt>r = a</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>.</ins><br/>
+post: <tt>r == a.</tt>
+</td>
+<td>
+linear
+</td>
+</tr>
+
+</table>
+
+</li>
+</ol>
+
+
+
+
+
+
+
+<hr>
+<h3><a name="2177"></a>2177. Requirements on <tt>Copy&#47;MoveInsertable</tt></h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Lo&iuml;c Joly <b>Opened:</b> 2012-08-10 <b>Last modified:</b> 2012-10-19</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+See also discussion following <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32883">c++std-lib-32883</a>
+and <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32897">c++std-lib-32897</a>.
+<p/>
+The requirements on <tt>CopyInsertable</tt> and <tt>MoveInsertable</tt> are either incomplete, or complete but hard to 
+figure out.
+<p/>
+From e-mail <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32897">c++std-lib-32897</a>:
+<p/>
+Pablo Halpern:
+<p/>
+I agree that we need semantic requirements for all of the <tt>*Insertable</tt> concepts analogous to the requirements 
+we have on similar concepts.
+<p/>
+Howard Hinnant:
+<p/>
+I've come to believe that the standard is actually correct as written in this area. But it is <em>really</em> hard 
+to read. I would have no objection whatsoever to clarifications to <tt>CopyInsertable</tt> as you suggest (such as the 
+post-conditions on <tt>v</tt>). And I do agree with you that the correct approach to the clarifications is to 
+confirm that <tt>CopyInsertable</tt> implies <tt>MoveInsertable</tt>.
+</p>
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+Move to Tentatively Ready by unanimous consent.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Edit 23.2.1 [container.requirements.general] p13 as indicated:</p>
+
+<blockquote><p>
+-13- [&hellip;] Given a container type <tt>X</tt> having an <tt>allocator_type</tt> identical to <tt>A</tt> and 
+a <tt>value_type</tt> identical to <tt>T</tt> and given an lvalue <tt>m</tt> of type <tt>A</tt>, a pointer <tt>p</tt> 
+of type <tt>T*</tt>, an expression <tt>v</tt> of type (possibly <tt>const</tt>) <tt>T</tt>, and an rvalue <tt>rv</tt> 
+of type <tt>T</tt>, the following terms are defined. If <tt>X</tt> is not allocator-aware, the terms below are
+defined as if <tt>A</tt> were <tt>std::allocator&lt;T&gt;</tt> &mdash; no allocator object needs to be created and 
+user specializations of <tt>std::allocator&lt;T&gt;</tt> are not instantiated:
+</p>
+<ul>
+<li><p><tt>T</tt> is <em><tt>DefaultInsertable</tt> into <tt>X</tt></em> means that the following expression is 
+well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p)<del>;</del>
+</pre></blockquote>
+</li>
+
+<li><p>An element of <tt>X</tt> is <em>default-inserted</em> if it is initialized by evaluation of the expression</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p)<del>;</del>
+</pre></blockquote>
+<p>
+where <tt>p</tt> is the address of the uninitialized storage for the element allocated within <tt>X</tt>.
+</p>
+</li>
+
+<li><p><tt>T</tt> is <em><tt><del>Copy</del><ins>Move</ins>Insertable</tt> into <tt>X</tt></em> means that 
+the following expression is well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p, <ins>r</ins>v)<del>;</del>
+</pre></blockquote>
+<p>
+<ins>and when evaluated the following postconditions hold: The value of <tt>*p</tt> is equivalent to the value of 
+<tt>rv</tt> before the evaluation. [<i>Note</i>: <tt>rv</tt> remains a valid object. Its state is unspecified &mdash; 
+<i>end note</i>]</ins>
+</p>
+</li>
+
+<li><p><tt>T</tt> is <em><tt><del>Move</del><ins>Copy</ins>Insertable</tt> into <tt>X</tt></em> means 
+that<ins>, in addition to satisfying the <tt>MoveInsertable</tt> requirements,</ins> the following expression is 
+well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p, <del>r</del>v)<del>;</del>
+</pre></blockquote>
+<p>
+<ins>and when evaluated the following postconditions hold: The value of <tt>v</tt> is unchanged and is equivalent 
+to <tt>*p</tt>.</ins>
+</p>
+</li>
+
+<li><p><tt>T</tt> is <em><tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>args</tt></em>, for zero or more arguments 
+<tt>args</tt>, means that the following expression is well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p, args)<del>;</del>
+</pre></blockquote>
+</li>
+
+<li><p><tt>T</tt> is <em><tt>Erasable</tt> from <tt>X</tt></em> means that the following expression is well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::destroy(m, p)<del>;</del>
+</pre></blockquote>
+</li>
+
+</ul>
+<p>
+[<i>Note</i>: A container calls <tt>allocator_traits&lt;A&gt;::construct(m, p, args)</tt> to construct an element 
+at <tt>p</tt> using <tt>args</tt>. The default construct in <tt>std::allocator</tt> will call 
+<tt>::new((void*)p) T(args)</tt>, but specialized allocators may choose a different definition. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2187"></a>2187. <tt>vector&lt;bool&gt;</tt> is missing <tt>emplace</tt> and <tt>emplace_back</tt> member functions</h3>
+<p><b>Section:</b> 23.3.7 [vector.bool] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-09-21 <b>Last modified:</b> 2012-10-19</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.bool">issues</a> in [vector.bool].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+It should have them so that it more closely matches the <tt>vector&lt;T&gt;</tt> interface, as this helps when 
+writing generic code.
+</p>
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+Question on whether the variadic template is really needed, but it turns out to be needed to support
+<tt>emplace</tt> of no arguments.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change the class template <tt>vector&lt;bool&gt;</tt> synopsis, 23.3.7 [vector.bool] p1, as indicated:</p>
+<blockquote><pre>
+namespace std {
+  template &lt;class Allocator&gt; class vector&lt;bool, Allocator&gt; {
+  public:
+    [&hellip;]
+    <i>// modifiers:</i>
+    <ins>template &lt;class... Args&gt; void emplace_back(Args&amp;&amp;... args);</ins>
+    void push_back(const bool&amp; x);
+    void pop_back();
+    <ins>template &lt;class... Args&gt; iterator emplace(const_iterator position, Args&amp;&amp;... args);</ins>
+    iterator insert(const_iterator position, const bool&amp; x);
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+</li>
+</ol>
+
 
 
 

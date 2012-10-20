@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-10-19 at 07:10:17 UTC</p>
+<p>Revised 2012-10-20 at 00:10:49 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -213,11 +213,11 @@ field represents a value outside the range of representable values,
 
 <hr>
 <h3><a name="1175"></a>1175. <tt>unordered</tt> complexity</h3>
-<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2009-07-17 <b>Last modified:</b> 2012-10-16</p>
+<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2009-07-17 <b>Last modified:</b> 2012-10-19</p>
 <p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
 <p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 When I look at the <tt>unordered_*</tt> constructors, I think the complexity is poorly
@@ -319,6 +319,42 @@ Retain in Review with the updated wording
 </p>
 
 
+<p><i>[2012, Portland: Move to Open]</i></p>
+
+<p>
+The wording still does not call out Pablo's original concern, that the element constructor is called
+no more than <tt>N</tt> times, and that the <tt>N</tt> squared term applies to moves during rehash.
+</p>
+
+<p>
+Inconsistent use of O(n)+O(N) vs. O(n+N), with a preference for the former.
+</p>
+
+<p>
+AJM to update wording with a reference to "no more than <tt>N</tt> element constructor calls".
+</p>
+
+<p>
+Matt concerned that calling out the O(n) requirements is noise, and dangerous noise in suggesting a precision
+we do not mean.  The cost of constructing a bucket is very different to constructing an element of user-supplied
+type.
+</p>
+
+<p>
+AJM notes that if there are multiple rehashes, the 'n' complexity is probably not linear.
+</p>
+
+<p>
+Matt suggests back to Open, Pablo suggests potentially NAD if we keep revisitting without achieving a resolution.
+</p>
+
+<p>
+Matt suggests complexity we are concerned with is the number of operations, such as constructing elements, moving
+nodes, and comparing/hashing keys.  We are less concerned with constructing buckets, which are generally noise in
+this bigger picture.
+</p>
+
+
 
 <p><b>Proposed resolution:</b></p>
 <ol>
@@ -404,7 +440,7 @@ explicit unordered_map(size_type n = <i>see below</i>,
 </pre><blockquote><p>
 1 <i>Effects</i>: Constructs an empty <tt>unordered_map</tt> using the specified hash function, key equality function,
 and allocator, and using at least <tt>n</tt> buckets. If <tt>n</tt> is not provided, the number of buckets is 
-<ins>unspecied</ins><del>impldefdefault number of buckets in <tt>unordered_map</tt></del>. 
+<ins>unspecified</ins><del>impldefdefault number of buckets in <tt>unordered_map</tt></del>. 
 <tt>max_load_factor()</tt> returns <tt>1.0</tt>.
 </p></blockquote>
 <blockquote><p>
@@ -4396,438 +4432,9 @@ is <tt>true</tt>, else <tt>::new((void *)p) U{std::forward&lt;Args&gt;(args)...}
 
 
 <hr>
-<h3><a name="2093"></a>2093. Throws clause of <tt>condition_variable::wait</tt> with predicate</h3>
-<p><b>Section:</b> 30.5.1 [thread.condition.condvar] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2011-10-27 <b>Last modified:</b> 2012-10-19</p>
-<p><b>View other</b> <a href="lwg-index-open.html#thread.condition.condvar">active issues</a> in [thread.condition.condvar].</p>
-<p><b>View all other</b> <a href="lwg-index.html#thread.condition.condvar">issues</a> in [thread.condition.condvar].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-the Throws: clause of <tt>condition_variable::wait&#47;wait_xxx</tt> functions that 
-take a predicate argument is:
-</p>
-<blockquote><p>
-<i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception]).
-</p></blockquote>
-<p>
-If executing the predicate throws an exception, I would expect such exception to propagate unchanged 
-to the caller, but the throws clause seems to indicate that it gets mutated into a system_error. T
-hat's because of 17.5.1.4 [structure.specifications]&#47;4:
-<p/>
-"If F’s semantics contains a Throws:, Postconditions:, or Complexity: element, then that supersedes 
-any occurrences of that element in the code sequence."
-<p/>
-Is my interpretation correct? Does it match the intent?
-<p/>
-Daniel comments:
-<p/>
-I don't think that this interpretation is entirely correct, the wording does not say that 
-<tt>std::system_error</tt> or a derived class must be thrown, it simply is underspecified 
-in this regard (The extreme interpretation is that the behaviour would be undefined, but 
-that would be too far reaching I think). We have better wording for this in 
-30.4.4.2 [thread.once.callonce] p4, where it says:
-<p/>
-"<i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception]), 
-or any exception thrown by <tt>func</tt>."
-<p/>
-or in 30.3.2 [thread.thread.this] p6&#47;p9:
-<p/>
-"<i>Throws</i>: Nothing if <tt>Clock</tt> satisfies the <tt>TrivialClock</tt> requirements 
-(20.11.3 [time.clock.req]) and operations of <tt>Duration</tt> do not throw exceptions. 
-[ <i>Note</i>: instantiations of time point types and clocks supplied by the implementation 
-as specified in 20.11.7 [time.clock] do not throw exceptions. &mdash; <i>end note</i> ]"
-<p/>
-So, the here discussed Throws elements should add lines along the lines of
-<p/>
-"Any exception thrown by operations of <tt>pred</tt>."
-<p/>
-and similar wording for time-related operations:
-<p/>
-"Any exception thrown by operations of <tt>Duration</tt>",
-<p/>
-"Any exception thrown by operations of <tt>chrono::duration&lt;Rep, Period&gt;</tt>"
-</p>
-
-<p><i>[2011-11-28: Ganesh comments and suggests wording]</i></p>
-
-
-<p>
-As for the discussion about the exception thrown by the manipulation of time-related objects, 
-I believe the argument applies to all functions declared in 30 [thread]. Therefore, 
-instead of adding wording to each member, I would simply move those requirements from 
-30.3.2 [thread.thread.this] p6&#47;p9 to a new paragraph in 30.2.4 [thread.req.timing]. 
-<p/>
-As for 30.5.2 [thread.condition.condvarany], the member functions <tt>wait()</tt> and 
-<tt>wait_until()</tt> are described only in terms of the Effects: clause (so strictly speaking, 
-they need no changes), however, <tt>wait_for()</tt> is described with a full set of clauses 
-including Throws: and Error conditions:. Either we should add those clauses to <tt>wait&#47;wait_until</tt> 
-with changes similar to the one above, or remove paragraphs 29 to 34 entirely. By the way, 
-even paragraph 26 could be removed IMHO.
-</p>
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-We like the idea behind the proposed resolution.
-<p/>
-Modify the first addition to read instead: "Functions that specify a timeout, will throw if an operation 
-on a clock, time point, or time duration throws an exception." 
-<p/>
-In the note near the bottom change "even if the timeout has already expired" to "or if the timeout has 
-already expired". (This is independent, but the original doesn't seem to make sense.) 
-<p/>
-Move to Review.
-</p>
-
-<p><i>[2012, Portland]</i></p>
-
-<p>
-Concurrency move to Review with slightly ammended wording.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3337.</p>
-
-<ol>
-<li><p>Add a new paragraph at the end of 30.2.4 [thread.req.timing]:</p>
-
-<blockquote>
-<p>
-[&hellip;]
-<p/>
--6- The resolution of timing provided by an implementation depends on both operating system and hardware.
-The finest resolution provided by an implementation is called the <i>native resolution</i>.
-<p/>
--7- Implementation-provided clocks that are used for these functions shall meet the <tt>TrivialClock</tt> 
-requirements (20.11.3 [time.clock.req]).
-<p/>
-
-<ins>-?- Functions that specify a timeout, will throw if, during the execution of this function,
-a clock, time point, or time duration throws an exception. [ <i>Note</i>: instantiations of clock,
-time point and duration types supplied by the implementation as specified in 20.11.7 [time.clock]
-do not throw exceptions. &mdash; <i>end note</i>]</ins>
-</p>
-</blockquote>
-</li>
-
-
-<li><p>Change 30.3.2 [thread.thread.this] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class Clock, class Duration&gt;
-  void sleep_until(const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);;
-</pre><blockquote>
-<p>
--4- <i>Effects</i>: Blocks the calling thread for the absolute timeout (30.2.4 [thread.req.timing]) specified by <tt>abs_time</tt>.
-<p/>
--5- <i>Synchronization</i>: None.
-<p/>
--6- <i>Throws</i>: <ins>timeout-related exceptions (30.2.4 [thread.req.timing]).</ins><del>Nothing if 
-<tt>Clock</tt> satisfies the <tt>TrivialClock</tt> requirements (20.11.3 [time.clock.req]) and 
-operations of <tt>Duration</tt> do not throw exceptions. [ <i>Note</i>: instantiations of time point types 
-and clocks supplied by the implementation as specified in 20.11.7 [time.clock] do not throw 
-exceptions. &mdash; <i>end note</i>]</del>
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Rep, class Period&gt;
-  void sleep_for(const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);;
-</pre><blockquote>
-<p>
--7- <i>Effects</i>: Blocks the calling thread for the relative timeout (30.2.4 [thread.req.timing]) specified by <tt>rel_time</tt>.
-<p/>
--8- <i>Synchronization</i>: None.
-<p/>
--9- <i>Throws</i>: <ins>timeout-related exceptions (30.2.4 [thread.req.timing]).</ins><del>Nothing 
-if operations of <tt>chrono::duration&lt;Rep, Period&gt;</tt> do not throw exceptions. 
-[ <i>Note</i>: instantiations of time point types and clocks supplied by the implementation
-as specified in 20.11.7 [time.clock] do not throw exceptions. &mdash; <i>end note</i>]</del>
-</p>
-</blockquote></blockquote>
-
-</li>
-
-<li><p>Change 30.4.1.3 [thread.timedmutex.requirements] as indicated:</p>
-
-<p>
--3- The expression <tt>m.try_lock_for(rel_time)</tt> shall be well-formed and have the following semantics:
-<p/>
-[&hellip;]
-<p/>
--5- <i>Effects</i>: The function attempts to obtain ownership of the mutex within the relative timeout (30.2.4 [thread.req.timing])
-specified by <tt>rel_time</tt>. If the time specified by <tt>rel_time</tt> is less than or equal to <tt>rel_time.zero()</tt>, the
-function attempts to obtain ownership without blocking (as if by calling <tt>try_lock()</tt>). The function
-shall return within the timeout specified by <tt>rel_time</tt> only if it has obtained ownership of the mutex
-object. [<i>Note</i>: As with <tt>try_lock()</tt>, there is no guarantee that ownership will be obtained if the lock
-is available, but implementations are expected to make a strong effort to do so. &mdash; <i>end note</i>]
-<p/>
-[&hellip;]
-<p/>
--8- <i>Synchronization</i>: If <tt>try_lock_for()</tt> returns <tt>true</tt>, prior <tt>unlock()</tt> operations on the same object
-<i>synchronize with</i> (1.10 [intro.multithread]) this operation.
-<p/>
--9- <i>Throws</i>: <ins>timeout-related exceptions (30.2.4 [thread.req.timing]).</ins><del>Nothing</del>.
-<p/>
--10- The expression <tt>m.try_lock_until(abs_time)</tt> shall be well-formed and have the following semantics:
-<p/>
-[&hellip;]
-<p/>
--12- <i>Effects</i>: The function attempts to obtain ownership of the mutex. If <tt>abs_time</tt> has already passed, the
-function attempts to obtain ownership without blocking (as if by calling <tt>try_lock()</tt>). The function
-shall return before the absolute timeout (30.2.4 [thread.req.timing]) specified by <tt>abs_time</tt> only 
-if it has obtained ownership of the mutex object. [<i>Note</i>: As with <tt>try_lock()</tt>, there is no guarantee 
-that ownership will be obtained if the lock is available, but implementations are expected to make a strong effort 
-to do so. &mdash; <i>end note</i>]
-<p/>
-[&hellip;]
-<p/>
--15- <i>Synchronization</i>: If <tt>try_lock_until()</tt> returns true, prior <tt>unlock()</tt> operations on the same object
-<i>synchronize with</i> (1.10 [intro.multithread]) this operation.
-<p/>
--16- <i>Throws</i>: <ins>timeout-related exceptions (30.2.4 [thread.req.timing]).</ins><del>Nothing</del>.
-</p>
-</li>
-
-<li><p>Change 30.5.1 [thread.condition.condvar] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class Predicate&gt;
-  void wait(unique_lock&lt;mutex&gt;&amp; lock, Predicate pred);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--15- <i>Effects</i>: <ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-while (!pred())
-  wait(lock);
-</pre></blockquote>
-<p>
-[&hellip;]
-<p/>
--17- <i>Throws</i>: <tt>std::system_error</tt> when an exception is required (30.2.2 [thread.req.exception])<ins>, 
-timeout-related exceptions (30.2.4 [thread.req.timing]), or any exception thrown by <tt>pred</tt></ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Clock, class Duration&gt;
-  cv_status wait_until(unique_lock&lt;mutex&gt;&amp; lock,
-                       const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--23- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception])
-<ins>or timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Rep, class Period&gt;
-  cv_status wait_for(unique_lock&lt;mutex&gt;&amp; lock,
-                     const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--26- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-return wait_until(lock, chrono::steady_clock::now() + rel_time);
-</pre></blockquote>
-<p>
-[&hellip;]
-<p/>
--29- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception])
-<ins>or timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Clock, class Duration, class Predicate&gt;
-  bool wait_until(unique_lock&lt;mutex&gt;&amp; lock,
-                  const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time,
-                  Predicate pred);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--32- <i>Effects</i>: <ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-while (!pred())
-  if (wait_until(lock, abs_time) == cv_status::timeout)
-    return pred();
-return true;
-</pre></blockquote>
-<p>
-<del>-33- <i>Returns</i>: <tt>pred()</tt></del>
-<p/>
-[&hellip;]
-<p/>
--36- <i>Throws</i>: <tt>std::system_error</tt> when an exception is required (30.2.2 [thread.req.exception])<ins>, 
-timeout-related exceptions (30.2.4 [thread.req.timing]), or any exception thrown by <tt>pred</tt></ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Rep, class Period, class Predicate&gt;
-  bool wait_for(unique_lock&lt;mutex&gt;&amp; lock,
-                const chrono::duration&lt;Rep, Period&gt;&amp; rel_time,
-                Predicate pred);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--39- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-return wait_until(lock, chrono::steady_clock::now() + rel_time, std::move(pred));
-</pre></blockquote>
-<p>
-[&hellip;]
-<p/>
-<del>-42- <i>Returns</i>: <tt>pred()</tt></del>
-<p/>
-[&hellip;]
-<p/>
--44- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception])<ins>, 
-timeout-related exceptions (30.2.4 [thread.req.timing]), or any exception thrown by <tt>pred</tt></ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-</li>
-
-<li><p>Change 30.5.2 [thread.condition.condvarany] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class Lock, class Predicate&gt;
-  void wait(Lock&amp; lock, Predicate pred);
-</pre><blockquote>
-<p>
--14- <i>Effects</i>: <ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-while (!pred())
-  wait(lock);
-</pre></blockquote>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Lock, class Clock, class Duration&gt;
-  cv_status wait_until(Lock&amp; lock, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--18- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception])
-<ins>or any timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Lock, class Rep, class Period&gt;
-  cv_status wait_for(Lock&amp; lock, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--20- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-return wait_until(lock, chrono::steady_clock::now() + rel_time);
-</pre></blockquote>
-<p>
-[&hellip;]
-<p/>
--23- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception])
-<ins>or any timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
-<p/>
-[&hellip;]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Lock, class Clock, class Duration, class Predicate&gt;
-  bool wait_until(Lock&amp; lock, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time, Predicate pred);
-</pre><blockquote>
-<p>
--25- <i>Effects</i>: <ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-while (!pred())
-  if (wait_until(lock, abs_time) == cv_status::timeout)
-    return pred();
-return true;
-</pre></blockquote>
-<p>
--26- <del><i>Returns</i>: <tt>pred()</tt></del><ins>[<i>Note</i>: There is no blocking if <tt>pred()</tt> is initially <tt>true</tt>, 
-or if the timeout has already expired. &mdash; <i>end note</i>]</ins>
-<p/>
--27- [<i>Note</i>: The returned value indicates whether the predicate evaluates to <tt>true</tt> regardless of whether the
-timeout was triggered. <i>end note</i>]
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class Lock, class Rep, class Period, class Predicate&gt;
-  bool wait_for(Lock&amp; lock, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time, Predicate pred);
-</pre><blockquote>
-<p>
--28- <i>Effects</i>: <del>as if</del><ins>Equivalent to:</ins>
-</p>
-<blockquote><pre>
-return wait_until(lock, chrono::steady_clock::now() + rel_time, std::move(pred));
-</pre></blockquote>
-<p>
-<del>-29- [<i>Note</i>: There is no blocking if <tt>pred()</tt> is initially <tt>true</tt>, 
-even if the timeout has already expired. &mdash; <i>end note</i>]</del>
-<del>-30- <i>Postcondition</i>: <tt>lock</tt> is locked by the calling thread.</del>
-<p/>
-<del>-31- <i>Returns</i>: <tt>pred()</tt></del>
-<p/>
-<del>-32- [<i>Note</i>: The returned value indicates whether the predicate evaluates to <tt>true</tt> 
-regardless of whether the timeout was triggered. &mdash; <i>end note</i>]</del>
-<p/>
-<del>-33- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception]).</del>
-<p/>
-<del>-34- <i>Error conditions</i>:</del>
-</p>
-<ul>
-<li><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></li>
-</ul>
-</blockquote></blockquote>
-
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2094"></a>2094. <tt>duration</tt> conversion overflow shouldn't participate in overload resolution</h3>
 <p><b>Section:</b> 20.11.5.1 [time.duration.cons] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Vicente J. Botet Escriba <b>Opened:</b> 2011-10-31 <b>Last modified:</b> 2012-10-16</p>
+ <b>Submitter:</b> Vicente J. Botet Escriba <b>Opened:</b> 2011-10-31 <b>Last modified:</b> 2012-10-19</p>
 <p><b>View all other</b> <a href="lwg-index.html#time.duration.cons">issues</a> in [time.duration.cons].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -5783,284 +5390,6 @@ and <tt>u</tt> will not. &mdash; <i>end note</i>]
 
 
 <hr>
-<h3><a name="2106"></a>2106. <tt>move_iterator</tt> wrapping iterators returning prvalues</h3>
-<p><b>Section:</b> 24.5.3 [move.iterators] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-11-30 <b>Last modified:</b> 2012-10-16</p>
-<p><b>View all other</b> <a href="lwg-index.html#move.iterators">issues</a> in [move.iterators].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-Shouldn't <tt>move_iterator</tt> be specialized so that if the iterator it wraps
-returns a prvalue when dereferenced, the <tt>move_iterator</tt> also returns by
-value? Otherwise, it creates a dangling reference.
-<p/>
-Howard: I believe just changing <tt>move_iterator&lt;I&gt;::reference</tt> would do.
-A direction might be testing on <tt>is_reference&lt;iterator_traits&lt;I&gt;::reference&gt;</tt>, 
-or <tt>is_reference&lt;decltype(*declval&lt;I&gt;())&gt;</tt>.
-<p/>
-Daniel: I would prefer to use a consistent style among the iterator adaptors, so I
-suggest to keep with the <tt>iterator_traits</tt> typedefs if possible. 
-</p>
-<blockquote><pre>
-using reference = typename conditional&lt;
-  is_reference&lt;typename iterator_traits&lt;Iterator&gt;::reference&gt;::value,
-  value_type&amp;&amp;,
-  value_type
-&gt;::type;
-</pre></blockquote>
-<p>
-We might also want to ensure that if <tt>Iterator</tt>'s <tt>reference</tt> type <em>is</em>
-a reference, the referent is equal to <tt>value_type</tt> (after removal of <i>cv</i>-qualifiers). 
-In <em>general</em> we have no such guarantee.
-<p/>
-Marc: In the default case where we don't return <tt>value_type&amp;&amp;</tt>, should we use 
-<tt>value_type</tt> or should we keep the <tt>reference</tt> type of the wrapped iterator?
-<p/>
-Daniel: This suggestion looks appealing at first, but the problem here is that using this typedef
-can make it impossible for <tt>move_iterator</tt> to satisfy its contract, which means returning
-an rvalue of the value type (Currently it says rvalue-reference, but this must be fixed as of
-this issue anyway). I think that user-code can reasonably expect that when it has constructed
-an object <tt>m</tt> of <tt>move_iterator&lt;It&gt;</tt>, where <tt>It</tt> is a valid 
-mutable iterator type, the expression
-</p>
-<blockquote><pre>
-<span style="color:#C80000;font-weight:bold">It::value_type&amp;&amp; rv = *m;</span>
-</pre></blockquote>
-<p>
-is well-formed.
-<p/>
-Let's set <tt>R</tt> equal to <tt>iterator_traits&lt;Iterator&gt;::reference</tt>
-in the following. We can discuss the following situations:
-</p>
-<ol><li><tt>R</tt> is a reference type: We can only return the corresponding xvalue of <tt>R</tt>,
-if <tt>value_type</tt> is reference-related to the referent type, else this is presumably no
-forward iterator and we cannot say much about it, except that it must be convertible to
-<tt>value_type</tt>, so it better should return a prvalue.</li>
-<li><tt>R</tt> is not a reference type: In this case we can rely on a conversion to
-<tt>value_type</tt> again, but not much more. Assume we would return <tt>R</tt> directly,
-this might turn out to have a conversion to an lvalue-reference type of the value type (for
-example). If that is the case, this would indirectly violate the contract of 
-<tt>move_iterator</tt>.</li>
-</ol>
-<p>
-In regard to the first scenario I suggest that implementations are simply required to
-check that <tt>V2 = remove_cv&lt;remove_reference&lt;R&gt;::type&gt;::type</tt> is equal
-to the value type <tt>V1</tt> as a criterion to return this reference as an xvalue, in all other
-cases it should return the value type directly as prvalue.
-<p/>
-The additional advantage of this strategy is, that we always ensure that <tt>reference</tt> has 
-the correct <i>cv</i>-qualification, if <tt>R</tt> is a real reference.
-<p/>
-It is possible to improve this a bit by indeed supporting reference-related types,
-this would require to test <tt>is_same&lt;V1, V2&gt;::value || is_base_of&lt;V1, V2&gt;::value</tt> 
-instead. I'm unsure whether (a) this additional effort is worth it and (b) a strict reading of
-the forward iterator requirements seems not to allow to return a reference-related type (Whether 
-this is a defect or not is another question).
-</p>
-
-<p><i>[2011-12-05: Marc Glisse comments and splits into two resolution alternatives]</i></p>
-
-
-<p>
-I guess I am looking at the speed of:
-</p>
-<blockquote><pre>
-value_type x;
-x = *m;
-</pre></blockquote>
-<p>
-(copy construction would likely trigger copy elision and thus be neutral)
-
-instead of the validity of:
-</p>
-<blockquote><pre>
-value_type&amp;&amp; x = *m;
-</pre></blockquote>
-<p>
-In this sense, Daniels earlier proposition that ignored <tt>value_type</tt> and just did 
-switch_lvalue_ref_to_rvalue_ref&lt;reference&gt; was easier to understand (and it didn't 
-require thinking about reference related types).
-<p/>
-The currently proposed resolution has been split into two alternatives.
-</p>
-
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Move to Review.
-</p>
-<p>
-Alisdair: This only applies to input iterators, so keep that in mind when thinking about this.
-</p>
-<p>
-STL: I see what B is doing, but not A.
-</p>
-<p>
-Howard: I agree.
-</p>
-<p>
-Alisdair: Should we use <tt>add_rvalue_reference</tt>?
-</p>
-<p>
-STL: No, we do not want reference collapsing.
-</p>
-<p>
-STL: Re A, messing with the CV qualification scares me.
-</p>
-<p>
-Alisdair: Agree. That would break my intent.
-</p>
-<p>
-STL: Actually I don't think it's actually wrong, but I still don't see what it's doing.
-</p>
-<p>
-Alisdair: A is picking the value type, B is picking the proxy type.
-</p>
-<p>
-Howard: I like returning the proxy type.
-</p>
-<p>
-STL: Returning a reference (B) seems right, because the requirements say "reference".
-I suspect that B works correctly if you have a move iterator wrapping a move iterator
-wrapping a thing.  I think that A would mess up the type in the middle.
-</p>
-<p>
-Considerable discussion about which version is correct, checking various examples.
-</p>
-<p>
-STL: Still think B is right. Still don't understand A. In A we are losing the proxyness.
-</p>
-<p>
-Howard: Agree 100%. We don't want to lose the proxy. If it's const, so be it.
-</p>
-<p>
-STL: B is also understandable by mortals.
-</p>
-<p>
-Howard: Remove to review, keep A but move it out of the proposed resolution area
-(but keep it for rational).
-</p>
-<p>
-Alisdair: Adding an explanatory note might be a good idea, if someone wants to write one.
-</p>
-<p>
-Walter: Concerned about losing the word "reference" in p.1.
-</p>
-<p>
-Howard: <tt>move_iterator</tt> will return an xvalue or a prvalue, both of which are rvalues.
-</p>
-
-<p><i>[Proposed resolution A, rejected in preference to the currently proposed resolution (B)
-
-<ol>
-<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
-
-<blockquote><p>
-Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
-except that its dereference operator implicitly converts the value returned by the underlying iterator’s
-dereference operator to an rvalue <del>reference</del><ins>of the value type</ins>. Some generic algorithms 
-can be called with move iterators to replace copying with moving.
-</p></blockquote>
-</li>
-
-<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
-
-<blockquote><pre>
-namespace std {
-  template &lt;class Iterator&gt;
-  class move_iterator {
-  public:
-    typedef Iterator iterator_type;
-    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
-    typedef Iterator pointer;
-    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
-    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
-    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
-    [&hellip;]
-  };
-}
-</pre></blockquote>
-
-</li>
-
-<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
-24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
-
-<blockquote><p>
-<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt> and
-let <tt><i>V</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::value_type</tt>. If 
-<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt> and if 
-<tt>remove_cv&lt;remove_reference&lt;<i>R</i>&gt;::type&gt;::type</tt> is the same type as <tt><i>V</i></tt>, 
-the template instantiation <tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type 
-named <tt>reference</tt> as a synonym for <tt>remove_reference&lt;<i>R</i>&gt;::type&amp;&amp;</tt>, 
-otherwise as a synonym for <tt><i>V</i></tt>.</ins>
-</p></blockquote>
-</li>
-</ol>
-
-]</i></p>
-
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to the FDIS.</p>
-
-<p><strong>This section shows two mutually exclusive resolutions &mdash; only one can
-be picked!</strong></p>
-
-<ol>
-<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
-
-<blockquote><p>
-Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
-except that its dereference operator implicitly converts the value returned by the underlying iterator’s
-dereference operator to an rvalue <del>reference</del>. Some generic algorithms 
-can be called with move iterators to replace copying with moving.
-</p></blockquote>
-</li>
-
-<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
-
-<blockquote><pre>
-namespace std {
-  template &lt;class Iterator&gt;
-  class move_iterator {
-  public:
-    typedef Iterator iterator_type;
-    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
-    typedef Iterator pointer;
-    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
-    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
-    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
-    [&hellip;]
-  };
-}
-</pre></blockquote>
-
-</li>
-
-<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
-24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
-
-<blockquote><p>
-<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If 
-<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt>, the template instantiation 
-<tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named <tt>reference</tt> 
-as a synonym for <tt>remove_reference&lt;<i>R</i>&gt;::type&amp;&amp;</tt>, 
-otherwise as a synonym for <tt><i>R</i></tt>.</ins>
-</p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2108"></a>2108. No way to identify allocator types that always compare equal</h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-12-01 <b>Last modified:</b> 2012-10-16</p>
@@ -6372,355 +5701,6 @@ namespace std {
   };
 }
 </pre></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2109"></a>2109. Incorrect requirements for <tt>hash</tt> specializations</h3>
-<p><b>Section:</b> 19.5.5 [syserr.hash], 20.7.2.6 [util.smartptr.hash], 20.8.12 [unord.hash], 20.13.1 [type.index.synopsis], 21.6 [basic.string.hash], 23.3.7 [vector.bool], 30.3.1.1 [thread.thread.id] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-04 <b>Last modified:</b> 2012-10-16</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-20.7.2.6 [util.smartptr.hash] p2 is specified as follows:
-</p>
-
-<blockquote><p>
-<i>Requires</i>: the template specializations shall meet the requirements of class template 
-<tt>hash</tt> (20.8.12).
-</p></blockquote>
-
-<p>
-The problem here is the usage of a <i>Requires</i> element, which is actually a pre-condition
-that a <em>user</em> of a component has to satisfy. But the intent of this wording is actually
-to be a requirement on implementations. The <i>Requires</i> element should be removed here and
-the wording should be improved to say what it was intended for.
-<p/>
-We have similar situations in basically all other places where the specification of library-provided
-<tt>hash</tt> specializations is defined. Usually, the <i>Requires</i> element is incorrect. In the
-special case of <tt>hash&lt;unique_ptr&lt;T, D&gt;&gt;</tt> the implementation depends on 
-the behaviour of <tt>hash</tt> specializations, that could be user-provided. In this case
-the specification needs to separate the requirements on these specializations and those
-that are imposed on the implementation.
-</p>
-
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Update wording and move to Review.
-</p>
-<p>
-Believe a simpler formulation is to simply string the term <i>Requires:</i> and leave the
-current wording intact, rather than strike the whole clause and replace it.
-</p>
-
-<p><i>[Originally proposed wording for reference
-<ol>
-<li><p>Change 19.5.5 [syserr.hash] as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;error_code&gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;system_error&gt;</tt> provides a definition for a specialization of the 
-template <tt>hash&lt;error_code&gt;</tt>. The requirements for the members of 
-this specialization are given in sub-clause 20.8.12 [unord.hash]</ins>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.5.3 [bitset.hash] as indicated:</p>
-
-<blockquote><pre>
-template &lt;size_t N&gt; struct hash&lt;bitset&lt;N&gt; &gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;bitset&gt;</tt> provides a definition for a partial specialization of the 
-<tt>hash</tt> class template for specializations of class template <tt>bitset&lt;N&gt;</tt>. 
-The requirements for the members of instantiations of this specialization are given 
-in sub-clause 20.8.12 [unord.hash]</ins>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.7.2.6 [util.smartptr.hash] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class T, class D&gt; struct hash&lt;unique_ptr&lt;T, D&gt; &gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;memory&gt;</tt> provides a definition for a partial specialization of the 
-<tt>hash</tt> class template for specializations of class template <tt>unique_ptr&lt;T, D&gt;</tt>. 
-The requirements for the members of instantiations of this specialization are given 
-in sub-clause 20.8.12 [unord.hash]</ins>. For an object <tt>p</tt> of type 
-<tt>UP</tt>, where <tt>UP</tt> is <tt>unique_ptr&lt;T, D&gt;</tt>, 
-<tt>hash&lt;UP&gt;()(p)</tt> shall evaluate to the same value as 
-<tt>hash&lt;typename UP::pointer&gt;()(p.get())</tt>. <del>The specialization 
-<tt>hash&lt;typename UP::pointer&gt;</tt> shall be well-formed.</del>
-<p/>
-<ins>-?- <i>Requires</i>: The specialization <tt>hash&lt;typename UP::pointer&gt;</tt> 
-shall be well-formed and well-defined [<i>Note:</i> the general requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]) are implied &mdash; 
-<i>end note</i>].</ins>
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
-</pre><blockquote>
-<p>
--2- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;memory&gt;</tt> provides a definition for a partial specialization of the 
-<tt>hash</tt> class template for specializations of class template <tt>shared_ptr&lt;T&gt;</tt>. 
-The requirements for the members of instantiations of this specialization are given 
-in sub-clause 20.8.12 [unord.hash]</ins>. For an object <tt>p</tt> of type 
-<tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> 
-shall evaluate to the same value as <tt>hash&lt;T*&gt;()(p.get())</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.8.12 [unord.hash] p2 as indicated: [<i>Comment</i>: For unknown
-reasons the extended integer types are not mentioned here, which looks like an oversight to
-me and makes also the wording more complicated. See <a href="lwg-active.html#2119">2119</a> for this part
-of the problem. &mdash; <i>end comment</i>]</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;bool&gt;;
-template &lt;&gt; struct hash&lt;char&gt;;
-[&hellip;]
-template &lt;&gt; struct hash&lt;long double&gt;;
-template &lt;class T&gt; struct hash&lt;T*&gt;;
-</pre><blockquote>
-<p>
--2- <del><i>Requires</i>: the template specializations shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;functional&gt;</tt> provides definitions for specializations of the 
-<tt>hash</tt> class template for each <i>cv</i>-unqualified arithmetic type except 
-for the extended integer types. This header also provides a definition for a partial 
-specialization of the <tt>hash</tt> class template for any pointer type. The 
-requirements for the members of these specializations are given in sub-clause 
-20.8.12 [unord.hash]</ins>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.13.4 [type.index.hash] p1 as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;type_index&gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;typeindex&gt;</tt> provides a definition for a specialization of the 
-template <tt>hash&lt;type_index&gt;</tt>. The requirements for the members 
-of this specialization are given in sub-clause 20.8.12 [unord.hash]</ins>. For 
-an object <tt>index</tt> of type <tt>type_index</tt>, <tt>hash&lt;type_index&gt;()(index)</tt> 
-shall evaluate to the same result as <tt>index.hash_code()</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 21.6 [basic.string.hash] p1 as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;string&gt;;
-template &lt;&gt; struct hash&lt;u16string&gt;;
-template &lt;&gt; struct hash&lt;u32string&gt;;
-template &lt;&gt; struct hash&lt;wstring&gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: the template specializations shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;string&gt;</tt> provides definitions for specializations of the 
-<tt>hash</tt> class template for the types <tt>string</tt>, <tt>u16string</tt>,
-<tt>u32string</tt>, and <tt>wstring</tt>. The requirements for the members 
-of these specializations are given in sub-clause 20.8.12 [unord.hash]</ins>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 23.3.7 [vector.bool] p7 as indicated:</p>
-
-<blockquote><pre>
-template &lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt; &gt;;
-</pre><blockquote>
-<p>
--7- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;vector&gt;</tt> provides a definition for a partial specialization of the 
-<tt>hash</tt> class template for specializations of class template <tt>vector&lt;bool, Allocator&gt;</tt>. 
-The requirements for the members of instantiations of this specialization are given 
-in sub-clause 20.8.12 [unord.hash]</ins>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 30.3.1.1 [thread.thread.id] p14 as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;thread::id&gt;;
-</pre><blockquote>
-<p>
--14- <del><i>Requires</i>: the template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
-<tt>&lt;thread&gt;</tt> provides a definition for a specialization of the 
-template <tt>hash&lt;thread::id&gt;</tt>. The requirements for the members of this 
-specialization are given in sub-clause 20.8.12 [unord.hash]</ins>.
-</p>
-</blockquote></blockquote>
-</li>
-
-</ol>
-]</i></p>
-
-
-
-
-<p><b>Proposed resolution:</b></p>
-
-<ol>
-<li><p>Change 19.5.5 [syserr.hash] as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;error_code&gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash].
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.5.3 [bitset.hash] as indicated:</p>
-
-<blockquote><pre>
-template &lt;size_t N&gt; struct hash&lt;bitset&lt;N&gt; &gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]).
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.7.2.6 [util.smartptr.hash] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class T, class D&gt; struct hash&lt;unique_ptr&lt;T, D&gt; &gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]). For an object <tt>p</tt> of type 
-<tt>UP</tt>, where <tt>UP</tt> is <tt>unique_ptr&lt;T, D&gt;</tt>, 
-<tt>hash&lt;UP&gt;()(p)</tt> shall evaluate to the same value as 
-<tt>hash&lt;typename UP::pointer&gt;()(p.get())</tt>.  <del>The specialization 
-<tt>hash&lt;typename UP::pointer&gt;</tt> shall be well-formed.</del>
-<p/>
-<ins>-?- <i>Requires</i>: The specialization <tt>hash&lt;typename UP::pointer&gt;</tt> 
-shall be well-formed and well-defined, and shall meet the requirements of class template
-<tt>hash</tt> (20.8.12 [unord.hash]).</ins>
-</p>
-</blockquote></blockquote>
-
-<blockquote><pre>
-template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
-</pre><blockquote>
-<p>
--2- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]). For an object <tt>p</tt> of type 
-<tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> 
-shall evaluate to the same value as <tt>hash&lt;T*&gt;()(p.get())</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.8.12 [unord.hash] p2 as indicated: [<i>Comment</i>: For unknown
-reasons the extended integer types are not mentioned here, which looks like an oversight to
-me and makes also the wording more complicated. See <a href="lwg-active.html#2119">2119</a> for this part
-of the problem. &mdash; <i>end comment</i>]</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;bool&gt;;
-template &lt;&gt; struct hash&lt;char&gt;;
-[&hellip;]
-template &lt;&gt; struct hash&lt;long double&gt;;
-template &lt;class T&gt; struct hash&lt;T*&gt;;
-</pre><blockquote>
-<p>
--2- <del><i>Requires</i>: t</del><ins>T</ins>he template specializations shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]).
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 20.13.4 [type.index.hash] p1 as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;type_index&gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]). For 
-an object <tt>index</tt> of type <tt>type_index</tt>, <tt>hash&lt;type_index&gt;()(index)</tt> 
-shall evaluate to the same result as <tt>index.hash_code()</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 21.6 [basic.string.hash] p1 as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;string&gt;;
-template &lt;&gt; struct hash&lt;u16string&gt;;
-template &lt;&gt; struct hash&lt;u32string&gt;;
-template &lt;&gt; struct hash&lt;wstring&gt;;
-</pre><blockquote>
-<p>
--1- <del><i>Requires</i>: t</del><ins>T</ins>he template specializations shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]).
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 23.3.7 [vector.bool] p7 as indicated:</p>
-
-<blockquote><pre>
-template &lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt; &gt;;
-</pre><blockquote>
-<p>
--7- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]).
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Change 30.3.1.1 [thread.thread.id] p14 as indicated:</p>
-
-<blockquote><pre>
-template &lt;&gt; struct hash&lt;thread::id&gt;;
-</pre><blockquote>
-<p>
--14- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
-of class template <tt>hash</tt> (20.8.12 [unord.hash]).
-</p>
-</blockquote></blockquote>
 </li>
 
 </ol>
@@ -10407,10 +9387,10 @@ But for this case the two sides of the equation are equal, so <tt>insert</tt> ca
 
 <hr>
 <h3><a name="2157"></a>2157. How does <tt>std::array&lt;T,0&gt;</tt> initialization work when <tt>T</tt> is not default-constructible?</h3>
-<p><b>Section:</b> 23.3.2.8 [array.zero] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2012-10-16</p>
+<p><b>Section:</b> 23.3.2.8 [array.zero] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2012-10-19</p>
 <p><b>View all other</b> <a href="lwg-index.html#array.zero">issues</a> in [array.zero].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -10430,6 +9410,33 @@ array&lt;T, 0&gt; a = { };
 <p>
 and said initializations must be valid even when <tt>T</tt> is not default-constructible.
 </p></blockquote>
+
+<p><i>[2012, Portland: Move to Open]</i></p>
+
+<p>
+Some discussion to understand the issue, which is that implementations currently have freedom to implement
+an empty <tt>array</tt> by holding a dummy element, and so might not support value initialization, which is
+surprising when trying to construct an empty container.  However, this is not mandated, it is an unspecified
+implementation detail.
+</p>
+
+<p>
+Jeffrey points out that the implication of 23.3.2.1 [array.overview] is that this initialization syntax
+must be supported by empty <tt>array</tt> objects already.  This is a surprising inference that was not
+obvious to the room, but consensus is that the reading is accurate, so the proposed resolution is not necessary,
+although the increased clarity may be useful.
+</p>
+
+<p>
+Further observation is that the same clause effectively implies that <tt>T</tt> must always be DefaultConstructible,
+regardless of <tt>N</tt> for the same reasons - as an <i>initializer-list</i> may not supply enough values, and the
+remaining elements must all be value initialized.
+</p>
+
+<p>
+Concern that we are dancing angels on the head of pin, and that relying on such subtle implications in wording is
+not helpful.  We need a clarification of the text in this area, and await wording.
+</p>
 
 
 
@@ -11084,103 +10091,6 @@ See also follow-up discussion of c++std-lib-32780.
 
 
 <hr>
-<h3><a name="2167"></a>2167. Copy assignment requirements of Containers</h3>
-<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Dean Michael Berris <b>Opened:</b> 2012-07-13 <b>Last modified:</b> 2012-10-16</p>
-<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
-<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-Table 96 defines the general requirement for copy assignment (row 23, page 704) as:
-</p>
-
-<table border="1">
-<caption>Table 96 &mdash; Container requirements</caption>
-
-<tr>
-<th>Expression</th>
-<th>Return type</th>
-<th>Operational semantics</th>
-<th>Assertion&#47;note pre-&#47;post-condition</th>
-<th>Complexity</th>
-</tr> 
-
-<tr>
-<td>
-<tt>r = a</tt>
-</td>
-<td>
-<tt>X&amp;</tt>
-</td>
-<td>
-<tt></tt>
-</td>
-<td>
-post: <tt>r == a.</tt>
-</td>
-<td>
-linear
-</td>
-</tr>
-
-</table>
-
-<p>
-However there is no requirement that <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Change Table 96 &mdash; "Container requirements" in 23.2.1 [container.requirements.general]:</p>
-
-<table border="1">
-<caption>Table 96 &mdash; Container requirements</caption>
-
-<tr>
-<th>Expression</th>
-<th>Return type</th>
-<th>Operational semantics</th>
-<th>Assertion&#47;note pre-&#47;post-condition</th>
-<th>Complexity</th>
-</tr> 
-
-<tr>
-<td>
-<tt>r = a</tt>
-</td>
-<td>
-<tt>X&amp;</tt>
-</td>
-<td>
-<tt></tt>
-</td>
-<td>
-<ins><i>Requires</i>: <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>.</ins><br/>
-post: <tt>r == a.</tt>
-</td>
-<td>
-linear
-</td>
-</tr>
-
-</table>
-
-</li>
-</ol>
-
-
-
-
-
-
-
-<hr>
 <h3><a name="2168"></a>2168. Inconsistent specification of <tt>uniform_real_distribution</tt> constructor</h3>
 <p><b>Section:</b> 26.5.8.2.2 [rand.dist.uni.real] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2012-07-14 <b>Last modified:</b> 2012-10-16</p>
@@ -11563,123 +10473,6 @@ wbuffer_convert&amp; operator=(const wbuffer_convert&amp;) = delete;
 </li>
 
 </ol>
-
-
-
-
-
-<hr>
-<h3><a name="2177"></a>2177. Requirements on <tt>Copy&#47;MoveInsertable</tt></h3>
-<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Lo&iuml;c Joly <b>Opened:</b> 2012-08-10 <b>Last modified:</b> 2012-10-16</p>
-<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
-<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-See also discussion following <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32883">c++std-lib-32883</a>
-and <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32897">c++std-lib-32897</a>.
-<p/>
-The requirements on <tt>CopyInsertable</tt> and <tt>MoveInsertable</tt> are either incomplete, or complete but hard to 
-figure out.
-<p/>
-From e-mail <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32897">c++std-lib-32897</a>:
-<p/>
-Pablo Halpern:
-<p/>
-I agree that we need semantic requirements for all of the <tt>*Insertable</tt> concepts analogous to the requirements 
-we have on similar concepts.
-<p/>
-Howard Hinnant:
-<p/>
-I've come to believe that the standard is actually correct as written in this area. But it is <em>really</em> hard 
-to read. I would have no objection whatsoever to clarifications to <tt>CopyInsertable</tt> as you suggest (such as the 
-post-conditions on <tt>v</tt>). And I do agree with you that the correct approach to the clarifications is to 
-confirm that <tt>CopyInsertable</tt> implies <tt>MoveInsertable</tt>.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Edit 23.2.1 [container.requirements.general] p13 as indicated:</p>
-
-<blockquote><p>
--13- [&hellip;] Given a container type <tt>X</tt> having an <tt>allocator_type</tt> identical to <tt>A</tt> and 
-a <tt>value_type</tt> identical to <tt>T</tt> and given an lvalue <tt>m</tt> of type <tt>A</tt>, a pointer <tt>p</tt> 
-of type <tt>T*</tt>, an expression <tt>v</tt> of type (possibly <tt>const</tt>) <tt>T</tt>, and an rvalue <tt>rv</tt> 
-of type <tt>T</tt>, the following terms are defined. If <tt>X</tt> is not allocator-aware, the terms below are
-defined as if <tt>A</tt> were <tt>std::allocator&lt;T&gt;</tt> &mdash; no allocator object needs to be created and 
-user specializations of <tt>std::allocator&lt;T&gt;</tt> are not instantiated:
-</p>
-<ul>
-<li><p><tt>T</tt> is <em><tt>DefaultInsertable</tt> into <tt>X</tt></em> means that the following expression is 
-well-formed:</p>
-<blockquote><pre>
-allocator_traits&lt;A&gt;::construct(m, p)<del>;</del>
-</pre></blockquote>
-</li>
-
-<li><p>An element of <tt>X</tt> is <em>default-inserted</em> if it is initialized by evaluation of the expression</p>
-<blockquote><pre>
-allocator_traits&lt;A&gt;::construct(m, p)<del>;</del>
-</pre></blockquote>
-<p>
-where <tt>p</tt> is the address of the uninitialized storage for the element allocated within <tt>X</tt>.
-</p>
-</li>
-
-<li><p><tt>T</tt> is <em><tt><del>Copy</del><ins>Move</ins>Insertable</tt> into <tt>X</tt></em> means that 
-the following expression is well-formed:</p>
-<blockquote><pre>
-allocator_traits&lt;A&gt;::construct(m, p, <ins>r</ins>v)<del>;</del>
-</pre></blockquote>
-<p>
-<ins>and when evaluated the following postconditions hold: The value of <tt>*p</tt> is equivalent to the value of 
-<tt>rv</tt> before the evaluation. [<i>Note</i>: <tt>rv</tt> remains a valid object. Its state is unspecified &mdash; 
-<i>end note</i>]</ins>
-</p>
-</li>
-
-<li><p><tt>T</tt> is <em><tt><del>Move</del><ins>Copy</ins>Insertable</tt> into <tt>X</tt></em> means 
-that<ins>, in addition to satisfying the <tt>MoveInsertable</tt> requirements,</ins> the following expression is 
-well-formed:</p>
-<blockquote><pre>
-allocator_traits&lt;A&gt;::construct(m, p, <del>r</del>v)<del>;</del>
-</pre></blockquote>
-<p>
-<ins>and when evaluated the following postconditions hold: The value of <tt>v</tt> is unchanged and is equivalent 
-to <tt>*p</tt>.</ins>
-</p>
-</li>
-
-<li><p><tt>T</tt> is <em><tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>args</tt></em>, for zero or more arguments 
-<tt>args</tt>, means that the following expression is well-formed:</p>
-<blockquote><pre>
-allocator_traits&lt;A&gt;::construct(m, p, args)<del>;</del>
-</pre></blockquote>
-</li>
-
-<li><p><tt>T</tt> is <em><tt>Erasable</tt> from <tt>X</tt></em> means that the following expression is well-formed:</p>
-<blockquote><pre>
-allocator_traits&lt;A&gt;::destroy(m, p)<del>;</del>
-</pre></blockquote>
-</li>
-
-</ul>
-<p>
-[<i>Note</i>: A container calls <tt>allocator_traits&lt;A&gt;::construct(m, p, args)</tt> to construct an element 
-at <tt>p</tt> using <tt>args</tt>. The default construct in <tt>std::allocator</tt> will call 
-<tt>::new((void*)p) T(args)</tt>, but specialized allocators may choose a different definition. &mdash; <i>end note</i>]
-</p>
-</blockquote>
-</li>
-
-</ol>
-
 
 
 
@@ -12525,49 +11318,6 @@ when no more concurrency can be effectively exploited. &mdash; <i>end note</i>]
 
 
 <hr>
-<h3><a name="2187"></a>2187. <tt>vector&lt;bool&gt;</tt> is missing <tt>emplace</tt> and <tt>emplace_back</tt> member functions</h3>
-<p><b>Section:</b> 23.3.7 [vector.bool] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-09-21 <b>Last modified:</b> 2012-10-16</p>
-<p><b>View all other</b> <a href="lwg-index.html#vector.bool">issues</a> in [vector.bool].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-It should have them so that it more closely matches the <tt>vector&lt;T&gt;</tt> interface, as this helps when 
-writing generic code.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Change the class template <tt>vector&lt;bool&gt;</tt> synopsis, 23.3.7 [vector.bool] p1, as indicated:</p>
-<blockquote><pre>
-namespace std {
-  template &lt;class Allocator&gt; class vector&lt;bool, Allocator&gt; {
-  public:
-    [&hellip;]
-    <i>// modifiers:</i>
-    <ins>template &lt;class... Args&gt; void emplace_back(Args&amp;&amp;... args);</ins>
-    void push_back(const bool&amp; x);
-    void pop_back();
-    <ins>template &lt;class... Args&gt; iterator emplace(const_iterator position, Args&amp;&amp;... args);</ins>
-    iterator insert(const_iterator position, const bool&amp; x);
-    [&hellip;]
-  };
-}
-</pre></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2188"></a>2188. Reverse iterator does not fully support targets that overload <tt>operator&amp;</tt></h3>
 <p><b>Section:</b> 24.5.1.3.5 [reverse.iter.opref] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-09-23 <b>Last modified:</b> 2012-10-16</p>
@@ -12891,10 +11641,10 @@ rules as described in N3387).
 
 <hr>
 <h3><a name="2193"></a>2193. Default constructors for standard library containers are explicit</h3>
-<p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-10-04 <b>Last modified:</b> 2012-10-16</p>
+<p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-10-04 <b>Last modified:</b> 2012-10-19</p>
 <p><b>View all other</b> <a href="lwg-index.html#containers">issues</a> in [containers].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -12921,6 +11671,18 @@ explicit set(const Compare&amp; comp<del> = Compare()</del>,
 2012-10-06: Daniel adds concrete wording.
 ]</i></p>
 
+
+<p><i>[2012, Portland: Move to Open]</i></p>
+
+<p>
+This may be an issue better solved by a core language tweak.  Throw the issue over to EWG and see whether they
+believe the issue is better resolved in Core or Library.
+</p>
+
+<p>
+AJM suggest we spawn a new status of 'EWG' to handle such issues - and will move this issue appropriately when
+the software can record such resolutions.
+</p>
 
 
 
