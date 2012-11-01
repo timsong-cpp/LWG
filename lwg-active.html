@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D80)</h1>
-<p>Revised 2012-11-01 at 21:11:07 UTC</p>
+<p>Revised 2012-11-01 at 22:11:10 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D80: 2012-09-24 post-Portland mailing<ul>
 <li><b>Summary:</b><ul>
-<li>139 open issues, up by 3.</li>
+<li>140 open issues, up by 4.</li>
 <li>1593 closed issues, up by 17.</li>
-<li>1732 issues total, up by 20.</li>
+<li>1733 issues total, up by 21.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following Review issue: <a href="lwg-active.html#2196">2196</a>.</li>
-<li>Added the following 18 New issues: <a href="lwg-active.html#2190">2190</a>, <a href="lwg-active.html#2191">2191</a>, <a href="lwg-active.html#2192">2192</a>, <a href="lwg-active.html#2194">2194</a>, <a href="lwg-active.html#2195">2195</a>, <a href="lwg-active.html#2197">2197</a>, <a href="lwg-active.html#2198">2198</a>, <a href="lwg-active.html#2199">2199</a>, <a href="lwg-active.html#2200">2200</a>, <a href="lwg-active.html#2201">2201</a>, <a href="lwg-active.html#2202">2202</a>, <a href="lwg-active.html#2203">2203</a>, <a href="lwg-active.html#2204">2204</a>, <a href="lwg-active.html#2205">2205</a>, <a href="lwg-active.html#2206">2206</a>, <a href="lwg-active.html#2207">2207</a>, <a href="lwg-active.html#2208">2208</a>, <a href="lwg-active.html#2209">2209</a>.</li>
+<li>Added the following 19 New issues: <a href="lwg-active.html#2190">2190</a>, <a href="lwg-active.html#2191">2191</a>, <a href="lwg-active.html#2192">2192</a>, <a href="lwg-active.html#2194">2194</a>, <a href="lwg-active.html#2195">2195</a>, <a href="lwg-active.html#2197">2197</a>, <a href="lwg-active.html#2198">2198</a>, <a href="lwg-active.html#2199">2199</a>, <a href="lwg-active.html#2200">2200</a>, <a href="lwg-active.html#2201">2201</a>, <a href="lwg-active.html#2202">2202</a>, <a href="lwg-active.html#2203">2203</a>, <a href="lwg-active.html#2204">2204</a>, <a href="lwg-active.html#2205">2205</a>, <a href="lwg-active.html#2206">2206</a>, <a href="lwg-active.html#2207">2207</a>, <a href="lwg-active.html#2208">2208</a>, <a href="lwg-active.html#2209">2209</a>, <a href="lwg-active.html#2210">2210</a>.</li>
 <li>Added the following EWG issue: <a href="lwg-active.html#2193">2193</a>.</li>
 <li>Changed the following 4 issues to Ready (from Review): <a href="lwg-active.html#2080">2080</a>, <a href="lwg-active.html#2091">2091</a>, <a href="lwg-active.html#2092">2092</a>, <a href="lwg-active.html#2093">2093</a>.</li>
 <li>Changed the following 5 issues to Ready (from New): <a href="lwg-active.html#2145">2145</a>, <a href="lwg-active.html#2147">2147</a>, <a href="lwg-active.html#2163">2163</a>, <a href="lwg-active.html#2169">2169</a>, <a href="lwg-active.html#2172">2172</a>.</li>
@@ -17053,6 +17053,79 @@ insert(begin(), n, t);</del>
 
 </li>
 
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2210"></a>2210. Missing allocator-extended constructor for <tt>forward_list</tt></h3>
+<p><b>Section:</b> 23.3.4 [forwardlist] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-01 <b>Last modified:</b> 2012-11-01</p>
+<p><b>View all other</b> <a href="lwg-index.html#forwardlist">issues</a> in [forwardlist].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The <tt>forward_list(size_type)</tt> constructor has no allocator-extended
+equivalent, preventing the following code from compiling:
+</p>
+<blockquote><pre>
+#include &lt;forward_list&gt;
+#include &lt;vector&gt;
+#include &lt;scoped_allocator&gt;
+
+using namespace std;
+
+int main()
+{
+  using list = forward_list&lt;int&gt;;
+  vector&lt;list, scoped_allocator_adaptor&lt;list::allocator_type&gt;&gt; v;
+  v.emplace_back(1u);
+}
+</pre></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Edit the synopsis in 23.3.4.1 [forwardlist.overview]/3:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template &lt;class T, class Allocator = allocator&lt;T&gt; &gt;
+  class forward_list {
+  public:
+    [&hellip;]
+    explicit forward_list(const Allocator&amp; = Allocator());
+    explicit forward_list(size_type n<ins>, const Allocator&amp; = Allocator()</ins>);
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit 23.3.4.2 [forwardlist.cons]/3:</p>
+
+<blockquote>
+<pre>
+explicit forward_list(size_type n<ins>, const Allocator&amp; = Allocator()</ins>);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Constructs a <tt>forward_list</tt> object with <tt>n</tt> default-inserted elements
+<ins>using the specified allocator</ins>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
 </ol>
 
 
