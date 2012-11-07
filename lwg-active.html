@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2012-11-07</td>
+  <td align="left">2012-11-03</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D81)</h1>
-<p>Revised 2012-11-07 at 12:11:49 UTC</p>
+<p>Revised 2012-11-03 at 04:11:10 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D81: 2013-01 mid-term mailing<ul>
 <li><b>Summary:</b><ul>
-<li>139 open issues, down by 1.</li>
-<li>1595 closed issues, up by 2.</li>
-<li>1734 issues total, up by 1.</li>
+<li>140 open issues, up by 0.</li>
+<li>1593 closed issues, up by 0.</li>
+<li>1733 issues total, up by 0.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following New issue: <a href="lwg-active.html#2211">2211</a>.</li>
-<li>Changed the following 2 issues to Resolved (from Open): <a href="lwg-defects.html#2054">2054</a>, <a href="lwg-defects.html#2057">2057</a>.</li>
+<li>No issues added.</li>
+<li>No issues changed.</li>
 </ul></li>
 </ul>
 </li>
@@ -3984,6 +3984,132 @@ correct uses <tt>T</tt>.
 
 
 <hr>
+<h3><a name="2054"></a>2054. <tt>time_point</tt> constructors need to be <tt>constexpr</tt></h3>
+<p><b>Section:</b> 20.11.6 [time.point] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Anthony Williams <b>Opened:</b> 2011-05-13 <b>Last modified:</b> 2012-11-02</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In 20.11.6 [time.point], <tt>time_point::min()</tt> and <tt>time_point::max()</tt> 
+are listed as <tt>constexpr</tt>. However, <tt>time_point</tt> has no <tt>constexpr</tt> constructors, 
+so is not a literal type, and so these functions cannot be <tt>constexpr</tt> without adding a 
+<tt>constexpr</tt> constructor for implementation purposes.
+<p/>
+Proposed resolution: Add <tt>constexpr</tt> to the constructors of <tt>time_point</tt>. The effects of
+the constructor template basically imply that the member function <tt>time_since_epoch()</tt> is
+intended to be <tt>constexpr</tt> as well.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+<ol>
+<li><p>Alter the class template definition in 20.11.6 [time.point] as follows:</p>
+<blockquote><pre>
+template &lt;class Clock, class Duration = typename Clock::duration&gt;
+class time_point {
+  [&hellip;]
+public:
+  <i>// 20.11.6.1, construct:</i>
+  <ins>constexpr</ins> time_point(); <i>// has value epoch</i>
+  <ins>constexpr</ins> explicit time_point(const duration&amp; d); <i>// same as time_point() + d</i>
+  template &lt;class Duration2&gt;
+    <ins>constexpr</ins> time_point(const time_point&lt;clock, Duration2&gt;&amp; t);
+
+  <i>// 20.11.6.2, observer:</i>
+  <ins>constexpr</ins> duration time_since_epoch() const;
+  [&hellip;]
+};
+</pre></blockquote>
+</li>
+
+<li><p>Alter the declarations in 20.11.6.1 [time.point.cons]:</p>
+<blockquote><pre>
+<ins>constexpr</ins> time_point();
+</pre><blockquote><p>
+-1- <i>Effects</i>: Constructs an object of type <tt>time_point</tt>, initializing <tt>d_</tt> with <tt>duration::zero()</tt>. Such a
+<tt>time_point</tt> object represents the epoch.
+</p></blockquote></blockquote>
+<blockquote><pre>
+<ins>constexpr explicit</ins> time_point(const duration&amp; d);
+</pre><blockquote><p>
+-2- <i>Effects</i>: Constructs an object of type <tt>time_point</tt>, initializing <tt>d_</tt> with <tt>d</tt>. Such a 
+<tt>time_point</tt> object represents the epoch <tt>+ d</tt>.
+</p></blockquote></blockquote>
+<blockquote><pre>
+template &lt;class Duration2&gt;
+  <ins>constexpr</ins> time_point(const time_point&lt;clock, Duration2&gt;&amp; t);
+</pre><blockquote><p>
+-3- <i>Remarks</i>: This constructor shall not participate in overload resolution unless <tt>Duration2</tt> is implicitly
+convertible to <tt>duration</tt>.
+<p/>
+-4- <i>Effects</i>: Constructs an object of type <tt>time_point</tt>, initializing <tt>d_</tt> with <tt>t.time_since_epoch()</tt>.
+</p></blockquote></blockquote>
+</li>
+
+<li><p>Alter the declaration in 20.11.6.2 [time.point.observer]:</p>
+<blockquote><pre>
+<ins>constexpr</ins> duration time_since_epoch() const;
+</pre><blockquote><p>
+-1- <i>Returns</i>: d_.
+</p></blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2057"></a>2057. <tt>time_point + duration</tt> semantics should be made <tt>constexpr</tt> conforming</h3>
+<p><b>Section:</b> 20.11.6.5 [time.point.nonmember] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-21 <b>Last modified:</b> 2012-11-02</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+It has been observed by LWG <a href="lwg-active.html#2054">2054</a> that the specification of some <tt>time_point</tt> member functions
+already imply that <tt>time_point</tt> needs to be a literal type and suggests to specify the constructors
+and the member function <tt>time_since_epoch()</tt> as <tt>constexpr</tt> functions at the
+minimum necessary. Adding further <tt>constexpr</tt> specifier to other operations should
+clearly be allowed and should probably be done as well. But to allow for further <tt>constexpr</tt> 
+functions in the future requires that their semantics is compatible to operations allowed in <tt>constexpr</tt> 
+functions. This is already fine for all operations, except this binary plus operator:
+</p>
+<blockquote><pre>
+template &lt;class Clock, class Duration1, class Rep2, class Period2&gt;
+time_point&lt;Clock, typename common_type&lt;Duration1, duration&lt;Rep2, Period2&gt;&gt;::type&gt;
+operator+(const time_point&lt;Clock, Duration1&gt;&amp; lhs, const duration&lt;Rep2, Period2&gt;&amp; rhs);
+</pre><blockquote><p>
+-1- <i>Returns</i>: <tt>CT(lhs) += rhs</tt>, where <tt>CT</tt> is the type of the return value.
+</p></blockquote></blockquote>
+<p>
+for similar reasons as those mentioned in <a href="lwg-defects.html#2020">2020</a>. The semantics should be fixed to allow
+for making them <tt>constexpr</tt>. This issue should also be considered as a placeholder for a request
+to make the remaining <tt>time_point</tt> operations similarly <tt>constexpr</tt> as had been done for 
+<tt>duration</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+<ol>
+<li><p>In 20.11.6.5 [time.point.nonmember], p.1 change the <i>Returns</i> element semantics as indicated:</p>
+<blockquote><pre>
+template &lt;class Clock, class Duration1, class Rep2, class Period2&gt;
+time_point&lt;Clock, typename common_type&lt;Duration1, duration&lt;Rep2, Period2&gt;&gt;::type&gt;
+operator+(const time_point&lt;Clock, Duration1&gt;&amp; lhs, const duration&lt;Rep2, Period2&gt;&amp; rhs);
+</pre><blockquote><p>
+-1- <i>Returns</i>: <tt><del>CT(lhs) += rhs</del><ins>CT(lhs.time_since_epoch() + rhs)</ins></tt>, where <tt>CT</tt> 
+is the type of the return value.
+</p></blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2059"></a>2059. C++0x ambiguity problem with <tt>map::erase</tt></h3>
 <p><b>Section:</b> 23.4.4 [map] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Christopher Jefferson <b>Opened:</b> 2011-05-18 <b>Last modified:</b> 2012-11-02</p>
@@ -7096,7 +7222,7 @@ void promise&lt;void&gt;::set_value_at_thread_exit();
 <hr>
 <h3><a name="2100"></a>2100. timed waiting functions cannot timeout if <tt>launch::async</tt> policy used</h3>
 <p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-14 <b>Last modified:</b> 2012-11-04</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-14 <b>Last modified:</b> 2012-11-02</p>
 <p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
 <p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
@@ -7132,10 +7258,10 @@ timeout the requirement should only apply to non-timed waiting functions.
 <p><i>[2012, Portland: move to Review]</i></p>
 
 <p>
-Detlef: Do we actually need this fix &mdash; is it detectable?
+Detlef: Do we actually need this fix -- is it detectable?
 </p>
 <p>
-Yes &mdash; you will never get a timeout. Should we strike the whole paragraph?
+Yes - you will never get a timeout. Should we strike the whole paragraph?
 </p>
 <p>
 Hans: issue with thread local destruction. 
@@ -7144,10 +7270,10 @@ Hans: issue with thread local destruction.
 Niklas: I have a strong expectation that a timed wait will respect the timeout
 </p>
 <p>
-<em>agreed</em>
+_agreed_
 </p>
 <p>
-Detlef: we want a timed wait that does not time out to return like a non-timed wait; but is this implementable?
+Detlef: we want a timed wait that does not time out to reurn like a non-timed wait; but is this implementable?
 </p>
 <p>
 Pablo: Could we simply append ", or else time out"
@@ -7156,7 +7282,7 @@ Pablo: Could we simply append ", or else time out"
 Detlef: the time out on the shared state needs implementing anyway, even if the underlying O/S does not support a timed join.
 </p>
 <p>
-Hans: the net effect is the timeout does not cover the thread local destruction... ah, I see what you're doing
+Hans. the net effect is the timeout does not cover the thread local destruction... ah, I see what yuo're doing
 </p>
 <p>
 Detlef: happy with Pablo's proposal
@@ -12568,7 +12694,7 @@ issues related to the language in Clause 23 [containers].
 <hr>
 <h3><a name="2152"></a>2152. Instances of standard container types are not swappable</h3>
 <p><b>Section:</b> 17.6.3.2 [swappable.requirements], 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-11-06</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2012-11-02</p>
 <p><b>View all other</b> <a href="lwg-index.html#swappable.requirements">issues</a> in [swappable.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12639,7 +12765,7 @@ with</tt> any other element in the sequence.
 
 <p>
 At this point Howard joins the discussion and points out that the intent of introducing the
-two swap-related terms was to support <tt>vector&lt;bool&gt;::reference</tt> types, and we are
+two swap-related terms was to support <tt>vector%lt;bool>::reference</tt> types, and we are
 reading something into the wording that was never intended.  Consuses is that regardless of
 the intent, that is what the words today say.
 </p>
@@ -13011,7 +13137,7 @@ Maybe it would be useful to introduce a new name for such conditional requiremen
 <hr>
 <h3><a name="2159"></a>2159. <tt>atomic_flag</tt> initialization</h3>
 <p><b>Section:</b> 29.7 [atomics.flag] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2012-05-24 <b>Last modified:</b> 2012-11-04</p>
+ <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2012-05-24 <b>Last modified:</b> 2012-11-02</p>
 <p><b>View other</b> <a href="lwg-index-open.html#atomics.flag">active issues</a> in [atomics.flag].</p>
 <p><b>View all other</b> <a href="lwg-index.html#atomics.flag">issues</a> in [atomics.flag].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -13093,7 +13219,7 @@ We would like to be able to allow more initialisation contexts for example:
 <li>C++ constructor initializer-list</li>
 </ol>
 <p>
-However we need further input from experts with implementation specific knowledge
+However we need further input from experts with implemenrtation specifc knowledge
 to identify which additional contexts (if any) would be universally valid.
 </p>
 <p>
@@ -13103,8 +13229,7 @@ Moved to open
 
 
 <p><b>Proposed resolution:</b></p>
-<p><i>[This wording is relative to N3376.]</i></p>
-
+<p>This wording is relative to N3376.</p>
 
 <p>Change 29.7 [atomics.flag]&#47;4 as follows:</p>
 
@@ -17382,69 +17507,6 @@ explicit forward_list(size_type n<ins>, const Allocator&amp; = Allocator()</ins>
 
 </li>
 </ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2211"></a>2211. Replace ambiguous use of "Allocator" in container requirements</h3>
-<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-06 <b>Last modified:</b> 2012-11-07</p>
-<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
-<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-23.2.1 [container.requirements.general]/7 says:
-</p>
-
-<blockquote>
-"All other constructors for these container types take an <tt>Allocator&amp;</tt>
-argument (17.6.3.5 [allocator.requirements]), an allocator whose value
-type is the same as the container's value type."
-</blockquote>
-
-<p>
-This is a strange place to state the requirement on the allocator's
-value_type, because the allocator is a property (and template parameter)
-of the container type not of some of its constructors.  It is also unclear
-whether "<tt>Allocator&amp;</tt>" refers to the concept (as implied by the
-cross-reference to the allocator requirements in Clause 17) or to the
-container's template parameter (as implied by the fact it's shown as an
-lvalue-reference type.) I believe the latter is intended, because those
-constructors can't take any model of the allocator concept, they can only
-take the container's <tt>allocator_type</tt>.
-</p>
-<p>
-I think it would be clearer to move the value type requirement earlier
-in the paragraph and to make it clear the constructor arguments are the
-container's <tt>allocator_type</tt>.  There is already a cross-reference
-to the allocator requirements earlier in the paragraph, so it doesn't
-need to be repeated in another place where it causes confusion.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-Edit 23.2.1 [container.requirements.general] paragraph 7:
-</p>
-
-<blockquote>
-Unless otherwise specified, all containers defined in this clause obtain memory
-using an allocator (see 17.6.3.5 [allocator.requirements])<ins> and are
-instantiated with an allocator type whose value type is the same as the container's
-value type</ins>.
-</blockquote>
-[...]
-<blockquote>
-All other constructors for these container types take <del>an <tt>Allocator&amp;</tt>
-argument (17.6.3.5 [allocator.requirements]), an allocator whose value type is
-the same as the container's value type.</del><ins>a <tt>const allocator_type&amp;</tt>
-argument.</ins>
-</blockquote>
 
 
 
