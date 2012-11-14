@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-11-09 at 18:11:16 UTC</p>
+<p>Revised 2012-11-14 at 20:11:42 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -1057,63 +1057,6 @@ Update [string.require]p/3:
 3 No <del><tt>erase()</tt> or</del> <tt>pop_back()</tt> member function
 shall throw any exceptions.
 </p></blockquote>
-
-
-
-
-
-<hr>
-<h3><a name="2012"></a>2012. Associative maps should insert <tt>pair</tt>, not <tt>tuple</tt></h3>
-<p><b>Section:</b> 23.4 [associative] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2010-10-29 <b>Last modified:</b> 2012-03-09</p>
-<p><b>View other</b> <a href="lwg-index-open.html#associative">active issues</a> in [associative].</p>
-<p><b>View all other</b> <a href="lwg-index.html#associative">issues</a> in [associative].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-I'm seeing something strange in the paragraphs 23.4.4.4 [map.modifiers] and 23.4.5.3 [multimap.modifiers]:
-they both talk about <tt>tuple&lt;const key_type, mapped_type&gt;</tt> but I think they
-should be talking about <tt>pair&lt;const key_type, mapped_type&gt;</tt> because, among
-other reasons, a <tt>tuple</tt> is not convertible to a <tt>pair</tt>. If I replace <tt>tuple</tt>
-with <tt>pair</tt> everything makes sense to me.
-<p/>
-The proposed resolution is obvious. 
-</p>
-
-<p><i>[
-2010-11-07 Daniel comments
-]</i></p>
-
-
-<p>
-This is by far not the only necessary fix within both sub-clauses. For details see the 2010-10-29 comment in 
-<a href="lwg-defects.html#2005">2005</a>.
-</p>
-
-<p><i>[2011-03-24 Madrid meeting]</i></p>
-
-
-<p>
-Paolo: Don't think we can do it now.
-<p/>
-Daniel K: Agrees. 
-</p>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-
-<p>
-Consensus that this issue will be resolved by <a href="lwg-defects.html#2005">2005</a>, but held open until that issue is resolved.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-Apply the resolution proposed by the 2010-10-29 comment in <a href="lwg-defects.html#2005">2005</a>.
-</p>
 
 
 
@@ -9893,7 +9836,6 @@ additional requirement.
 <h3><a name="2161"></a>2161. <tt>const</tt> equivalence of <tt>std::map</tt></h3>
 <p><b>Section:</b> 23.4 [associative], 23.5 [unord] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Bjarne Stroustrup <b>Opened:</b> 2012-06-18 <b>Last modified:</b> 2012-08-05</p>
-<p><b>View other</b> <a href="lwg-index-open.html#associative">active issues</a> in [associative].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative">issues</a> in [associative].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -13760,6 +13702,69 @@ but not others, leading to subtle portability issues.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+
+<hr>
+<h3><a name="2213"></a>2213. Return value of <tt>std::regex_replace</tt></h3>
+<p><b>Section:</b> 28.11.4 [re.alg.replace] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-08 <b>Last modified:</b> 2012-11-14</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.alg.replace">issues</a> in [re.alg.replace].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In 28.11.4 [re.alg.replace], the first two variants of <tt>std::regex_replace</tt> take an output iterator named 
+"out" as their first argument. Paragraph 2 of that section says that the functions return "out". When I first implemented 
+this, many years ago, I wrote it to return the value of the output iterator after all the insertions (cf. <tt>std::copy</tt>), 
+which seems like the most useful behavior. But looking at the requirement now, it like the functions should return the 
+original value of "out" (i.e. they have to keep a copy of the iterator for no reason except to return it). Is that 
+really what was intended?
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 28.11.4 [re.alg.replace] as indicated:</p>
+<blockquote><pre>
+template &lt;class OutputIterator, class BidirectionalIterator,
+  class traits, class charT, class ST, class SA&gt;
+OutputIterator
+regex_replace(OutputIterator out, BidirectionalIterator first, BidirectionalIterator last,
+  const basic_regex&lt;charT, traits&gt;&amp; e, const basic_string&lt;charT, ST, SA&gt;&amp; fmt,
+  regex_constants::match_flag_type flags = regex_constants::match_default);
+template &lt;class OutputIterator, class BidirectionalIterator,
+  class traits, class charT&gt;
+OutputIterator
+regex_replace(OutputIterator out, BidirectionalIterator first, BidirectionalIterator last,
+  const basic_regex&lt;charT, traits&gt;&amp; e, const charT* fmt,
+  regex_constants::match_flag_type flags = regex_constants::match_default);
+</pre><blockquote>
+<p>
+-1- <i>Effects</i>: Constructs a <tt>regex_iterator</tt> object <tt>i</tt> as if by 
+<tt>regex_iterator&lt;BidirectionalIterator, charT, traits&gt; i(first, last, e, flags)</tt>, 
+and uses <tt>i</tt> to enumerate through all of the matches <tt>m</tt> of type 
+<tt>match_results&lt;BidirectionalIterator&gt;</tt> that occur within the sequence <tt>[first, last)</tt>. 
+If no such matches are found and <tt>!(flags &amp; regex_constants ::format_no_copy)</tt> then calls
+<tt><ins>out = </ins>std::copy(first, last, out)</tt>. If any matches are found then, for each such match, if 
+<tt>!(flags &amp; regex_constants::format_no_copy)</tt>, calls <tt><ins>out = </ins>std::copy(m.prefix().first, 
+m.prefix().second, out)</tt>, and then calls <tt><ins>out = </ins>m.format(out, fmt, flags)</tt> 
+for the first form of the function and <tt><ins>out = </ins>m.format(out, fmt, fmt + 
+char_traits&lt;charT&gt;::length(fmt), flags)</tt> for the second. Finally, if such a match is found 
+and <tt>!(flags &amp; regex_constants ::format_no_copy)</tt>, calls 
+<tt><ins>out = </ins>std::copy(last_m.suffix().first, last_m.suffix().second, out)</tt> where 
+<tt>last_m</tt> is a copy of the last match found. If <tt>flags &amp; regex_constants::format_first_only</tt> 
+is non-zero then only the first match found is replaced.
+<p/>
+-2- <i>Returns</i>: <tt>out</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
 
 
 
