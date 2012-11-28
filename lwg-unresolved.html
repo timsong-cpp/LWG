@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-11-28 at 22:11:23 UTC</p>
+<p>Revised 2012-11-28 at 23:11:01 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -14136,7 +14136,7 @@ or
 <hr>
 <h3><a name="2218"></a>2218. Unclear how containers use <tt>allocator_traits::construct()</tt></h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely  <b>Opened:</b> 2012-11-27 <b>Last modified:</b> 2012-11-28</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-27 <b>Last modified:</b> 2012-11-28</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -14214,6 +14214,101 @@ different definition. &mdash; <i>end note</i> ]
 </p></blockquote>
 </li>
 
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2219"></a>2219. <tt><i>INVOKE</i></tt>-ing a pointer to member with a <tt>reference_wrapper</tt> as the object expression</h3>
+<p><b>Section:</b> 20.8.2 [func.require] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-28 <b>Last modified:</b> 2012-11-29</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.require">issues</a> in [func.require].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The standard currently requires this to be invalid:
+</p>
+<blockquote><pre>
+#include &lt;functional&gt;
+
+struct X { int i; } x;
+auto f = &X::i;
+auto t1 = std::ref(x);
+int i = std::mem_fn(f)(t1);
+</pre></blockquote>
+<p>
+The call expression on the last line is equivalent to <tt><i>INVOKE</i>(f, std::ref(x))</tt> 
+which according to 20.8.2 [func.require]p1 results in the invalid expression <tt>(*t1).*f</tt> 
+because <tt>reference_wrapper&lt;X&gt;</tt> is neither an object of type <tt>X</tt> nor a reference 
+to an object of type <tt>X</tt> nor a reference to an object of a type derived from <tt>X</tt>.
+</p>
+<p>
+The same argument applies to pointers to member functions, and if they don't work with <tt>INVOKE</tt> 
+it becomes harder to do all sorts of things such as:
+</p>
+<blockquote><p>
+<tt>call_once(o, &amp;std::thread::join, std::ref(thr))</tt>
+</p></blockquote>
+<p>
+or
+</p>
+<blockquote><p>
+<tt>async(&amp;std::list&lt;,int&gt;::sort, std::ref(list));</tt>
+</p></blockquote>
+<p>
+The definition of <tt><i>INVOKE</i></tt> should be extended to handle reference wrappers.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 20.8.2 [func.require]:</p>
+<blockquote><p>
+Define <tt><i>INVOKE</i>(f, t1, t2, ..., tN)</tt> as follows:
+</p>
+<ul>
+<li><p>
+<tt>(t1.*f)(t2, ..., tN)</tt> when <tt>f</tt> is a pointer to a member function of a class <tt>T</tt> and 
+<tt>t1</tt> is an object of type <tt>T</tt> or a reference to an object of type <tt>T</tt> or a reference 
+to an object of a type derived from <tt>T</tt> <ins>or an object of type <tt>reference_wrapper&lt;U&gt;</tt> 
+or a reference to an object of type <tt>reference_wrapper&lt;U&gt;</tt> where <tt>U</tt> is either the type 
+<tt>T</tt> or a type derived from <tt>T</tt></ins>;
+</p>
+</li>
+
+<li><p>
+<tt>((*t1).*f)(t2, ..., tN)</tt> when <tt>f</tt> is a pointer to a member function of a class <tt>T</tt> and 
+<tt>t1</tt> is not one of the types described in the previous item;
+</p></li>
+
+<li><p> 
+<tt>t1.*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and <tt>t1</tt> 
+is an object of type <tt>T</tt> or a reference to an object of type <tt>T</tt> or a reference to an object of a 
+type derived from <tt>T</tt> <ins>or an object of type <tt>reference_wrapper&lt;U&gt;</tt> 
+or a reference to an object of type <tt>reference_wrapper&lt;U&gt;</tt> where <tt>U</tt> is either the type 
+<tt>T</tt> or a type derived from <tt>T</tt></ins>;
+</p></li>
+
+<li><p>
+<tt>(*t1).*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and <tt>t1</tt> 
+is not one of the types described in the previous item;
+</p></li>
+
+<li><p>
+<tt>f(t1, t2, ..., tN)</tt> in all other cases.
+</p></li>
+</ul>
+
+</blockquote>
+
+</li>
 </ol>
 
 
