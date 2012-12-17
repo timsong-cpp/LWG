@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D81)</h1>
-<p>Revised 2012-12-17 at 21:12:04 UTC</p>
+<p>Revised 2012-12-17 at 22:12:24 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D81: 2013-01 mid-term mailing<ul>
 <li><b>Summary:</b><ul>
-<li>149 open issues, up by 9.</li>
+<li>150 open issues, up by 10.</li>
 <li>1596 closed issues, up by 3.</li>
-<li>1745 issues total, up by 12.</li>
+<li>1746 issues total, up by 13.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 12 New issues: <a href="lwg-active.html#2211">2211</a>, <a href="lwg-active.html#2212">2212</a>, <a href="lwg-active.html#2213">2213</a>, <a href="lwg-active.html#2214">2214</a>, <a href="lwg-active.html#2215">2215</a>, <a href="lwg-active.html#2216">2216</a>, <a href="lwg-active.html#2217">2217</a>, <a href="lwg-active.html#2218">2218</a>, <a href="lwg-active.html#2219">2219</a>, <a href="lwg-active.html#2220">2220</a>, <a href="lwg-active.html#2221">2221</a>, <a href="lwg-active.html#2222">2222</a>.</li>
+<li>Added the following 13 New issues: <a href="lwg-active.html#2211">2211</a>, <a href="lwg-active.html#2212">2212</a>, <a href="lwg-active.html#2213">2213</a>, <a href="lwg-active.html#2214">2214</a>, <a href="lwg-active.html#2215">2215</a>, <a href="lwg-active.html#2216">2216</a>, <a href="lwg-active.html#2217">2217</a>, <a href="lwg-active.html#2218">2218</a>, <a href="lwg-active.html#2219">2219</a>, <a href="lwg-active.html#2220">2220</a>, <a href="lwg-active.html#2221">2221</a>, <a href="lwg-active.html#2222">2222</a>, <a href="lwg-active.html#2223">2223</a>.</li>
 <li>Changed the following 3 issues to Resolved (from Open): <a href="lwg-defects.html#2012">2012</a>, <a href="lwg-defects.html#2054">2054</a>, <a href="lwg-defects.html#2057">2057</a>.</li>
 </ul></li>
 </ul>
@@ -18361,6 +18361,103 @@ Pointers and references to <tt>*<ins>++</ins>i</tt> continue to refer to the sam
 <tt>*this</tt>. Iterators to <tt>*<ins>++</ins>i</tt> <del>(including <tt>i</tt> itself)</del> continue to
 refer to the same element, but now behave as iterators into <tt>*this</tt>, not into <tt>x</tt>.
 </p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2223"></a>2223. <tt>shrink_to_fit</tt> effect on iterator validity</h3>
+<p><b>Section:</b> 23.3.6.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2012-12-17</p>
+<p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+After the additions by <a href="lwg-defects.html#2033">2033</a>, it appears clear that the intended effect includes a reallocation and 
+thus the potential effect on iterators should be explicitly added to the text in order to not contradict 
+23.2.1 [container.requirements.general]/11, or at the very least, explicitly state that a reallocation may 
+happen.
+<p/>
+Taking consistency with "reserve" into consideration, I propose:
+</p>
+<ul>
+<li><p>
+that the current "Remarks" are made its "Effect" instead, inserting "Reallocation happens at this point if and only 
+if the function effectively reduces the capacity." after the note on non-bindingness.
+</p>
+</li>
+<li><p>
+adding a "Remarks" paragraph, similar to that of reserve: "Reallocation invalidates all the references, pointers, 
+and iterators referring to the elements in the sequence."
+</p></li>
+</ul>
+<p>
+BTW, while we are at it, I believe the effect on iterators should also be explicitly stated in the other instance 
+a reallocation may happen: 23.3.6.5 [vector.modifiers]/1 &mdash; even if obvious, it only contradicts 
+23.2.1 [container.requirements.general]/11 implicitly. 
+<p/>
+I propose to also insert "Reallocation invalidates all the references, pointers, and iterators referring to the 
+elements in the sequence." at the appropriate location in its "Remarks".
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 23.3.6.3 [vector.capacity] around p7 as indicated:</p>
+<blockquote><pre>
+void shrink_to_fit();
+</pre>
+<p>
+-7- <i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Effects</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] Reallocation happens at this point if and only 
+if the function effectively reduces the capacity. If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</ins> 
+<p/>
+-8- <i>Complexity</i>: Linear in the size of the sequence.
+<p/>
+-9- <i>Remarks</i>: <del><tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</del><ins>Reallocation invalidates all 
+the references, pointers, and iterators referring to the elements in the sequence.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Edit 23.3.6.5 [vector.modifiers] p1 as indicated:</p>
+<blockquote><pre>
+iterator insert(const_iterator position, const T&amp; x);
+iterator insert(const_iterator position, T&amp;&amp; x);
+iterator insert(const_iterator position, size_type n, const T&amp; x);
+template &lt;class InputIterator&gt;
+iterator insert(const_iterator position, InputIterator first, InputIterator last);
+iterator insert(const_iterator position, initializer_list&lt;T&gt;);
+template &lt;class... Args&gt; void emplace_back(Args&amp;&amp;... args);
+template &lt;class... Args&gt; iterator emplace(const_iterator position, Args&amp;&amp;... args);
+void push_back(const T&amp; x);
+void push_back(T&amp;&amp; x);
+</pre>
+<p>
+-1- <i>Remarks</i>: Causes reallocation if the new size is greater than the old capacity. <ins>Reallocation 
+invalidates all the references, pointers, and iterators referring to the elements in the sequence.</ins> If 
+no reallocation happens, all the iterators and references before the insertion point remain valid. If an 
+exception is thrown other than by the copy constructor, move constructor, assignment operator, or move 
+assignment operator of <tt>T</tt> or by any <tt>InputIterator</tt> operation there are no effects. If an 
+exception is thrown by the move constructor of a non-<tt>CopyInsertable</tt> <tt>T</tt>, the effects are unspecified.
+</p>
+</blockquote>
 </li>
 </ol>
 
