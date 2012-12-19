@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-12-19 at 19:12:35 UTC</p>
+<p>Revised 2012-12-19 at 20:12:49 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -14727,6 +14727,212 @@ or <tt>Byte_alloc</tt> are stateful allocators.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2227"></a>2227. Stateful comparison objects in associative containers</h3>
+<p><b>Section:</b> X [associative.reqmts <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2012-12-19</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Table 102 in 23.2.4 [associative.reqmts]/8 states on expression <tt>a.key_comp()</tt> that it 
+"returns the comparison object out of which a was constructed". At the same time, 
+23.2.1 [container.requirements.general]/8 states (starting in the third line) that 
+"...Any <tt>Compare</tt>, <tt>Pred</tt>, or <tt>Hash</tt> objects belonging to <tt>a</tt> and <tt>b</tt> 
+shall be swappable and <em>shall be exchanged</em> by unqualified calls to non-member swap...". This is 
+problematic for any compliant implementation, since once swapped the container cannot return the comparison 
+object out of which it was constructed unless incurring in storing an otherwise needless object.
+<p/>
+The simple solution is to correct that statement in Table 102, but I believe this is part of a larger problem 
+of underspecified behavior: The new standard has made an effort in regards to allocators and now fully 
+specifies what happens to stateful allocator objects. It has even specified what happens to stateful <tt>hasher</tt> 
+and <tt>key_equal</tt> members of unordered containers (they propagate), but it says nothing about stateful 
+comparison objects of (ordered) associative containers, except for the statement in 
+23.2.1 [container.requirements.general]/8 referred above and only related to <tt>swap</tt>.
+<p/>
+For example, it is unclear to me what is specified to happen on an assignment: should the comparison object 
+be copied/moved along with the elements, or should the left-hand side object keep its own?
+Maybe this has been intentionally left unspecified with the purpose of compatibility with C++98, which I 
+understand it specified that comparison objects were kept for the entire life of the container (like allocators) 
+&mdash; an unfortunate choice. But anyway, the segment of 23.2.1 [container.requirements.general] quoted 
+above seems to break any possible backwards compatibility with C++98 in this regard.
+<p/>
+Therefore, taking into consideration consistency with how this is dealed with for unordered associative 
+containers, I propose that Table 102 is modified as follows:
+</p>
+<ul>
+<li>
+<p>
+The row for expression <tt>a.key_comp()</tt> is changed so that its "assertion/note pre-/post-condition" reads 
+"Returns <tt>a</tt>'s comparison object."
+</p>
+</li>
+
+<li>
+<p>
+A new row is added at the appropriate location (which I believe would be after "X(il)" row), with:
+</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 102 &mdash; Associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td>
+<tt>X(b)<br/>
+X a(b)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+Copy constructor. In addition to<br/>
+the requirements of Table 96, copies<br/>
+the comparison object.
+</td>
+<td>
+Linear in <tt>b.size()</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a = b</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td>
+Copy assignment operator. In addition to<br/>
+the requirements of Table 96, copies the<br/>
+comparison object.
+</td>
+<td>
+Linear in <tt>a.size()</tt> and <tt>b.size()</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ul>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Change Table 102 as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 102 &mdash; Associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(il)</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+Same as <tt>X(il.begin(), il.end())</tt>.
+</td>
+<td>
+same as <tt>X(il.begin(), il.end())</tt>.
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>X(b)<br/>
+X a(b)</tt></ins>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<ins>Copy constructor. In addition to<br/>
+the requirements of Table 96, copies<br/>
+the comparison object.</ins>
+</td>
+<td>
+<ins>Linear in <tt>b.size()</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>a = b</tt></ins>
+</td>
+<td>
+<ins><tt>X&amp;</tt></ins>
+</td>
+<td>
+<ins>Copy assignment operator. In addition to<br/>
+the requirements of Table 96, copies the<br/>
+comparison object.</ins>
+</td>
+<td>
+<ins>Linear in <tt>a.size()</tt> and <tt>b.size()</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.key_comp()</tt>
+</td>
+<td>
+<tt>X::key_compare</tt>
+</td>
+<td>
+<del>r</del><ins>R</ins>eturns <del>the</del><ins><tt>a</tt>'s</ins> comparison object<br/>
+<del>out of which a was constructed.</del>
+</td>
+<td>
+constant
+</td>
+</tr>
+
+
+</table>
+</blockquote>
+
+</li>
+
+</ol>
+
 
 
 
