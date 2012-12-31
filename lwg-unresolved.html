@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-11-28 at 23:11:01 UTC</p>
+<p>Revised 2012-12-21 at 22:12:07 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -6826,7 +6826,7 @@ generates a decimal-point character unconditionally in generated floatingpoint o
 <hr>
 <h3><a name="2118"></a>2118. <tt>unique_ptr</tt> for array does not support <i>cv</i> qualification conversion of actual argument</h3>
 <p><b>Section:</b> 20.7.1.3 [unique.ptr.runtime] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alf P. Steinbach <b>Opened:</b> 2011-12-16 <b>Last modified:</b> 2012-08-26</p>
+ <b>Submitter:</b> Alf P. Steinbach <b>Opened:</b> 2011-12-16 <b>Last modified:</b> 2012-12-21</p>
 <p><b>View all other</b> <a href="lwg-index.html#unique.ptr.runtime">issues</a> in [unique.ptr.runtime].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -6912,9 +6912,79 @@ It's awkward to refer to "the constructors" twice in the same sentence; I sugges
 </p></li>
 </ol>
 
+<p><i>[2012-12-20: Geoffrey Romer comments and provides a revised resolution]</i></p>
 
 
-<p><b>Proposed resolution:</b></p>
+<p>
+The array specialization of <tt>unique_ptr</tt> differs from the primary template in several ways,
+including the following:
+</p>
+<ul>
+<li><p>
+<tt>unique_ptr&lt;T[], D&gt;</tt> cannot be constructed from a plain pointer whose type is not
+exactly <tt>unique_ptr&lt;T[], D&gt;::pointer</tt> or <tt>nullptr_t</tt>.
+</p></li>
+<li><p>
+<tt>unique_ptr&lt;T[], D&gt;</tt> cannot be constructed from a <tt>unique_ptr&lt;U[], E&gt;&amp;&amp;</tt> 
+unless <tt>U</tt> is exactly <tt>T</tt> and <tt>E</tt> is exactly <tt>D</tt>.
+</p></li>
+<li><p>
+<tt>unique_ptr&lt;T[], D&gt;</tt> cannot be moveassigned from a <tt>unique_ptr&lt;U[], E&gt;&amp;&amp;</tt> 
+unless <tt>U</tt> is exactly <tt>T</tt> and <tt>E</tt> is exactly <tt>D</tt>.
+</p></li>
+<li><p>
+<tt>unique_ptr&lt;T[], D&gt;::reset</tt> cannot take an argument whose type is not exactly
+<tt>unique_ptr&lt;T[], D&gt;::pointer</tt> or <tt>nullptr_t</tt>.
+</p></li>
+<li><p>
+<tt>default_delete&lt;T[]&gt;</tt> cannot be constructed from a <tt>default_delete&lt;U[]&gt;</tt> unless 
+<tt>U</tt> is exactly <tt>T</tt>.
+</p></li>
+<li><p>
+<tt>default_delete&lt;T[]&gt;::operator()</tt> cannot be called on a pointer whose type is not
+exactly <tt>T*</tt>.
+</p></li>
+</ul>
+<p>
+The common intent of all these restrictions appears to be to disallow implicit conversions from
+pointer-to-derived-class to pointer-to-base-class in contexts where the pointer is known to point
+to an array, because such conversions are inherently unsafe; deleting or subscripting the result
+of such a conversion leads to undefined behavior (see also CWG 1504). However, these restrictions 
+have the effect of disallowing all implicit conversions in those contexts, including most notably 
+cv-qualification, but also user-defined conversions, and possibly others. This PR narrows all those 
+restrictions, to disallow only unsafe pointer-to-derived to pointer-to-base conversions, while 
+allowing all others.
+<p/>
+I removed the nebulous language stating that certain functions "will not accept" certain arguments. 
+Instead I use explicitly deleted template functions, which participate in overload resolution only 
+for pointer-to-derived to pointer-to-base conversions. This is more consistent with the existing 
+text and easier to express correctly than an approach based on declaring certain types of calls to 
+be ill-formed, but may produce inferior compiler diagnostics.
+<p/>
+Wherever possible, this PR defines the semantics of template specializations in terms of their
+differences from the primary template. This improves clarity and minimizes the risk of
+unintended differences (e.g. LWG <a href="lwg-active.html#2169">2169</a>, which this PR also fixes). This PR also makes it 
+explicit that the specialization inherits the description of all members, not just member functions, 
+from the primary template and, in passing, clarifies the default definition of pointer in the
+specialization.
+<p/>
+This resolution only disallows pointer-to-derived to pointer-to-base conversions between
+ordinary pointer types; if user-defined pointer types provide comparable conversions, it is their
+responsibility to ensure they are safe. This is consistent with C++'s general preference for
+expressive power over safety, and for assuming the user knows what they're doing;
+furthermore, enforcing such a restriction on user-defined types appears to be impractical without
+cooperation from the user.
+<p/>
+The "base class without regard to cv-qualifiers" language is intended to parallel the specification
+of <tt>std::is_base_of</tt>.
+<p/>
+Jonathan Wakely has a working implementation of this PR patched into libstdc++.
+</p>
+
+<p>
+Previous resolution:
+</p>
+<blockquote class="note">
 <p>This wording is relative to the FDIS.</p>
 
 <p>Change 20.7.1.3.1 [unique.ptr.runtime.ctor] as indicated:</p>
@@ -6930,6 +7000,249 @@ types which are convertible to <tt>pointer</tt></del><ins>argument pointers <tt>
 from <tt>T</tt> are rejected by the constructors</ins>. [<i>Note:</i> One implementation technique is to 
 create private templated overloads of these members. &mdash; <i>end note</i>]
 </p></blockquote></blockquote>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+<ol>
+<li><p>Revise 20.7.1.1.3 [unique.ptr.dltr.dflt1] as follows</p>
+<blockquote><pre>
+namespace std {
+  template &lt;class T&gt; struct default_delete&lt;T[]&gt; {
+    constexpr default_delete() noexcept = default;
+    <ins>template &lt;class U&gt; default_delete(const default_delete&lt;U&gt;&amp;) noexcept;</ins>
+    void operator()(T*) const;
+    template &lt;class U&gt; void operator()(U*) const = delete;
+  };
+}
+</pre></blockquote>
+<p>
+<ins>-?- Descriptions are provided below only for member functions that have behavior different from the
+primary template.</ins>
+</p>
+<blockquote>
+<pre>
+<ins>template &lt;class U&gt; default_delete(const default_delete&lt;U&gt;&amp;) noexcept;</ins>
+</pre>
+<blockquote><p>
+<ins>-?- This constructor behaves the same as in the primary template except that it shall not participate
+in overload resolution unless:</ins>
+</p>
+<ul>
+<li><p>
+<ins><tt>U</tt> is an array type, and</ins>
+</p></li>
+<li><p>
+<ins><tt>V*</tt> is implicitly convertible to <tt>T*</tt>, and</ins>
+</p></li>
+<li><p>
+<ins><tt>T</tt> is not a base class of <tt>V</tt> (without regard to <i>cv</i>-qualifiers),</ins>
+</p></li>
+</ul>
+<p>
+<ins>where <tt>V</tt> is the array element type of <tt>U</tt>.</ins>
+</p>
+</blockquote>
+
+<blockquote><pre>
+void operator()(T* ptr) const;
+</pre><blockquote>
+<p>
+-1- <i>Effects</i>: calls <tt>delete[]</tt> on <tt>ptr</tt>.
+<p/>
+-2- <i>Remarks</i>: If <tt>T</tt> is an incomplete type, the program is ill-formed.
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+<ins>template &lt;class U&gt; void operator()(U*) const = delete;</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Remarks</i>: This function shall not participate in overload resolution unless <tt>T</tt> is a base 
+class of <tt>U</tt> (without regard to <i>cv</i>-qualifiers).</ins>
+</p>
+</blockquote></blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Revise 20.7.1.2 [unique.ptr.single]/3 as follows:</p>
+<blockquote><p>
+If the type <tt>remove_reference&lt;D&gt;::type::pointer</tt> exists, then <tt>unique_ptr&lt;T, D&gt;::pointer</tt> 
+shall be a synonym for <tt>remove_reference&lt;D&gt;::type::pointer</tt>. Otherwise <tt>unique_ptr&lt;T, D&gt;::pointer</tt> 
+shall be a synonym for <tt><del>T</del><ins>element_type</ins>*</tt>. The type <tt>unique_ptr&lt;T, D&gt;::pointer</tt> 
+shall satisfy the requirements of <tt>NullablePointer</tt> (17.6.3.3 [nullablepointer.requirements]).
+</p></blockquote>
+</li>
+
+<li><p>Revise 20.7.1.3 [unique.ptr.runtime] as follows:</p>
+<blockquote><pre>
+namespace std {
+  template &lt;class T, class D&gt; class unique_ptr&lt;T[], D&gt; {
+  public:
+    typedef <i>see below</i> pointer;
+    typedef T element_type;
+    typedef D deleter_type;
+
+    <i>// 20.7.1.3.1, constructors</i>
+    constexpr unique_ptr() noexcept;
+    explicit unique_ptr(pointer p) noexcept;
+    <ins>template &lt;class U&gt; explicit unique_ptr(U* p) = delete;</ins>
+    unique_ptr(pointer p, <i>see below</i> d) noexcept;
+    <ins>template &lt;class U&gt; unique_ptr(U* p, <i>see below</i> d) = delete;</ins>
+    unique_ptr(pointer p, <i>see below</i> d) noexcept;
+    <ins>template &lt;class U&gt; unique_ptr(U* p, <i>see below</i> d) = delete;</ins>
+    unique_ptr(unique_ptr&amp;&amp; u) noexcept;
+    constexpr unique_ptr(nullptr_t) noexcept : unique_ptr() { }
+    <ins>template &lt;class U, class E&gt; unique_ptr(unique_ptr&lt;U, E&gt;&amp;&amp; u) noexcept;</ins>
+
+    <i>// destructor</i>
+    ~unique_ptr();
+
+    <i>// assignment</i>
+    unique_ptr&amp; operator=(unique_ptr&amp;&amp; u) noexcept;
+    <ins>template &lt;class U, class E&gt; unique_ptr&amp; operator=(unique_ptr&lt;U, E&gt;&amp;&amp; u) noexcept;</ins>
+    unique_ptr&amp; operator=(nullptr_t) noexcept;
+
+    <i>// 20.7.1.3.2, observers</i>
+    T&amp; operator[](size_t i) const;
+    pointer get() const noexcept;
+    deleter_type&amp; get_deleter() noexcept;
+    const deleter_type&amp; get_deleter() const noexcept;
+    explicit operator bool() const noexcept;
+
+    <i>// 20.7.1.3.3 modifiers</i>
+    pointer release() noexcept;
+    void reset(pointer p = pointer()) noexcept;
+    <del>void reset(nullptr_t) noexcept;</del>
+    template &lt;class U&gt; void reset(U<ins>*</ins>) = delete;
+    void swap(unique_ptr&amp; u) noexcept;
+
+    <i>// disable copy from lvalue</i>
+    unique_ptr(const unique_ptr&amp;) = delete;
+    unique_ptr&amp; operator=(const unique_ptr&amp;) = delete;
+  };
+}
+</pre></blockquote>
+<blockquote><p>
+-1- A specialization for array types is provided with a slightly altered interface.
+</p>
+<ul>
+<li><p>
+Conversions <del>between different types of <tt>unique_ptr&lt;T[], D&gt;</tt></del><ins>from
+<tt>unique_ptr&lt;Derived[]&gt;</tt> to <tt>unique_ptr&lt;Base[]&gt;</tt>, where <tt>Base</tt> is a 
+base class of <tt>Derived</tt>, from <tt>auto_ptr</tt>,</ins> or to or from the non-array forms of
+<tt>unique_ptr</tt> produce an ill-formed program.
+</p></li>
+<li><p>
+Pointers to types derived from <tt>T</tt> are rejected by the constructors, and by <tt>reset</tt>.
+</p></li>
+<li><p>
+The observers <tt>operator*</tt> and <tt>operator-&gt;</tt> are not provided.
+</p></li>
+<li><p>
+The indexing observer <tt>operator[]</tt> is provided.
+</p></li>
+<li><p>
+The default deleter will call <tt>delete[]</tt>.
+</p></li>
+</ul>
+<p>
+-2- Descriptions are provided below only for <del>member functions that have behavior 
+different</del><ins>members that differ</ins> from the primary template.
+<p/>
+-3- The template argument <tt>T</tt> shall be a complete type.
+</p>
+</blockquote>
+</li>
+
+<li><p>Revise 20.7.1.3.1 [unique.ptr.runtime.ctor] as follows:</p>
+<blockquote>
+<pre>
+<del>explicit unique_ptr(pointer p) noexcept;
+unique_ptr(pointer p, <i>see below</i> d) noexcept;
+unique_ptr(pointer p, <i>see below</i> d) noexcept;</del>
+<ins>template &lt;class U&gt; explicit unique_ptr(U* p) = delete;</ins>
+<ins>template &lt;class U&gt; unique_ptr(U* p, <i>see below</i> d) = delete;</ins>
+<ins>template &lt;class U&gt; unique_ptr(U* p, <i>see below</i> d) = delete;</ins>
+</pre><blockquote><p>
+<del>These constructors behave the same as in the primary template except that they do not accept pointer
+types which are convertible to pointer. [<i>Note</i>: One implementation technique is to create private
+templated overloads of these members. &mdash; <i>end note</i>]</del><ins>These constructors shall not 
+participate in overload resolution unless:</ins></p>
+<ul>
+<li><p><ins><tt>pointer</tt> is a pointer type, and</ins></p></li>
+<li><p><ins><tt>U*</tt> is implicitly convertible to <tt>pointer</tt>, and</ins></p></li>
+<li><p><ins><tt>T</tt> is a base class of <tt>U</tt> (without regard to <i>cv</i>-qualifiers).</ins></p></li>
+</ul>
+<p><ins>The type of <tt>d</tt> is determined as in the corresponding non-deleted constructors.</ins></p>
+</blockquote>
+<pre>
+<ins>template &lt;class U, class E&gt; unique_ptr(unique_ptr&lt;U, E&gt;&amp;&amp; u) noexcept;</ins>
+</pre><blockquote><p>
+<ins>-?- This constructor behaves the same as in the primary template, except that it shall not participate
+in overload resolution unless:</ins>
+</p>
+<ul>
+<li><p><ins><tt>unique_ptr&lt;U, E&gt;::pointer</tt> is implicitly convertible to <tt>pointer</tt>, and</ins></p></li>
+<li><p><ins><tt>U</tt> is an array type, and</ins></p></li>
+<li><p><ins>either <tt>D</tt> is a reference type and <tt>E</tt> is the same type as <tt>D</tt>, or <tt>D</tt> 
+is not a reference type and <tt>E</tt> is implicitly convertible to <tt>D</tt>, and</ins></p></li>
+<li><p><ins>either at least one of <tt>pointer</tt> and <tt>unique_ptr&lt;U, E&gt;::pointer</tt> is not a 
+pointer type, or <tt>T</tt> is not a base class of the array element type of <tt>U</tt> (without regard to 
+<i>cv</i>-qualifiers).</ins></p></li>
+</ul>
+</blockquote></blockquote>
+</li>
+
+<li><p>Insert a new sub-clause following 20.7.1.3.1 [unique.ptr.runtime.ctor] as follows:</p>
+
+<p><ins>?? <tt>unique_ptr</tt> assignment [unique.ptr.runtime.asgn]</ins></p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class U, class E&gt; unique_ptr&amp; operator=(unique_ptr&lt;U, E&gt;&amp;&amp; u) noexcept;</ins>
+</pre><blockquote><p>
+<ins>-?- This operator behaves the same as in the primary template, except that it shall not participate in
+overload resolution unless:</ins></p>
+<ul>
+<li><p><ins><tt>unique_ptr&lt;U, E&gt;::pointer</tt> is implicitly convertible to <tt>pointer</tt>, and</ins></p></li>
+<li><p><ins><tt>U</tt> is an array type, and</ins></p></li>
+<li><p><ins>either <tt>D</tt> is a reference type and <tt>E</tt> is the same type as <tt>D</tt>, or <tt>D</tt> 
+is not a reference type and <tt>E</tt> is implicitly convertible to <tt>D</tt>, and</ins></p></li>
+<li><p><ins>either at least one of <tt>pointer</tt> and <tt>unique_ptr&lt;U, E&gt;::pointer</tt> is not a 
+pointer type, or <tt>T</tt> is not a base class of the array element type of <tt>U</tt> (without regard to 
+<i>cv</i>-qualifiers).</ins></p></li>
+</ul>
+</blockquote></blockquote>
+</li>
+
+<li><p>Revise 20.7.1.3.3 [unique.ptr.runtime.modifiers] as follows:</p>
+
+<blockquote>
+<pre>
+<del>void reset(pointer p = pointer()) noexcept;
+void reset(nullptr_t p) noexcept;</del>
+<ins>template &lt;class U&gt; void reset(U*) = delete;</ins>
+</pre><blockquote><p>
+<del>-1- <i>Effects</i>: If <tt>get() == nullptr</tt> there are no effects. Otherwise <tt>get_deleter()(get())</tt>.</del>
+<p/>
+<del>-2- <i>Postcondition</i>: <tt>get() == p</tt>.</del>
+<p/>
+<ins>-?- This function shall not participate in overload resolution unless:</ins>
+</p>
+<ul>
+<li><p><ins><tt>pointer</tt> is a pointer type, and</ins></p></li>
+<li><p><ins><tt>U*</tt> is implicitly convertible to <tt>pointer</tt>, and</ins></p></li>
+<li><p><ins><tt>T</tt> is a base class of <tt>U</tt> (without regard to <i>cv</i>-qualifiers).</ins></p></li>
+</ul>
+
+</blockquote></blockquote>
+</li>
+</ol>
+
 
 
 
@@ -7682,7 +7995,7 @@ basic_istream&lt;charT,traits&gt;&amp; getline(basic_string&lt;charT,traits,Allo
 <hr>
 <h3><a name="2132"></a>2132. <tt>std::function</tt> ambiguity</h3>
 <p><b>Section:</b> 20.8.11.2.1 [func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2012-02-28 <b>Last modified:</b> 2012-10-20</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2012-02-28 <b>Last modified:</b> 2012-12-16</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.con">issues</a> in [func.wrap.func.con].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7777,6 +8090,26 @@ the passed functor object, <tt>f</tt>.
 
 <p>
 Alisdair to apply similar changes to <tt>packaged_task</tt>.
+</p>
+
+<p><i>[2012-11-09, Vicente J. Botet Escriba provides another example]</i></p>
+
+
+<p>
+Consider the following:
+</p>
+<blockquote><pre>
+class AThreadWrapper {
+public:
+  explicit operator std::thread();
+  ...
+};
+std::thread th = std::thread(AThreadWrapper); // call to conversion operator intended
+</pre></blockquote>
+<p>
+The call to the conversion operator is overloaded with the thread constructor. But thread constructor requirement 
+makes it fail as <tt>AThreadWrapper</tt> is not a Callable and the compiler tries to instantiate the thread 
+constructor and fails.
 </p>
 
 
@@ -12610,9 +12943,9 @@ otherwise, false.</ins>
 
 
 <hr>
-<h3><a name="2198"></a>2198. <tt>max_load_factor(z)</tt> makes no strong guatantees, but bans useful behavior</h3>
+<h3><a name="2198"></a>2198. <tt>max_load_factor(z)</tt> makes no strong guarantees, but bans useful behavior</h3>
 <p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-10-09 <b>Last modified:</b> 2012-10-11</p>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-10-09 <b>Last modified:</b> 2012-12-16</p>
 <p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
 <p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -13404,9 +13737,9 @@ insert(begin(), n, t);</del>
 
 
 <hr>
-<h3><a name="2210"></a>2210. Missing allocator-extended constructor for allocator-aware sequence containers</h3>
-<p><b>Section:</b> 23.3 [sequences] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-01 <b>Last modified:</b> 2012-11-07</p>
+<h3><a name="2210"></a>2210. Missing allocator-extended constructor for allocator-aware containers</h3>
+<p><b>Section:</b> 23.3 [sequences], 23.4 [associative], 23.5 [unord] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-01 <b>Last modified:</b> 2012-12-18</p>
 <p><b>View other</b> <a href="lwg-index-open.html#sequences">active issues</a> in [sequences].</p>
 <p><b>View all other</b> <a href="lwg-index.html#sequences">issues</a> in [sequences].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -13432,7 +13765,32 @@ int main()
 </pre></blockquote>
 <p>
 The very same problem exists for all allocator-aware sequence containers.
+<p/>
+In addition it exists for associative containers. For example, it's possible to construct 
+<tt>std::set&lt;int&gt;{0, 1, 2}</tt> but not <tt>std::set&lt;int&gt;{{0, 1, 2}, alloc}</tt>, 
+and possible to construct <tt>std::set&lt;int&gt;{begin, end}</tt> but not 
+<tt>std::set&lt;int&gt;{begin, end, alloc}</tt>.
+<p/>
+This makes the following program fail when <tt>SCOPED</tt> is defined:
 </p>
+<blockquote><pre>
+#include &lt;set&gt;
+#include &lt;vector&gt;
+#include &lt;scoped_allocator&gt;
+
+#if SCOPED
+using A = std::scoped_allocator_adaptor&lt;std::allocator&lt;int&gt;&gt;;
+#else
+using A = std::allocator&lt;int&gt;;
+#endif
+
+int main()
+{
+  int values[] = {0, 1, 2};
+  std::vector&lt;std::set&lt;int&gt;, A&gt; v;
+  v.emplace_back(std::begin(values), std::end(values));
+}
+</pre></blockquote>
 
 
 
@@ -14224,7 +14582,7 @@ different definition. &mdash; <i>end note</i> ]
 <hr>
 <h3><a name="2219"></a>2219. <tt><i>INVOKE</i></tt>-ing a pointer to member with a <tt>reference_wrapper</tt> as the object expression</h3>
 <p><b>Section:</b> 20.8.2 [func.require] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-28 <b>Last modified:</b> 2012-11-29</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-28 <b>Last modified:</b> 2012-12-16</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.require">issues</a> in [func.require].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -14276,8 +14634,8 @@ Define <tt><i>INVOKE</i>(f, t1, t2, ..., tN)</tt> as follows:
 <ul>
 <li><p>
 <tt>(t1.*f)(t2, ..., tN)</tt> when <tt>f</tt> is a pointer to a member function of a class <tt>T</tt> and 
-<tt>t1</tt> is an object of type <tt>T</tt> or a reference to an object of type <tt>T</tt> or a reference 
-to an object of a type derived from <tt>T</tt> <ins>or an object of type <tt>reference_wrapper&lt;U&gt;</tt> 
+<tt>t1</tt> is an object of type <tt>T</tt> or a reference to an object of type <del><tt>T</tt> or a reference 
+to an object of a type derived from <tt>T</tt></del> <ins><tt>U</tt> or an object of type <tt>reference_wrapper&lt;U&gt;</tt> 
 or a reference to an object of type <tt>reference_wrapper&lt;U&gt;</tt> where <tt>U</tt> is either the type 
 <tt>T</tt> or a type derived from <tt>T</tt></ins>;
 </p>
@@ -14290,8 +14648,8 @@ or a reference to an object of type <tt>reference_wrapper&lt;U&gt;</tt> where <t
 
 <li><p> 
 <tt>t1.*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and <tt>t1</tt> 
-is an object of type <tt>T</tt> or a reference to an object of type <tt>T</tt> or a reference to an object of a 
-type derived from <tt>T</tt> <ins>or an object of type <tt>reference_wrapper&lt;U&gt;</tt> 
+is an object of type <tt>T</tt> or a reference to an object of type <del><tt>T</tt> or a reference to an object of a 
+type derived from <tt>T</tt></del> <ins><tt>U</tt> or an object of type <tt>reference_wrapper&lt;U&gt;</tt> 
 or a reference to an object of type <tt>reference_wrapper&lt;U&gt;</tt> where <tt>U</tt> is either the type 
 <tt>T</tt> or a type derived from <tt>T</tt></ins>;
 </p></li>
@@ -14311,6 +14669,645 @@ is not one of the types described in the previous item;
 </li>
 </ol>
 
+
+
+
+
+
+<hr>
+<h3><a name="2220"></a>2220. Under-specification of <tt>operator==</tt> for <tt>regex_token_iterator</tt></h3>
+<p><b>Section:</b> 28.12.2.2 [re.tokiter.comp] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-21 <b>Last modified:</b> 2012-12-16</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.tokiter.comp">active issues</a> in [re.tokiter.comp].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.tokiter.comp">issues</a> in [re.tokiter.comp].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Consider the following example:
+</p>
+<blockquote><pre>
+std::string str0("x");
+std::regex rg0("a");
+std::regex_token_iterator it0(str0.begin(), str0.end(), rg0, -1); // points at "x" in str0
+std::string str1("x");
+std::regex rg1("b");
+std::regex_token_iterator it1(str1.begin(), str1.end(), rg1, -1); // points at "x" in str1
+</pre></blockquote>
+<p>
+28.12.2.2 [re.tokiter.comp] p1 says that <tt>it0.operator==(it1)</tt> returns true "if 
+<tt>*this</tt> and <tt>right</tt> are both suffix iterators and <tt>suffix == right.suffix</tt>"; both 
+conditions are satisfied in this example. It does not say that they must both be iterators 
+into the same sequence, nor does it say (as general iterator requirements do) that they must 
+both be in the domain of <tt>==</tt> in order for the comparison to be meaningful. It's a 
+simple statement: they're equal if the strings they point at compare equal. Given this being
+a valid comparison, the obtained result of "true" looks odd.
+<p/>
+The problem is that for iterator values prior to the suffix iterator, equality means the same 
+regular expression and the same matched sequence (both uses of "same" refer to identity, not equality); 
+for the suffix iterator, equality means that the matched sequences compare equal.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2221"></a>2221. No formatted output operator for <tt>nullptr</tt></h3>
+<p><b>Section:</b> 28.12.2.2 [re.tokiter.comp] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2012-12-07 <b>Last modified:</b> 2012-12-17</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.tokiter.comp">active issues</a> in [re.tokiter.comp].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.tokiter.comp">issues</a> in [re.tokiter.comp].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+When I write 
+</p>
+<blockquote><pre>
+std::cout &lt;&lt; nullptr &lt;&lt; std::endl;
+</pre></blockquote>
+<p>
+I get a compilation error, "ambiguous overload for '<tt>operator&lt;&lt;</tt>' in '<tt>std::cout &lt;&lt; nullptr</tt>'". 
+As far as I can tell, the compiler is right to issue that error. There are inserters for <tt>const void*</tt>, 
+<tt>const char*</tt>, <tt>const signed char*</tt>, and <tt>const unsigned char*</tt>, and none for 
+<tt>nullptr_t</tt>, so the expression really is ambiguous.
+<p/>
+Proposed resolution:
+<p/>
+The obvious library solution is to add a <tt>nullptr_t</tt> overload, which would be defined something like
+</p>
+<blockquote><pre>
+template&lt;class C, class T&gt;
+basic_ostream&lt;C, T&gt;&amp; operator&lt;&lt;(basic_ostream&lt;C, T&gt;&amp; os, nullptr_t) 
+{ 
+  return os &lt;&lt; (void*) nullptr; 
+}
+</pre></blockquote>
+<p>
+We might also consider addressing this at a core level: add a special-case language rule that addresses all 
+cases where you write <tt>f(nullptr)</tt> and <tt>f</tt> is overloaded on multiple pointer types. (Perhaps 
+a tiebreaker saying that <tt>void*</tt> is preferred in such cases.)
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2222"></a>2222. Inconsistency in description of <tt>forward_list::splice_after</tt> single-element overload</h3>
+<p><b>Section:</b> 23.3.4.6 [forwardlist.ops] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Edward Catmur <b>Opened:</b> 2012-12-11 <b>Last modified:</b> 2012-12-17</p>
+<p><b>View all other</b> <a href="lwg-index.html#forwardlist.ops">issues</a> in [forwardlist.ops].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+23.3.4.6 [forwardlist.ops] p6 has
+</p>
+<blockquote><pre>
+void splice_after(const_iterator position, forward_list&amp; x, const_iterator i);
+void splice_after(const_iterator position, forward_list&amp;&amp; x, const_iterator i);
+</pre><p>
+<i>Effects</i>: Inserts the element following <tt>i</tt> into <tt>*this</tt>, following <tt>position</tt>, 
+and removes it from <tt>x</tt>. The result is unchanged if <tt>position == i</tt> or <tt>position == ++i</tt>. 
+Pointers and references to <tt>*i</tt> continue to refer to the same element but as a member of <tt>*this</tt>. 
+Iterators to <tt>*i</tt> (including <tt>i</tt> itself) continue to refer to the same element, but now behave 
+as iterators into <tt>*this</tt>, not into <tt>x</tt>.
+</p>
+</blockquote>
+<p>
+This overload splices the element <em>following</em> <tt>i</tt> from <tt>x</tt> to <tt>*this</tt>, so the 
+language in the two latter sentences should refer to <tt>++i</tt>:
+</p>
+<blockquote><p>
+Pointers and references to <tt>*++i</tt> continue to refer to the same element but as a member of
+<tt>*this</tt>. Iterators to <tt>*++i</tt> continue to refer to the same element, but now behave as iterators
+into <tt>*this</tt>, not into <tt>x</tt>.
+</p></blockquote>
+<p>
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 23.3.4.6 [forwardlist.ops] p6 as indicated:</p>
+<blockquote><pre>
+void splice_after(const_iterator position, forward_list&amp; x, const_iterator i);
+void splice_after(const_iterator position, forward_list&amp;&amp; x, const_iterator i);
+</pre>
+<p>
+-5- <i>Requires</i>: <tt>position</tt> is <tt>before_begin()</tt> or is a dereferenceable iterator 
+in the range <tt>[begin(),end())</tt>. The iterator following <tt>i</tt> is a dereferenceable iterator 
+in <tt>x</tt>. <tt>get_allocator() == x.get_allocator()</tt>.
+<p/>
+-6- <i>Effects</i>: Inserts the element following <tt>i</tt> into <tt>*this</tt>, following <tt>position</tt>, 
+and removes it from <tt>x</tt>. The result is unchanged if <tt>position == i</tt> or <tt>position == ++i</tt>. 
+Pointers and references to <tt>*<ins>++</ins>i</tt> continue to refer to the same element but as a member of 
+<tt>*this</tt>. Iterators to <tt>*<ins>++</ins>i</tt> <del>(including <tt>i</tt> itself)</del> continue to
+refer to the same element, but now behave as iterators into <tt>*this</tt>, not into <tt>x</tt>.
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2223"></a>2223. <tt>shrink_to_fit</tt> effect on iterator validity</h3>
+<p><b>Section:</b> 23.3.6.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2012-12-19</p>
+<p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+After the additions by <a href="lwg-defects.html#2033">2033</a>, it appears clear that the intended effect includes a reallocation and 
+thus the potential effect on iterators should be explicitly added to the text in order to not contradict 
+23.2.1 [container.requirements.general]/11, or at the very least, explicitly state that a reallocation may 
+happen.
+<p/>
+Taking consistency with "reserve" into consideration, I propose:
+</p>
+<ul>
+<li><p>
+that the current "Remarks" are made its "Effect" instead, inserting "Reallocation happens at this point if and only 
+if the function effectively reduces the capacity." after the note on non-bindingness.
+</p>
+</li>
+<li><p>
+adding a "Remarks" paragraph, similar to that of reserve: "Reallocation invalidates all the references, pointers, 
+and iterators referring to the elements in the sequence."
+</p></li>
+</ul>
+<p>
+BTW, while we are at it, I believe the effect on iterators should also be explicitly stated in the other instance 
+a reallocation may happen: 23.3.6.5 [vector.modifiers]/1 &mdash; even if obvious, it only contradicts 
+23.2.1 [container.requirements.general]/11 implicitly. 
+<p/>
+I propose to also insert "Reallocation invalidates all the references, pointers, and iterators referring to the 
+elements in the sequence." at the appropriate location in its "Remarks".
+</p>
+
+<p><i>[2012-12-19: Jonathan Wakely comments]</i></p>
+
+
+<p>
+The described problem also affects <tt>std::basic_string</tt> and <tt>std::deque</tt>.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 23.3.6.3 [vector.capacity] around p7 as indicated:</p>
+<blockquote><pre>
+void shrink_to_fit();
+</pre>
+<p>
+-7- <i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Effects</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] Reallocation happens at this point if and only 
+if the function effectively reduces the capacity. If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</ins> 
+<p/>
+-8- <i>Complexity</i>: Linear in the size of the sequence.
+<p/>
+-9- <i>Remarks</i>: <del><tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</del><ins>Reallocation invalidates all 
+the references, pointers, and iterators referring to the elements in the sequence.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Edit 23.3.6.5 [vector.modifiers] p1 as indicated:</p>
+<blockquote><pre>
+iterator insert(const_iterator position, const T&amp; x);
+iterator insert(const_iterator position, T&amp;&amp; x);
+iterator insert(const_iterator position, size_type n, const T&amp; x);
+template &lt;class InputIterator&gt;
+iterator insert(const_iterator position, InputIterator first, InputIterator last);
+iterator insert(const_iterator position, initializer_list&lt;T&gt;);
+template &lt;class... Args&gt; void emplace_back(Args&amp;&amp;... args);
+template &lt;class... Args&gt; iterator emplace(const_iterator position, Args&amp;&amp;... args);
+void push_back(const T&amp; x);
+void push_back(T&amp;&amp; x);
+</pre>
+<p>
+-1- <i>Remarks</i>: Causes reallocation if the new size is greater than the old capacity. <ins>Reallocation 
+invalidates all the references, pointers, and iterators referring to the elements in the sequence.</ins> If 
+no reallocation happens, all the iterators and references before the insertion point remain valid. If an 
+exception is thrown other than by the copy constructor, move constructor, assignment operator, or move 
+assignment operator of <tt>T</tt> or by any <tt>InputIterator</tt> operation there are no effects. If an 
+exception is thrown by the move constructor of a non-<tt>CopyInsertable</tt> <tt>T</tt>, the effects are unspecified.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2224"></a>2224. Ambiguous status of access to non-live objects</h3>
+<p><b>Section:</b> 17.6.4.10 [res.on.objects] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2012-12-18</p>
+<p><b>View all other</b> <a href="lwg-index.html#res.on.objects">issues</a> in [res.on.objects].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The standard currently does not discuss when library objects may be accessed, except in a non-normative 
+note pertaining to synchronization in [res.on.objects], leaving it ambiguous whether single-threaded 
+code can access a library object during its construction or destruction. For example, there is a 
+reasonable question as to what happens if the deleter supplied to a <tt>unique_ptr</tt> transitively 
+accesses the <tt>unique_ptr</tt> itself during <tt>unique_ptr</tt>'s destruction; a straightforward 
+reading suggests that this is permitted, and that the deleter will see the <tt>unique_ptr</tt> still 
+holding the originally stored pointer, but consensus on the LWG reflector indicates this was not the 
+intent (see discussion beginning with 
+<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=33362">c++std-lib-33362</a>).
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Change the title of sub-clause 17.6.4.10 [res.on.objects] as indicated:</p>
+<p><del>Shared objects and the library</del><ins>Library object access</ins> [res.on.objects]</p>
+</li>
+
+<li><p>Edit 17.6.4.10 [res.on.objects] p2 as indicated:</p>
+<p>-2- <del>[<i>Note</i>: In particular, the program is required to ensure that completion of the constructor 
+of any object of a class type defined in the standard library happens before any other member function 
+invocation on that object and, unless otherwise specified, to ensure that completion of any member function 
+invocation other than destruction on such an object happens before destruction of that object. This applies 
+even to objects such as mutexes intended for thread synchronization. &mdash; <i>end note</i>]</del>
+<ins>If an object of a standard library type is accessed outside of the object's lifetime (3.8 [basic.life]), 
+the behavior is undefined unless otherwise specified.</ins></p>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2225"></a>2225. Unrealistic header inclusion checks required</h3>
+<p><b>Section:</b> 17.6.2.2 [using.headers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-12-18 <b>Last modified:</b> 2012-12-18</p>
+<p><b>View all other</b> <a href="lwg-index.html#using.headers">issues</a> in [using.headers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+17.6.2.2 [using.headers]/3 says:
+<p/>
+A translation unit shall include a header only outside of any external declaration or definition, and shall 
+include the header lexically before the first reference in that translation unit to any of the entities 
+declared in that header.
+<p/>
+Per 1.4 [intro.compliance]/1, programs which violate this rule are ill-formed, and a conforming 
+implementation is required to produce a diagnostic. This does not seem to match reality. Presumably, this 
+paragraph is missing a "no diagnostic is required".
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 17.6.2.2 [using.headers] p3 as indicated:</p>
+<p>-3- A translation unit shall include a header only outside of any external declaration or definition, and shall
+include the header lexically before the first reference in that translation unit to any of the entities declared
+in that header. <ins>No diagnostic is required.</ins></p>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2226"></a>2226. <tt>wstring_convert</tt> methods do not take allocator instance</h3>
+<p><b>Section:</b> 22.3.3.2.2 [conversions.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Glen Fernandes <b>Opened:</b> 2012-12-14 <b>Last modified:</b> 2012-12-18</p>
+<p><b>View other</b> <a href="lwg-index-open.html#conversions.string">active issues</a> in [conversions.string].</p>
+<p><b>View all other</b> <a href="lwg-index.html#conversions.string">issues</a> in [conversions.string].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The <tt>wstring_convert</tt> class template, described in 22.3.3.2.2 [conversions.string], does not 
+support custom stateful allocators. It only supports custom stateless allocators.
+<p/>
+The <tt>to_bytes</tt> member function returns <tt>basic_string&lt;char, char_traits&lt;char&gt;, Byte_alloc&gt;</tt>  
+but it does not take an instance of <tt>Byte_alloc</tt> to pass to the constructor of the <tt>basic_string</tt>.
+<p/>
+Similarly the <tt>from_bytes</tt> member function returns <tt>basic_string&lt;Elem, char_traits&lt;Elem&gt;, Wide_alloc&gt;</tt>  
+but it does not take an instance of <tt>Wide_alloc</tt> to pass to the constructor of the <tt>basic_string</tt>.
+<p/>
+This makes these two member functions and the <tt>wstring_convert</tt> class template not usable when <tt>Wide_alloc</tt> 
+or <tt>Byte_alloc</tt> are stateful allocators.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2227"></a>2227. Stateful comparison objects in associative containers</h3>
+<p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2012-12-21</p>
+<p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
+<p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Table 102 in 23.2.4 [associative.reqmts]/8 states on expression <tt>a.key_comp()</tt> that it 
+"returns the comparison object out of which a was constructed". At the same time, 
+23.2.1 [container.requirements.general]/8 states (starting in the third line) that 
+"...Any <tt>Compare</tt>, <tt>Pred</tt>, or <tt>Hash</tt> objects belonging to <tt>a</tt> and <tt>b</tt> 
+shall be swappable and <em>shall be exchanged</em> by unqualified calls to non-member swap...". This is 
+problematic for any compliant implementation, since once swapped the container cannot return the comparison 
+object out of which it was constructed unless incurring in storing an otherwise needless object.
+<p/>
+The simple solution is to correct that statement in Table 102, but I believe this is part of a larger problem 
+of underspecified behavior: The new standard has made an effort in regards to allocators and now fully 
+specifies what happens to stateful allocator objects. It has even specified what happens to stateful <tt>hasher</tt> 
+and <tt>key_equal</tt> members of unordered containers (they propagate), but it says nothing about stateful 
+comparison objects of (ordered) associative containers, except for the statement in 
+23.2.1 [container.requirements.general]/8 referred above and only related to <tt>swap</tt>.
+<p/>
+For example, it is unclear to me what is specified to happen on an assignment: should the comparison object 
+be copied/moved along with the elements, or should the left-hand side object keep its own?
+Maybe this has been intentionally left unspecified with the purpose of compatibility with C++98, which I 
+understand it specified that comparison objects were kept for the entire life of the container (like allocators) 
+&mdash; an unfortunate choice. But anyway, the segment of 23.2.1 [container.requirements.general] quoted 
+above seems to break any possible backwards compatibility with C++98 in this regard.
+<p/>
+Therefore, taking into consideration consistency with how this is dealed with for unordered associative 
+containers, I propose that Table 102 is modified as follows:
+</p>
+<ul>
+<li>
+<p>
+The row for expression <tt>a.key_comp()</tt> is changed so that its "assertion/note pre-/post-condition" reads 
+"Returns <tt>a</tt>'s comparison object."
+</p>
+</li>
+
+<li>
+<p>
+A new row is added at the appropriate location (which I believe would be after "X(il)" row), with:
+</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 102 &mdash; Associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td>
+<tt>X(b)<br/>
+X a(b)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+Copy constructor. In addition to<br/>
+the requirements of Table 96, copies<br/>
+the comparison object.
+</td>
+<td>
+Linear in <tt>b.size()</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a = b</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td>
+Copy assignment operator. In addition to<br/>
+the requirements of Table 96, copies the<br/>
+comparison object.
+</td>
+<td>
+Linear in <tt>a.size()</tt> and <tt>b.size()</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ul>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Change Table 102 as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 102 &mdash; Associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(il)</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+Same as <tt>X(il.begin(), il.end())</tt>.
+</td>
+<td>
+same as <tt>X(il.begin(), il.end())</tt>.
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>X(b)<br/>
+X a(b)</tt></ins>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<ins>Copy constructor. In addition to<br/>
+the requirements of Table 96, copies<br/>
+the comparison object.</ins>
+</td>
+<td>
+<ins>Linear in <tt>b.size()</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>a = b</tt></ins>
+</td>
+<td>
+<ins><tt>X&amp;</tt></ins>
+</td>
+<td>
+<ins>Copy assignment operator. In addition to<br/>
+the requirements of Table 96, copies the<br/>
+comparison object.</ins>
+</td>
+<td>
+<ins>Linear in <tt>a.size()</tt> and <tt>b.size()</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.key_comp()</tt>
+</td>
+<td>
+<tt>X::key_compare</tt>
+</td>
+<td>
+<del>r</del><ins>R</ins>eturns <del>the</del><ins><tt>a</tt>'s</ins> comparison object<br/>
+<del>out of which a was constructed.</del>
+</td>
+<td>
+constant
+</td>
+</tr>
+
+
+</table>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2228"></a>2228. Missing <em>SFINAE</em> rule in <tt>unique_ptr</tt> templated assignment</h3>
+<p><b>Section:</b> 20.7.1.2.3 [unique.ptr.single.asgn] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2012-12-20 <b>Last modified:</b> 2012-12-21</p>
+<p><b>View all other</b> <a href="lwg-index.html#unique.ptr.single.asgn">issues</a> in [unique.ptr.single.asgn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+20.7.1.2.3 [unique.ptr.single.asgn]/5 permits <tt>unique_ptr</tt>'s templated assignment operator to participate 
+in overload resolution even when incompatibilities between <tt>D</tt> and <tt>E</tt> will render the result ill-formed, 
+but the corresponding templated copy constructor is removed from the overload set in those situations (see the third 
+bullet point of 20.7.1.2.1 [unique.ptr.single.ctor]/19). This asymmetry is confusing, and presumably unintended; 
+it may lead to situations where constructing one <tt>unique_ptr</tt> from another is well-formed, but assigning from 
+the same <tt>unique_ptr</tt> would be ill-formed.
+<p/>
+There is a slight coupling between this and LWG <a href="lwg-active.html#2118">2118</a>, in that my PR for LWG <a href="lwg-active.html#2118">2118</a> incorporates 
+equivalent wording in the specification of the templated assignment operator for the array specialization; the two PRs 
+are logically independent, but if my PR for <a href="lwg-active.html#2118">2118</a> is accepted but the above PR is not, the discrepancy 
+between the base template and the specialization could be confusing.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+<ol>
+<li><p>Revise 20.7.1.2.3 [unique.ptr.single.asgn] p5 as follows:</p>
+
+<blockquote><pre>
+template &lt;class U, class E&gt; unique_ptr&amp; operator=(unique_ptr&lt;U, E&gt;&amp;&amp; u) noexcept;
+</pre><blockquote>
+<p>
+-4- <i>Requires</i>: If <tt>E</tt> is not a reference type, assignment of the deleter from an rvalue of type <tt>E</tt> 
+shall be well-formed and shall not throw an exception. Otherwise, <tt>E</tt> is a reference type and assignment of the
+deleter from an lvalue of type <tt>E</tt> shall be well-formed and shall not throw an exception.
+<p/>
+-5- <i>Remarks</i>: This operator shall not participate in overload resolution unless:
+</p>
+<ul>
+<li><p><tt>unique_ptr&lt;U, E&gt;::pointer</tt> is implicitly convertible to <tt>pointer</tt> and</p></li>
+<li><p><tt>U</tt> is not an array type<del>.</del><ins>, and</ins></p></li>
+<li><p><ins>either <tt>D</tt> is a reference type and <tt>E</tt> is the same type as <tt>D</tt>, or <tt>D</tt> is 
+not a reference type and <tt>E</tt> is implicitly convertible to <tt>D</tt>.</ins></p></li>
+</ul>
+<p>
+-6- <i>Effects</i>: Transfers ownership from <tt>u</tt> to <tt>*this</tt> as if by calling <tt>reset(u.release())</tt> 
+followed by an assignment from <tt>std::forward&lt;E&gt;(u.get_deleter())</tt>.
+<p/>
+-7- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote></blockquote>
+
+</li>
+</ol>
 
 
 
