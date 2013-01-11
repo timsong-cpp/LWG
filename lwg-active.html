@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D81)</h1>
-<p>Revised 2013-01-11 at 21:01:07 UTC</p>
+<p>Revised 2013-01-11 at 22:01:52 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -162,6 +162,7 @@ ownership of it.
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following 20 New issues: <a href="lwg-active.html#2211">2211</a>, <a href="lwg-active.html#2212">2212</a>, <a href="lwg-active.html#2213">2213</a>, <a href="lwg-active.html#2214">2214</a>, <a href="lwg-active.html#2215">2215</a>, <a href="lwg-active.html#2216">2216</a>, <a href="lwg-active.html#2217">2217</a>, <a href="lwg-active.html#2218">2218</a>, <a href="lwg-active.html#2219">2219</a>, <a href="lwg-active.html#2220">2220</a>, <a href="lwg-active.html#2221">2221</a>, <a href="lwg-active.html#2222">2222</a>, <a href="lwg-active.html#2223">2223</a>, <a href="lwg-active.html#2224">2224</a>, <a href="lwg-active.html#2225">2225</a>, <a href="lwg-active.html#2226">2226</a>, <a href="lwg-active.html#2227">2227</a>, <a href="lwg-active.html#2228">2228</a>, <a href="lwg-active.html#2229">2229</a>, <a href="lwg-active.html#2230">2230</a>.</li>
+<li>Changed the following issue to Open (from Tentatively Ready): <a href="lwg-active.html#2106">2106</a>.</li>
 <li>Changed the following 3 issues to Resolved (from Open): <a href="lwg-defects.html#2012">2012</a>, <a href="lwg-defects.html#2054">2054</a>, <a href="lwg-defects.html#2057">2057</a>.</li>
 </ul></li>
 </ul>
@@ -7621,10 +7622,10 @@ and <tt>u</tt> will not. &mdash; <i>end note</i>]
 
 <hr>
 <h3><a name="2106"></a>2106. <tt>move_iterator</tt> wrapping iterators returning prvalues</h3>
-<p><b>Section:</b> 24.5.3 [move.iterators] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-11-30 <b>Last modified:</b> 2012-10-20</p>
+<p><b>Section:</b> 24.5.3 [move.iterators] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-11-30 <b>Last modified:</b> 2013-01-11</p>
 <p><b>View all other</b> <a href="lwg-index.html#move.iterators">issues</a> in [move.iterators].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -7857,13 +7858,37 @@ Minor wording tweak to use <tt>add_rvalue_reference</tt> rather than manually ad
 then move to Tentatively Ready.
 </p>
 
+<p><i>[2013-01-09 Howard Hinnat comments]</i></p>
 
 
-<p><b>Proposed resolution:</b></p>
+<p>
+I believe the P/R for LWG 2106 is incorrect (item 3).  The way it currently reads, <tt>move_iterator&lt;I&gt;::reference</tt> 
+is <em>always</em> an lvalue reference.  I.e. if <tt>R</tt> is an lvalue reference type, then reference becomes 
+<tt>add_rvalue_reference&lt;R&gt;::type</tt> which is just <tt>R</tt>. And if <tt>R</tt> is not a reference type, 
+then reference becomes <tt>R</tt> (which is also just <tt>R</tt> ;-)).
+</p>
+
+<p>
+I believe the correct wording is what was there previously:
+</p>
+
+<p>
+-?- Let <tt>R</tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If <tt>is_reference&lt;R&gt;::value</tt> 
+is true, the template instantiation <tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named 
+<tt>reference</tt> as a synonym for <tt>remove_reference&lt;R&gt;::type&amp;&amp;</tt>, otherwise as a synonym for 
+<tt>R</tt>.
+</p>
+
+<p>
+Additionally Marc Glisse points out that <tt>move_iterator&lt;I&gt;::operator*()</tt> should return 
+<tt>static_cast&lt;reference&gt;(*current)</tt>, not <tt>std::move(*current)</tt>.
+</p>
+
+<p>
+Previous resolution:
+</p>
+<blockquote class="note">
 <p>This wording is relative to the FDIS.</p>
-
-<p><strong>This section shows two mutually exclusive resolutions &mdash; only one can
-be picked!</strong></p>
 
 <ol>
 <li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
@@ -7906,6 +7931,66 @@ namespace std {
 as a synonym for <tt>add_rvalue_reference&lt;<i>R</i>&gt;::type</tt>, otherwise as a synonym
 for <tt><i>R</i></tt>.</ins>
 </p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
+
+<blockquote><p>
+Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
+except that its indirection operator implicitly converts the value returned by the underlying iterator’s
+indirection operator to an rvalue <del>reference</del>. Some generic algorithms 
+can be called with move iterators to replace copying with moving.
+</p></blockquote>
+</li>
+
+<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+    typedef Iterator pointer;
+    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
+    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
+24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
+
+<blockquote><p>
+<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If 
+<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt>, the template instantiation 
+<tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named <tt>reference</tt> 
+as a synonym for <tt>remove_reference&lt;<i>R</i>&gt;::type&amp;&amp;</tt>, otherwise as a synonym
+for <tt><i>R</i></tt>.</ins>
+</p></blockquote>
+</li>
+
+<li><p>Edit 24.5.3.3.4 [move.iter.op.star] p1 as indicated:</p>
+<blockquote><pre>
+reference operator*() const;
+</pre><blockquote>
+<p>
+-1- <i>Returns</i>: <tt><del>std::move</del><ins>static_cast&lt;reference&gt;</ins>(*current)</tt>.
+</p>
+</blockquote></blockquote>
 </li>
 </ol>
 
