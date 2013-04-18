@@ -19,1458 +19,1789 @@
 </style>
 </head>
 <body>
-<p>Revised 2012-03-06 at 00:03:11 UTC</p>
+<p>Revised 2013-04-18 at 18:04:44 UTC</p>
 <h2>Tentative Issues</h2>
 <hr>
-<h3><a name="2005"></a>2005. <tt>unordered_map::insert(T&amp;&amp;)</tt> protection should apply to <tt>map</tt> too</h3>
-<p><b>Section:</b> 23.4.4.4 [map.modifiers], 23.4.5.3 [multimap.modifiers], X [unord.map.modifiers], X [unord.multimap.modifiers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> P.J. Plauger <b>Opened:</b> 2010-10-14 <b>Last modified:</b> 2012-02-13</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<h3><a name="2078"></a>2078. Throw specification of <tt>async()</tt> incomplete</h3>
+<p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#NAD Editorial">Tentatively NAD Editorial</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-08-29 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively NAD Editorial">Tentatively NAD Editorial</a> status.</p>
 <p><b>Discussion:</b></p>
+
 <p>
-In [unord.map.modifiers], the signature:
-</p>
-<blockquote><pre>
-template &lt;class P&gt;
-    pair&lt;iterator, bool&gt; insert(P&amp;&amp; obj);
-</pre></blockquote>
-<p>
-now has an added Remarks paragraph:
+The current throw specification of <tt>async()</tt> does state:
 </p>
 <blockquote><p>
-<i>Remarks</i>: This signature shall not participate in overload resolution unless <tt>P</tt>
-is implicitly convertible to <tt>value_type</tt>.
+-6- <i>Throws</i>: <tt>system_error</tt> if policy is <tt>launch::async</tt> and 
+the implementation is unable to start a new thread.
 </p></blockquote>
 <p>
-The same is true for <tt>unordered_multimap</tt>.
+First it seems not clear whether this only applies if policy equals 
+<tt>launch::async</tt> of if the <tt>async</tt> launch mode flag is set 
+(if <tt>policy|launch::async!=0</tt>)
 <p/>
-But neither <tt>map</tt> nor <tt>multimap</tt> have this constraint, even though it is a
-Good Thing(TM) in those cases as well.
+In the discussion Lawrence Crowl also wrote:
 </p>
-
-<p><i>[
-The submitter suggests: Add the same Remarks clause to [map.modifiers] and [multimap.modifiers].
-]</i></p>
-
-
-<p><i>[
-2010-10-29 Daniel comments:
-]</i></p>
-
-
-<p>
-I believe both paragraphs need more cleanup: First, the current Requires element conflict with the Remark; 
-second, it seems to me that the whole single Requires element is intended to be split into a Requires
-and an Effects element; third, the reference to <tt>tuple</tt> is incorrect (noticed by Paolo Carlini);
-fourth, it refers to some non-existing <tt>InputIterator</tt> parameter relevant for a completely different
-overload; sixth, the return type of the overload with hint is wrong.
-The following proposed resolution tries to solve these issues as well and uses similar wording as for
-the corresponding unordered containers. Unfortunately it has some redundancy over Table&nbsp;99, but I did
-not remove the specification because of the more general template parameter <tt>P</tt> - the Table&nbsp;99 
-requirements apply only for an argument <em>identical</em> to <tt>value_type</tt>.
-<p/>
-Daniel's Proposed resolution (not current):
-</p>
-
-<blockquote class="note">
-<ol>
-<li>Change 23.4.4.4 [map.modifiers] around p. 1 as indicated:
-<blockquote><pre>
-template &lt;class P&gt; pair&lt;iterator, bool&gt; insert(P&amp;&amp; x);
-template &lt;class P&gt; <del>pair&lt;</del>iterator<del>, bool&gt;</del> insert(const_iterator position, P&amp;&amp; x);
-</pre><blockquote><p>
-1 <em>Requires</em>: <del><tt>P</tt> shall be convertible to </del><tt>value_type</tt><ins> is constructible 
-from <tt>std::forward&lt;P&gt;(x)</tt>.</ins>.
-<p/>
-<del>If <tt>P</tt> is instantiated as a reference type, then the argument <tt>x</tt> is copied from. Otherwise <tt>x</tt> is considered
-to be an rvalue as it is converted to <tt>value_type</tt> and inserted into the map. Specifically, in
-such cases <tt>CopyConstructible</tt> is not required of <tt>key_type</tt> or <tt>mapped_type</tt> unless the conversion
-from <tt>P</tt> specifically requires it (e.g., if <tt>P</tt> is a <tt>tuple&lt;const key_type, mapped_type&gt;</tt>, then <tt>key_type</tt>
-must be <tt>CopyConstructible</tt>). The signature taking <tt>InputIterator</tt> parameters does not require
-<tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced <tt>InputIterator</tt> returns a
-non-const rvalue <tt>pair&lt;key_type,mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> is required for both
-<tt>key_type</tt> and <tt>mapped_type</tt>.</del><br/>
-<ins>? <em>Effects</em>: Inserts <tt>x</tt> converted to <tt>value_type</tt> if and only if there is no element in the container with
-key equivalent to the key of <tt>value_type(x)</tt>. For the second form, the iterator <tt>position</tt> is a hint pointing to where the
-search should start.</ins>
-<p/>
-<ins>? <em>Returns</em>: For the first form, the <tt>bool</tt> component of the returned <tt>pair</tt> object indicates whether the 
-insertion took place and the iterator component - or for the second form the returned iterator - points to the element with key equivalent 
-to the key of <tt>value_type(x)</tt>.</ins>
-<p/>
-<ins>? <em>Complexity</em>: Logarithmic in general, but amortized constant if <tt>x</tt> is inserted right before <tt>position</tt>.</ins>
-<p/>
-<ins>? <em>Remarks</em>: These signatures shall not participate in overload resolution unless <tt>P</tt> 
-is implicitly convertible to <tt>value_type</tt>.</ins>
-</p>
-</blockquote></blockquote>
-</li>
-<li>Change 23.4.5.3 [multimap.modifiers] around p. 1 as indicated:
-<blockquote><pre>
-template &lt;class P&gt; iterator insert(P&amp;&amp; x);
-template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x);
-</pre><blockquote><p>
-1 <em>Requires</em>: <del><tt>P</tt> shall be convertible to </del><tt>value_type</tt> <ins>is constructible from 
-<tt>std::forward&lt;P&gt;(x)</tt></ins>.
-<p/>
-<del>If <tt>P</tt> is instantiated as a reference type, then the argument <tt>x</tt> is copied from. Otherwise 
-<tt>x</tt> is considered to be an rvalue as it is converted to <tt>value_type</tt> and inserted into the map. 
-Specifically, in such cases <tt>CopyConstructible</tt> is not required of <tt>key_type</tt> or <tt>mapped_type</tt> 
-unless the conversion from <tt>P</tt> specifically requires it (e.g., if <tt>P</tt> is a <tt>tuple&lt;const key_type, mapped_type&gt;</tt>, 
-then <tt>key_type</tt> must be <tt>CopyConstructible</tt>). The signature taking <tt>InputIterator</tt> parameters 
-does not require <tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced 
-<tt>InputIterator</tt> returns a non-const rvalue <tt>pair&lt;key_type, mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> 
-is required for both <tt>key_type</tt> and <tt>mapped_type</tt>.</del><br/>
-<ins>? <em>Effects</em>: Inserts <tt>x</tt> converted to <tt>value_type</tt>. For the second form, the iterator <tt>position</tt> 
-is a hint pointing to where the search should start.</ins>
-<p/>
-<ins>? <em>Returns</em>: An iterator that points to the element with key equivalent to the key of <tt>value_type(x)</tt>.</ins>
-<p/>
-<ins>? <em>Complexity</em>: Logarithmic in general, but amortized constant if <tt>x</tt> is inserted right before <tt>position</tt>.</ins>
-<p/>
-<ins>? <em>Remarks</em>: These signatures shall not participate in overload resolution unless <tt>P</tt> 
-is implicitly convertible to <tt>value_type</tt>.</ins>
-</p>
-</blockquote></blockquote>
-</li>
-</ol>
-
-</blockquote>
-
-<p><i>[
-2010 Batavia:
-]</i></p>
-
-
-<p>
-We need <tt>is_convertible</tt>, not <tt>is_constructible</tt>, both in ordered and unordered containers. 
-</p>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-
-<p>
-The effects of these inserts can be concisely stated in terms of emplace().
-Also, the correct term is "EmplaceConstructible", not "constructible".
-</p>
-
-<p>
-New wording by Pablo, eliminating duplicate requirements already implied by the effects clause.  Move to Review.
-</p>
-
-<p><i>[
-2011-10-02 Daniel comments and refines the proposed wording
-]</i></p>
-
-
 <blockquote><p>
-Unfortunately the template constraints expressed as "<tt>P</tt> is implicitly convertible to <tt>value_type</tt>"
-reject the intended effect to support move-only key types, which was the original intention when
-the library became move-enabled through the rvalue-reference proposals by Howard (This can clearly be deduced
-from existing carefully selected wording that emphasizes that <tt>CopyConstructible</tt> is only required
-for special situations involving lvalues or const rvalues as arguments). The root of the problem is based
-on current core rules, where an "implicitly converted" value has copy-initialization semantics. Consider
-a move-only key type <tt>KM</tt>, some mapped type <tt>T</tt>, and a source value <tt>p</tt> of type <tt>P</tt> 
-equal to <tt>std::pair&lt;KM, T&gt;</tt>, this is equivalent to:
-</p>
-<blockquote><pre>
-std::pair&lt;const KM, T&gt; dest = std::move(p);
-</pre></blockquote>
-<p>
-Now 8.5 [dcl.init] p16 b6 sb2 says that the effects of this heterogeneous copy-initialization (<tt>p</tt>
-has a different type than <tt>dest</tt>) are as-if a temporary of the target type <tt>std::pair&lt;const KM, T&gt;</tt>
-is produced from the rvalue <tt>p</tt> of type <tt>P</tt> (which is fine), and this temporary is used to initialize 
-<tt>dest</tt>. This second step cannot succeed, because we cannot move from <tt>const KM</tt> to <tt>const KM</tt>. This 
-means that <tt>std::is_convertible&lt;P, std::pair&lt;const KM, T&gt;&gt;::value</tt> is false.
-<p/>
-But the actual code that is required (with the default allocator) is simply a direct-initialization
-from <tt>P</tt> to <tt>value_type</tt>, so imposing an implicit conversion is more than necessary. Therefore
-I strongly recommend to reduce the "overload participation" constraint to  
-<tt>std::is_constructible&lt;std::pair&lt;const KM, T&gt;, P&gt;::value</tt> instead. This change is the
-only change that has been performed to the previous proposed wording from Pablo shown below. 
+    More generally, I think what we want to say is that if the
+    implementation cannot successfully execute on one of the policies
+    allowed, then it must choose another. The principle would apply
+    to implementation-defined policies as well.
 </p></blockquote>
 
-<p><i>[2012, Kona]</i></p>
+<p>
+Peter Sommerlad:
+</p>
+<blockquote><p>
+Should not throw. That was the intent. "is async" meat exactly.
+</p></blockquote>
+
+<p><i>[2012, Portland: move to Tentatively NAD Editorial]</i></p>
 
 <p>
-Moved to Tentatively Ready by the post-Kona issues processing subgroup, after much discussion
-on Daniel's analysis of Copy Initialization and move semantics, which we ultimately agreed with.
+If no launch policy, it is undefined behavior.
+</p>
+<p>
+Agree with Lawrence, should try all the allowed policies. We will rephrase so that
+the policy argument should be <tt>lauch::async</tt>. Current wording seems good enough.
+</p>
+<p>
+We believe this choice of policy statement is really an editorial issue.
 </p>
 
 
 
 <p><b>Proposed resolution:</b></p>
-
-<ol>
-<li>Change 23.4.4.4 [map.modifiers] around p. 1 as indicated:
-<blockquote><pre>
-template &lt;class P&gt; pair&lt;iterator, bool&gt; insert(P&amp;&amp; x);
-template &lt;class P&gt; <del>pair&lt;</del>iterator<del>, bool&gt;</del> insert(const_iterator position, P&amp;&amp; x);
-</pre><blockquote>
-<del>1 <em>Requires</em>: <tt>P</tt> shall be convertible to <tt>value_type</tt>.</del>
-<p/>
-<del>If <tt>P</tt> is instantiated as a reference type, then the argument <tt>x</tt> is copied from. Otherwise <tt>x</tt> is considered
-to be an rvalue as it is converted to <tt>value_type</tt> and inserted into the map. Specifically, in
-such cases <tt>CopyConstructible</tt> is not required of <tt>key_type</tt> or <tt>mapped_type</tt> unless the conversion
-from <tt>P</tt> specifically requires it (e.g., if <tt>P</tt> is a <tt>tuple&lt;const key_type, mapped_type&gt;</tt>, then <tt>key_type</tt>
-must be <tt>CopyConstructible</tt>). The signature taking <tt>InputIterator</tt> parameters does not require
-<tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced <tt>InputIterator</tt> returns a
-non-const rvalue <tt>pair&lt;key_type,mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> is required for both
-<tt>key_type</tt> and <tt>mapped_type</tt>.</del><br/>
-<ins>? <em>Effects</em>: The first form is equivalent to
-<tt>return emplace(std::forward&lt;P&gt;(x))</tt>.
-The second form is equivalent to
-<tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.</ins>
-<p/>
-<ins>? <em>Remarks</em>: These signatures shall not participate in overload resolution unless 
-<tt>std::is_constructible&lt;value_type, P&amp;&amp;&gt;::value</tt> is true.</ins>
-<p/>
-</blockquote></blockquote>
-</li>
-<li>Change 23.4.5.3 [multimap.modifiers] around p. 1 as indicated:
-<blockquote><pre>
-template &lt;class P&gt; iterator insert(P&amp;&amp; x);
-template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x);
-</pre><blockquote>
-<del>1 <em>Requires</em>: <tt>P</tt> shall be convertible to <tt>value_type</tt>.</del>
-<p/>
-<del>If <tt>P</tt> is instantiated as a reference type, then the argument <tt>x</tt> is copied from. Otherwise 
-<tt>x</tt> is considered to be an rvalue as it is converted to <tt>value_type</tt> and inserted into the map. 
-Specifically, in such cases <tt>CopyConstructible</tt> is not required of <tt>key_type</tt> or <tt>mapped_type</tt> 
-unless the conversion from <tt>P</tt> specifically requires it (e.g., if <tt>P</tt> is a <tt>tuple&lt;const key_type, mapped_type&gt;</tt>, 
-then <tt>key_type</tt> must be <tt>CopyConstructible</tt>). The signature taking <tt>InputIterator</tt> parameters 
-does not require <tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced 
-<tt>InputIterator</tt> returns a non-const rvalue <tt>pair&lt;key_type, mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> 
-is required for both <tt>key_type</tt> and <tt>mapped_type</tt>.</del><br/>
-<ins>? <em>Effects</em>: The first form is equivalent to
-<tt>return emplace(std::forward&lt;P&gt;(x))</tt>.
-The second form is equivalent to
-<tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.</ins>
-<p/>
-<ins>? <em>Remarks</em>: These signatures shall not participate in overload resolution unless 
-<tt>std::is_constructible&lt;value_type, P&amp;&amp;&gt;::value</tt> is true.</ins>
-<p/>
-</blockquote></blockquote>
-</li>
-<li>Change 23.5.4.4 [unord.map.modifers] around p. 1 as indicated:
-<blockquote><pre>
-template &lt;class P&gt;
-pair&lt;iterator, bool&gt; insert(P&amp;&amp; obj);
-</pre>
-<blockquote>
-<del>1 <em>Requires</em>: <tt>value_type</tt> is constructible from <tt>std::forward&lt;P&gt;(obj)</tt>.</del>
-<p/>
-2 <em>Effects</em>:
-<ins>equivalent to <tt>return emplace(std::forward&lt;P&gt;(obj))</tt>.</ins>
-<del>Inserts obj converted to <tt>value_type</tt> if and only if there is no element in the container with
-key equivalent to the key of <tt>value_type(obj)</tt>.</del>
-<p/>
-<del>3 <em>Returns</em>: The bool component of the returned pair object indicates whether the insertion took place
-and the iterator component points to the element with key equivalent to the key of <tt>value_type(obj)</tt>.</del>
-<p/>
-<del>4 <em>Complexity</em>: Average case O(1), worst case O(size()).</del>
-<p/>
-<del>5</del><ins>3</ins> <em>Remarks</em>: This signature shall not participate in overload resolution unless 
-<del><tt>P</tt> is implicitly convertible to <tt>value_type</tt></del><ins><tt>std::is_constructible&lt;value_type, 
-P&amp;&amp;&gt;::value</tt> is true</ins>.
-<p/>
-</blockquote>
-<pre>template &lt;class P&gt;
-iterator insert(const_iterator hint, P&amp;&amp; obj);
-</pre>
-<blockquote>
-<del>6 <em>Requires</em>: <tt>value_type</tt> is constructible from <tt>std::forward&lt;P&gt;(obj)</tt>.</del>
-<p/>
-<del>7</del><em>?</em> <em>Effects</em>:
-<ins>equivalent to <tt>return emplace_hint(hint, std::forward&lt;P&gt;(obj))</tt>.</ins>
-<del>Inserts obj converted to <tt>value_type</tt> if and only if there is no element in the container with
-key equivalent to the key of <tt>value_type(obj)</tt>. The iterator hint is a hint pointing to where the
-search should start.</del>
-<p/>
-<del>8 <em>Returns</em>: An iterator that points to the element with key equivalent to the key of 
-<tt>value_type(obj)</tt>.</del>
-<p/>
-<del>9 <em>Complexity</em>: Average case O(1), worst case O(size()).</del>
-<p/>
-<del>10</del><em>?</em> <em>Remarks</em>: This signature shall not participate in overload resolution unless 
-<del><tt>P</tt> is implicitly convertible to <tt>value_type</tt></del><ins><tt>std::is_constructible&lt;value_type, 
-P&amp;&amp;&gt;::value</tt> is true</ins>.
-</blockquote></blockquote>
-</li>
-<li>Change 23.5.5.3 [unord.multimap.modifers] around p. 1 as indicated:
-<blockquote><pre>
-template &lt;class P&gt;
-iterator insert(P&amp;&amp; obj);
-</pre>
-<blockquote>
-<del>1 <em>Requires</em>: <tt>value_type</tt> is constructible from <tt>std::forward&lt;P&gt;(obj)</tt>.</del>
-<p/>
-2 <em>Effects</em>:
-<ins>equivalent to <tt>return emplace(std::forward&lt;P&gt;(obj))</tt>.</ins>
-<del>Inserts obj converted to <tt>value_type</tt>.</del>
-<p/>
-<del>3 <em>Returns</em>: An iterator that points to the element with key equivalent to the key of <tt>value_type(obj)</tt>.</del>
-<p/>
-<del>4 <em>Complexity</em>: Average case O(1), worst case O(size()).</del>
-<p/>
-<del>5</del><ins>3</ins> <em>Remarks</em>: This signature shall not participate in overload resolution 
-unless <del><tt>P</tt> is implicitly convertible to <tt>value_type</tt></del><ins><tt>std::is_constructible&lt;value_type, 
-P&amp;&amp;&gt;::value</tt> is true</ins>.
-</blockquote>
-<pre>
-template &lt;class P&gt;
-iterator insert(const_iterator hint, P&amp;&amp; obj);
-</pre>
-<blockquote>
-<del>6 <em>Requires</em>: <tt>value_type</tt> is constructible from <tt>std::forward&lt;P&gt;(obj)</tt>.</del>
-<p/>
-<del>7</del><em>?</em> <em>Effects</em>:
-<ins>equivalent to <tt>return emplace_hint(hint, std::forward&lt;P&gt;(obj))</tt>.</ins>
-<del>Inserts obj converted to <tt>value_type</tt>. The iterator hint is a hint pointing to where the search
-should start.</del>
-<p/>
-<del>8 <em>Returns</em>: An iterator that points to the element with key equivalent to the key of <tt>value_type</tt>(obj).</del>
-<p/>
-<del>9 <em>Complexity</em>: Average case O(1), worst case O(size()).</del>
-<p/>
-<del>10</del><ins><em>?</em></ins> <em>Remarks</em>: This signature shall not participate in overload resolution 
-unless <del><tt>P</tt> is implicitly convertible to <tt>value_type</tt></del><ins><tt>std::is_constructible&lt;value_type, 
-P&amp;&amp;&gt;::value</tt> is true</ins>.
-</blockquote></blockquote>
-</li>
-</ol>
-
 
 
 
 
 
 <hr>
-<h3><a name="2011"></a>2011. Unexpected output required of strings</h3>
-<p><b>Section:</b> 21.4.8.9 [string.io] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> James Kanze <b>Opened:</b> 2010-07-23 <b>Last modified:</b> 2012-02-13</p>
-<p><b>View all other</b> <a href="lwg-index.html#string.io">issues</a> in [string.io].</p>
+<h3><a name="2080"></a>2080. Specify when <tt>once_flag</tt> becomes invalid</h3>
+<p><b>Section:</b> 30.4.4 [thread.once] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-08-30 <b>Last modified:</b> 2012-12-23</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
 <p><b>Discussion:</b></p>
-<p>
-What should the following code output? 
-</p>
-
-<blockquote><pre>
-#include &lt;string&gt;
-#include &lt;iostream&gt;
-#include &lt;iomanip&gt;
-
-int main() 
-{ 
-   std::string test("0X1Y2Z"); 
-   std::cout.fill('*'); 
-   std::cout.setf(std::ios::internal, std::ios::adjustfield); 
-   std::cout &lt;&lt; std::setw(8) &lt;&lt; test &lt;&lt; std::endl; 
-} 
-</pre></blockquote>
 
 <p>
-I would expect "<tt>**0X1Y2Z</tt>", and this is what the compilers I have access
-to (VC++, g++ and Sun CC) do.  But according to the standard, it should be
-"<tt>0X**1Y2Z</tt>":
-</p>
-
-<p>
-21.4.8.9 [string.io]&#47;5: 
-</p>
-
-<blockquote><pre>
-template&lt;class charT, class traits, class Allocator&gt;
-  basic_ostream&lt;charT, traits&gt;&amp;
-    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const basic_string&lt;charT,traits,Allocator&gt;&amp; str);
-</pre><blockquote><p>
-<i>Effects:</i> Behaves as a formatted output function (27.7.3.6.1 [ostream.formatted.reqmts]). After constructing 
-a <tt>sentry</tt> object, if this object returns <tt>true</tt> when converted to a value of type <tt>bool</tt>, 
-determines padding as described in 22.4.2.2.2 [facet.num.put.virtuals], then inserts the resulting sequence of
-characters seq as if by calling <tt>os.rdbuf()-&gt;sputn(seq, n)</tt>, where <tt>n</tt> is the larger of 
-<tt>os.width()</tt> and <tt>str.size()</tt>; then calls <tt>os.width(0)</tt>.
-</p></blockquote>
-</blockquote>
-
-<p>
-22.4.2.2.2 [facet.num.put.virtuals]&#47;5: 
+In function <tt>call_once</tt> 30.4.4.2 [thread.once.callonce]
+paragraph 4 and 5 specify for <tt>call_once()</tt>:
 </p>
 
 <blockquote>
 <p>
-[&hellip;] 
-</p>
-
-<p>
-<b>Stage 3:</b> A local variable is initialized as
-</p>
-
-<blockquote><pre>
-fmtflags adjustfield= (flags &amp; (ios_base::adjustfield));
-</pre></blockquote>
-
-<p>
-The location of any padding is determined according to Table 88. 
-</p>
-
-<p>
-If <tt>str.width()</tt> is nonzero and the number of <tt>charT</tt>'s in the
-sequence after stage 2 is less than <tt>str.width()</tt>, then enough fill
-characters are added to the sequence at the position indicated for padding to
-bring the length of the sequence to <tt>str.width()</tt>. <tt>str.width(0)</tt>
-is called.
-</p>
-
-<table border="1">
-<caption>Table 88 &mdash; Fill padding</caption>
-<tr>
-<th>State</th>
-<th>Location</th>
-</tr>
-
-<tr>
-<td><tt>adjustfield == ios_base::left</tt></td>
-<td>pad after</td>
-</tr>
-
-<tr>
-<td><tt>adjustfield == ios_base::right</tt></td>
-<td>pad before</td>
-</tr>
-
-<tr>
-<td><tt>adjustfield == internal</tt> and a sign occurs in the representation</td>
-<td>pad after the sign</td>
-</tr>
-
-<tr>
-<td><tt>adjustfield == internal</tt> and representation after stage 1 began with 0x or 0X</td>
-<td>pad after x or X</td>
-</tr>
-
-<tr>
-<td><i>otherwise</i></td>
-<td>pad before</td>
-</tr>
-</table>
-
-</blockquote>
-
-<p>
-Although it's not 100% clear what "the sequence after stage 2" should mean here,
-when there is no stage 2, the only reasonable assumption is that it is the
-contents of the string being output.  In the above code, the string being output
-is "<tt>0X1Y2Z</tt>", which starts with "<tt>0X</tt>", so the padding should be
-inserted "after x or X", and not before the string. I believe that this is a
-defect in the standard, and not in the three compilers I tried.
-</p>
-
-<p><i>[
-2010 Batavia (post meeting session)
-]</i></p>
-
-<p>
-Consensus that all known implementations are consistent, and disagree with the
-standard. Preference is to fix the standard before implementations start trying
-to conform to the current spec, as the current implementations have the preferred
-form. Howard volunteered to drught for Madrid, move to Open.
-</p>
-
-<p><i>[2011-03-24 Madrid meeting]</i></p>
-
-
-<p>
-Daniel Kr&uuml;gler volunteered to provide wording, interacting with Dietmar and
-Bill. 
-</p>
-
-<p><i>[2011-06-24 Daniel comments and provides wording]</i></p>
-
-
-<p>
-The same problem applies to the output provided by <tt>const char*</tt> and similar
-character sequences as of 27.7.3.6.4 [ostream.inserters.character] p. 5. and even for
-single character output (!) as described in 27.7.3.6.4 [ostream.inserters.character] p. 1,
-just consider the character value '-' where '-' is the sign character. In this case
-Table 91 &mdash; "Fill padding" requires to pad after the sign, i.e. the output
-for the program
-</p>
-<blockquote><pre>
-#include &lt;iostream&gt;
-#include &lt;iomanip&gt;
-
-int main() 
-{ 
-   char c = '-'; 
-   std::cout.fill('*'); 
-   std::cout.setf(std::ios::internal, std::ios::adjustfield); 
-   std::cout &lt;&lt; std::setw(2) &lt;&lt; c &lt;&lt; std::endl; 
-} 
-</pre></blockquote>
-
-<p>
-According to the current wording this program should output "<tt>-*</tt>", but
-all tested implementations output "<tt>*-</tt>" instead.
-
+<i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2 [thread.req.exception]), 
+or any exception thrown by <tt>func</tt>.
 <p/>
-I suggest to replace the reference to 22.4.2.2.2 [facet.num.put.virtuals] in all three places. 
-It is not very complicated to describe the padding rules for simple character sequences "inline". 
-A similar approach is used as for the <tt>money_put</tt> functions.
-</p>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-
-<p>
-Move to Review, the resolution seems correct but it would be nice if some factoring of the
-common words were proposed.
-</p>
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Moved to Tentatively Ready by the post-Kona issues processing subgroup.
-</p>
-<p>
-While better factoring of the common words is desirable, it is also editorial and
-should not hold up the progress of this issue.  As the edits impact two distinct
-clauses, it is not entirely clear what a better factoring should look like.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-The new wording refers to the FDIS numbering.
-</p>
-<ol>
-<li><p>Change 21.4.8.9 [string.io]&#47;5 as indicated:</p>
-<blockquote><pre>
-template&lt;class charT, class traits, class Allocator&gt;
-  basic_ostream&lt;charT, traits&gt;&amp;
-    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os,
-               const basic_string&lt;charT,traits,Allocator&gt;&amp; str);
-</pre><blockquote><p>
--5- <i>Effects</i>: Behaves as a formatted output function ([ostream.formatted.reqmts]). After constructing a sentry object,
-if this object returns <tt>true</tt> when converted to a value of type <tt>bool</tt>, determines padding as <del>described
-in [facet.num.put.virtuals],</del><ins>follows: A <tt>charT</tt> character sequence is produced, initially consisting of 
-the elements defined by the range <tt>[str.begin(), str.end())</tt>. If <tt>str.size()</tt> is less than <tt>os.width()</tt>, 
-then enough copies of <tt>os.fill()</tt> are added to this sequence as necessary to pad to a width of <tt>os.width()</tt> 
-characters. If <tt>(os.flags() &amp; ios_base::adjustfield) == ios_base::left</tt> is <tt>true</tt>, the fill characters 
-are placed after the character sequence; otherwise, they are placed before the character sequence. T</ins><del>t</del>hen 
-inserts the resulting sequence of characters <tt>seq</tt> as if by calling <tt>os.rdbuf()-&gt;sputn(seq, n)</tt>, where 
-<tt>n</tt> is the larger of <tt>os.width()</tt> and <tt>str.size()</tt>; then calls <tt>os.width(0)</tt>.
-</p></blockquote></blockquote>
-</li>
-
-<li><p>Change 27.7.3.6.4 [ostream.inserters.character]&#47;1 as indicated (An additional editorial
-fix is suggested for the first prototype declaration):</p>
-<blockquote><pre>
-template&lt;class charT, class traits&gt;
-  basic_ostream&lt;charT,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;charT,traits&gt;&amp; out,
-                                          charT c<del>}</del><ins>)</ins>;
-template&lt;class charT, class traits&gt;
-  basic_ostream&lt;charT,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;charT,traits&gt;&amp; out,
-                                          char c);
-<i>// specialization</i>
-template&lt;class traits&gt;
-  basic_ostream&lt;char,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char,traits&gt;&amp; out,
-                                         char c);
-<i>// signed and unsigned</i>
-template&lt;class traits&gt;
-  basic_ostream&lt;char,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char,traits&gt;&amp; out,
-                                         signed char c);
-template&lt;class traits&gt;
-  basic_ostream&lt;char,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char,traits&gt;&amp; out,
-                                         unsigned char c);
-</pre><blockquote><p>
--1- <i>Effects</i>: Behaves like a formatted inserter (as described in [ostream.formatted.reqmts]) of <tt>out</tt>. 
-After a sentry object is constructed it inserts characters. In case <tt>c</tt> has type <tt>char</tt> and the 
-character type of the stream is not <tt>char</tt>, then the character to be inserted is <tt>out.widen(c)</tt>; 
-otherwise the character is <tt>c</tt>. Padding is determined as <del>described in [facet.num.put.virtuals]</del><ins>follows: 
-A character sequence is produced, initially consisting of the insertion character. If <tt>out.width()</tt> is greater
-than one, then enough copies of <tt>out.fill()</tt> are added to this sequence as necessary to pad to a width of 
-<tt>out.width()</tt> characters. If <tt>(out.flags() &amp; ios_base::adjustfield) == ios_base::left</tt> is <tt>true</tt>, 
-the fill characters are placed after the insertion character; otherwise, they are placed before the insertion 
-character</ins>. <del><tt>width(0)</tt> is called.</del> The insertion character and any required padding are 
-inserted into <tt>out</tt><ins>; then calls <tt>os.width(0)</tt></ins>.
-</p></blockquote></blockquote>
-</li>
-
-<li><p>Change 27.7.3.6.4 [ostream.inserters.character]&#47;5 as indicated:</p>
-<blockquote><pre>
-template&lt;class charT, class traits&gt;
-  basic_ostream&lt;charT,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;charT,traits&gt;&amp; out,
-                                          const charT* s);
-template&lt;class charT, class traits&gt;
-  basic_ostream&lt;charT,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;charT,traits&gt;&amp; out,
-                                          const char* s);
-template&lt;class traits&gt;
-  basic_ostream&lt;char,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char,traits&gt;&amp; out,
-                                         const char* s);
-template&lt;class traits&gt;
-  basic_ostream&lt;char,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char,traits&gt;&amp; out,
-                                         const signed char* s);
-template&lt;class traits&gt;
-  basic_ostream&lt;char,traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char,traits&gt;&amp; out,
-                                         const unsigned char* s);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--5- Padding is determined as <del>described in [facet.num.put.virtuals]. The <tt>n</tt> characters starting at <tt>s</tt> 
-are widened using <tt>out.widen</tt> ([basic.ios.members])</del><ins>follows: A character sequence is produced, initially 
-consisting of the elements defined by the <tt>n</tt> characters starting at <tt>s</tt> widened using 
-<tt>out.widen</tt> ([basic.ios.members]). If <tt>n</tt> is less than <tt>out.width()</tt>, then enough copies of 
-<tt>out.fill()</tt> are added to this sequence as necessary to pad to a width of <tt>out.width()</tt> characters. 
-If <tt>(out.flags() &amp; ios_base::adjustfield) == ios_base::left</tt> is <tt>true</tt>, the fill characters are 
-placed after the character sequence; otherwise, they are placed before the character sequence</ins>. The 
-widened characters and any required padding are inserted into <tt>out</tt>. Calls <tt>width(0)</tt>.
-</p></blockquote></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2048"></a>2048. Unnecessary <tt>mem_fn</tt> overloads</h3>
-<p><b>Section:</b> 20.8 [function.objects], 20.8.10 [func.memfn] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-04-18 <b>Last modified:</b> 2012-02-13</p>
-<p><b>View all other</b> <a href="lwg-index.html#function.objects">issues</a> in [function.objects].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-The <tt>mem_fn</tt> overloads for member functions are redundant and misleading
-and should be removed from the post-C++11 WP.
-<p/>
-I believe the history of the overloads is as follows:
-<p/>
-In TR1 and in C++0x prior to the N2798 draft, <tt>mem_fn</tt> was specified by
-a single signature:
-</p>
-<blockquote><pre>
-template&lt;class R, class T&gt; <i>unspecified</i> mem_fn(R T::* pm);
-</pre></blockquote>
-<p>
-and was accompanied by the remark "Implementations may implement <tt>mem_fn</tt> 
-as a set of overloaded function templates." This remark predates variadic templates 
-and was presumably to allow implementations to provide overloads for a limited 
-number of function parameters, to meet the implementation-defined limit on numbers of
-template parameters.
-<p/>
-N2770 "Concepts for the C++0x Standard Library: Utilities" added
-separate overloads for pointers to member functions, apparently so
-that function parameters would require the <tt>CopyConstructible</tt> concept
-(those overloads first appeared in N2322.) The overloads failed to
-account for varargs member functions (i.e. those declared with an
-ellipsis in the parameter-declaration-clause) e.g.
-</p>
-<blockquote><pre>
-struct S {
- int f(int, ...);
-};
-</pre></blockquote>
-<p>
-Syntactically such a function would be handled by the original
-<tt>mem_fn(R T::* pm)</tt> signature, the only minor drawback being that there
-would be no <tt>CopyConstructible</tt> requirement on the parameter list. (Core
-DR 547 clarifies that partial specializations can be written to match
-cv-qualified and ref-qualified functions to support the case where <tt>R T::*</tt> 
-matches a pointer to member function type.)
-<p/>
-LWG issue <a href="lwg-defects.html#920">920</a> pointed out that additional overloads were missing for
-member functions with ref-qualifiers. These were not strictly
-necessary, because such functions are covered by the <tt>mem_fn(R T::* pm)</tt> signature.
-<p/>
-Concepts were removed from the draft and N3000 restored the original
-single signature and accompanying remark.
-<p/>
-LWG <a href="lwg-closed.html#1230">1230</a> was opened to strike the remark again and to add an overload
-for member functions (this overload was unnecessary for syntactic reasons and 
-insufficient as it didn't handle member functions with cv-qualifiers and&#47;or 
-ref-qualifiers.)
-<p/>
-<a href="lwg-defects.html#920">920</a> (and <a href="lwg-closed.html#1230">1230</a>) were resolved by restoring a full set of
-(non-concept-enabled) overloads for member functions with cv-qualifiers and ref-qualifiers,
-but as in the concept-enabled draft there were no overloads for member functions with 
-an ellipsis in the parameter-declaration-clause. This is what is present in the FDIS.
-<p/>
-Following the thread beginning with message c++std-lib-30675, it is my
-understanding that all the <tt>mem_fn</tt> overloads for member functions are
-unnecessary and were only ever added to allow concept requirements.
-I'm not aware of any reason implementations cannot implement <tt>mem_fn</tt> as
-a single function template. Without concepts the overloads are
-redundant, and the absence of overloads for varargs functions can be
-interpreted to imply that varargs functions are not intended to work
-with <tt>mem_fn</tt>. Clarifying the intent by adding overloads for varargs
-functions would expand the list of 12 redundant overloads to 24, it
-would be much simpler to remove the 12 redundant overloads entirely.
-</p>
-
-<p><i>[Bloomington, 2011]</i></p>
-
-<p>
-Move to Review.
-</p>
-
-<p>
-The issue and resolution appear to be correct, but there is some concern that the wording of INVOKE may be different depending on whether you pass a pointer-to-member-data or pointer-to-member-function.  That might make the current wording necessary after all, and then we might need to add the missing elipsis overloads.
-</p>
-
-<p>
-There was some concern that the Remark confirming implementors had freedom to implement this as a set of overloaded functions may need to be restored if we delete the specification for these overloads.
-</p>
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Moved to Tentatively Ready by the post-Kona issues processing subgroup.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-
-<p>This wording is relative to the FDIS.</p>
-
-<ol>
-<li><p>Change the <tt>&lt;functional&gt;</tt> synopsis 20.8 [function.objects] p. 2 as follows:</p>
-
-<blockquote><pre>
-namespace std {
-  [&hellip;]
-  // <i>[func.memfn], member function adaptors:</i>
-  template&lt;class R, class T&gt; <i>unspecified</i> mem_fn(R T::*);
-<del>  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...));
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) const);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) volatile);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) const volatile);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) &amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) const &amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) volatile &amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) const volatile &amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) &amp;&amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) const &amp;&amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) volatile &amp;&amp;);
-  template&lt;class R, class T, class... Args&gt;
-  <i>unspecified</i> mem_fn(R (T::*)(Args...) const volatile &amp;&amp;);</del>
-
-  [&hellip;]
-}
-</pre></blockquote>
-</li>
-
-<li><p>Change 20.8.10 [func.memfn] as follows:</p>
-
-<blockquote><pre>
-template&lt;class R, class T&gt; <i>unspecified</i> mem_fn(R T::*);
-<del>template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...));
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) const);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) volatile);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) const volatile);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) &amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) const &amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) volatile &amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) const volatile &amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) &amp;&amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) const &amp;&amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) volatile &amp;&amp;);
-template&lt;class R, class T, class... Args&gt;
-<i>unspecified</i> mem_fn(R (T::*)(Args...) const volatile &amp;&amp;);</del>
-</pre></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2049"></a>2049. <tt>is_destructible</tt> is underspecified</h3>
-<p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-04-18 <b>Last modified:</b> 2012-02-13</p>
-<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
-<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>The conditions for the type trait <tt>is_destructible</tt> to be true
-are described in Table 49 &mdash; Type property predicates:</p>
-<blockquote><p>
-For a complete type <tt>T</tt> and given<br/>
-<tt>template &lt;class U&gt;
-struct test { U u; };</tt>,<br/>
-<tt>test&lt;T&gt;::~test()</tt> is not deleted.
-</p></blockquote>
-
-<p>This specification does not say what the result would be for function
-types or for abstract types:</p>
-<ol>
-<li>For an abstract type <tt>X</tt> the instantiation <tt>test&lt;X&gt;</tt>
-is already ill-formed, so we cannot say anything about whether the destructor
-would be deleted or not.</li>
-<li>In regard to function types, there exists a special rule in the core language, 14.3.1 [temp.arg.type] p. 3,
-which excludes member functions to be declared via the type of the template parameter:
-<blockquote><p>
-If a declaration acquires a function type through a type dependent on a <i>template-parameter</i>
-and this causes a declaration that does not use the syntactic form of a function declarator 
-to have function type, the program is ill-formed. 
-<p/>
-[ <i>Example</i>:</p>
-<blockquote><pre>
-template&lt;class T&gt; struct A {
-  static T t;
-};
-typedef int function();
-A&lt;function&gt; a; // ill-formed: would declare A&lt;function&gt;::t
-               // as a static member function
-</pre></blockquote>
-<p>
-&mdash; <i>end example</i> ]
-</p></blockquote>
-which has the same consequence as for abstract types, namely that the corresponding
-instantiation of <tt>test</tt> is already ill-formed and we cannot say anything
-about the destructor.
-</li>
-</ol>
-<p>To solve this problem, I suggest to specify function types as trivially and nothrowing
-destructible, because above mentioned rule is very special for templates. For non-templates,
-a typedef can be used to introduce a member as member function as clarified in 8.3.5 [dcl.fct]
-p. 10.</p>
-<p>For abstract types, two different suggestions have been brought to my attention:
-Either declare them as unconditionally non-destructible or check whether the expression
-</p>
-<blockquote><pre>
-std::declval&lt;T&amp;&gt;().~T()
-</pre></blockquote>
-<p>is well-formed in an unevaluated context. The first solution is very easy to specify,
-but the second version has the advantage for providing more information to user-code. This 
-information could be quite useful, if generic code is supposed to invoke the destructor
-of a reference to a base class indirectly via a delete expression, as suggested by
-Howard Hinnant:</p>
-<blockquote><pre>
-template &lt;class T&gt;
-my_pointer&lt;T&gt;::~my_pointer() noexcept(is_nothrow_destructible&lt;T&gt;::value)
-{
-   delete ptr_;
-}
-</pre></blockquote>
-<p>Additional to the <tt>is_destructible</tt> traits, its derived forms <tt>is_trivially_destructible</tt>
-and <tt>is_nothrow_destructible</tt> are similarly affected, because their wording refers to "the indicated
-destructor" and probably need to be adapted as well.</p>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-
-<p>
-After discussion about to to handle the exceptional cases of reference types, function types (available by defererencing a function pointer)
-and <tt>void</tt> types, Howard supplied proposed wording.
-</p>
-
-<p><i>[
-2011-08-20 Daniel comments and provides alternatives wording
-]</i></p>
-
-
-<p>
-The currently proposed wording would have the consequence that 
-<em>every</em> array type is not destructible, because the pseudo-destructor
-requires a scalar type with the effect that the expression
-</p><blockquote><pre>
-std::declval&lt;T&amp;&gt;().~T()
-</pre></blockquote><p>
-is not well-formed for e.g. <tt>T</tt> equal to <tt>int[3]</tt>. The intuitive
-solution to fix this problem would be to adapt the object type case to refer to 
-the expression
-</p><blockquote><pre>
-std::declval&lt;U&amp;&gt;().~U()
-</pre></blockquote><p>
-with <tt>U</tt> equal to <tt>remove_all_extents&lt;T&gt;::type</tt>, but that
-would have the effect that arrays of unknown bounds would be destructible, if 
-the element type is destructible, which was not the case before (This was 
-intentionally covered by the special "For a complete type T" rule in
-the FDIS).
-<p/>
-Suggestion: Use the following definition instead:
-</p>
-<blockquote><p>
-Let <tt>U</tt> be <tt>remove_all_extents&lt;T&gt;::type</tt>.<br/>
-For incomplete types and function types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>false</tt>.<br/>
-For object types, if the expression <tt>std::declval&lt;U&amp;&gt;().~U()</tt> is well-formed<br/>
-when treated as an unevaluated operand (Clause 5), then <tt>is_destructible&lt;T&gt;::value</tt><br/>
-is <tt>true</tt>, otherwise it is <tt>false</tt>.<br/>
-For reference types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>true</tt>.
-</p></blockquote>
-<p>
-This wording also harmonizes with the "unevaluated operand" phrase
-used in other places, there does not exist the definition of an
-"unevaluated context"
-<p/>
-<em>Note:</em> In the actually proposed wording this wording has been slightly reordered with the same effects. 
-</p>
-
-<p><strong>Howard's (old) proposed resolution:</strong></p>
-<blockquote class="note">
-<p>
-Update 20.9.4.3 [meta.unary.prop], table 49:
-</p>
-
-<table border="1">
-<tr>
-<td><tt>template &lt;class T&gt;
-struct is_destructible;</tt></td>
-<td>
-<del>For a complete type <tt>T</tt> and given <tt>template &lt;class U&gt; struct test { U u; };</tt>, <tt>test&lt;T&gt;::~test()</tt> is not deleted.
-</del>
-<br/>
-<ins>
-For object types, if the expression: <tt>std::declval&lt;T&amp;>().~T()</tt> is well-formed in an unevaluated context then
-<tt>is_destructible&lt;T>::value</tt> is <tt>true</tt>, otherwise it is <tt>false</tt>.
-<br/>
-For <tt>void</tt> types, <tt>is_destructible&lt;T>::value</tt> is <tt>false</tt>.
-<br/>
-For reference types, <tt>is_destructible&lt;T>::value</tt> is <tt>true</tt>.
-<br/>
-For function types, <tt>is_destructible&lt;T>::value</tt> is <tt>false</tt>.
-</ins>
-</td>
-<td><tt>T</tt> shall be a complete type, (possibly cv-qualified) <tt>void</tt>, or an array of unknown bound.</td>
-</tr>
-</table>
-</blockquote>
-<p>
-</p>
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Moved to Tentatively Ready by the post-Kona issues processing subgroup.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-
-<p>
-Update 20.9.4.3 [meta.unary.prop], table 49:
-</p>
-
-<table border="1">
-<tr>
-<td><tt>template &lt;class T&gt;
-struct is_destructible;</tt></td>
-<td>
-<del>For a complete type <tt>T</tt> and given <tt>template &lt;class U&gt; struct test { U u; };</tt>, <tt>test&lt;T&gt;::~test()</tt> is not deleted.
-</del>
-<br/>
-<ins>
-For reference types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>true</tt>.<br/>
-For incomplete types and function types, <tt>is_destructible&lt;T&gt;::value</tt> is <tt>false</tt>.<br/>
-For object types and given <tt>U</tt> equal to <tt>remove_all_extents&lt;T&gt;::type</tt>,<br/> 
-if the expression <tt>std::declval&lt;U&amp;&gt;().~U()</tt> is well-formed when treated as an<br/>
-unevaluated operand (Clause 5 [expr]), then <tt>is_destructible&lt;T&gt;::value</tt> is <tt>true</tt>,<br/>
-otherwise it is <tt>false</tt>.<br/>
-</ins>
-</td>
-<td><tt>T</tt> shall be a complete type, (possibly cv-qualified) <tt>void</tt>, or an array of unknown bound.</td>
-</tr>
-</table>
-
-
-
-
-
-
-<hr>
-<h3><a name="2056"></a>2056. <tt>future_errc</tt> enums start with value 0 (invalid value for <tt>broken_promise</tt>)</h3>
-<p><b>Section:</b> 30.6.1 [futures.overview] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-05-18 <b>Last modified:</b> 2012-02-13</p>
-<p><b>View all other</b> <a href="lwg-index.html#futures.overview">issues</a> in [futures.overview].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-In 30.6.1 [futures.overview] <tt>enum class future_errc</tt> is defined as follows:
-</p><blockquote><pre>
-enum class future_errc {
-  broken_promise,
-  future_already_retrieved,
-  promise_already_satisfied,
-  no_state
-};
-</pre></blockquote><p>
-With this declaration <tt>broken_promise</tt> has value 0, which means that
-for a <tt>future_error f</tt> with this code
-</p><blockquote><pre>
-f.code().operator bool()
-</pre></blockquote><p>
-yields false, which makes no sense. 0 has to be reserved for "no error".
-So, the enums defined here have to start with 1.
-<p/>
-Howard, Anthony, and Jonathan have no objections.
-</p>
-<p>[Discussion in Bloomington 2011-08-16]
-</p>
-<p>
-Previous resolution:
-</p>
-<blockquote class="note">
-<p>This wording is relative to the FDIS.</p>
-<ol>
-<li><p>In 30.6.1 [futures.overview], header <tt>&lt;future&gt;</tt> synopsis, fix 
-the declaration of <tt>future_errc</tt> as follows:</p>
-<blockquote><pre>
-namespace std {
-  enum class future_errc {
-    <del>broken_promise,</del>
-    future_already_retrieved<ins> = 1</ins>,
-    promise_already_satisfied,
-    no_state<ins>,
-    broken_promise</ins>
-  };
-  [&hellip;]
-}
-</pre></blockquote>
-</li>
-</ol>
-</blockquote>
-<p>
-Is this resolution overspecified? These seem to be all implementation-defined. How do users add new values and not conflict with established error codes?
-</p><p>
-PJP proxy says: over-specified. boo.
-</p><p>
-Other error codes: look for <tt>is_error_code_enum</tt> specializations. Only one exists <tt>io_errc</tt>
-</p><p>
-Peter: I don't see any other parts of the standard that specify error codes where we have to do something similar.
-</p><p>
-Suggest that for every place where we add an error code, the following:
-</p>
-<ol>
-   <li> no zero values
-   </li><li> all implementation defined values, so future_already_retrieved = implementation_defined
-   </li><li> values are distinct
-</li></ol>
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Moved to Tentatively Ready by the post-Kona issues processing subgroup.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to the FDIS.</p>
-<p>In 30.6.1 [futures.overview], header <tt>&lt;future&gt;</tt> synopsis, fix 
-the declaration of <tt>future_errc</tt> as follows:</p>
-
-<blockquote><pre>
-namespace std {
-  enum class future_errc {
-    broken_promise<ins> = <var>implementation defined</var></ins>,
-    future_already_retrieved<ins> = <var>implementation defined</var></ins>,
-    promise_already_satisfied<ins> = <var>implementation defined</var></ins>,
-    no_state<ins> = <var>implementation defined</var></ins>
-  };
-  [&hellip;]
-}
-</pre></blockquote>
-<p>In 30.6.1 [futures.overview], header <tt>&lt;future&gt;</tt> synopsis, add a paragraph after paragraph 2 as follows:</p>
-
-<ins>The enum values of <tt>future_errc</tt> are distinct and not zero.</ins>
-
-
-
-
-<hr>
-<h3><a name="2058"></a>2058. <tt>valarray</tt> and <tt>begin&#47;end</tt></h3>
-<p><b>Section:</b> 26.6 [numarray] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Gabriel Dos Reis <b>Opened:</b> 2011-05-17 <b>Last modified:</b> 2012-03-05</p>
-<p><b>View all other</b> <a href="lwg-index.html#numarray">issues</a> in [numarray].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-It was just brought to my attention that the pair of functions
-<tt>begin&#47;end</tt> were added to <tt>valarray</tt> component.
-Those additions strike me as counter to the long standing agreement
-that <tt>valarray&lt;T&gt;</tt> is not yet another container. Valarray values
-are in general supposed to be treated as a whole, and as such
-has a loose specification allowing expression template techniques.
-<p/>
-The addition of these functions sound to me as making it much harder
-(or close to impossible) to effectively use expression templates
-as implementation techniques, for no clear benefits.
-<p/>
-My recommendation would be to drop <tt>begin&#47;end</tt> - or at least for the
-<tt>const valarray&lt;T&gt;&amp;</tt> version. I strongly believe those 
-are defects.
-</p>
-<p><i>[This issue was discussed on the library reflector starting from c++std-lib-30761.
-Some of the key conclusions of this discussion were:]</i></p>
-
-<ol>
-<li>The <tt>begin&#47;end</tt> members were added to allow <tt>valarray</tt> to participate
-in the new range-based for-loop by <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/n2930.html">n2930</a>
-and not to make them container-like.</li>
-<li>It is currently underspecified when the iterator values returned from
-<tt>begin&#47;end</tt> become invalidated. To fix this, these invalidation rules need at
-least to reflect the invalidation rules of the references returned by the
-<tt>operator[]</tt> overloads of <tt>valarray</tt> (26.6.2.4 [valarray.access]).
-</li>
-<li>A further problem is that the requirements expressed in 26.6.1 [valarray.syn] p.3-5
-enforce an implementation to provide further overloads of <tt>begin&#47;end</tt>, if the
-replacement type technique is used (which was clearly part of the design of <tt>valarray</tt>).
-Providing such additional overloads would also lead to life-time problems in examples like 
-<tt>begin(x + y)</tt> where <tt>x</tt> and <tt>y</tt> are expressions involving <tt>valarray</tt> 
-objects. To fix this, the <tt>begin&#47;end</tt> overloads could be explicitly excluded from the 
-general statements of 26.6.1 [valarray.syn] p.3-5. This would make it unspecified
-whether the expression <tt>begin(x + y)</tt> would be well-formed, portable code would
-need to write this as <tt>begin(std::valarray&lt;T&gt;(x + y))</tt>.</li>
-</ol>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-
-<p>
-The intent of these overloads is entirely to support the new for syntax, and not to create
-new containers.
-</p>
-
-<p>
-Stefanus provides suggested wording.
-</p>
-
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Moved to Tenatively Ready by post-meeting issues processing group, after confirmation
-from Gaby.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-In 26.6.1 [valarray.syn]&#47;4, make the following <ins>insertion</ins>:
-</p>
-
-<p>
-4 Implementations introducing such replacement types shall provide additional functions and operators as
-follows:
+<i>Error conditions</i>:
 </p>
 <ul>
-<li>for every function taking a <tt>const valarray&lt;T&gt;&amp;</tt> <ins>other than <tt>begin</tt> and <tt>end</tt>
-(26.6.10 [valarray.range])</ins>, identical functions taking the replacement types shall be added;
-</li>
-<li>
-for every function taking two <tt>const valarray&lt;T&gt;&amp;</tt> arguments, identical functions taking every combination
-of <tt>const valarray&lt;T&gt;&amp;</tt> and replacement types shall be added.
+<li><tt>invalid_argument</tt> &mdash; if the <tt>once_flag</tt> object is no longer valid.</li>
+</ul>
+</blockquote>
+
+<p>
+However, nowhere in 30.4.4 [thread.once] is specified, when a once-flag becomes invalid.
+<p/>
+As far as I know this happens if the flag is used for different functions. So we either have to have 
+to insert a sentence&#47;paragraph in
+</p>
+<blockquote><p>
+30.4.4.2 Function call_once [thread.once.callonce]
+</p></blockquote>
+<p>
+or
+</p>
+<blockquote><p>
+30.4.4 Call once [thread.once]
+</p></blockquote>
+<p>
+explaining when a <tt>once_flag</tt> becomes invalidated or we should state as error condition something like:
+</p>
+
+<ul>
+<li><tt>invalid_argument</tt> &mdash; if the <tt>func</tt> used in combination with the <tt>once_flag</tt> is different 
+from a previously passed <tt>func</tt> for the same <tt>once_flag</tt>
 </li>
 </ul>
 
 <p>
-In 26.6.10 [valarray.range], make the following <ins>insertion</ins>:
+Anthony Williams:
 </p>
-<p> 
-1 In the <tt>begin</tt> and <tt>end</tt> function templates that follow, <i>unspecified</i>1 is a type that meets
-the requirements of a mutable random access iterator (24.2.7) whose <tt>value_type</tt> is the template parameter
-<tt>T</tt> and whose <tt>reference</tt> type is <tt>T&amp;</tt>. <i>unspecified</i>2 is a type that meets the
-requirements of a constant random access iterator (24.2.7) whose <tt>value_type</tt> is the template parameter
-<tt>T</tt> and whose <tt>reference</tt> type is <tt>const T&amp;</tt>.
+<blockquote>
+<p>
+A <tt>once_flag</tt> is invalidated if you destroy it (e.g. it is an automatic object, or heap 
+allocated and deleted, etc.)
+<p/>
+If the library can detect that this is the case then it will throw this exception. If it cannot 
+detect such a case then it will never be thrown.
 </p>
-<p><ins>
-2 The iterators  returned by <tt>begin</tt> and <tt>end</tt> for an array are guaranteed to be valid until the
-member function <tt>resize(size_t, T)</tt> (26.6.2.8 [valarray.members]) is called for that array or until
-the lifetime of that array ends, whichever happens first.
-</ins></p>
+</blockquote>
+
+<p>
+Jonathan Wakely:
+</p>
+<blockquote>
+<p>
+I have also wondered how that error can happen in C++, where the type
+system will reject a non-callable type being passed to <tt>call_once()</tt> and
+should prevent a <tt>once_flag</tt> being used after its destructor runs.
+<p/>
+If a <tt>once_flag</tt> is used after its destructor runs then it is indeed
+undefined behaviour, so implementations are already free to throw any
+exception (or set fire to a printer) without the standard saying so.
+<p/>
+My assumption was that it's an artefact of basing the API on pthreads,
+which says:
+</p>
+<blockquote>
+<p>
+The <tt>pthread_once()</tt> function may fail if:
+<p/>
+<tt>[EINVAL]</tt>  If either <tt>once_control</tt> or <tt>init_routine</tt> is invalid.
+</p>
+</blockquote>
+</blockquote>
+
+<p>
+Pete Becker:
+</p>
+<blockquote><p>
+Yes, probably. We had to clean up several UNIXisms that were in the original design.
+</p></blockquote>
+
+<p><i>[2012, Kona]</i></p>
+
+<p>
+Remove error conditions, move to Review.
+</p>
+
+<p><i>[2012, Portland: move to Tentatively Ready]</i></p>
+
+<p>
+Concurrency move to Ready, pending LWG review.
+</p>
+
+<p>
+LWG did not have time to perform the final review in Portland, so moving to
+<i>tentatively</i> ready to reflect the Concurrency belief that the issue is
+ready, but could use a final inspection from library wordsmiths.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to N3337.</p>
+
+<ol>
+<li><p>Change 30.4.4.2 [thread.once.callonce] as indicated:</p>
+<blockquote><pre>
+template&lt;class Callable, class ...Args&gt;
+void call_once(once_flag&amp; flag, Callable&amp;&amp; func, Args&amp;&amp;... args);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-4- <i>Throws</i>: <tt>system_error</tt> when an exception is required (30.2.2), or any exception thrown by <tt>func</tt>.
+<p/>
+<del>-5- Error conditions:</del>
+</p>
+<ul>
+<li><del><tt>invalid_argument</tt> &mdash; if the <tt>once_flag</tt> object is no longer valid.</del></li>
+</ul>
+</blockquote></blockquote>
+</li>
+</ol>
 
 
 
 
 
 <hr>
-<h3><a name="2124"></a>2124. Seed sequence over-specified</h3>
-<p><b>Section:</b> 26.5.1.2 [rand.req.seedseq] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2012-01-16 <b>Last modified:</b> 2012-02-13</p>
+<h3><a name="2109"></a>2109. Incorrect requirements for <tt>hash</tt> specializations</h3>
+<p><b>Section:</b> 19.5.5 [syserr.hash], 20.7.2.6 [util.smartptr.hash], 20.8.12 [unord.hash], 20.13.1 [type.index.synopsis], 21.6 [basic.string.hash], 23.3.7 [vector.bool], 30.3.1.1 [thread.thread.id] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-04 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
-The seed sequence requirements described in 26.5.1.2 [rand.req.seedseq] appear to be over-specified. 
-All seed sequence types are required to have a <tt>result_type</tt> nested type, a specific set of 
-constructors, function members <tt>size()</tt> and <tt>param()</tt>, which are never used by the library. 
-In fact, the only library components that actively use seed sequences are the random engines and all the 
-engines need is the <tt>generate()</tt> member function. In particular, library components never attempts 
-to construct seed sequence objects. These extraneous requirements are clearly written to describe the 
-library provided type <tt>seed_seq</tt> type; while it's good that seed_seq has all those constructors and 
-members, it's not a compelling reason to require a user-provided seed sequence type to implement all of 
-them.
-<p/>
-Suppose I want to write my own seed sequence class, this should do fine (and actually works as expected with libc++):
+20.7.2.6 [util.smartptr.hash] p2 is specified as follows:
 </p>
-<blockquote><pre>
-class my_seed_seq
-{
-  /* internals */
-public:
-  my_seed_seq(/* my own parameters */);
 
-  template &lt;class It&gt;
-  void generate(It first, It last);
-};
+<blockquote><p>
+<i>Requires</i>: the template specializations shall meet the requirements of class template 
+<tt>hash</tt> (20.8.12).
+</p></blockquote>
 
-my_seed_seq s(/* params */);
-std::default_random_engine e(s);
-</pre></blockquote>
 <p>
-The only reason to have these extra members would be to provide some support for generic serializability&#47;persistence 
-of seed sequence objects. I believe that would be out of the scope of the random library, so I doubt we will ever need 
-those requirements in the future.
+The problem here is the usage of a <i>Requires</i> element, which is actually a pre-condition
+that a <em>user</em> of a component has to satisfy. But the intent of this wording is actually
+to be a requirement on implementations. The <i>Requires</i> element should be removed here and
+the wording should be improved to say what it was intended for.
 <p/>
-I therefore propose to remove all requirements from 26.5.1.2 [rand.req.seedseq] except for the presence of the 
-<tt>generate()</tt> function.
+We have similar situations in basically all other places where the specification of library-provided
+<tt>hash</tt> specializations is defined. Usually, the <i>Requires</i> element is incorrect. In the
+special case of <tt>hash&lt;unique_ptr&lt;T, D&gt;&gt;</tt> the implementation depends on 
+the behaviour of <tt>hash</tt> specializations, that could be user-provided. In this case
+the specification needs to separate the requirements on these specializations and those
+that are imposed on the implementation.
 </p>
+
 
 <p><i>[2012, Kona]</i></p>
 
 <p>
-Move to Tenatively NAD.  (Tentative as issue was not in pre-meeting mailing)
+Update wording and move to Review.
 </p>
 <p>
-The 'overspecification', as such, was a deliberate intent to provide guarantees consumers of the whole
-random number framework may rely upon, especially in generic code.  While the standard engines may be
-built without relying on these guarantees, this specification is part of a commitment to a broader
-framework, and Walter indicated future proposals in preparation for parallel generation of random
-numbers that may depend more inimately on these existing requirements.
+Believe a simpler formulation is to simply string the term <i>Requires:</i> and leave the
+current wording intact, rather than strike the whole clause and replace it.
 </p>
+
+<p><i>[Originally proposed wording for reference
+<ol>
+<li><p>Change 19.5.5 [syserr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;error_code&gt;;
+</pre><blockquote>
 <p>
-Alisdair noted that the <tt>result_type</tt> typedef was a call-back to how we used to specify
-adaptable functors before TR1 <tt>result_of</tt> and the addition of <tt>std::bind</tt> and is
-probably not something we should be actively promoting in future libraries.  However, it is too
-late to remove this requirement from seed sequences unless we are doing further surgery, as
-recommended by this issue.
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;system_error&gt;</tt> provides a definition for a specialization of the 
+template <tt>hash&lt;error_code&gt;</tt>. The requirements for the members of 
+this specialization are given in sub-clause 20.8.12 [unord.hash]</ins>.
 </p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.5.3 [bitset.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;size_t N&gt; struct hash&lt;bitset&lt;N&gt; &gt;;
+</pre><blockquote>
 <p>
-Walter notes that the <tt>result_type</tt> protocol has not been formally deprecated by the
-standard.  Alisdair replies that was the intent of deprecating the <tt>bind_1st</tt>/
-<tt>unary_function</tt> set of templates in C++11, although we did not say anything about
-<tt>result_type</tt> in general.
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;bitset&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>bitset&lt;N&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.7.2.6 [util.smartptr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class T, class D&gt; struct hash&lt;unique_ptr&lt;T, D&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;memory&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>unique_ptr&lt;T, D&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>. For an object <tt>p</tt> of type 
+<tt>UP</tt>, where <tt>UP</tt> is <tt>unique_ptr&lt;T, D&gt;</tt>, 
+<tt>hash&lt;UP&gt;()(p)</tt> shall evaluate to the same value as 
+<tt>hash&lt;typename UP::pointer&gt;()(p.get())</tt>. <del>The specialization 
+<tt>hash&lt;typename UP::pointer&gt;</tt> shall be well-formed.</del>
+<p/>
+<ins>-?- <i>Requires</i>: The specialization <tt>hash&lt;typename UP::pointer&gt;</tt> 
+shall be well-formed and well-defined [<i>Note:</i> the general requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]) are implied &mdash; 
+<i>end note</i>].</ins>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;memory&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>shared_ptr&lt;T&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>. For an object <tt>p</tt> of type 
+<tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> 
+shall evaluate to the same value as <tt>hash&lt;T*&gt;()(p.get())</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.8.12 [unord.hash] p2 as indicated: [<i>Comment</i>: For unknown
+reasons the extended integer types are not mentioned here, which looks like an oversight to
+me and makes also the wording more complicated. See <a href="lwg-active.html#2119">2119</a> for this part
+of the problem. &mdash; <i>end comment</i>]</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;bool&gt;;
+template &lt;&gt; struct hash&lt;char&gt;;
+[&hellip;]
+template &lt;&gt; struct hash&lt;long double&gt;;
+template &lt;class T&gt; struct hash&lt;T*&gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: the template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;functional&gt;</tt> provides definitions for specializations of the 
+<tt>hash</tt> class template for each <i>cv</i>-unqualified arithmetic type except 
+for the extended integer types. This header also provides a definition for a partial 
+specialization of the <tt>hash</tt> class template for any pointer type. The 
+requirements for the members of these specializations are given in sub-clause 
+20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 20.13.4 [type.index.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;type_index&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;typeindex&gt;</tt> provides a definition for a specialization of the 
+template <tt>hash&lt;type_index&gt;</tt>. The requirements for the members 
+of this specialization are given in sub-clause 20.8.12 [unord.hash]</ins>. For 
+an object <tt>index</tt> of type <tt>type_index</tt>, <tt>hash&lt;type_index&gt;()(index)</tt> 
+shall evaluate to the same result as <tt>index.hash_code()</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 21.6 [basic.string.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;string&gt;;
+template &lt;&gt; struct hash&lt;u16string&gt;;
+template &lt;&gt; struct hash&lt;u32string&gt;;
+template &lt;&gt; struct hash&lt;wstring&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: the template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;string&gt;</tt> provides definitions for specializations of the 
+<tt>hash</tt> class template for the types <tt>string</tt>, <tt>u16string</tt>,
+<tt>u32string</tt>, and <tt>wstring</tt>. The requirements for the members 
+of these specializations are given in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 23.3.7 [vector.bool] p7 as indicated:</p>
+
+<blockquote><pre>
+template &lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt; &gt;;
+</pre><blockquote>
+<p>
+-7- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;vector&gt;</tt> provides a definition for a partial specialization of the 
+<tt>hash</tt> class template for specializations of class template <tt>vector&lt;bool, Allocator&gt;</tt>. 
+The requirements for the members of instantiations of this specialization are given 
+in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 30.3.1.1 [thread.thread.id] p14 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;thread::id&gt;;
+</pre><blockquote>
+<p>
+-14- <del><i>Requires</i>: the template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash])</del><ins>The header 
+<tt>&lt;thread&gt;</tt> provides a definition for a specialization of the 
+template <tt>hash&lt;thread::id&gt;</tt>. The requirements for the members of this 
+specialization are given in sub-clause 20.8.12 [unord.hash]</ins>.
+</p>
+</blockquote></blockquote>
+</li>
+
+</ol>
+]</i></p>
+
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+No further wording issues, so move to Tentatively Ready (post meeting issues processing).
 </p>
 
 
 
 <p><b>Proposed resolution:</b></p>
-<p>This wording is relative to the FDIS.</p>
 
 <ol>
-<li>
-<p>Edit 26.5.1.2 [rand.req.seedseq] p2 as indicated:</p>
+<li><p>Change 19.5.5 [syserr.hash] as indicated:</p>
 
-<blockquote><p>
-A class <tt>S</tt> satisfies the requirements of a seed sequence if the expressions shown in Table 115 are valid and
-have the indicated semantics, and if <tt>S</tt> also satisfies all other requirements of this section 26.5.1.2 [rand.req.seedseq]. 
-In that Table and throughout this section:
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;error_code&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash].
 </p>
-<ol style="list-style-type:lower-alpha">
-<li>
-<del><tt>T</tt> is the type named by <tt>S</tt>'s associated <tt>result_type</tt>;</del>
+</blockquote></blockquote>
 </li>
-<li>
-<tt>q</tt> is a value of <tt>S</tt><del> and <tt>r</tt> is a possibly const value of <tt>S</tt></del>; <ins>and</ins>
+
+<li><p>Change 20.5.3 [bitset.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;size_t N&gt; struct hash&lt;bitset&lt;N&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
 </li>
-<li>
-<del><tt>ib</tt> and <tt>ie</tt> are input iterators with an unsigned integer <tt>value_type</tt> of at least 32 bits;</del>
+
+<li><p>Change 20.7.2.6 [util.smartptr.hash] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class T, class D&gt; struct hash&lt;unique_ptr&lt;T, D&gt; &gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]). For an object <tt>p</tt> of type 
+<tt>UP</tt>, where <tt>UP</tt> is <tt>unique_ptr&lt;T, D&gt;</tt>, 
+<tt>hash&lt;UP&gt;()(p)</tt> shall evaluate to the same value as 
+<tt>hash&lt;typename UP::pointer&gt;()(p.get())</tt>.  <del>The specialization 
+<tt>hash&lt;typename UP::pointer&gt;</tt> shall be well-formed.</del>
+<p/>
+<ins>-?- <i>Requires</i>: The specialization <tt>hash&lt;typename UP::pointer&gt;</tt> 
+shall be well-formed and well-defined, and shall meet the requirements of class template
+<tt>hash</tt> (20.8.12 [unord.hash]).</ins>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]). For an object <tt>p</tt> of type 
+<tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> 
+shall evaluate to the same value as <tt>hash&lt;T*&gt;()(p.get())</tt>.
+</p>
+</blockquote></blockquote>
 </li>
-<li><tt>rb</tt> and <tt>re</tt> are mutable random access iterators with an unsigned integer <tt>value_type</tt> of at least 32 bits;</li>
-<li>
-<del><tt>ob</tt> is an output iterator; and</del>
+
+<li><p>Change 20.8.12 [unord.hash] p2 as indicated: [<i>Comment</i>: For unknown
+reasons the extended integer types are not mentioned here, which looks like an oversight to
+me and makes also the wording more complicated. See <a href="lwg-active.html#2119">2119</a> for this part
+of the problem. &mdash; <i>end comment</i>]</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;bool&gt;;
+template &lt;&gt; struct hash&lt;char&gt;;
+[&hellip;]
+template &lt;&gt; struct hash&lt;long double&gt;;
+template &lt;class T&gt; struct hash&lt;T*&gt;;
+</pre><blockquote>
+<p>
+-2- <del><i>Requires</i>: t</del><ins>T</ins>he template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
 </li>
-<li>
-<del><tt>il</tt> is a value of <tt>initializer_list&lt;T&gt;</tt>.</del>
+
+<li><p>Change 20.13.4 [type.index.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;type_index&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]). For 
+an object <tt>index</tt> of type <tt>type_index</tt>, <tt>hash&lt;type_index&gt;()(index)</tt> 
+shall evaluate to the same result as <tt>index.hash_code()</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 21.6 [basic.string.hash] p1 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;string&gt;;
+template &lt;&gt; struct hash&lt;u16string&gt;;
+template &lt;&gt; struct hash&lt;u32string&gt;;
+template &lt;&gt; struct hash&lt;wstring&gt;;
+</pre><blockquote>
+<p>
+-1- <del><i>Requires</i>: t</del><ins>T</ins>he template specializations shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 23.3.7 [vector.bool] p7 as indicated:</p>
+
+<blockquote><pre>
+template &lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt; &gt;;
+</pre><blockquote>
+<p>
+-7- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Change 30.3.1.1 [thread.thread.id] p14 as indicated:</p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;thread::id&gt;;
+</pre><blockquote>
+<p>
+-14- <del><i>Requires</i>: t</del><ins>T</ins>he template specialization shall meet the requirements 
+of class template <tt>hash</tt> (20.8.12 [unord.hash]).
+</p>
+</blockquote></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2125"></a>2125. <tt>TimedMutex</tt> specification problem</h3>
+<p><b>Section:</b> 30.4.1.3 [thread.timedmutex.requirements], 30.4.1.3.1 [thread.timedmutex.class] <b>Status:</b> <a href="lwg-active.html#NAD Editorial">Tentatively NAD Editorial</a>
+ <b>Submitter:</b> Vicente J. Botet Escriba <b>Opened:</b> 2012-01-01 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View other</b> <a href="lwg-index-open.html#thread.timedmutex.requirements">active issues</a> in [thread.timedmutex.requirements].</p>
+<p><b>View all other</b> <a href="lwg-index.html#thread.timedmutex.requirements">issues</a> in [thread.timedmutex.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively NAD Editorial">Tentatively NAD Editorial</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+30.4.1.3.1 [thread.timedmutex.class] says:
+</p>
+<blockquote><p>
+The class <tt>timed_mutex</tt> shall satisfy all of the <tt>TimedMutex</tt> requirements (30.4.1.3 [thread.timedmutex.requirements]). 
+It shall be a standardlayout class (Clause 9 [class]).
+</p></blockquote>
+<p>
+Problem here is that 30.4.1.3 [thread.timedmutex.requirements] does not define a requirement set named &quot;<tt>TimedMutex</tt>&quot;,
+it only refers to &quot;<i>timed mutex types</i>&quot;
+</p>
+
+<p><i>[See also issue <a href="lwg-active.html#2126">2126</a>]</i></p>
+
+
+<p><i>[2012, Portland: move to Tentatively NAD Editorial]</i></p>
+
+<p>
+We have timed mutex type, but it is labeled timed mutex requirements
+</p>
+<p>
+We can make a suggestion, but will send to the editor as it seems purely editorial.
+There is a typo, and we don't have the timed mutex but 30.4.1.3 [thread.timedmutex.requirements] already
+says timed mutex type, and we need to reuse that term down in the class to fulfil the mutex requirement.
+</p>
+<p><i>[To Editor:]</i></p>
+
+<p>
+Replace this one with timed mutex type.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2126"></a>2126. Several specification problems in regard to mutex requirements</h3>
+<p><b>Section:</b> 30.4.1 [thread.mutex.requirements], 30.4.1.2.1 [thread.mutex.class], 30.4.1.2 [thread.mutex.requirements.mutex], 30.4.1.2.2 [thread.mutex.recursive], 30.4.1.3 [thread.timedmutex.requirements], 30.4.1.3.1 [thread.timedmutex.class], 30.4.1.3.2 [thread.timedmutex.recursive] <b>Status:</b> <a href="lwg-active.html#NAD Editorial">Tentatively NAD Editorial</a>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-01-16 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View all other</b> <a href="lwg-index.html#thread.mutex.requirements">issues</a> in [thread.mutex.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively NAD Editorial">Tentatively NAD Editorial</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+ 30.4.1.2.1 [thread.mutex.class]&#47;3 says that the class mutex "shall satisfy all the <tt>Mutex</tt> requirements (30.4.1 [thread.mutex.requirements])". 
+ 30.4.1.2.1 [thread.mutex.class] is part of 30.4.1 [thread.mutex.requirements], so at the very least, this 
+ requirement is recursive. But worse, there is nothing that says what "the <tt>Mutex</tt> requirements" refers to. For example, 
+ the "<tt>Lockable</tt> requirements" section starts with "A type <tt>L</tt> meets the <tt>Lockable</tt> requirements if &hellip;". There is no such 
+ statement for "the <tt>Mutex</tt> requirements".
+<p/>
+Organizationally, paragraphs 1-26 in 30.4.1.2 [thread.mutex.requirements.mutex] should probably be in a subclause with a name. 
+(This is actually an ISO requirement, to avoid exactly this kind of ambiguous referencing) Then the first sentence of 
+30.4.1.2.1 [thread.mutex.class]&#47;3 can become a note: "The class mutex meets the requirements of (whatever)", since that 
+subclause already says that the mutex types "shall meet the requirements set out in this section."
+<p/>
+And similarly for 30.4.1.2.2 [thread.mutex.recursive]&#47;2 (<tt>recursive_mutex</tt>).
+<p/>
+30.4.1.3 [thread.timedmutex.requirements], Timed mutex types, also needs the same rearrangement: its introductory 
+requirements should be moved into a subclause, and the first sentences of 30.4.1.3.1 [thread.timedmutex.class]&#47;2 
+and 30.4.1.3.2 [thread.timedmutex.recursive]&#47;2 should be turned into notes that refer to this new subclause and 
+to the new subclause in 30.4.1.2 [thread.mutex.requirements.mutex].
+</p>
+
+<p><i>[See also issue <a href="lwg-active.html#2125">2125</a>]</i></p>
+
+
+<p><i>[2012, Portland: move to Tentatively NAD Editorial]</i></p>
+
+<p>
+Seems no real ambiguity. May need some reorg of text rather then changing the wording.
+</p>
+<p>
+Is there much that needs to be changed? But Pete's suggestion of putting requirement in separate sub section is good.
+Should be the direction to editor.
+</p>
+<p>
+Suggest this is an editorial change. Happy with Pete's comments.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2134"></a>2134. Redundant Mutex requirement?</h3>
+<p><b>Section:</b> 30.4.1.2 [thread.mutex.requirements.mutex] <b>Status:</b> <a href="lwg-active.html#NAD Editorial">Tentatively NAD Editorial</a>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-03-05 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View all other</b> <a href="lwg-index.html#thread.mutex.requirements.mutex">issues</a> in [thread.mutex.requirements.mutex].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively NAD Editorial">Tentatively NAD Editorial</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+30.4.1.2 [thread.mutex.requirements.mutex]&#47;11 says that prior unlock operations <em>synchronize with</em> <tt>m.lock()</tt>.
+<p/>
+30.4.1.2 [thread.mutex.requirements.mutex]&#47;19 says that if <tt>m.try_lock()</tt> succeeds, prior unlock operations 
+<em>synchronize with</em> the operation. 
+<p/>
+30.4.1.2 [thread.mutex.requirements.mutex]&#47;25 says that <tt>m.unlock()</tt> <em>synchronizes with</em> subsequent 
+successful lock operations. 
+<p/>
+Does the third requirement add anything to the first two? If not, it should probably be a non-normative note.
+</p>
+
+<p><i>[2012, Portland: move to Tentatively NAD Editorial]</i></p>
+
+<p>
+Agree that third note should be non-normative and adds nothing.
+</p>
+<p>
+Seems An Editorial change, but does changing a normative to non-normative wording makes it a non-editorial change?
+</p>
+<p>
+Ask the editor. If not editorial, then we will agree on the fix as removal of the third point,
+then we will put it in ready state for Bristol.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2144"></a>2144. Missing <tt>noexcept</tt> specification in <tt>type_index</tt></h3>
+<p><b>Section:</b> 20.13 [type.index] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-03-18 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View all other</b> <a href="lwg-index.html#type.index">issues</a> in [type.index].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The class type <tt>type_index</tt> is a thin wrapper of <tt>type_info</tt> to
+adapt it as a valid associative container element. Similar to <tt>type_info</tt>, 
+all member functions have an effective <tt>noexcept(true)</tt> specification, with the 
+exception of <tt>hash_code()</tt> and <tt>name()</tt>. The actual effects of these
+functions is a direct call to <tt>type_info</tt>'s <tt>hash_code()</tt> and <tt>name</tt> 
+function, but according to 18.7 [support.rtti] these are both <tt>noexcept</tt>
+functions, so there is no reason for not declaring them as <tt>noexcept</tt>, too. In fact,
+one of the suggested changes of the original proposing paper 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2530.html">N2530</a>
+specifically was to ensure that <tt>type_info</tt> would get a <tt>hash_code()</tt>
+function that guarantees not to throw exceptions (during that time the <tt>hash</tt>
+requirements did not allow to exit with an exception). From this we can conclude that
+<tt>type_index::hash_code()</tt> was intended to be nothrow.
+<p/>
+It seems both consistent and technically simply to require these functions to be <tt>noexcept</tt>.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Modify the class <tt>type_index</tt> synopsis, 20.13.2 [type.index.overview] as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  class type_index {
+  public:
+    type_index(const type_info&amp; rhs) noexcept;
+    bool operator==(const type_index&amp; rhs) const noexcept;
+    bool operator!=(const type_index&amp; rhs) const noexcept;
+    bool operator&lt; (const type_index&amp; rhs) const noexcept;
+    bool operator&lt;= (const type_index&amp; rhs) const noexcept;
+    bool operator&gt; (const type_index&amp; rhs) const noexcept;
+    bool operator&gt;= (const type_index&amp; rhs) const noexcept;
+    size_t hash_code() const <ins>noexcept</ins>;
+    const char* name() const <ins>noexcept</ins>;
+  private:
+    const type_info* target; <i>// exposition only</i>
+    <i>// Note that the use of a pointer here, rather than a reference,</i>
+    <i>// means that the default copy&#47;move constructor and assignment</i>
+    <i>// operators will be provided and work as expected.</i>
+  };
+}
+</pre></blockquote>
 </li>
 </ol>
-</blockquote>
-</li>
 
-<li>
-<p>Ditto, in Table 115, remove all rows except the one describing <tt>q.generate(rb, re)</tt>:</p>
+<ol>
+<li><p>Modify the prototype definitions in 20.13.3 [type.index.members] as indicated:</p>
+
+<blockquote><pre>
+size_t hash_code() const <ins>noexcept</ins>;
+</pre><blockquote>
+<p>
+-8- <i>Returns</i>: <tt>target->hash_code()</tt>
+</p>
+</blockquote>
+<pre>
+const char* name() const <ins>noexcept</ins>;
+</pre><blockquote>
+<p>
+-9- <i>Returns</i>: <tt>target->name()</tt>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2167"></a>2167. Copy assignment requirements of Containers</h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
+ <b>Submitter:</b> Dean Michael Berris <b>Opened:</b> 2012-07-13 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Table 96 defines the general requirement for copy assignment (row 23, page 704) as:
+</p>
 
 <table border="1">
-<caption>Table 115 &mdash; Seed sequence requirements</caption>
-<tr align="center">
+<caption>Table 96 &mdash; Container requirements</caption>
+
+<tr>
 <th>Expression</th>
 <th>Return type</th>
-<th>Pre&#47;Post-condition</th>
+<th>Operational semantics</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
 <th>Complexity</th>
 </tr> 
 
 <tr>
 <td>
-<del><tt>S::result_type</tt></del>
+<tt>r = a</tt>
 </td>
 <td>
-<del><tt>T</tt></del>
+<tt>X&amp;</tt>
 </td>
 <td>
-<del><tt>T</tt> is an unsigned integer<br/>
-type (3.9.1 [basic.fundamental]) of at least 32 bits.</del>
+<tt></tt>
 </td>
 <td>
-<del>compile-time</del>
+post: <tt>r == a.</tt>
+</td>
+<td>
+linear
 </td>
 </tr>
 
+</table>
+
+<p>
+However there is no requirement that <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>.
+</p>
+
+<p><i>[2012, Portland: Move to Tentatively NAD]</i></p>
+
+<p>
+Howard notes that this may be a difficult requirement for <tt>std::array</tt>
+</p>
+
+<p>
+We already have this requirement for allocator aware containers, and
+<tt>std::array</tt> already adds the appropriate extra requirement.
+</p>
+
+<p>
+We say the necessary things in the necessary places, but the container requirements
+continue to cause confusion in where we sometimes say things.  Consensus is that
+this issue remains NAD though.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change Table 96 &mdash; "Container requirements" in 23.2.1 [container.requirements.general]:</p>
+
+<table border="1">
+<caption>Table 96 &mdash; Container requirements</caption>
+
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational semantics</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr> 
+
 <tr>
 <td>
-<del><tt>S()</tt></del>
+<tt>r = a</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>.</ins><br/>
+post: <tt>r == a.</tt>
+</td>
+<td>
+linear
+</td>
+</tr>
+
+</table>
+
+</li>
+</ol>
+
+
+
+
+
+
+
+<hr>
+<h3><a name="2174"></a>2174. <tt>wstring_convert::converted()</tt> should be <tt>noexcept</tt></h3>
+<p><b>Section:</b> 22.3.3.2.2 [conversions.string] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-08-02 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#conversions.string">active issues</a> in [conversions.string].</p>
+<p><b>View all other</b> <a href="lwg-index.html#conversions.string">issues</a> in [conversions.string].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+There is no reason <tt>wstring_convert::converted()</tt> shouldn't be <tt>noexcept</tt>.
+<p/>
+It might be possible for <tt>wstring_convert::state()</tt> and <tt>wbuffer_convert::state()</tt> 
+to be <tt>noexcept</tt> too, depending on the requirements on <tt>mbstate_t</tt>.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+<p>
+Defer the separate discsussion of <tt>state()</tt> to another issue, if anyone is ever motivated
+to file one.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Edit in the class template <tt>wstring_convert</tt> synopsis 22.3.3.2.2 [conversions.string] p2:</p>
+
+<blockquote><pre>
+size_t converted() const <ins>noexcept</ins>;
+</pre></blockquote>
+</li>
+
+<li><p>Edit the signature before 22.3.3.2.2 [conversions.string] p6:</p>
+
+<blockquote><pre>
+size_t converted() const <ins>noexcept</ins>;
+</pre></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2175"></a>2175. <tt>wstring_convert</tt> and <tt>wbuffer_convert</tt> validity</h3>
+<p><b>Section:</b> 22.3.3.2.2 [conversions.string], 22.3.3.2.3 [conversions.buffer] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-08-02 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#conversions.string">active issues</a> in [conversions.string].</p>
+<p><b>View all other</b> <a href="lwg-index.html#conversions.string">issues</a> in [conversions.string].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+See discussion following <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32710">c++std-lib-32710</a>.
+<p/>
+It's not specified what happens if <tt>wstring_convert</tt> and <tt>wbuffer_convert</tt> objects are constructed 
+with null <tt>Codecvt</tt> pointers.
+<p/>
+Should the constructors have preconditions that the pointers are not null?  If not, are conversions expected to 
+fail, or is it undefined to attempt conversions if the pointers are null?
+<p/>
+There are no observer functions to check whether objects were constructed with valid <tt>Codecvt</tt> pointers. 
+If the types are made movable such observers would be necessary even if the constructors require non-null 
+pointers (see also LWG <a href="lwg-active.html#2176">2176</a>).
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Insert a new paragraph before 22.3.3.2.2 [conversions.string] paragraph 16:</p>
+
+<blockquote><pre>
+wstring_convert(Codecvt *pcvt = new Codecvt);
+wstring_convert(Codecvt *pcvt, state_type state);
+wstring_convert(const byte_string&amp; byte_err,
+  const wide_string&amp; wide_err = wide_string());
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: For the first and second constructors <tt>pcvt != nullptr</tt>.</ins>
+<p/>
+-16- <i>Effects</i>: The first constructor shall store <tt>pcvt</tt> in <tt>cvtptr</tt> and default values in 
+<tt>cvtstate</tt>, <tt>byte_err_string</tt>, and <tt>wide_err_string</tt>. The second constructor shall 
+store <tt>pcvt</tt> in <tt>cvtptr</tt>, <tt>state</tt> in <tt>cvtstate</tt>, and default values in 
+<tt>byte_err_string</tt> and <tt>wide_err_string</tt>; moreover the stored state shall be retained between 
+calls to <tt>from_bytes</tt> and <tt>to_bytes</tt>. The third constructor shall store <tt>new Codecvt</tt> 
+in <tt>cvtptr</tt>, <tt>state_type()</tt> in cvtstate, <tt>byte_err</tt> in <tt>byte_err_string</tt>, 
+and <tt>wide_err</tt> in <tt>wide_err_string</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Insert a new paragraph before 22.3.3.2.3 [conversions.buffer] paragraph 10:</p>
+
+<blockquote><pre>
+wbuffer_convert(std::streambuf *bytebuf = 0,
+  Codecvt *pcvt = new Codecvt, state_type state = state_type());
+</pre><blockquote>
+<p>
+<ins>-?- <i>Requires</i>: <tt>pcvt != nullptr</tt>.</ins>
+<p/>
+-10- <i>Effects</i>: The constructor constructs a stream buffer object, initializes <tt>bufptr</tt> to <tt>bytebuf</tt>, 
+initializes <tt>cvtptr</tt> to <tt>pcvt</tt>, and initializes <tt>cvtstate</tt> to <tt>state</tt>.
+</p>
+</blockquote></blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2177"></a>2177. Requirements on <tt>Copy&#47;MoveInsertable</tt></h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Lo&iuml;c Joly <b>Opened:</b> 2012-08-10 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+See also discussion following <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32883">c++std-lib-32883</a>
+and <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32897">c++std-lib-32897</a>.
+<p/>
+The requirements on <tt>CopyInsertable</tt> and <tt>MoveInsertable</tt> are either incomplete, or complete but hard to 
+figure out.
+<p/>
+From e-mail <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32897">c++std-lib-32897</a>:
+<p/>
+Pablo Halpern:
+<p/>
+I agree that we need semantic requirements for all of the <tt>*Insertable</tt> concepts analogous to the requirements 
+we have on similar concepts.
+<p/>
+Howard Hinnant:
+<p/>
+I've come to believe that the standard is actually correct as written in this area. But it is <em>really</em> hard 
+to read. I would have no objection whatsoever to clarifications to <tt>CopyInsertable</tt> as you suggest (such as the 
+post-conditions on <tt>v</tt>). And I do agree with you that the correct approach to the clarifications is to 
+confirm that <tt>CopyInsertable</tt> implies <tt>MoveInsertable</tt>.
+</p>
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+Move to Tentatively Ready by unanimous consent.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Edit 23.2.1 [container.requirements.general] p13 as indicated:</p>
+
+<blockquote><p>
+-13- [&hellip;] Given a container type <tt>X</tt> having an <tt>allocator_type</tt> identical to <tt>A</tt> and 
+a <tt>value_type</tt> identical to <tt>T</tt> and given an lvalue <tt>m</tt> of type <tt>A</tt>, a pointer <tt>p</tt> 
+of type <tt>T*</tt>, an expression <tt>v</tt> of type (possibly <tt>const</tt>) <tt>T</tt>, and an rvalue <tt>rv</tt> 
+of type <tt>T</tt>, the following terms are defined. If <tt>X</tt> is not allocator-aware, the terms below are
+defined as if <tt>A</tt> were <tt>std::allocator&lt;T&gt;</tt> &mdash; no allocator object needs to be created and 
+user specializations of <tt>std::allocator&lt;T&gt;</tt> are not instantiated:
+</p>
+<ul>
+<li><p><tt>T</tt> is <em><tt>DefaultInsertable</tt> into <tt>X</tt></em> means that the following expression is 
+well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p)<del>;</del>
+</pre></blockquote>
+</li>
+
+<li><p>An element of <tt>X</tt> is <em>default-inserted</em> if it is initialized by evaluation of the expression</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p)<del>;</del>
+</pre></blockquote>
+<p>
+where <tt>p</tt> is the address of the uninitialized storage for the element allocated within <tt>X</tt>.
+</p>
+</li>
+
+<li><p><tt>T</tt> is <em><tt><del>Copy</del><ins>Move</ins>Insertable</tt> into <tt>X</tt></em> means that 
+the following expression is well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p, <ins>r</ins>v)<del>;</del>
+</pre></blockquote>
+<p>
+<ins>and when evaluated the following postconditions hold: The value of <tt>*p</tt> is equivalent to the value of 
+<tt>rv</tt> before the evaluation. [<i>Note</i>: <tt>rv</tt> remains a valid object. Its state is unspecified &mdash; 
+<i>end note</i>]</ins>
+</p>
+</li>
+
+<li><p><tt>T</tt> is <em><tt><del>Move</del><ins>Copy</ins>Insertable</tt> into <tt>X</tt></em> means 
+that<ins>, in addition to satisfying the <tt>MoveInsertable</tt> requirements,</ins> the following expression is 
+well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p, <del>r</del>v)<del>;</del>
+</pre></blockquote>
+<p>
+<ins>and when evaluated the following postconditions hold: The value of <tt>v</tt> is unchanged and is equivalent 
+to <tt>*p</tt>.</ins>
+</p>
+</li>
+
+<li><p><tt>T</tt> is <em><tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>args</tt></em>, for zero or more arguments 
+<tt>args</tt>, means that the following expression is well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::construct(m, p, args)<del>;</del>
+</pre></blockquote>
+</li>
+
+<li><p><tt>T</tt> is <em><tt>Erasable</tt> from <tt>X</tt></em> means that the following expression is well-formed:</p>
+<blockquote><pre>
+allocator_traits&lt;A&gt;::destroy(m, p)<del>;</del>
+</pre></blockquote>
+</li>
+
+</ul>
+<p>
+[<i>Note</i>: A container calls <tt>allocator_traits&lt;A&gt;::construct(m, p, args)</tt> to construct an element 
+at <tt>p</tt> using <tt>args</tt>. The default construct in <tt>std::allocator</tt> will call 
+<tt>::new((void*)p) T(args)</tt>, but specialized allocators may choose a different definition. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2187"></a>2187. <tt>vector&lt;bool&gt;</tt> is missing <tt>emplace</tt> and <tt>emplace_back</tt> member functions</h3>
+<p><b>Section:</b> 23.3.7 [vector.bool] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-09-21 <b>Last modified:</b> 2012-12-23</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.bool">issues</a> in [vector.bool].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+It should have them so that it more closely matches the <tt>vector&lt;T&gt;</tt> interface, as this helps when 
+writing generic code.
+</p>
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+Question on whether the variadic template is really needed, but it turns out to be needed to support
+<tt>emplace</tt> of no arguments.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change the class template <tt>vector&lt;bool&gt;</tt> synopsis, 23.3.7 [vector.bool] p1, as indicated:</p>
+<blockquote><pre>
+namespace std {
+  template &lt;class Allocator&gt; class vector&lt;bool, Allocator&gt; {
+  public:
+    [&hellip;]
+    <i>// modifiers:</i>
+    <ins>template &lt;class... Args&gt; void emplace_back(Args&amp;&amp;... args);</ins>
+    void push_back(const bool&amp; x);
+    void pop_back();
+    <ins>template &lt;class... Args&gt; iterator emplace(const_iterator position, Args&amp;&amp;... args);</ins>
+    iterator insert(const_iterator position, const bool&amp; x);
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2197"></a>2197. Specification of <tt>is_[un]signed</tt> unclear for non-arithmetic types</h3>
+<p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-07 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The pre-conditions for the trait <tt>is_signed</tt> allow for any types as template arguments, 
+including non-arithmetic ones.
+<p/>
+But the current wording in Table 49 defining the predicate condition,
+</p>
+<blockquote><pre>
+is_arithmetic&lt;T&gt;::value &amp;&amp; T(-1) &lt; T(0)
+</pre></blockquote>
+<p>
+looks like real code and so leaves it open whether such argument types would create a well-formed 
+instantiation of the trait template or not. As written this definition would lead to a hard
+instantiation error for a non-arithmetic type like e.g.
+</p>
+<blockquote><pre>
+struct S {};
+</pre></blockquote>
+<p>
+I would suggest that the wording clarifies that the instantiation would be valid for such types as well,
+by means of a specification that is not an exact code pattern. This also reflects how existing 
+implementations behave.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change Table 49 as indicated:</p>
+
+<table border="1">
+<caption>Table 49 &mdash; Type property predicates</caption>
+<tr>
+<th>Template</th>
+<th>Condition</th>
+<th>Preconditions</th>
+</tr> 
+
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_signed;</tt>
+</td>
+<td>
+<ins>If </ins><tt>is_arithmetic&lt;T&gt;::value<del> &amp;&amp;</del></tt><ins> is true, the same result as</ins><br/>
+<tt><ins>integral_constant&lt;bool,</ins> T(-1) &lt; T(0)<ins>&gt;::value</ins></tt><ins>;<br/>
+otherwise, false.</ins>
 </td>
 <td>
 &nbsp;
 </td>
-<td>
-<del>Creates a seed sequence with<br/>
-the same initial state as all<br/>
-other default-constructed seed<br/>
-sequences of type <tt>S</tt>.</del>
-</td>
-<td>
-<del>constant</del>
-</td>
 </tr>
 
 <tr>
 <td>
-<del><tt>S(ib,ie)</tt></del>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_unsigned;</tt>
+</td>
+<td>
+<ins>If </ins><tt>is_arithmetic&lt;T&gt;::value<del> &amp;&amp;</del></tt><ins> is true, the same result as</ins><br/>
+<tt><ins>integral_constant&lt;bool,</ins> T(0) &lt; T(-1)<ins>&gt;::value</ins></tt><ins>;<br/>
+otherwise, false.</ins>
 </td>
 <td>
 &nbsp;
 </td>
-<td>
-<del>Creates a seed sequence having<br/>
-internal state that depends on<br/>
-some or all of the bits of the<br/>
-supplied sequence <tt>[ib, ie)</tt>.</del>
-</td>
-<td>
-<del><tt>&#x1d4aa;(ie - ib)</tt></del>
+</tr>
+
+</table>
+
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2200"></a>2200. Data race avoidance for all containers, not only for sequences</h3>
+<p><b>Section:</b> 23.2.2 [container.requirements.dataraces] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-10-17 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.dataraces">issues</a> in [container.requirements.dataraces].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+23.2.2 [container.requirements.dataraces]/2 says "[&hellip;] implementations are
+required to avoid data races when the contents of the contained object in different 
+elements in the same sequence, excepting <tt>vector&lt;bool&gt;</tt>, are modified 
+concurrently."
+</p>
+<p>
+This should say "same container" instead of "same sequence", to avoid
+the interpretation that it only applies to sequence containers.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change 23.2.2 [container.requirements.dataraces]/2 as indicated:</p>
+<blockquote><p>
+-2- Notwithstanding (17.6.5.9 [res.on.data.races]), implementations are required to avoid data races when 
+the contents of the contained object in different elements in the same <del>sequence</del><ins>container</ins>, 
+excepting <tt>vector&lt;bool&gt;</tt>, are modified concurrently.
+<p/>
+-3- [<i>Note</i>: For a <tt>vector&lt;int&gt; x</tt> with a size greater than one, <tt>x[1] = 5</tt> and 
+<tt>*x.begin() = 10</tt> can be executed concurrently without a data race, but <tt>x[0] = 5</tt> and 
+<tt>*x.begin() = 10</tt> executed concurrently may result in a data race. As an exception to the general 
+rule, for a <tt>vector&lt;bool&gt; y, y[0] = true</tt> may race with <tt>y[1] = true</tt>. &mdash; <i>end note</i> ]
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2209"></a>2209. <tt>assign()</tt> overspecified for sequence containers</h3>
+<p><b>Section:</b> 23.3 [sequences] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-10-31 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#sequences">active issues</a> in [sequences].</p>
+<p><b>View all other</b> <a href="lwg-index.html#sequences">issues</a> in [sequences].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+DR <a href="lwg-defects.html#704">704</a> ensures allocator-aware containers can reuse existing
+elements during copy/move assignment, and sequence containers can do
+the same for <tt>assign()</tt>.
+<p/>
+But apart from <tt>std::list</tt> (which was changed by DR <a href="lwg-defects.html#320">320</a>) the sequence
+containers define the Effects of <tt>assign()</tt> in terms of <tt>clear()</tt> followed
+by <tt>insert</tt>.  A user-defined allocator can easily tell whether all old
+elements are cleared and then new elements inserted or whether existing elements are assigned 
+to, so those Effects clauses cannot be ignored via the as-if rule.
+<p/>
+The descriptions of the <tt>assign()</tt> members for <tt>deque</tt>, <tt>forward_list</tt> and
+<tt>vector</tt> should be removed.  Their intended effects are entirely described by the 
+sequence container requirements table, and the specific definitions of them are worse than 
+redundant, they're contradictory (if the operations are defined in terms of <tt>erase</tt> and
+<tt>insert</tt> then there's no need for elements to be assignable.)  The descriptions of 
+<tt>assign()</tt> for <tt>list</tt> are correct but redundant, so should be removed too.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Edit 23.3.3.2 [deque.cons] to remove everything after paragraph 10:</p>
+
+<blockquote>
+<pre>
+<del>template &lt;class InputIterator&gt;
+void assign(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+<del>-11- <i>Effects</i>:</del>
+</p>
+<blockquote><pre>
+<del>erase(begin(), end());
+insert(begin(), first, last);</del>
+</pre></blockquote>
+</blockquote>
+
+<pre>
+<del>void assign(size_type n, const T&amp; t);</del>
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Effects</i>:</del>
+</p>
+<blockquote><pre>
+<del>erase(begin(), end());
+insert(begin(), n, t);</del>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 23.3.4.2 [forwardlist.cons] to remove everything after paragraph 10:</p>
+
+<blockquote>
+<pre>
+<del>template &lt;class InputIterator&gt;
+void assign(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+<del>-11- <i>Effects</i>: <tt>clear(); insert_after(before_begin(), first, last);</tt></del>
+</p>
+</blockquote>
+
+<pre>
+<del>void assign(size_type n, const T&amp; t);</del>
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Effects</i>: <tt>clear(); insert_after(before_begin(), n, t);</tt></del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 23.3.5.2 [list.cons] to remove everything after paragraph 10:</p>
+
+<blockquote>
+<pre>
+<del>template &lt;class InputIterator&gt;
+void assign(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+<del>-11- <i>Effects</i>: Replaces the contents of the list with the range <tt>[first, last)</tt>.</del>
+</p>
+</blockquote>
+
+<pre>
+<del>void assign(size_type n, const T&amp; t);</del>
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Effects</i>: Replaces the contents of the list with <tt>n</tt> copies of <tt>t</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 23.3.6.2 [vector.cons] to remove everything after paragraph 10:</p>
+
+<blockquote>
+<pre>
+<del>template &lt;class InputIterator&gt;
+void assign(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+<del>-11- <i>Effects</i>:</del>
+</p>
+<blockquote><pre>
+<del>erase(begin(), end());
+insert(begin(), first, last);</del>
+</pre></blockquote>
+</blockquote>
+
+<pre>
+<del>void assign(size_type n, const T&amp; t);</del>
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Effects</i>:</del>
+</p>
+<blockquote><pre>
+<del>erase(begin(), end());
+insert(begin(), n, t);</del>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2211"></a>2211. Replace ambiguous use of "Allocator" in container requirements</h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-07 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+23.2.1 [container.requirements.general]/7 says:
+</p>
+<blockquote><p>
+All other constructors for these container types take an <tt>Allocator&amp;</tt> argument 
+(17.6.3.5 [allocator.requirements]), an allocator whose value type is the same as the
+container's value type.
+</p></blockquote>
+<p>
+This is a strange place to state the requirement on the allocator's
+<tt>value_type</tt>, because the allocator is a property (and template
+parameter) of the container type not of some of its constructors.
+It's also unclear whether "<tt>Allocator&amp;</tt>" refers to the concept (as
+implied by the cross-reference to the allocator requirements in Clause 17) 
+or to the container's template parameter (as implied by the fact
+it's shown as an lvalue-reference type.) I believe the latter is
+intended, because those constructors can't take any model of the
+allocator concept, they can only take the container's <tt>allocator_type</tt>.
+<p/>
+I think it would be clearer to remove the value type requirement earlier
+in the paragraph (Table 99 already imposes that requirement) and to make it clear 
+the constructor arguments are the container's <tt>allocator_type</tt>. There is 
+already a cross-reference to the allocator requirements earlier in the paragraph, 
+so it doesn't need to be repeated in another place where it causes confusion.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 23.2.1 [container.requirements.general] paragraph 7:</p>
+
+<blockquote>
+<p>
+Unless otherwise specified, all containers defined in this clause obtain memory using an allocator 
+(see 17.6.3.5 [allocator.requirements]). Copy constructors for these container types obtain an 
+allocator by calling <tt>allocator_traits&lt;allocator_type&gt;::select_on_container_copy_construction</tt> 
+on their first parameters. Move constructors obtain an allocator by move construction from the allocator 
+belonging to the container being moved. Such move construction of the allocator shall not exit via 
+an exception. All other constructors for these container types take <del>an <tt>Allocator&amp;</tt> argument 
+(17.6.3.5 [allocator.requirements]), an allocator whose value type is the same as the container's value
+type</del><ins>a <tt>const allocator_type&amp;</tt> argument</ins>. [<i>Note</i>: If an invocation of a 
+constructor uses the default value of an optional allocator argument, then the <tt>Allocator</tt> type 
+must support value initialization. &mdash; <i>end note</i>] A copy of this allocator is used for any
+memory allocation performed, by these constructors and by all member functions, during the lifetime of each
+container object or until the allocator is replaced. [&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2222"></a>2222. Inconsistency in description of <tt>forward_list::splice_after</tt> single-element overload</h3>
+<p><b>Section:</b> 23.3.4.6 [forwardlist.ops] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Edward Catmur <b>Opened:</b> 2012-12-11 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View all other</b> <a href="lwg-index.html#forwardlist.ops">issues</a> in [forwardlist.ops].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+23.3.4.6 [forwardlist.ops] p6 has
+</p>
+<blockquote><pre>
+void splice_after(const_iterator position, forward_list&amp; x, const_iterator i);
+void splice_after(const_iterator position, forward_list&amp;&amp; x, const_iterator i);
+</pre><p>
+<i>Effects</i>: Inserts the element following <tt>i</tt> into <tt>*this</tt>, following <tt>position</tt>, 
+and removes it from <tt>x</tt>. The result is unchanged if <tt>position == i</tt> or <tt>position == ++i</tt>. 
+Pointers and references to <tt>*i</tt> continue to refer to the same element but as a member of <tt>*this</tt>. 
+Iterators to <tt>*i</tt> (including <tt>i</tt> itself) continue to refer to the same element, but now behave 
+as iterators into <tt>*this</tt>, not into <tt>x</tt>.
+</p>
+</blockquote>
+<p>
+This overload splices the element <em>following</em> <tt>i</tt> from <tt>x</tt> to <tt>*this</tt>, so the 
+language in the two latter sentences should refer to <tt>++i</tt>:
+</p>
+<blockquote><p>
+Pointers and references to <tt>*++i</tt> continue to refer to the same element but as a member of
+<tt>*this</tt>. Iterators to <tt>*++i</tt> continue to refer to the same element, but now behave as iterators
+into <tt>*this</tt>, not into <tt>x</tt>.
+</p></blockquote>
+<p>
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 23.3.4.6 [forwardlist.ops] p6 as indicated:</p>
+<blockquote><pre>
+void splice_after(const_iterator position, forward_list&amp; x, const_iterator i);
+void splice_after(const_iterator position, forward_list&amp;&amp; x, const_iterator i);
+</pre>
+<p>
+-5- <i>Requires</i>: <tt>position</tt> is <tt>before_begin()</tt> or is a dereferenceable iterator 
+in the range <tt>[begin(),end())</tt>. The iterator following <tt>i</tt> is a dereferenceable iterator 
+in <tt>x</tt>. <tt>get_allocator() == x.get_allocator()</tt>.
+<p/>
+-6- <i>Effects</i>: Inserts the element following <tt>i</tt> into <tt>*this</tt>, following <tt>position</tt>, 
+and removes it from <tt>x</tt>. The result is unchanged if <tt>position == i</tt> or <tt>position == ++i</tt>. 
+Pointers and references to <tt>*<ins>++</ins>i</tt> continue to refer to the same element but as a member of 
+<tt>*this</tt>. Iterators to <tt>*<ins>++</ins>i</tt> <del>(including <tt>i</tt> itself)</del> continue to
+refer to the same element, but now behave as iterators into <tt>*this</tt>, not into <tt>x</tt>.
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2225"></a>2225. Unrealistic header inclusion checks required</h3>
+<p><b>Section:</b> 17.6.2.2 [using.headers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-12-18 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View all other</b> <a href="lwg-index.html#using.headers">issues</a> in [using.headers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+17.6.2.2 [using.headers]/3 says:
+<p/>
+A translation unit shall include a header only outside of any external declaration or definition, and shall 
+include the header lexically before the first reference in that translation unit to any of the entities 
+declared in that header.
+<p/>
+Per 1.4 [intro.compliance]/1, programs which violate this rule are ill-formed, and a conforming 
+implementation is required to produce a diagnostic. This does not seem to match reality. Presumably, this 
+paragraph is missing a "no diagnostic is required".
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Edit 17.6.2.2 [using.headers] p3 as indicated:</p>
+<p>-3- A translation unit shall include a header only outside of any external declaration or definition, and shall
+include the header lexically before the first reference in that translation unit to any of the entities declared
+in that header. <ins>No diagnostic is required.</ins></p>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2231"></a>2231. DR 704 removes complexity guarantee for <tt>clear()</tt></h3>
+<p><b>Section:</b> 23.2.3 [sequence.reqmts] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-12-30 <b>Last modified:</b> 2013-04-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#sequence.reqmts">active issues</a> in [sequence.reqmts].</p>
+<p><b>View all other</b> <a href="lwg-index.html#sequence.reqmts">issues</a> in [sequence.reqmts].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+From the question at <a href="http://stackoverflow.com/q/14094408/981959">stackoverflow</a>.
+</p>
+
+<p>
+Were we aware that the resolution to LWG <a href="lwg-defects.html#704">704</a> means there is no complexity guarantee for 
+<tt>clear()</tt> on most sequence containers? Previously it was implied by defining it in terms of 
+<tt>erase(begin(), end())</tt> but we no longer do that.
+</p>
+
+<p>
+There are explicit complexity requirements for <tt>std::list::clear()</tt>, but not the other sequence containers.
+</p>
+
+<p>Daniel:</p>
+
+<p>
+The idea was that the notion of "destroys all elements in <tt>a</tt>" would imply a linear complexity, but the wording 
+needs to be clearer, because this doesn't say that this step is the actual complexity bound.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Change Table 100 as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 100 &mdash; Sequence container requirements (in addition to container) (continued)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
 </td>
 </tr>
 
 <tr>
 <td>
-<del><tt>S(il)</tt></del>
-</td>
-<td>
-&nbsp;
-</td>
-<td>
-<del>Same as <tt>S(il.begin(),<br/>
-il.end())</tt>.</del>
-</td>
-<td>
-<del>same as<br/>
-<tt>S(il.begin(),<br/>
-il.end())</tt></del>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>q.generate(rb,re)</tt>
+<tt>a.clear()</tt>
 </td>
 <td>
 <tt>void</tt>
 </td>
 <td>
-Does nothing if <tt>rb == re</tt>.<br/>
-Otherwise, fills the supplied<br/>
-sequence <tt>[rb, re)</tt> with 32-bit<br/>
-quantities that depend on the<br/>
-sequence supplied to the<br/>
-constructor and possibly also<br/>
-depend on the history of<br/>
-<tt>generate</tt>'s previous<br/>
-invocations.
-</td>
-<td>
-<tt>&#x1d4aa;(re - rb)</tt>
+Destroys all elements in <tt>a</tt>. Invalidates all<br/>
+references, pointers, and iterators referring to<br/>
+the elements of <tt>a</tt> and may invalidate the<br/>
+past-the-end iterator.<br/>
+post: <tt>a.empty()</tt> returns <tt>true</tt><br/>
+<ins>complexity: linear</ins>
 </td>
 </tr>
 
 <tr>
-<td>
-<del><tt>r.size()</tt></del>
-</td>
-<td>
-<del><tt>size_t</tt></del>
-</td>
-<td>
-<del>The number of 32-bit units that<br/>
-would be copied by a call to<br/>
-<tt>r.param</tt>.</del>
-</td>
-<td>
-<del>constant</del>
-</td>
-</tr>
-
-<tr>
-<td>
-<del><tt>r.param(ob)</tt></del>
-</td>
-<td>
-<del><tt>void</tt></del>
-</td>
-<td>
-<del>Copies to the given destination
-a sequence of 32-bit units that<br/>
-can be provided to the<br/>
-constructor of a second object<br/>
-of type <tt>S</tt>, and that would<br/>
-reproduce in that second object<br/>
-a state indistinguishable from<br/>
-the state of the first object.</del>
-</td>
-<td>
-<del><tt>&#x1d4aa;(r.size())</tt></del>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
 </td>
 </tr>
 
 </table>
- </li>
+</blockquote>
+</li>
 
 </ol>
 
