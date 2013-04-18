@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-04-18 at 19:04:17 UTC</p>
+<p>Revised 2013-04-18 at 20:04:48 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -8813,7 +8813,7 @@ basic_istream&lt;charT,traits&gt;&amp; getline(basic_string&lt;charT,traits,Allo
 <hr>
 <h3><a name="2132"></a>2132. <tt>std::function</tt> ambiguity</h3>
 <p><b>Section:</b> 20.8.11.2.1 [func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2012-02-28 <b>Last modified:</b> 2012-12-23</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2012-02-28 <b>Last modified:</b> 2013-04-18</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.con">issues</a> in [func.wrap.func.con].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -9449,7 +9449,7 @@ destruction of all objects with thread storage duration associated with the curr
 <hr>
 <h3><a name="2141"></a>2141. <tt>common_type</tt> trait produces reference types</h3>
 <p><b>Section:</b> 20.9.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Doug Gregor <b>Opened:</b> 2012-03-11 <b>Last modified:</b> 2013-04-12</p>
+ <b>Submitter:</b> Doug Gregor <b>Opened:</b> 2012-03-11 <b>Last modified:</b> 2013-04-18</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -9618,13 +9618,38 @@ Want to carefully consider the effect of <tt>decay</tt> vs. <tt>remove_reference
 to constenss before adopting, although this proposed resolution stands for review in Bristol.
 </p>
 
+<p><i>[2013-04-18, Bristol meeting]</i></p>
 
 
-<p><b>Proposed resolution:</b></p>
+<p>Previous wording:</p>
+
+<blockquote class="note"> 
 <p>This wording is relative to N3376.</p>
 
 <ol><li><p>In 20.9.7.6 [meta.trans.other] p3, change the <tt>common_type</tt> definition to</p>
 <blockquote><pre>
+template &lt;class T, class U&gt;
+struct common_type&lt;T, U&gt; {
+  typedef <ins>typename decay&lt;</ins>decltype(true ? declval&lt;T&gt;() : declval&lt;U&gt;())<ins>&gt;::type</ins> type;
+};
+</pre></blockquote>
+</li>
+</ol>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Change 20.9.7.6 [meta.trans.other] p3 as indicated:</p>
+<blockquote><pre>
+template &lt;class T&gt;
+struct common_type&lt;T&gt; {
+  typedef <ins>typename decay&lt;</ins>T<ins>&gt;::type</ins> type;
+};
+
 template &lt;class T, class U&gt;
 struct common_type&lt;T, U&gt; {
   typedef <ins>typename decay&lt;</ins>decltype(true ? declval&lt;T&gt;() : declval&lt;U&gt;())<ins>&gt;::type</ins> type;
@@ -9825,229 +9850,6 @@ The questions raised by the issue are real, and should have a clear answer.
 
 <p><b>Proposed resolution:</b></p>
 
-
-
-
-
-
-<hr>
-<h3><a name="2148"></a>2148. Hashing enums should be supported directly by <tt>std::hash</tt></h3>
-<p><b>Section:</b> 20.8.12 [unord.hash] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2012-04-10 <b>Last modified:</b> 2013-04-18</p>
-<p><b>View other</b> <a href="lwg-index-open.html#unord.hash">active issues</a> in [unord.hash].</p>
-<p><b>View all other</b> <a href="lwg-index.html#unord.hash">issues</a> in [unord.hash].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-The <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3333.html">paper</a> 
-proposes various hashing improvements. What it doesn't mention is hashing of
-enums; enums are integral types, and users expect them to have built-in hashing
-support, rather than having to convert enums to ints for uses with
-unordered containers and other uses of hashes. Daniel Kr&uuml;gler explains in c++std-lib-32412
-that this is not achievable with a SFINAEd hash specialization because it would require
-a partial specialization with a type parameter and a non-type parameter with a
-default argument, which is currently not allowed, and hence the fixes in N3333 should be
-adopted instead.
-</p>
-
-<p><i>[2012-10 Portland: Move to Open]</i></p>
-
-<p>
-We agree this is a real issue that should be resolved, by specifying such a hash.
-</p>
-
-<p>
-It is not clear that we should specify this as calling hash on the <tt>underlying_type</tt>,
-or whether that is overspecification and we merely require that the hash be supplied.
-</p>
-
-<p>
-STL already has shipped an implementation, and is keen to provide wording.
-</p>
-
-<p><i>[
-2013-04-14 STL provides rationale and improved wording
-]</i></p>
-
-
-<p>Rationale:</p>
-<p>This can be achieved by inserting a very small tweak to the Standardese. We merely have to require that <tt>hash&lt;Key&gt;</tt> 
-be valid when <tt>Key</tt> is an "enumeration type" (which includes both scoped and unscoped enums). This permits, but does 
-not require, <tt>hash&lt;Enum&gt;</tt> to behave identically to <tt>hash&lt;underlying_type&lt;Enum&gt;::type&gt;</tt>, following 
-existing precedent &mdash; note that when <tt>unsigned int</tt> and <tt>unsigned long</tt> are the same size, 
-<tt>hash&lt;unsigned int&gt;</tt> is permitted-but-not-required to behave identically to <tt>hash&lt;unsigned long&gt;</tt>.
-<p/>
-This proposed resolution doesn't specify anything else about the primary template, allowing implementations to do 
-whatever they want for non-enums: <tt>static_assert</tt> nicely, explode horribly at compiletime or runtime, etc.
-<p/>
-While we're in the neighborhood, this proposed resolution contains an editorial fix. The 20.8 [function.objects]
-synopsis says "base template", which doesn't appear anywhere else in the Standard, and could confuse users into 
-thinking that they need to derive from it. The proper phrase is "primary template".
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3485.pdf">N3485</a>.</p>
-
-<ol>
-<li><p>In 20.8 [function.objects], header functional synopsis, edit as indicated:</p>
-
-<blockquote><pre>
-namespace std {
-  [&hellip;]
-  <i>// 20.8.12, hash function <del>base</del><ins>primary</ins> template:</i>
-  template &lt;class T&gt; struct hash;
-  [&hellip;]
-}
-</pre></blockquote>
-</li>
-
-<li><p>In 20.8.12 [unord.hash]/1 edit as indicated:</p>
-
-<blockquote><p>
--1- The unordered associative containers defined in 23.5 [unord] use specializations of the class template 
-<tt>hash</tt> as the default <tt>hash</tt> function. For all object types <tt>Key</tt> for which there exists a 
-specialization <tt>hash&lt;Key&gt;</tt><ins>, and for all enumeration types (7.2 [dcl.enum]) Key</ins>, 
-the instantiation <tt>hash&lt;Key&gt;</tt> shall: [&hellip;]
-</p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2149"></a>2149. Concerns about 20.8/5</h3>
-<p><b>Section:</b> 20.8 [function.objects] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Scott Meyers <b>Opened:</b> 2012-02-15 <b>Last modified:</b> 2013-04-18</p>
-<p><b>View all other</b> <a href="lwg-index.html#function.objects">issues</a> in [function.objects].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-20.8 [function.objects] p5 says:
-</p>
-<blockquote><p>
-To enable adaptors and other components to manipulate function objects that take one or two arguments
-it is required that the function objects correspondingly provide typedefs <tt>argument_type</tt> and 
-<tt>result_type</tt> for function objects that take one argument and <tt>first_argument_type</tt>, 
-<tt>second_argument_type</tt>, and <tt>result_type</tt> for function objects that take two arguments.
-</p></blockquote>
-<p>
-I have two concerns about this paragraph.  First, the wording appears to prescribe a requirement for all 
-function objects in valid C++ programs, but it seems unlikely that that is the intent.  As such, the scope 
-of the requirement is unclear.  For example, there is no mention of these typedefs in the specification for 
-closures (5.1.2), and Daniel Kr&uuml;gler has explained in the thread at 
-<a href="http://tinyurl.com/856plkn">http://tinyurl.com/856plkn</a> that conforming implementations can 
-detect the difference between closures with and without these typedefs.  (Neither gcc 4.6 nor VC10 appear 
-to define typedefs such as <tt>result_type</tt> for closure types. I have not tested other compilers.)
-<p/>
-Second, the requirement appears to be unimplementable in some cases, notably for function objects returned 
-from <tt>std::bind</tt>, as Howard Hinnant explains in the thread at <a href="http://tinyurl.com/6q5bos4">http://tinyurl.com/6q5bos4</a>.
-<p/>
-From what I can tell, the standard already defines which adaptability typedefs must be provided by various 
-kinds of function objects in the specifications for those objects.  Examples include the function objects 
-specified in 20.8.3 [refwrap]-20.8.8 [negators]. I therefore suggest that 
-20.8 [function.objects]&#47;5 simply be removed from the standard. I don't think it adds anything 
-except opportunities for confusion.
-</p>
-
-<p><i>[2012-10 Portland: Move to Open]</i></p>
-
-<p>
-This wording caused confusion earlier in the week when reviewing Stefan's paper on <tt>greater&lt;></tt>.
-</p>
-
-<p>
-This phrasing sounds normative, but is actually descriptive but uses unfortunate wording.
-</p>
-
-<p>
-The main reason this wording exists is to document the protocol required to support the legacy binders
-in Annex D.
-</p>
-
-<p>
-Stefan points out that <tt>unary_negate</tt> and <tt>binary_negate</tt> have not been deprecated and rely
-on this.  He plans a paper to remove this dependency.
-</p>
-
-<p>
-Consensus that this wording is inadequate, confusing, and probably should be removed.  However, that
-leaves a big hole in the specification for the legacy binders, that needs filling.
-</p>
-
-<p>
-While not opposed to striking this paragraph, we will need the additional wording to fix the openning
-hole before this issue can move forward.
-</p>
-
-<p><i>[
-2013-04-14 STL provides rationale
-]</i></p>
-
-
-<p>Rationale:</p>
-
-<p>I've concluded that Scott's original proposed resolution was correct and complete. There are two sides to this 
-story: the producers and the consumers of these typedefs.</p>
-
-<p><em>Producers</em>: As Scott noted, the Standard clearly documents which function objects must provide these 
-typedefs. Some function objects must provide them unconditionally (e.g. <tt>plus&lt;T&gt;</tt> (for <tt>T != void</tt>), 
-20.8.4 [arithmetic.operations]/1), some conditionally (e.g. <tt>reference_wrapper&lt;T&gt;</tt>, 
-20.8.3 [refwrap]/2-4), and some don't have to provide them at all (e.g. lambdas, 5.1.2 [expr.prim.lambda]). 
-These requirements are clear, so we shouldn't change them or even add informative notes. Furthermore, because these 
-typedefs aren't needed in the C++11 world with <tt>decltype</tt>/perfect forwarding/etc., we shouldn't add more 
-requirements to provide them.</p>
-
-<p><em>Consumers</em>: This is what we were concerned about at Portland. However, the consumers also clearly document 
-their requirements in the existing text. For example, <tt>reference_wrapper&lt;T&gt;</tt> is also a conditional consumer, 
-and 20.8.3 [refwrap] explains what typedefs it's looking for. We were especially concerned about the old negators 
-and the deprecated binders, but they're okay too. 20.8.8 [negators] clearly says that 
-<tt>unary_negate&lt;Predicate&gt;</tt> requires <tt>Predicate::argument_type</tt> to be a type, and 
-<tt>binary_negate&lt;Predicate&gt;</tt> requires <tt>Predicate::first_argument_type</tt> and <tt>Predicate::second_argument_type</tt> 
-to be types. (<tt>unary_negate</tt>/<tt>binary_negate</tt> provide <tt>result_type</tt> but they don't consume it.) 
-D.9 [depr.lib.binders] behaves the same way with <tt>Fn::first_argument_type</tt>, <tt>Fn::second_argument_type</tt>, 
-and <tt>Fn::result_type</tt>. No additional wording is necessary.</p>
-
-<p>A careful reading of 20.8 [function.objects]/5 reveals that it wasn't talking about anything beyond the mere 
-existence of the mentioned typedefs &mdash; for example, it didn't mention that the function object's return type should be 
-<tt>result_type</tt>, or even convertible to <tt>result_type</tt>. As the producers and consumers are certainly talking about 
-the existence of the typedefs (in addition to clearly implying semantic requirements), we lose nothing by deleting the 
-unnecessary paragraph.</p>
-
-<p><i>[2013-04-18]</i></p>
-
-
-<p>Previous wording:</p>
-
-<blockquote class="note"> 
-<p>Remove 20.8 [function.objects] p5:</p>
-
-<blockquote><p><del>
-To enable adaptors and other components to manipulate function objects that take one or two arguments
-it is required that the function objects correspondingly provide typedefs <tt>argument_type</tt> and 
-<tt>result_type</tt> for function objects that take one argument and <tt>first_argument_type</tt>, 
-<tt>second_argument_type</tt>, and <tt>result_type</tt> for function objects that take two arguments.
-</del></p></blockquote>
-</blockquote>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3485.pdf">N3485</a>.</p>
-
-<p>Edit 20.8 [function.objects] p5:</p>
-
-<blockquote><p>
-<ins>[<i>Note:</i></ins>To enable adaptors and other components to manipulate function objects that take one or two arguments
-<del>it is required that the function objects</del><ins>many of the function objects in this clause</ins> correspondingly provide 
-typedefs <tt>argument_type</tt> and <tt>result_type</tt> for function objects that take one argument and <tt>first_argument_type</tt>, 
-<tt>second_argument_type</tt>, and <tt>result_type</tt> for function objects that take two arguments.<ins>&mdash; <i>end note</i>]</ins>
-</p></blockquote>
 
 
 
@@ -13283,338 +13085,6 @@ The class template <tt>match_results</tt> shall satisfy the requirements of an a
 sequence container, as specified in 23.2.3 [sequence.reqmts], except that only operations defined for 
 const-qualified sequence containers <ins>that are not constructors</ins> are supported.
 </p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2196"></a>2196. Specification of <tt>is_*[copy/move]_[constructible/assignable]</tt> unclear for non-referencable types</h3>
-<p><b>Section:</b> 20.9.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2012-12-23</p>
-<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
-<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-The pre-conditions for the type <tt>is_copy_constructible</tt> allow for template argument types were the language forbids 
-forming a reference, namely <tt>void</tt> types and function types that have <em>cv</em>-qualifiers or a <em>ref</em>-qualifier.
-<p/>
-But the current wording in Table 49 defining the predicate condition,
-</p>
-<blockquote><p>
-<tt>is_constructible&lt;T, const T&amp;&gt;::value</tt> is <tt>true</tt>.
-</p></blockquote>
-<p>
-leaves it open whether such argument types would (a) create a well-formed instantiation of the trait template or if so (b) what
-the outcome of the trait evaluation would be, as an example consider <tt>std::is_copy_constructible&lt;void&gt;</tt>.
-<p/>
-Current implementations differ, e.g. gcc accepts the instantiation and returns a false result, VS 2012
-also accepts the instantiation but returns true.
-<p/>
-I would suggest that the wording clarifies that the instantiation would be valid for these types and I also would strongly 
-prefer the outcome that the trait would always return false for these types. The latter seems rather natural
-to me, because there is no way to define a variable of <tt>void</tt> type or of function type at all, so it would be surprising
-to return a positive result for copy or move construction if no other construction could succeed. It is also not 
-possible to assign to a any of these values (because there is no way to form lvalues of them), so the same argumentation 
-can be applied to the <tt>is_copy/move_assignable</tt> traits as well.
-<p/>
-To reduce the amount of wording changes and repetitions, I suggest to define the term <em>referenceable type</em> in 
-sub-clause 17.3 [definitions] or alternatively in the core language to describe types to which references
-can be created via a typedef name. This definition corresponds to what the support concept <tt>ReferentType</tt> intended 
-to describe during concept time.
-<p/>
-In addition, LWG issue <a href="lwg-active.html#2101">2101</a> can also take advantage of the definition of a <em>referenceable type</em>.
-<p/>
-If the proposed resolution for LWG issue <a href="lwg-active.html#2101">2101</a> would be accepted, there is an alternative solution possible
-with the same effects. Now we would be able to use the now always well-formed instantiation of 
-<tt>std::add_lvalue_reference</tt> to modify the current definition of <tt>is_copy_constructible</tt> to
-</p>
-<blockquote><p>
-<tt>is_constructible&lt;T,<br/> 
-    typename add_lvalue_reference&lt;<br/> 
-	typename add_const&lt;T&gt;::type&gt;::type&gt;::value</tt> is true.
-</p></blockquote>
-<p>
-and similar changes for the other affected traits.
-</p>
-
-<p><i>[2012-10 Portland: Move to Open]</i></p>
-
-<p>
-Referencable-type should be defined as "something that can be bound into a reference" or similar,
-rather than a list of types where that is true today.  We can then provide the list of known types
-that cannot be bound as examples that do not qualify in a note.
-</p>
-
-<p>
-Otherwise we are happy with the wording.  AJM to redraft the definition and move to Review.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Add the following new definition to 17.3 [definitions] as indicated:</p>
-<p><b>referenceable type</b> [defns.referenceable]</p>
-<blockquote><p>
-An object type, a function type that does not have <em>cv</em>-qualifiers or a <em>ref</em>-qualifier, or a reference type.
-[<i>Note</i>: The term describes a type to which a reference can be created, including reference types. &mdash; <i>end note</i>]
-</p></blockquote>
-</li>
-
-<li><p>Change Table 49 as indicated:</p>
-
-<table border="1">
-<caption>Table 49 &mdash; Type property predicates</caption>
-<tr>
-<th>Template</th>
-<th>Condition</th>
-<th>Preconditions</th>
-</tr> 
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_copy_constructible;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_constructible&lt;T,</tt><br/>
-<tt>const T&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_move_constructible;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_constructible&lt;T,</tt><br/>
-<tt>T&amp;&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td colspan="3" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_copy_assignable;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_assignable&lt;T&amp;,</tt><br/>
-<tt>const T&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_move_assignable;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_assignable&lt;T&amp;,</tt><br/>
-<tt>T&amp;&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td colspan="3" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_trivially_copy_constructible;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_trivially_constructible&lt;T,</tt><br/>
-<tt>const T&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_trivially_move_constructible;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_trivially_constructible&lt;T,</tt><br/>
-<tt>T&amp;&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td colspan="3" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_trivially_copy_assignable;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_trivially_assignable&lt;T&amp;,</tt><br/>
-<tt>const T&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_trivially_move_assignable;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_trivially_assignable&lt;T&amp;,</tt><br/>
-<tt>T&amp;&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td colspan="3" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_nothrow_copy_constructible;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_nothrow_constructible&lt;T,</tt><br/>
-<tt>const T&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_nothrow_move_constructible;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_nothrow_constructible&lt;T,</tt><br/>
-<tt>T&amp;&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td colspan="3" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_nothrow_copy_assignable;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_nothrow_assignable&lt;T&amp;,</tt><br/>
-<tt>const T&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>template &lt;class T&gt;</tt><br/>
-<tt>struct is_nothrow_move_assignable;</tt>
-</td>
-<td>
-<ins>For a referenceable type <tt>T</tt>, the same result as</ins><br/>
-<tt>is_nothrow_assignable&lt;T&amp;,</tt><br/>
-<tt>T&amp;&amp;&gt;::value</tt><del> is true</del><ins>, otherwise false</ins>.
-</td>
-<td>
-<tt>T</tt> shall be a complete type,<br/>
-(possibly <em>cv</em>-qualified) <tt>void</tt>, or an<br/> 
-array of unknown bound.
-</td>
-</tr>
-
-</table>
-
 </li>
 </ol>
 
