@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-05-20 at 12:05:12 UTC</p>
+<p>Revised 2013-05-20 at 16:05:49 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -3919,117 +3919,6 @@ which may throw <tt>ios_base::failure</tt> (27.5.5.4 [iostate.flags]));
 </li>
 </ul>
 </blockquote></blockquote>
-
-
-
-
-
-<hr>
-<h3><a name="2087"></a>2087. <tt>iostream_category()</tt> and <tt>noexcept</tt></h3>
-<p><b>Section:</b> 27.5 [iostreams.base] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2011-09-22 <b>Last modified:</b> 2012-03-10</p>
-<p><b>View all other</b> <a href="lwg-index.html#iostreams.base">issues</a> in [iostreams.base].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-In <tt>&lt;system_error&gt;</tt> we have:
-</p>
-
-<blockquote><pre>
-const error_category&amp; generic_category() noexcept;
-const error_category&amp; system_category() noexcept;
-</pre></blockquote>
-
-<p>
-In <tt>&lt;future&gt;</tt> we have:
-</p>
-
-<blockquote><pre>
-const error_category&amp; future_category() noexcept;
-</pre></blockquote>
-
-<p>
-But in <tt>&lt;ios&gt;</tt> we have:
-</p>
-
-<blockquote><pre>
-const error_category&amp; iostream_category();
-</pre></blockquote>
-
-<p>
-Is there any reason that <tt>iostream_category()</tt> is not declared with 
-<tt>noexcept</tt> or is this an oversight?
-</p>
-
-<p>
-Daniel:
-<p/>
-This looks like an oversight to me. We made the above
-mentioned changes as part of noexcept-ifying the thread
-library but <tt>iostream_category()</tt> was skipped, so it seems
-to be forgotten. There should be no reason, why it cannot
-be <tt>noexcept</tt>. When doing so, we should also make these functions
-<tt>noexcept</tt> (similar to corresponding overloads):
-</p>
-<blockquote><pre>
-error_code make_error_code(io_errc e);
-error_condition make_error_condition(io_errc e);
-</pre></blockquote>
-
-<p>
-Suggested wording provided by Daniel.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to the FDIS.</p>
-
-<ol><li>
-<p>Change 27.5.1 [iostreams.base.overview], header <tt>&lt;ios&gt;</tt> synopsis 
-as indicated:
-</p>
-<blockquote><pre>
-#include &lt;iosfwd&gt;
-namespace std {
-  [&hellip;]
-  error_code make_error_code(io_errc e) <ins>noexcept</ins>;
-  error_condition make_error_condition(io_errc e) <ins>noexcept</ins>;
-  const error_category&amp; iostream_category() <ins>noexcept</ins>;
-}
-</pre></blockquote>
-
-</li>
-<li>
-<p>Change the prototype declarations in 27.5.6.5 [error.reporting] as indicated:
-</p>
-<blockquote><pre>
-error_code make_error_code(io_errc e) <ins>noexcept</ins>;
-</pre></blockquote><blockquote>
-<p>
--1- <i>Returns</i>: <tt>error_code(static_cast&lt;int&gt;(e), iostream_category())</tt>.
-</p>
-</blockquote><blockquote><pre>
-error_condition make_error_condition(io_errc e) <ins>noexcept</ins>;
-</pre></blockquote><blockquote>
-<p>
--2- <i>Returns</i>: <tt>error_condition(static_cast&lt;int&gt;(e), iostream_category())</tt>.
-</p>
-</blockquote><blockquote><pre>
-const error_category&amp; iostream_category() <ins>noexcept</ins>;
-</pre></blockquote><blockquote>
-<p>
--3- <i>Returns</i>: A reference to an object of a type derived from class <tt>error_category</tt>.
-<p/>
--4- The object’s <tt>default_error_condition</tt> and <tt>equivalent</tt> virtual functions shall behave as specified
-for the class <tt>error_category</tt>. The object’s <tt>name</tt> virtual function shall return a pointer to the string
-<tt>"iostream"</tt>.
-</p>
-</blockquote>
-</li>
-</ol>
-
 
 
 
@@ -8407,47 +8296,6 @@ Moved to open (Anthony drafted to draft)
 
 
 <hr>
-<h3><a name="2143"></a>2143. <tt>ios_base::xalloc</tt> should be thread-safe</h3>
-<p><b>Section:</b> 27.5.3 [ios.base] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Alberto Ganesh Barbati <b>Opened:</b> 2012-03-14 <b>Last modified:</b> 2012-03-19</p>
-<p><b>View all other</b> <a href="lwg-index.html#ios.base">issues</a> in [ios.base].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-The static function <tt>ios_base::xalloc()</tt> could be called from multiple threads and is not covered by 
-17.6.4.10 [res.on.objects] and 17.6.5.9 [res.on.data.races]. Adding a thread-safety requirement 
-should not impose a significant burden on implementations, as the function can be easily implemented with 
-hopefully lock-free atomics.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>In 27.5.3.5 [ios.base.storage] add a new paragraph after paragraph 1:</p>
-
-<blockquote><pre>
-static int xalloc();
-</pre><blockquote>
-<p>
--1- <i>Returns</i>: <tt>index ++</tt>.
-<p/>
-<ins>-?- <i>Remarks</i>: Concurrent access to this function by multiple threads shall not result in a data 
-race (1.10 [intro.multithread]).</ins>
-</p>
-</blockquote></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2146"></a>2146. Are reference types <tt>Copy</tt>&#47;<tt>Move-Constructible</tt>&#47;<tt>Assignable</tt> or <tt>Destructible</tt>?</h3>
 <p><b>Section:</b> 17.6.3.1 [utility.arg.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-03-23 <b>Last modified:</b> 2013-03-18</p>
@@ -8550,272 +8398,6 @@ The questions raised by the issue are real, and should have a clear answer.
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-
-<hr>
-<h3><a name="2150"></a>2150. Unclear specification of <tt>find_end</tt></h3>
-<p><b>Section:</b> 25.2.6 [alg.find.end] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Andrew Koenig <b>Opened:</b> 2012-03-28 <b>Last modified:</b> 2012-07-23</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-25.2.6 [alg.find.end] describes the behavior of find_end as returning:
-</p>
-<blockquote><p>
-The last iterator <tt>i</tt> in the range <tt>[first1,last1 - (last2 - first2))</tt> such that for any 
-nonnegative integer <tt>n &lt; (last2 - first2)</tt>, the following corresponding conditions hold: 
-<tt>*(i + n) == *(first2 + n), pred(*(i + n), *(first2 + n)) != false</tt>.
-</p></blockquote>
-<p>
-Does "for any" here mean "for every" or "there exists a"?  I think it means the former, but it could be 
-interpreted either way.
-<p/>
-Daniel: The same problem exists for the following specifications from Clause 25 [algorithms]:
-</p>
-<ol>
-<li>25.2.13 [alg.search] p2 and p6</li>
-<li>25.3.10 [alg.reverse] p4</li>
-<li>25.3.13 [alg.partitions] p5 and p9</li>
-<li>25.4 [alg.sorting] p5</li>
-<li>25.4.2 [alg.nth.element] p1</li>
-<li>25.4.3.1 [lower.bound] p2</li>
-<li>25.4.3.2 [upper.bound] p2</li>
-<li>25.4.7 [alg.min.max] p21 and p23</li>
-</ol>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li>
-<p>Change 25.2.6 [alg.find.end] p2 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class ForwardIterator1, class ForwardIterator2&gt;
-ForwardIterator1 
-find_end(ForwardIterator1 first1, ForwardIterator1 last1,
-         ForwardIterator2 first2, ForwardIterator2 last2);
-template&lt;class ForwardIterator1, class ForwardIterator2,
-         class BinaryPredicate&gt;
-ForwardIterator1
-find_end(ForwardIterator1 first1, ForwardIterator1 last1,
-         ForwardIterator2 first2, ForwardIterator2 last2,
-         BinaryPredicate pred);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--2- <i>Returns</i>: The last iterator <tt>i</tt> in the range <tt>[first1,last1 - (last2 - first2))</tt> such 
-that for <del>any</del><ins>every</ins> nonnegative integer <tt>n &lt; (last2 - first2)</tt>, the following 
-corresponding conditions hold: <tt>*(i + n) == *(first2 + n), pred(*(i + n), *(first2 + n)) != false</tt>.
-Returns <tt>last1</tt> if <tt>[first2,last2)</tt> is empty or if no such iterator is found.
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.2.13 [alg.search] p2 and p6 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class ForwardIterator1, class ForwardIterator2&gt;
-ForwardIterator1
-search(ForwardIterator1 first1, ForwardIterator1 last1,
-       ForwardIterator2 first2, ForwardIterator2 last2);
-template&lt;class ForwardIterator1, class ForwardIterator2,
-         class BinaryPredicate&gt;
-ForwardIterator1
-search(ForwardIterator1 first1, ForwardIterator1 last1,
-       ForwardIterator2 first2, ForwardIterator2 last2,
-       BinaryPredicate pred);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--2- <i>Returns</i>: The first iterator <tt>i</tt> in the range <tt>[first1,last1 - (last2-first2))</tt> 
-such that for <del>any</del><ins>every</ins> nonnegative integer <tt>n</tt> less than <tt>last2 - first2</tt> 
-the following corresponding conditions hold: <tt>*(i + n) == *(first2 + n), pred(*(i + n), *(first2 + n)) != false</tt>. 
-Returns <tt>first1</tt> if <tt>[first2,last2)</tt> is empty, otherwise returns <tt>last1</tt> if no such iterator 
-is found.
-</p></blockquote></blockquote>
-<p>
-[&hellip;]
-</p>
-<blockquote><pre>
-template&lt;class ForwardIterator, class Size, class T&gt;
-ForwardIterator
-search_n(ForwardIterator first, ForwardIterator last, Size count,
-         const T&amp; value);
-template&lt;class ForwardIterator, class Size, class T,
-         class BinaryPredicate&gt;
-ForwardIterator
-search_n(ForwardIterator first, ForwardIterator last, Size count,
-         const T&amp; value, BinaryPredicate pred);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--6- <i>Returns</i>: The first iterator <tt>i</tt> in the range <tt>[first,last-count)</tt> such that 
-for <del>any</del><ins>every</ins> non-negative integer <tt>n</tt> less than <tt>count</tt> the following 
-corresponding conditions hold: <tt>*(i + n) == value, pred(*(i + n),value) != false</tt>. Returns <tt>last</tt> 
-if no such iterator is found.
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.3.10 [alg.reverse] p4 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class BidirectionalIterator, class OutputIterator&gt;
-OutputIterator
-reverse_copy(BidirectionalIterator first,
-             BidirectionalIterator last, OutputIterator result);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--4- <i>Effects</i>: Copies the range <tt>[first,last)</tt> to the range <tt>[result,result+(last-first))</tt> 
-such that for <del>any</del><ins>every</ins> non-negative integer <tt>i &lt; (last - first)</tt> the following 
-assignment takes place: <tt>*(result + (last - first) - i) = *(first + i)</tt>.
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.3.13 [alg.partitions] p5 and p9 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class ForwardIterator, class Predicate&gt;
-ForwardIterator
-partition(ForwardIterator first,
-          ForwardIterator last, Predicate pred);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--5- <i>Returns</i>: An iterator <tt>i</tt> such that for <del>any</del><ins>every</ins> iterator <tt>j</tt> 
-in the range <tt>[first,i) pred(*j) != false</tt>, and for <del>any</del><ins>every</ins> iterator <tt>k</tt> 
-in the range <tt>[i,last), pred(*k) == false</tt>.
-</p></blockquote></blockquote>
-<p>
-[&hellip;]
-</p>
-<blockquote><pre>
-template&lt;class BidirectionalIterator, class Predicate&gt;
-BidirectionalIterator
-stable_partition(BidirectionalIterator first,
-                 BidirectionalIterator last, Predicate pred);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--9- <i>Returns</i>: An iterator <tt>i</tt> such that for <del>any</del><ins>every</ins> iterator <tt>j</tt> 
-in the range <tt>[first,i), pred(*j) != false</tt>, and for <del>any</del><ins>every</ins> iterator <tt>k</tt> 
-in the range <tt>[i,last), pred(*k) == false</tt>. The relative order of the elements in both groups is preserved.
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.4 [alg.sorting] p5 as indicated:</p>
-
-<blockquote><p>
--5- A sequence is sorted with respect to a comparator <tt>comp</tt> if for <del>any</del><ins>every</ins> iterator 
-<tt>i</tt> pointing to the sequence and <del>any</del><ins>every</ins> non-negative integer <tt>n</tt> such that 
-<tt>i + n</tt> is a valid iterator pointing to an element of the sequence, <tt>comp(*(i + n), *i) == false</tt>.
-</p></blockquote>
-</li>
-
-<li>
-<p>Change 25.4.2 [alg.nth.element] p1 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class RandomAccessIterator&gt;
-void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
-                 RandomAccessIterator last);
-template&lt;class RandomAccessIterator, class Compare&gt;
-void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
-                 RandomAccessIterator last, Compare comp);
-</pre><blockquote><p>
--1- After <tt>nth_element</tt> the element in the position pointed to by <tt>nth</tt> is the element that would 
-be in that position if the whole range were sorted. Also for <del>any</del><ins>every</ins> iterator <tt>i</tt> 
-in the range <tt>[first,nth)</tt> and <del>any</del><ins>every</ins> iterator <tt>j</tt> in the range 
-<tt>[nth,last)</tt> it holds that: <tt>!(*i &gt; *j)</tt> or <tt>comp(*j, *i) == false</tt>. 
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.4.3.1 [lower.bound] p2 as indicated:</p>
-
-<blockquote><pre>
-template&lt;lass ForwardIterator, class T&gt;
-ForwardIterator
-lower_bound(ForwardIterator first, ForwardIterator last,
-            const T&amp; value);
-template&lt;class ForwardIterator, class T, class Compare&gt;
-ForwardIterator
-lower_bound(ForwardIterator first, ForwardIterator last,
-            const T&amp; value, Compare comp);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--2- <i>Returns</i>: The furthermost iterator <tt>i</tt> in the range <tt>[first,last]</tt> such that for 
-<del>any</del><ins>every</ins> iterator <tt>j</tt> in the range <tt>[first,i)</tt> the following corresponding 
-conditions hold: <tt>*j &lt; value</tt> or <tt>comp(*j, value) != false</tt>.
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.4.3.2 [upper.bound] p2 as indicated:</p>
-
-<blockquote><pre>
-template&lt;lass ForwardIterator, class T&gt;
-ForwardIterator
-upper_bound(ForwardIterator first, ForwardIterator last,
-            const T&amp; value);
-template&lt;class ForwardIterator, class T, class Compare&gt;
-ForwardIterator
-upper_bound(ForwardIterator first, ForwardIterator last,
-            const T&amp; value, Compare comp);
-</pre><blockquote><p>
-[&hellip;]
-<p/>
--2- <i>Returns</i>: The furthermost iterator <tt>i</tt> in the range <tt>[first,last]</tt> such that for 
-<del>any</del><ins>every</ins> iterator <tt>j</tt> in the range <tt>[first,i)</tt> the following corresponding 
-conditions hold: <tt>!(value &lt; *j)</tt> or <tt>comp(value, *j) == false</tt>.
-</p></blockquote></blockquote>
-</li>
-
-<li>
-<p>Change 25.4.7 [alg.min.max] p21 and p23 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class ForwardIterator&gt;
-ForwardIterator min_element(ForwardIterator first, ForwardIterator last);
-template&lt;class ForwardIterator, class Compare&gt;
-ForwardIterator min_element(ForwardIterator first, ForwardIterator last,
-                            Compare comp);
-</pre><blockquote><p>
--21- <i>Returns</i>: The first iterator <tt>i</tt> in the range <tt>[first,last)</tt> such that for 
-<del>any</del><ins>every</ins> iterator <tt>j</tt> in the range <tt>[first,last)</tt> the following 
-corresponding conditions hold: <tt>!(*j &lt; *i)</tt> or <tt>comp(*j, *i) == false</tt>. Returns 
-<tt>last</tt> if <tt>first == last</tt>.
-</p></blockquote></blockquote>
-<p>
-[&hellip;]
-</p>
-<blockquote><pre>
-template&lt;class ForwardIterator&gt;
-ForwardIterator max_element(ForwardIterator first, ForwardIterator last);
-template&lt;class ForwardIterator, class Compare&gt;
-ForwardIterator max_element(ForwardIterator first, ForwardIterator last,
-                            Compare comp);
-</pre><blockquote><p>
--23- <i>Returns</i>: The first iterator <tt>i</tt> in the range <tt>[first,last)</tt> such that for 
-<del>any</del><ins>every</ins> iterator <tt>j</tt> in the range <tt>[first,last)</tt> the following 
-corresponding conditions hold: <tt>!(*i &lt; *j)</tt> or <tt>comp(*i, *j) == false</tt>. Returns 
-<tt>last</tt> if <tt>first == last</tt>.
-</p></blockquote></blockquote>
-</li>
-
-</ol>
 
 
 
@@ -10199,187 +9781,11 @@ share ownership with some other pre-existing <tt>shared_ptr</tt>.
 
 
 <hr>
-<h3><a name="2180"></a>2180. Exceptions from <tt>std::seed_seq</tt> operations</h3>
-<p><b>Section:</b> 26.5.7.1 [rand.util.seedseq] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-18 <b>Last modified:</b> 2012-08-19</p>
-<p><b>View all other</b> <a href="lwg-index.html#rand.util.seedseq">issues</a> in [rand.util.seedseq].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-26.5.7.1 [rand.util.seedseq] p1 says upfront:
-</p>
-<blockquote><p>
-No function described in this section 26.5.7.1 [rand.util.seedseq] throws an exception.
-</p></blockquote>
-<p>
-This constraint seems non-implementable to me when looking especially at the members
-</p>
-<blockquote><pre>
-template&lt;class T&gt;
-seed_seq(initializer_list&lt;T&gt; il);
-
-template&lt;class InputIterator&gt;
-seed_seq(InputIterator begin, InputIterator end);
-</pre></blockquote>
-<p>
-which have the effect of invoking <tt>v.push_back()</tt> for the exposition-only member of
-type <tt>std::vector</tt> (or its equivalent) over all elements of the provided range, so
-out-of-memory exceptions are always possible and the <tt>seed_seq</tt> object doesn't seem
-to be constructible this way.
-<p/>
-In addition to the potential lack-of-resources problem, the operations of <tt>InputIterator</tt>
-might also throw exceptions.
-<p/>
-Aside to that it should me mentioned, that a default constructor of <tt>vector&lt;uint_least32_t&gt;</tt> 
-in theory can also throw exceptions, even though this seems less of a problem to me in this context, because 
-such an implementation could easily use a different internal container in <tt>seed_seq</tt> that can hold 
-this no-throw exception guarantee.
-<p/>
-Secondly, a slightly different problem category related to exceptions occurs for the member templates
-</p>
-<blockquote><pre>
-template&lt;class RandomAccessIterator&gt;
-void generate(RandomAccessIterator begin, RandomAccessIterator end);
-
-template&lt;class OutputIterator&gt;
-void param(OutputIterator dest) const;
-</pre></blockquote>
-<p>
-where the actual operations performed by the implementation would never need to throw, but since they invoke
-operations of a user-provided customization point, the overall operation, like for example
-</p>
-<blockquote><pre>
-copy(v.begin(), v.end(), dest);
-</pre></blockquote>
-<p>
-could also throw exceptions. In this particular example we can just think of a <tt>std::back_insert_iterator</tt>
-applied to a container that needs to allocate its elements used as the type for <tt>OutputIterator</tt>.
-<p/>
-Even though Clause 26 [numerics] has mostly stronger exception constraints than other parts of the
-library the here discussed are overrestrictive, especially since no operation of <tt>std::seed_seq</tt> 
-except the template <tt>generate</tt> is actually needed within the library implementation, as mentioned in the 
-discussion of LWG <a href="lwg-closed.html#2124">2124</a>.
-<p/>
-I suggest to remove the general no-exception constraints for operations of <tt>std::seed_seq</tt> except for
-member <tt>size()</tt> and the default constructor and to provide specific wording for <tt>generate()</tt> and
-<tt>param()</tt> to ensure that the algorithm itself is a nothrow operation, which is especially for
-<tt>generate()</tt> important, because the templates specified in 26.5.3 [rand.eng] and 
-26.5.4 [rand.adapt] also depend on this property indirectly, which is further discussed in LWG 
-<a href="lwg-active.html#2181">2181</a>.
-<p/>
-<u>Howard</u>:
-<p/>
-I suggest to use a different form for the exception specification, something similar to 
-20.10.9.1.3 [func.bind.bind] p4:
-</p>
-<blockquote><p>
-<i>Throws</i>: Nothing unless an operation on <tt>RandomAccessIterator</tt> throws an exception.
-</p></blockquote>
-<p>
-<u>Daniel</u>:
-<p/>
-The currently suggested "what and when" form seems a bit more specific and harmonizes with the form used for
-function template <tt>generate_canonical</tt> from 26.5.7.2 [rand.util.canonical].
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Edit 26.5.7.1 [rand.util.seedseq] p1 as indicated:</p>
-
-<blockquote>
-<p>
-<del>-1- No function described in this section 26.5.7.1 [rand.util.seedseq] throws an exception.</del>
-</p>
-</blockquote>
-</li>
-
-<li><p>Edit 26.5.7.1 [rand.util.seedseq] around p2 as indicated:</p>
-
-<blockquote><pre>
-seed_seq();
-</pre><blockquote>
-<p>
--2- <i>Effects</i>: Constructs a <tt>seed_seq</tt> object as if by default-constructing its member <tt>v</tt>.
-<p/>
-<ins>-?- <i>Throws</i>: Nothing.</ins>
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Edit 26.5.7.1 [rand.util.seedseq] around p7 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class RandomAccessIterator&gt;
-  void generate(RandomAccessIterator begin, RandomAccessIterator end);
-</pre><blockquote>
-<p>
--7- <i>Requires</i>: <tt>RandomAccessIterator</tt> shall meet the requirements of a mutable random access iterator
-(Table 111) type. Moreover, <tt>iterator_traits&lt;class RandomAccessIterator&gt;::value_type</tt> shall denote
-an unsigned integer type capable of accommodating 32-bit quantities.
-<p/>
--8- <i>Effects</i>: Does nothing if <tt>begin == end</tt>. Otherwise, with <tt>s = v.size()</tt> and 
-<tt>n = end - begin</tt>, fills the supplied range <tt>[begin, end)</tt> according to the following algorithm [&hellip;]
-<p/>
-<ins>-?- <i>Throws</i>: What and when <tt>RandomAccessIterator</tt> operations of <tt>begin</tt> and <tt>end</tt> throw.</ins>
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Edit 26.5.7.1 [rand.util.seedseq] around p9 as indicated:</p>
-
-<blockquote><pre>
-size_t size() const;
-</pre><blockquote>
-<p>
--9- <i>Returns</i>: The number of 32-bit units that would be returned by a call to <tt>param()</tt>.
-<p/>
-<ins>-??- <i>Throws</i>: Nothing.</ins>
-<p/>
--10- <i>Complexity</i>: constant time.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Edit 26.5.7.1 [rand.util.seedseq] around p11 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class OutputIterator&gt;
-  void param(OutputIterator dest) const;
-</pre><blockquote>
-<p>
--11- <i>Requires</i>: <tt>OutputIterator</tt> shall satisfy the requirements of an output iterator (Table 108) type. 
-Moreover, the expression <tt>*dest = rt</tt> shall be valid for a value <tt>rt</tt> of type <tt>result_type</tt>.
-<p/>
--12- <i>Effects</i>: Copies the sequence of prepared 32-bit units to the given destination, as if by executing the
-following statement:
-</p>
-<blockquote><pre>
-copy(v.begin(), v.end(), dest);
-</pre></blockquote>
-<p>
-<ins>-??- <i>Throws</i>: What and when <tt>OutputIterator</tt> operations of <tt>dest</tt> throw.</ins>
-</p>
-</blockquote></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2181"></a>2181. Exceptions from <em>seed sequence</em> operations</h3>
-<p><b>Section:</b> 26.5.1.2 [rand.req.seedseq], 26.5.3 [rand.eng], 26.5.4 [rand.adapt] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-18 <b>Last modified:</b> 2012-08-20</p>
+<p><b>Section:</b> 26.5.1.2 [rand.req.seedseq], 26.5.3 [rand.eng], 26.5.4 [rand.adapt] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-18 <b>Last modified:</b> 2013-05-20</p>
 <p><b>View all other</b> <a href="lwg-index.html#rand.req.seedseq">issues</a> in [rand.req.seedseq].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -10462,6 +9868,41 @@ solves the problem that currently 26.5.3 [rand.eng] also describes requirements 
 26.5.4 [rand.adapt] (Constrained templates involving the <tt>Sseq</tt> parameters).
 </p>
 
+<p><i>[2013-04-20, Bristol]</i></p>
+
+
+<p>
+Remove the first bullet point:
+</p>
+<blockquote><p>
+?- Throughout this sub-clause general requirements and conventions are described that apply to every class 
+template specified in sub-clause 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]. Phrases of the form "in those 
+sub-clauses" shall be interpreted as equivalent to "in sub-clauses 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]". 
+</p></blockquote>
+<p>
+Replace "in those sub-clauses" with "in sub-clauses 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]".
+<p/>
+Find another place for the wording. 
+<p/>
+Daniel: These are requirements on the implementation not on the types. I'm not comfortable in moving it to another place 
+without double checking. 
+<p/>
+Improve the text (there are 4 "for"s): <em>for</em> copy constructors, <em>for</em> copy assignment operators, 
+<em>for</em> streaming operators, and <em>for</em> equality and inequality operators are not shown in the synopses. 
+<p/>
+Move the information of this paragraph to the paragraphs it refers to: 
+</p>
+<blockquote><p>
+"-?- Descriptions are provided in those sub-clauses only for engine operations that are not described in 
+26.5.1.4 [rand.req.eng], for adaptor operations that are not described in 26.5.1.5 [rand.req.adapt], or for 
+operations where there is additional semantic information. In particular, declarations for copy constructors, for 
+copy assignment operators, for streaming operators, and for equality and inequality operators are not shown in the synopses." 
+</p></blockquote>
+<p>
+Alisdair: I prefer duplication here than consolidation/reference to these paragraphs. 
+<p/>
+The room showed weakly favjust or for duplication. 
+</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -10867,15 +10308,15 @@ when no more concurrency can be effectively exploited. &mdash; <i>end note</i>]
 
 <hr>
 <h3><a name="2188"></a>2188. Reverse iterator does not fully support targets that overload <tt>operator&amp;</tt></h3>
-<p><b>Section:</b> 24.5.1.3.5 [reverse.iter.opref] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-09-23 <b>Last modified:</b> 2013-01-25</p>
+<p><b>Section:</b> 24.5.1.3.5 [reverse.iter.opref] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-09-23 <b>Last modified:</b> 2013-05-20</p>
 <p><b>View all other</b> <a href="lwg-index.html#reverse.iter.opref">issues</a> in [reverse.iter.opref].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 The specification for <tt>reverse_iterator::operator-></tt>
 returns the address of the object yielded by dereferencing
-with <tt>operatator*</tt>, but does not have the usual
+with <tt>operator*</tt>, but does not have the usual
 wording about returning the true address of the object.  As
 <tt>reverse_iterator</tt> requires the adapted iterator have
 at least the bidirectional iterator category, we know that
@@ -10889,6 +10330,14 @@ or <tt>vector</tt> of a type with such an overloaded operator,
 where algorithms are likely to work with a forward iteration, but
 not with reverse iteration.
 </p>
+
+<p><i>[2013-04-20, Bristol]</i></p>
+
+
+<p>
+Resolution: Goes to open now and move to review as soon as Daniel proposes a new wording.
+</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -11037,7 +10486,7 @@ Also, the requirements for move-assignment should refer to Table 141. Further it
 <hr>
 <h3><a name="2192"></a>2192. Validity and return type of <tt>std::abs(0u)</tt> is unclear</h3>
 <p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2012-10-06</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2013-05-20</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -11122,6 +10571,13 @@ problem for <tt>unsigned int</tt>, but there would be no clear answer for the in
 Based on this it seems to me that the C++03 state in regard to unsigned integer values was the better
 situation, alerting the user that this code is ambigious at the moment (This might be change with different core-language
 rules as described in N3387).
+</p>
+
+<p><i>[2013-04-20, Bristol]</i></p>
+
+
+<p>
+Resolution: leave as new and bring it back in Chicago. 
 </p>
 
 
@@ -11415,60 +10871,6 @@ explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
 
 
 <hr>
-<h3><a name="2194"></a>2194. Impossible container requirements for adaptor types</h3>
-<p><b>Section:</b> 23.6 [container.adaptors] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Sebastian Mach <b>Opened:</b> 2012-10-05 <b>Last modified:</b> 2012-10-06</p>
-<p><b>View all other</b> <a href="lwg-index.html#container.adaptors">issues</a> in [container.adaptors].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-The <tt>stack</tt> class template does not have an member type <tt>iterator</tt>, and therefore instantiations do not 
-meet the general container requirements as described in 23.2.1 [container.requirements.general]. But 
-23.6.1 [container.adaptors.general] p1 says:
-</p>
-<blockquote><p>
-The headers <tt>&lt;queue&gt;</tt> and <tt>&lt;stack&gt;</tt> define the container adaptors <tt>queue</tt>, 
-<tt>priority_queue</tt>, and <tt>stack</tt>. These container adaptors meet the requirements for sequence containers.
-</p></blockquote>
-<p>
-Since sequence containers is a subset of general containers, this imposes requirements on the container adaptors that
-are not satisfied.
-</p>
-<p>
-<u>Daniel Kr&uuml;gler</u>: The wording change was performed as an editorial reorganization as requested
-by <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3296.html#GB116">GB 116</a> occuring first in
-<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3242.pdf">N3242</a>, as a side-effect it 
-does now make the previous implicit C++03 classification to [lib.sequences]/1 more obvious. As the NB comment
-noticed, the adaptors really are not sequences nor containers, so this wording needs to be fixed.
-The most simple way to realize that is to strike the offending sentence.
-</p>
-
-<p><i>[
-Daniel adds concrete wording.
-]</i></p>
-
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Change 23.6.1 [container.adaptors.general] p1 as indicated:</p>
-<blockquote><p>
--1- The headers <tt>&lt;queue&gt;</tt> and <tt>&lt;stack&gt;</tt> define the container adaptors <tt>queue</tt>, 
-<tt>priority_queue</tt>, and <tt>stack</tt>. <del>These container adaptors meet the requirements for sequence containers.</del>
-</p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2195"></a>2195. Missing constructors for <tt>match_results</tt></h3>
 <p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2012-10-06</p>
@@ -11695,48 +11097,6 @@ function template <tt>async</tt> provides no way to provide an allocator.
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2204"></a>2204. <tt>reverse_iterator</tt> should not require a second copy of the base iterator</h3>
-<p><b>Section:</b> 24.5.1.3.4 [reverse.iter.op.star] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> David Abrahams <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2012-10-31</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-This note in 24.5.1.3.4 [reverse.iter.op.star]/2:
-</p>
-<blockquote>
- [ <i>Note</i>: This operation must use an auxiliary member variable rather than a
- temporary variable to avoid returning a reference that persists beyond the
- lifetime of its associated iterator. (See 24.2.) &mdash;<i>end note</i> ]
-</blockquote>
-<p>
-is incorrect because such iterator implementations are ruled out by
-24.2.5 [forward.iterators]/6, where it says:
-</p>
-<blockquote>
- If <tt>a</tt> and <tt>b</tt> are both dereferenceable, then <tt>a == b</tt> if and only if <tt>*a</tt> and
- <tt>*b</tt> are bound to the same object.
-</blockquote>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-Strike the note, 24.5.1.3.4 [reverse.iter.op.star]/2:
-</p>
-
-<blockquote>
- <del>[ <i>Note</i>: This operation must use an auxiliary member variable rather than a
- temporary variable to avoid returning a reference that persists beyond the
- lifetime of its associated iterator. (See 24.2.) &mdash;<i>end note</i> ]</del>
-</blockquote>
-
 
 
 
