@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D84)</h1>
-<p>Revised 2013-05-20 at 18:05:01 UTC</p>
+<p>Revised 2013-05-20 at 18:05:56 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>R84: 2013-07 mid-summer mailing<ul>
 <li><b>Summary:</b><ul>
-<li>141 open issues, up by 4.</li>
+<li>142 open issues, up by 5.</li>
 <li>1637 closed issues, up by 0.</li>
-<li>1778 issues total, up by 4.</li>
+<li>1779 issues total, up by 5.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 4 New issues: <a href="lwg-active.html#2252">2252</a>, <a href="lwg-active.html#2253">2253</a>, <a href="lwg-active.html#2254">2254</a>, <a href="lwg-active.html#2255">2255</a>.</li>
+<li>Added the following 5 New issues: <a href="lwg-active.html#2252">2252</a>, <a href="lwg-active.html#2253">2253</a>, <a href="lwg-active.html#2254">2254</a>, <a href="lwg-active.html#2255">2255</a>, <a href="lwg-active.html#2256">2256</a>.</li>
 <li>Changed the following 6 issues to Tentatively Ready (from New): <a href="lwg-active.html#2085">2085</a>, <a href="lwg-active.html#2087">2087</a>, <a href="lwg-active.html#2143">2143</a>, <a href="lwg-active.html#2150">2150</a>, <a href="lwg-active.html#2180">2180</a>, <a href="lwg-active.html#2194">2194</a>.</li>
 <li>Changed the following 2 issues to Tentatively NAD (from New): <a href="lwg-active.html#2131">2131</a>, <a href="lwg-active.html#2204">2204</a>.</li>
 <li>Changed the following 3 issues to Open (from New): <a href="lwg-active.html#2181">2181</a>, <a href="lwg-active.html#2188">2188</a>, <a href="lwg-active.html#2214">2214</a>.</li>
@@ -17056,6 +17056,66 @@ implicitly convertible to <tt>T</tt>.</ins>
 </blockquote></blockquote>
 </li>
 </ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2256"></a>2256. On <tt>vector</tt> iterator invalidation</h3>
+<p><b>Section:</b> 23.3.7.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2013-04-29 <b>Last modified:</b> 2013-05-20</p>
+<p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+23.3.7.5 [vector.modifiers]/p3 says:
+</p>
+<blockquote><pre>
+iterator erase(const_iterator position);
+iterator erase(const_iterator first, const_iterator last);
+</pre>
+<blockquote>
+<p>
+<i>Effects</i>: Invalidates iterators and references at or after the point of the erase.
+</p>
+</blockquote></blockquote>
+<p>
+Consider this example:
+</p>
+<blockquote><pre>
+#include &lt;vector&gt;
+#include &lt;cassert&gt;
+
+int main()
+{
+  typedef std::vector&lt;int&gt; C;
+  C c = {1, 2, 3, 4};
+  C::iterator i = c.begin() + 1;
+  C::iterator j = c.end() - 1;
+  assert(*i == 2);
+  assert(*j == 4);
+  c.erase(c.begin());
+  <span style="color:#C80000;font-weight:bold">assert(*i == 3); // Why is this not perfectly fine?!</span>
+}
+</pre></blockquote>
+<p>
+Why has the iterator <tt>i</tt> been invalidated? It still refers to a perfectly reasonable, fully constructed object. 
+If <tt>vector::iterator</tt> were to be implemented as a pointer (which is legal), it is not possible for that last 
+line to do anything but run fine.
+<p/>
+The iterator <tt>j</tt> on the other hand now points at end, and any iterators that may now point beyond <tt>end()</tt>, 
+into uninitialized memory, are clearly invalid.
+<p/>
+But why do we say that an iterator that <em>must</em> point to a valid object is invalid? This looks to me like we 
+simply got sloppy in our specification.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
