@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-08-19 at 20:08:46 UTC</p>
+<p>Revised 2013-08-19 at 21:08:21 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -15292,6 +15292,61 @@ template &lt;class... Types&gt;
 </li>
 </ol>
 
+
+
+
+
+
+<hr>
+<h3><a name="2276"></a>2276. Missing requirement on <tt>std::promise::set_exception</tt></h3>
+<p><b>Section:</b> 30.6 [futures] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-07-30 <b>Last modified:</b> 2013-08-19</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures">issues</a> in [futures].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The standard does not specify the behaviour of this program:
+</p>
+
+<blockquote><pre>
+#include &lt;future&gt;
+#include &lt;cassert&gt;
+
+struct NonTrivial
+{
+  NonTrivial() : init(true) { }
+  ~NonTrivial() { assert(init); }
+  bool init;
+};
+
+int main()
+{
+  std::promise&lt;NonTrivial&gt; p;
+  auto f = p.get_future();
+  p.set_exception(std::exception_ptr());
+  f.get();
+}
+</pre></blockquote>
+
+<p>
+The standard doesn't forbid making the state ready with a null
+<tt>exception_ptr</tt>, so what should <tt>get()</tt> return?  There's no stored
+exception to throw, but it can't return a value because none was initialized.
+<p/>
+A careful reading of the standard shows 30.6.4 [futures.state] p8 says
+"A shared state is <em>ready</em> only if it holds a value or an exception
+ready for retrieval." One can infer from the fact that <tt>set_exception()</tt>
+makes the state ready that it must store a value or exception, so
+cannot store "nothing", but that isn't explicit.
+<p/>
+The <tt>promise::set_exception()</tt> and <tt>promise::set_exception_at_thread_exit()</tt> 
+members should require <tt>p != nullptr</tt> or should state the type of exception thrown 
+if <tt>p</tt> is null.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
