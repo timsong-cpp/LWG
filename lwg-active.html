@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D84)</h1>
-<p>Revised 2013-08-20 at 19:08:56 UTC</p>
+<p>Revised 2013-08-20 at 21:08:36 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -17995,17 +17995,54 @@ perform comparisons on values of the input type, or might it even perform hetero
 <hr>
 <h3><a name="2268"></a>2268. Setting a default argument in the declaration of a member function <tt>assign</tt> of <tt>std::basic_string</tt></h3>
 <p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Vladimir Grigoriev <b>Opened:</b> 2013-06-26 <b>Last modified:</b> 2013-06-30</p>
+ <b>Submitter:</b> Vladimir Grigoriev <b>Opened:</b> 2013-06-26 <b>Last modified:</b> 2013-08-20</p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
 <p><b>View all other</b> <a href="lwg-index.html#basic.string">issues</a> in [basic.string].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 Constructors and member functions <tt>assign</tt> of class <tt>std::basic_string</tt> have one to one relation (except the 
-explicit constructor that creates an empty string).
-<p/>
-In fact any creating of an object of type <tt>std::basic_string</tt> using any of the above constructors except the 
-explicit constructor can be substituted for creating an empty string.
+explicit constructor that creates an empty string). The following list shows this relation:
+</p>
+
+<blockquote><pre>
+explicit basic_string(const Allocator&amp; a = Allocator());
+
+basic_string(const basic_string&amp; str);
+basic_string&amp; assign(const basic_string&amp; str);
+
+basic_string(basic_string&amp;&amp; str) noexcept;
+basic_string&amp; assign(basic_string&amp;&amp; str) noexcept;
+
+basic_string(const basic_string&amp; str, size_type pos, size_type n = npos,
+  const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const basic_string&amp; str, size_type pos,
+  size_type n);
+
+basic_string(const charT* s,
+  size_type n, const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const charT* s, size_type n);
+
+basic_string(const charT* s, const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const charT* s);
+
+basic_string(size_type n, charT c, const Allocator&amp; a = Allocator());
+basic_string&amp; assign(size_type n, charT c);
+
+template&lt;class InputIterator&gt;
+basic_string(InputIterator begin, InputIterator end,
+  const Allocator&amp; a = Allocator());
+template&lt;class InputIterator&gt;
+basic_string&amp; assign(InputIterator first, InputIterator last);
+
+basic_string(initializer_list&lt;charT&gt;, const Allocator&amp; = Allocator());
+basic_string&amp; assign(initializer_list&lt;charT&gt;);
+</pre></blockquote>
+
+<p>
+So in fact any creating of an object of type <tt>std::basic_string</tt> using any of the above constructors 
+except the explicit constructor can be substituted for creating a (possibly non-empty) string and 
+then applying to it the corresponding method assign.
 <p/>
 For example these two code snippets give the same result:
 </p>
@@ -18071,11 +18108,69 @@ would be fully compatible with the declaration of the corresponding constructor,
 for the third parameter of the <tt>assign</tt>.
 </p>
 
-<p><i>[Daniel comments]</i></p>
+<p>
+The <tt>assign</tt> function is not the only function that requires to be revised. 
+<p/>
+Now let include in the list of pairs constructor-assign with the modified method <tt>assign</tt> one more member function 
+<tt>append</tt>. We will get:
+</p>
 
+<blockquote><pre>
+explicit basic_string(const Allocator&amp; a = Allocator());
+
+basic_string(const basic_string&amp; str);
+basic_string&amp; assign(const basic_string&amp; str);
+<span style="color:#C80000;font-weight:bold">basic_string&amp; append(const basic_string&amp; str);</span>
+
+basic_string(basic_string&amp;&amp; str) noexcept;
+basic_string&amp; assign(basic_string&amp;&amp; str) noexcept;
+
+basic_string(const basic_string&amp; str, size_type pos, size_type n = npos,
+  const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const basic_string&amp; str, size_type pos,
+  size_type n);
+<span style="color:#C80000;font-weight:bold">basic_string&amp; append(const basic_string&amp; str, size_type pos,
+  size_type n);</span>
+
+basic_string(const charT* s,
+  size_type n, const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const charT* s, size_type n);
+<span style="color:#C80000;font-weight:bold">basic_string&amp; append(const charT* s, size_type n);</span>
+
+basic_string(const charT* s, const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const charT* s);
+<span style="color:#C80000;font-weight:bold">basic_string&amp; append(const charT* s);</span>
+
+basic_string(size_type n, charT c, const Allocator&amp; a = Allocator());
+basic_string&amp; assign(size_type n, charT c);
+<span style="color:#C80000;font-weight:bold">basic_string&amp; append(size_type n, charT c);</span>
+
+template&lt;class InputIterator&gt;
+basic_string(InputIterator begin, InputIterator end,
+  const Allocator&amp; a = Allocator());
+template&lt;class InputIterator&gt;
+basic_string&amp; assign(InputIterator first, InputIterator last);
+<span style="color:#C80000;font-weight:bold">template&lt;class InputIterator&gt;
+basic_string&amp; append(InputIterator first, InputIterator last);</span>
+
+basic_string(initializer_list&lt;charT&gt;, const Allocator&amp; = Allocator());
+basic_string&amp; assign(initializer_list&lt;charT&gt;);
+<span style="color:#C80000;font-weight:bold">basic_string&amp; append(initializer_list&lt;charT&gt;);</span>
+</pre></blockquote>
+
+<p>As it seen from this record:</p>
+
+<blockquote><pre>
+basic_string(const basic_string&amp; str, size_type pos, size_type n = npos,
+  const Allocator&amp; a = Allocator());
+basic_string&amp; assign(const basic_string&amp; str, size_type pos,
+  size_type n);
+basic_string&amp; append(const basic_string&amp; str, size_type pos,
+  size_type n);
+</pre></blockquote>
 
 <p>
-The mentioned issue is not restricted to the <tt>assign</tt> overloads, it also applies at least to <tt>append</tt> as well.
+it is obvious that the function <tt>append</tt> also should have the default argument that is that it should be declared as:
 </p>
 
 
@@ -18938,8 +19033,9 @@ continue to refer to the same element, but now behave as iterators into <tt>*thi
 </blockquote>
 
 <p>
-But it is incorrect to talk about <tt>operator==</tt> for iterators that are not from the same container. This is not stated
-in the standard, but it was discussed as issue <a href="lwg-closed.html#446">446</a>. So, the text operates with undefined behaviour.
+But it is incorrect to talk about <tt>operator==</tt> for iterators that are not from the same container (after acceptance of 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3066.html">N3066</a>, 24.2.5 [forward.iterators] p2). 
+So, the text operates with an undefined behaviour.
 </p>
 
 <p>
