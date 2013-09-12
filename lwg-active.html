@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2013-09-08</td>
+  <td align="left">2013-09-12</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D85)</h1>
-<p>Revised 2013-09-08 at 21:09:26 UTC</p>
+<p>Revised 2013-09-12 at 22:09:41 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D85: 2013-10 post-Chicago mailing<ul>
 <li><b>Summary:</b><ul>
-<li>174 open issues, up by 1.</li>
+<li>175 open issues, up by 2.</li>
 <li>1637 closed issues, up by 0.</li>
-<li>1811 issues total, up by 1.</li>
+<li>1812 issues total, up by 2.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following New issue: <a href="lwg-active.html#2288">2288</a>.</li>
+<li>Added the following 2 New issues: <a href="lwg-active.html#2288">2288</a>, <a href="lwg-active.html#2289">2289</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -19872,6 +19872,92 @@ a shared lock shall not have been acquired for the current thread.</ins>
 -37- <i>Throws:</i> <del>Nothing</del><ins>Timeout-related exceptions (30.2.4 [thread.req.timing])</ins>.
 </p>
 </blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2289"></a>2289. <tt>constexpr</tt> guarantees of defaulted functions still insufficient</h3>
+<p><b>Section:</b> 20.3.2 [pairs.pair], 20.4.2.1 [tuple.cnstr], 20.13.5 [time.duration] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-09 <b>Last modified:</b> 2013-09-13</p>
+<p><b>View all other</b> <a href="lwg-index.html#pairs.pair">issues</a> in [pairs.pair].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+During the acceptance of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3471.html">N3471</a> and
+some similar <tt>constexpr</tt> papers, specific wording was added to <tt>pair</tt>, <tt>tuple</tt>, and other templates
+that were intended to impose implementation constraints that ensure that the observable <tt>constexpr</tt> "character"
+of a defaulted function template is solely determined by the required expressions of the user-provided types when instantiated,
+for example:
+</p>
+
+<blockquote><p>
+The defaulted move and copy constructor, respectively, of pair shall be a <tt>constexpr</tt> function if and only if
+all required element-wise initializations for copy and move, respectively, would satisfy the requirements for
+a <tt>constexpr</tt> function.
+</p></blockquote>
+
+<p>
+This wording doesn't require enough, especially since the core language via CWG 1358 does now support <tt>constexpr</tt>
+function template instantiations, even if such function cannot appear in a constant expression (as specified in 5.19 [expr.const]) 
+or as a constant initializer of that object (as specified in 3.6.2 [basic.start.init]). The wording should be 
+improved and should require valid uses in constant expressions and as constant initializers instead.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Change 20.3.2 [pairs.pair] p2 as indicated:</p>
+
+<blockquote>
+<p>
+-2- <del>The defaulted move and copy constructor, respectively, of pair shall be a <tt>constexpr</tt> function if and only if
+all required element-wise initializations for copy and move, respectively, would satisfy the requirements for
+a <tt>constexpr</tt> function</del><ins>An invocation of the move or copy constructor of <tt>pair</tt> shall be a constant expression 
+(5.19 [expr.const]) if all required element-wise initializations would be constant expressions. An invocation of the 
+move or copy constructor of <tt>pair</tt> shall be a constant initializer for that <tt>pair</tt> object (3.6.2 [basic.start.init])
+if all required element-wise initializations would be constant initializers for the respective subobjects</ins>.
+</p>
+</blockquote>
+</li>
+
+<li><p>Change 20.4.2.1 [tuple.cnstr] p2 as indicated:</p>
+
+<blockquote>
+<p>
+-2- <del>The defaulted move and copy constructor, respectively, of <tt>tuple</tt> shall be a <tt>constexpr</tt> function if 
+and only if all required element-wise initializations for copy and move, respectively, would satisfy the requirements for
+a <tt>constexpr</tt> function. The defaulted move and copy constructor of <tt>tuple&lt;&gt;</tt> shall be <tt>constexpr</tt> 
+functions</del><ins>An invocation of the move or copy constructor of <tt>tuple</tt> shall be a constant expression (5.19 [expr.const])
+if all required element-wise initializations would be constant expressions. An invocation of the move or copy constructor of 
+<tt>tuple</tt> shall be a constant initializer for that <tt>tuple</tt> object (3.6.2 [basic.start.init]) if all 
+required element-wise initializations would be constant initializers for the respective subobjects. An invocation of the 
+move or copy constructor of <tt>tuple&lt;&gt;</tt> shall be a constant expression, or a constant initializer for that 
+<tt>tuple&lt;&gt;</tt> object, respectively, if the function argument would be constant expression</ins>.
+</p>
+</blockquote>
+</li>
+
+<li><p>Change 20.13.5 [time.duration] p7 as indicated:</p>
+
+<blockquote>
+<p>
+-7- <i>Remarks:</i> <del>The defaulted copy constructor of duration shall be a <tt>constexpr</tt> function if and only if
+the required initialization of the member <tt>rep_</tt> for copy and move, respectively, would satisfy the
+requirements for a <tt>constexpr</tt> function.</del><ins>An invocation of the copy constructor of <tt>duration</tt> shall 
+be a constant expression (5.19 [expr.const]) if the required initialization of the member <tt>rep_</tt> would be a constant expression.
+An invocation of the copy constructor of <tt>duration</tt> shall be a constant initializer for that <tt>duration</tt> object 
+(3.6.2 [basic.start.init]) if the required initialization of the member <tt>rep_</tt> would be constant initializers 
+for this subobject</ins>.
+</p>
 </blockquote>
 </li>
 
