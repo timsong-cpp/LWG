@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-09-26 at 21:09:24 UTC</p>
+<p>Revised 2013-09-26 at 23:09:35 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -7832,7 +7832,7 @@ There are real questions here, that may require a paper to explore and answer pr
 <hr>
 <h3><a name="2135"></a>2135. Unclear requirement for exceptions thrown in <tt>condition_variable::wait()</tt></h3>
 <p><b>Section:</b> 30.5.1 [thread.condition.condvar], 30.5.2 [thread.condition.condvarany] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-03-06 <b>Last modified:</b> 2012-11-03</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-03-06 <b>Last modified:</b> 2013-09-27</p>
 <p><b>View other</b> <a href="lwg-index-open.html#thread.condition.condvar">active issues</a> in [thread.condition.condvar].</p>
 <p><b>View all other</b> <a href="lwg-index.html#thread.condition.condvar">issues</a> in [thread.condition.condvar].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7894,9 +7894,287 @@ Hans: so if the <tt>unlock</tt> throws we simply propagate the exception.
 Move the issue to open and add some formal wording at a later time.
 </p>
 
+<p><i>[2013-09 Chicago: Resolved]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Edit 30.5.1 [thread.condition.condvar] as indicated:</p>
+
+<blockquote><pre>
+void wait(unique_lock&lt;mutex&gt;&amp; lock);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Effects:</i>
+</p>
+<ul>
+<li><p>Atomically calls <tt>lock.unlock()</tt> and blocks on <tt>*this</tt>.</p></li>
+<li><p>When unblocked, calls <tt>lock.lock()</tt> (possibly blocking on the lock), then returns.</p></li>
+<li><p>The function will unblock when signaled by a call to <tt>notify_one()</tt> or a call to <tt>notify_all()</tt>,
+or spuriously.</p></li>
+<li><p><del>If the function exits via an exception, <tt>lock.lock()</tt> shall be called prior to exiting the function
+scope.</del></p></li>
+</ul>
+<p>
+-11- <i>Postcondition:</i> <tt>lock.owns_lock()</tt> is true and <tt>lock.mutex()</tt> is locked by the calling 
+thread. <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+-12- <i>Throws:</i> <ins>Nothing</ins><del><tt>system_error</tt> when an exception is required (30.2.2)</del>.
+<p/>
+<del>-13- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Predicate&gt;
+void wait(unique_lock&lt;mutex&gt;&amp; lock, Predicate pred);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-16- <i>Postcondition:</i> <tt>lock.owns_lock()</tt> is true and <tt>lock.mutex()</tt> is locked by the calling 
+thread. <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+-17- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2),</del> timeout-related exceptions 
+(30.2.4)<del>,</del> or any exception thrown by <tt>pred</tt>.
+<p/>
+<del>-18- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  cv_status wait_until(unique_lock&lt;mutex&gt;&amp; lock,
+    const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Effects:</i> 
+</p>
+<ul>
+<li><p>[&hellip;]</p></li>
+<li><p>If the function exits via an exception, <tt>lock.lock()</tt> shall be called prior to exiting the function
+<del>scope</del>.</p></li>
+</ul>
+<p>
+-21- <i>Postcondition:</i> <tt>lock.owns_lock()</tt> is true and <tt>lock.mutex()</tt> is locked by the calling 
+thread. <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+[&hellip;]
+<p/>
+-23- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2) or</del> timeout-related 
+exceptions (30.2.4).
+<p/>
+<del>-24- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  cv_status wait_for(unique_lock&lt;mutex&gt;&amp; lock,
+    const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-28- <i>Postcondition:</i> <tt>lock.owns_lock()</tt> is true and <tt>lock.mutex()</tt> is locked by the calling 
+thread. <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+[&hellip;]
+<p/>
+-29- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2) or</del> timeout-related 
+exceptions (30.2.4).
+<p/>
+<del>-30- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Clock, class Duration, class Predicate&gt;
+  bool wait_until(unique_lock&lt;mutex&gt;&amp; lock,
+    const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time,
+	Predicate pred);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-33- <i>Postcondition:</i> <tt>lock.owns_lock()</tt> is true and <tt>lock.mutex()</tt> is locked by the calling 
+thread. <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+[&hellip;]
+<p/>
+-35- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2),</del> timeout-related exceptions 
+(30.2.4)<del>,</del> or any exception thrown by <tt>pred</tt>.
+<p/>
+<del>-36- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Rep, class Period, class Predicate&gt;
+  bool wait_for(unique_lock&lt;mutex&gt;&amp; lock,
+    const chrono::duration&lt;Rep, Period&gt;&amp; rel_time,
+	Predicate pred);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-40- <i>Postcondition:</i> <tt>lock.owns_lock()</tt> is true and <tt>lock.mutex()</tt> is locked by the calling 
+thread. <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+[&hellip;]
+<p/>
+-42- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2),</del> timeout-related exceptions 
+(30.2.4)<del>,</del> or any exception thrown by <tt>pred</tt>.
+<p/>
+<del>-43- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+</blockquote>
+
+</li>
+
+<li><p>Edit 30.5.2 [thread.condition.condvarany] as indicated:</p>
+
+<blockquote><pre>
+template&lt;class Lock&gt;
+void wait(Lock&amp; lock);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Effects:</i>
+</p>
+<ul>
+<li><p>Atomically calls <tt>lock.unlock()</tt> and blocks on <tt>*this</tt>.</p></li>
+<li><p>When unblocked, calls <tt>lock.lock()</tt> (possibly blocking on the lock) and returns.</p></li>
+<li><p>The function will unblock when signaled by a call to <tt>notify_one()</tt>, a call to <tt>notify_all()</tt>,
+or spuriously.</p></li>
+<li><p><del>If the function exits via an exception, <tt>lock.lock()</tt> shall be called prior to exiting the function
+scope.</del></p></li>
+</ul>
+<p>
+-11- <i>Postcondition:</i> <tt>lock</tt> is locked by the calling thread. 
+<ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+-12- <i>Throws:</i> <ins>Nothing</ins><del><tt>system_error</tt> when an exception is required (30.2.2)</del>.
+<p/>
+<del>-13- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+
+</blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Lock, class Clock, class Duration&gt;
+  cv_status wait_until(Lock&amp; lock, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-15- <i>Effects:</i> 
+</p>
+<ul>
+<li><p>[&hellip;]</p></li>
+<li><p>If the function exits via an exception, <tt>lock.lock()</tt> shall be called prior to exiting the function
+<del>scope</del>.</p></li>
+</ul>
+<p>
+-16- <i>Postcondition:</i> <tt>lock</tt> is locked by the calling thread. 
+ <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+[&hellip;]
+<p/>
+-18- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2) or</del> timeout-related 
+exceptions (30.2.4).
+<p/>
+<del>-19- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+<blockquote>
+<pre>
+template &lt;class Lock, class Rep, class Period&gt;
+  cv_status wait_for(Lock&amp; lock, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+-22- <i>Postcondition:</i> <tt>lock</tt> is locked by the calling thread. 
+ <ins>If the function fails to meet the postcondition, <tt>std::terminate()</tt> shall be called 
+(15.5.1 [except.terminate]). [<i>Note:</i> This can happen if the re-locking of the mutex throws an 
+exception. &mdash; <i>end note</i>]</ins>
+<p/>
+[&hellip;]
+<p/>
+-23- <i>Throws:</i> <del><tt>system_error</tt> when an exception is required (30.2.2) or</del> timeout-related 
+exceptions (30.2.4).
+<p/>
+<del>-24- <i>Error conditions:</i></del>
+</p>
+<ul>
+<li><p><del>equivalent error condition from <tt>lock.lock()</tt> or <tt>lock.unlock()</tt>.</del></p></li>
+</ul>
+</blockquote></blockquote>
+
+</blockquote>
+
+</li>
+</ol>
+
 
 
 
@@ -13113,7 +13391,7 @@ Further, <tt>min</tt> and <tt>max</tt> also lack formal complexity guarantees.
 <hr>
 <h3><a name="2240"></a>2240. Probable misuse of term "function scope" in [thread.condition]</h3>
 <p><b>Section:</b> 30.5.1 [thread.condition.condvar], 30.5.2 [thread.condition.condvarany] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> FrankHB1989 <b>Opened:</b> 2013-02-03 <b>Last modified:</b> 2013-03-17</p>
+ <b>Submitter:</b> FrankHB1989 <b>Opened:</b> 2013-02-03 <b>Last modified:</b> 2013-09-27</p>
 <p><b>View other</b> <a href="lwg-index-open.html#thread.condition.condvar">active issues</a> in [thread.condition.condvar].</p>
 <p><b>View all other</b> <a href="lwg-index.html#thread.condition.condvar">issues</a> in [thread.condition.condvar].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -13140,9 +13418,17 @@ labels have function scope</strong>.
 Probably the intended meaning is "outermost block scope of the function".
 </p>
 
+<p><i>[2013-09 Chicago: Resolved by proposed resolution of LWG <a href="lwg-active.html#2135">2135</a>]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
+
+<p>
+Resolved by proposed resolution of LWG <a href="lwg-active.html#2135">2135</a>.
+</p>
+
 
 
 
