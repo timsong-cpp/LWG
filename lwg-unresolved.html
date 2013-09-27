@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-09-27 at 14:09:03 UTC</p>
+<p>Revised 2013-09-27 at 17:09:15 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -3936,111 +3936,6 @@ to <tt>*this</tt>.
 
 
 <hr>
-<h3><a name="2100"></a>2100. timed waiting functions cannot timeout if <tt>launch::async</tt> policy used</h3>
-<p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-14 <b>Last modified:</b> 2013-09-25</p>
-<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
-<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-30.6.8 [futures.async] p5 says
-</p>
-
-<blockquote>
-<p>
-If the implementation chooses the <tt>launch::async</tt> policy,
-</p>
-<ul><li>a call to a waiting function on an asynchronous return object that shares the 
-shared state created by this <tt>async</tt> call shall block until the associated thread has
-completed, as if joined (30.3.1.5 [thread.thread.member]);</li>
-</ul>
-</blockquote>
-
-<p>
-That should say a non-timed waiting function, otherwise, calling a timed waiting function 
-can block indefinitely waiting for the associated thread to complete, rather than timing 
-out after the specified time.
-<p/>
-Since <tt>std::thread</tt> does not provide a <tt>timed_join()</tt> function (nor does
-Pthreads, making it impossible on many platforms) there is no way for a timed waiting 
-function to try to join but return early due to timeout, therefore timed waiting 
-functions either cannot guarantee to timeout or cannot be used to meet the requirement 
-to block until the thread is joined.  In order to allow timed waiting functions to
-timeout the requirement should only apply to non-timed waiting functions.
-</p>
-
-<p><i>[2012, Portland: move to Review]</i></p>
-
-<p>
-Detlef: Do we actually need this fix &mdash; is it detectable?
-</p>
-<p>
-Yes &mdash; you will never get a timeout. Should we strike the whole paragraph?
-</p>
-<p>
-Hans: issue with thread local destruction. 
-</p>
-<p>
-Niklas: I have a strong expectation that a timed wait will respect the timeout
-</p>
-<p>
-<em>agreed</em>
-</p>
-<p>
-Detlef: we want a timed wait that does not time out to return like a non-timed wait; but is this implementable?
-</p>
-<p>
-Pablo: Could we simply append ", or else time out"
-</p>
-<p>
-Detlef: the time out on the shared state needs implementing anyway, even if the underlying O/S does not support a timed join.
-</p>
-<p>
-Hans: the net effect is the timeout does not cover the thread local destruction... ah, I see what you're doing
-</p>
-<p>
-Detlef: happy with Pablo's proposal
-</p>
-<p>
-Wording proposed is to append after the word "joined" add ", or else time out"
-</p>
-<p>
-Moved to review with this wording.
-</p>
-
-<p><i>[2013-09, Chicago]</i></p>
-
-<p>
-Remove the offending "non-timed" insertion.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p><i>[This wording is relative to the FDIS.]</i></p>
-
-
-<p>Change 30.6.8 [futures.async] p5 as indicated:</p>
-
-<blockquote>
-<p>
-If the implementation chooses the <tt>launch::async</tt> policy,
-</p>
-<ul><li>a call to a waiting function on an asynchronous return object 
-that shares the shared state created by this <tt>async</tt> call shall block until the 
-associated thread has completed, as if joined<ins>, or else time out</ins>
-(30.3.1.5 [thread.thread.member]);</li>
-</ul>
-</blockquote>
-
-
-
-
-
-
-<hr>
 <h3><a name="2101"></a>2101. Some transformation types can produce impossible types</h3>
 <p><b>Section:</b> 20.11.7 [meta.trans] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-11-18 <b>Last modified:</b> 2013-09-25</p>
@@ -6931,97 +6826,6 @@ class template for any pointer type. The requirements for the members of these
 specializations are given in sub-clause 20.10.12 [unord.hash]</ins>.
 </p>
 </blockquote></blockquote>
-
-
-
-
-
-
-<hr>
-<h3><a name="2120"></a>2120. What should <tt>async</tt> do if neither '<tt>async</tt>' nor '<tt>deferred</tt>' is set in policy?</h3>
-<p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-01-01 <b>Last modified:</b> 2013-05-06</p>
-<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
-<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-Implementations already disagree, one returns an invalid future with
-no shared state, one chooses <tt>policy == async</tt> and one chooses <tt>policy ==
-deferred</tt>, see c++std-lib-30839, c++std-lib-30840 and c++std-lib-30844.
-It's not clear if returning an invalid future is allowed by the current wording.
-</p>
-<p>
-If the intention is to allow an empty future to be returned, then
-30.6.8 [futures.async] p3 and p4 should be adjusted to clarify that a
-shared state might not be created and an invalid future might be returned.
-</p>
-<p>
-If the intention is that a valid future is always returned, p3 should
-say something about the case where none of the conditions applies.
-</p>
-
-<p><i>[2012, Portland: move to Review]</i></p>
-
-<p>
-We could make it undefined if no launch policy is defined.
-</p>
-<p>
-Hans: If no launch policy is specified the behaviour is undefined
-</p>
-<p>
-Artur: or implementation defined?
-</p>
-<p>
-Hans: no: we don't want people to do this
-</p>
-<p><i>[Proposed wording]</i></p>
-
-<p>
-This wording is relative to N3376
-</p>
-<p>
-Add a third bullet to the end of the list in 30.6.8p3
-</p>
-<blockquote>
-"if no valid launch policy is provided the behaviour is undefined"
-</blockquote>
-<p>
-Moved to review
-</p>
-
-<p><i>[2013-04-19, Bristol]</i></p>
- 
-
-<p>Detlef provides new wording</p>
-
-<p>Previous wording:</p>
-
-<blockquote class="note">  
-<p><i>[This wording is relative to N3376]</i></p>
-
-<p>
-Add a third bullet to the end of the list in 30.6.8 [futures.async]p3
-</p>
-<blockquote>
-<ins>&ndash; if no valid launch policy is provided the behaviour is undefined</ins>
-</blockquote>
-</blockquote>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p><i>[This wording is relative to N3485]</i></p>
-
-<p>
-Add a third bullet to the end of the list in 30.6.8 [futures.async]p3
-</p>
-<blockquote>
-<ins>&ndash; If no value is set in the launch policy, or a value is set that is
-neither specified in this International Standard or by the implementation, the behaviour 
-is undefined.</ins>
-</blockquote>
 
 
 
