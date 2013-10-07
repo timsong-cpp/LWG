@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-10-07 at 20:10:21 UTC</p>
+<p>Revised 2013-10-07 at 21:10:04 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -9974,6 +9974,7 @@ explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
 <h3><a name="2195"></a>2195. Missing constructors for <tt>match_results</tt></h3>
 <p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2013-05-20</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -15891,6 +15892,56 @@ type <tt>T</tt> with the arguments <tt><del>il</del><ins>std::move(il)</ins></tt
 </p>
 </blockquote>
 </blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2306"></a>2306. <tt>match_results::reference</tt> should be <tt>value_type&amp;</tt>, not <tt>const value_type&amp;</tt></h3>
+<p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-09-25 <b>Last modified:</b> 2013-10-07</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The match_results class synopsis has
+</p>
+<blockquote><pre>
+typedef const value_type&amp; const_reference;
+typedef const_reference reference;
+</pre></blockquote>
+<p>
+We're getting too enthusiastic about types here by insisting that <tt>const_reference</tt> is a const reference, even 
+though <tt>match_results</tt> is a read-only container. In the container requirements table (Table 96, in section 
+23.2.1 [container.requirements.general] we say that <tt>Container::reference</tt> is "lvalue of <tt>T</tt>" and 
+<tt>Container::const_reference</tt> is "const lvalue of <tt>T</tt>".
+</p>
+<p>
+That phrasing in the container requirements table is admittedly a little fuzzy and ought to be clarified (as discussed in 
+lwg issue <a href="lwg-active.html#2182">2182</a>), but in context it's clear that <tt>Container::reference</tt> ought to be a <tt>T&amp;</tt> 
+even for constant containers. In the rest of Clause 23 we see that <tt>Container::reference</tt> is <tt>T&amp;</tt>, not 
+<tt>const T&amp;</tt>, even for const-qualified containers and that it's <tt>T&amp;</tt>, not <tt>const T&amp;</tt>, even 
+for containers like <tt>set</tt> and <tt>unordered_set</tt> that provide const iterators only.
+<p/>
+The way we handle const containers is just that in the case of a const-qualified container (including <tt>match_results</tt>) 
+there are no operations that return <tt>Container::reference</tt>. That's already the case, so this issue is complaining 
+about an unused typedef.</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Change the class template <tt>match_results</tt> header synopsis, 28.10 [re.results] p4 as indicated:</p>
+
+<blockquote><pre>
+typedef const value_type&amp; const_reference;
+typedef <del>const_reference</del><ins>value_type&amp;</ins> reference;
+</pre></blockquote>
 </li>
 </ol>
 
