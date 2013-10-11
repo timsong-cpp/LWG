@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-10-11 at 19:10:23 UTC</p>
+<p>Revised 2013-10-11 at 19:10:57 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -16757,7 +16757,7 @@ template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt;&amp;&amp; r) n
 access and modify only the <tt>shared_ptr</tt> and <tt>weak_ptr</tt> objects themselves and not objects they refer to. Changes 
 in <tt>use_count()</tt> do not reflect modifications that can introduce data races."  This requires <tt>shared_ptr/weak_ptr</tt> 
 implementations to protect their strong and weak refcounts with atomic operations, without the Standardese having to say this 
-elsewhere. 20.9.2.3.5 [util.smartptr.weak.obs]/5 describes <tt>weak_ptr::lock()</tt> with 
+elsewhere. However, 20.9.2.3.5 [util.smartptr.weak.obs]/5 describes <tt>weak_ptr::lock()</tt> with 
 "<i>Returns:</i> <tt>expired() ? shared_ptr&lt;T&gt;() : shared_ptr&lt;T&gt;(*this)</tt>."  
 Even after considering the blanket wording about 
 data races, this specification is insufficient. If this conditional expression were literally implemented, the <tt>use_count()</tt> 
@@ -16962,6 +16962,67 @@ Copy constructors for these container types obtain an allocator by calling
 parameters</del><ins>the allocator belonging to the container being copied</ins>. 
 Move constructors obtain an allocator by move construction from the allocator belonging to the container being moved. [&hellip;]
 </p></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2321"></a>2321. Moving containers should (usually) be required to preserve iterators</h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2013-10-11</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+23.2.1 [container.requirements.general]/10 says that unless otherwise specified, "no <tt>swap()</tt> function invalidates 
+any references, pointers, or iterators referring to the elements of the containers being swapped. [<i>Note:</i> The <tt>end()</tt> 
+iterator does not refer to any element, so it may be invalidated. &mdash; <i>end note</i>]". However, move constructors and move 
+assignment operators aren't given similar invalidation guarantees. The guarantees need several exceptions, so I do not believe 
+that blanket language like /11 "Unless otherwise specified (either explicitly or by defining a function in terms of other functions), 
+invoking a container member function or passing a container as an argument to a library function shall not invalidate iterators to, 
+or change the values of, objects within that container." is applicable.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>In 23.2.1 [container.requirements.general]/10 change as indicated:</p>
+
+<blockquote><p>
+-10- Unless otherwise specified (see 23.2.4.1, 23.2.5.1, 23.3.3.4, and 23.3.7.5) all container types defined in this
+Clause meet the following additional requirements:
+</p>
+<ul>
+<li><p>
+[&hellip;]
+</p></li>
+<li><p>
+no copy constructor or assignment operator of a returned iterator throws an exception.
+</p></li>
+<li><p>
+<ins>no move constructor (or move assignment operator when 
+<tt>allocator_traits&lt;allocator_type&gt;::propagate_on_container_move_assignment::value</tt> is true) of a container 
+(except for array) invalidates any references, pointers, or iterators referring to the elements of the source container. 
+[<i>Note:</i> The <tt>end()</tt> iterator does not refer to any element, so it may be invalidated. &mdash; <i>end note</i>]</ins>
+</p></li>
+<li><p>
+no <tt>swap()</tt> function throws an exception.
+</p></li>
+<li><p>
+no <tt>swap()</tt> function invalidates any references, pointers, or iterators referring to the elements of the
+containers being swapped. [<i>Note:</i> The <tt>end()</tt> iterator does not refer to any element, so it may be
+invalidated. &mdash; <i>end note</i>]
+</p></li>
+</ul>
+</blockquote>
 </li>
 
 </ol>
