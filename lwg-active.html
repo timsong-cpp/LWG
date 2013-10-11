@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D85)</h1>
-<p>Revised 2013-10-11 at 17:10:57 UTC</p>
+<p>Revised 2013-10-11 at 17:10:54 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,14 +156,14 @@ ownership of it.
 <ul>
 <li>D85: 2013-10 post-Chicago mailing<ul>
 <li><b>Summary:</b><ul>
-<li>172 open issues, down by 1.</li>
+<li>173 open issues, up by 0.</li>
 <li>1665 closed issues, up by 28.</li>
-<li>1837 issues total, up by 27.</li>
+<li>1838 issues total, up by 28.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following Ready issue: <a href="lwg-active.html#2291">2291</a>.</li>
 <li>Added the following Review issue: <a href="lwg-active.html#2299">2299</a>.</li>
-<li>Added the following 21 New issues: <a href="lwg-active.html#2288">2288</a>, <a href="lwg-active.html#2289">2289</a>, <a href="lwg-active.html#2290">2290</a>, <a href="lwg-active.html#2292">2292</a>, <a href="lwg-active.html#2293">2293</a>, <a href="lwg-active.html#2294">2294</a>, <a href="lwg-active.html#2295">2295</a>, <a href="lwg-active.html#2296">2296</a>, <a href="lwg-active.html#2301">2301</a>, <a href="lwg-active.html#2302">2302</a>, <a href="lwg-active.html#2303">2303</a>, <a href="lwg-active.html#2304">2304</a>, <a href="lwg-active.html#2306">2306</a>, <a href="lwg-active.html#2307">2307</a>, <a href="lwg-active.html#2308">2308</a>, <a href="lwg-active.html#2309">2309</a>, <a href="lwg-active.html#2310">2310</a>, <a href="lwg-active.html#2311">2311</a>, <a href="lwg-active.html#2312">2312</a>, <a href="lwg-active.html#2313">2313</a>, <a href="lwg-active.html#2314">2314</a>.</li>
+<li>Added the following 22 New issues: <a href="lwg-active.html#2288">2288</a>, <a href="lwg-active.html#2289">2289</a>, <a href="lwg-active.html#2290">2290</a>, <a href="lwg-active.html#2292">2292</a>, <a href="lwg-active.html#2293">2293</a>, <a href="lwg-active.html#2294">2294</a>, <a href="lwg-active.html#2295">2295</a>, <a href="lwg-active.html#2296">2296</a>, <a href="lwg-active.html#2301">2301</a>, <a href="lwg-active.html#2302">2302</a>, <a href="lwg-active.html#2303">2303</a>, <a href="lwg-active.html#2304">2304</a>, <a href="lwg-active.html#2306">2306</a>, <a href="lwg-active.html#2307">2307</a>, <a href="lwg-active.html#2308">2308</a>, <a href="lwg-active.html#2309">2309</a>, <a href="lwg-active.html#2310">2310</a>, <a href="lwg-active.html#2311">2311</a>, <a href="lwg-active.html#2312">2312</a>, <a href="lwg-active.html#2313">2313</a>, <a href="lwg-active.html#2314">2314</a>, <a href="lwg-active.html#2315">2315</a>.</li>
 <li>Added the following Deferred issue: <a href="lwg-active.html#2305">2305</a>.</li>
 <li>Added the following 2 Pending WP issues: <a href="lwg-defects.html#2298">2298</a>, <a href="lwg-defects.html#2300">2300</a>.</li>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2297">2297</a>.</li>
@@ -19835,6 +19835,108 @@ template&lt;class F, class Tuple&gt;
     return apply_impl(std::forward&lt;F&gt;(f), std::forward&lt;Tuple&gt;(t), Indices());
   }
 </pre></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2315"></a>2315. <tt>weak_ptr</tt> should be movable</h3>
+<p><b>Section:</b> 20.9.2.3 [util.smartptr.weak] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2013-10-11</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.weak">issues</a> in [util.smartptr.weak].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Like <tt>shared_ptr</tt>, <tt>weak_ptr</tt> should be movable to avoid unnecessary atomic increments/decrements of the weak refcount.
+</p>
+<p>
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Edit 20.9.2.3 [util.smartptr.weak]/1, class template <tt>weak_ptr</tt> synopsis as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template&lt;class T&gt; class weak_ptr {
+  public:
+    typedef T element_type;
+
+    <i>// 20.9.2.3.1, constructors</i>
+    constexpr weak_ptr() noexcept;
+    template&lt;class Y&gt; weak_ptr(shared_ptr&lt;Y&gt; const&amp; r) noexcept;
+    weak_ptr(weak_ptr const&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt; const&amp; r) noexcept;
+    <ins>weak_ptr(weak_ptr&amp;&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+
+    [&hellip;]
+
+    <i>// 20.9.2.3.3, assignment</i>
+    weak_ptr&amp; operator=(weak_ptr const&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt; const&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr&amp; operator=(shared_ptr&lt;Y&gt; const&amp; r) noexcept;
+    <ins>weak_ptr&amp; operator=(weak_ptr&amp;&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+  };
+}
+</pre></blockquote>
+</li>
+
+<li><p>Add the following new paragraphs at the end of sub-clause 20.9.2.3.1 [util.smartptr.weak.const]:</p>
+
+<blockquote><pre>
+<ins>weak_ptr(weak_ptr&amp;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Remark:</i> The second constructor shall not participate in overload resolution unless <tt>Y*</tt> is implicitly 
+convertible to <tt>T*</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Move-constructs a <tt>weak_ptr</tt> instance from <tt>r</tt>.</ins>
+<p/>
+<ins>-?- <i>Postconditions:</i> <tt>*this</tt> shall contain the old value of <tt>r</tt>. <tt>r</tt> shall be <em>empty</em>. 
+<tt>r.use_count() == 0</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit 20.9.2.3.3 [util.smartptr.weak.assign] as indicated:</p>
+
+<blockquote><pre>
+weak_ptr&amp; operator=(const weak_ptr&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr&amp; operator=(const weak_ptr&lt;Y&gt;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr&amp; operator=(const shared_ptr&lt;Y&gt;&amp; r) noexcept;
+</pre><blockquote>
+<p>
+-1- <i>Effects:</i> [&hellip;]
+<p/>
+-2- <i>Remarks:</i> [&hellip;]
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote><pre>
+<ins>weak_ptr&amp; operator=(weak_ptr&amp;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>weak_ptr(std::move(r)).swap(*this)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
 </li>
 
 </ol>
