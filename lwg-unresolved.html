@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-10-11 at 21:10:41 UTC</p>
+<p>Revised 2013-10-11 at 22:10:29 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -7749,6 +7749,8 @@ This topic deserves more attention than can be given in the telocon, and there i
 <h3><a name="2154"></a>2154. What exactly does compile-time complexity imply?</h3>
 <p><b>Section:</b> 26.5.1.3 [rand.req.urng] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> John Salmon <b>Opened:</b> 2012-04-26 <b>Last modified:</b> 2012-07-22</p>
+<p><b>View other</b> <a href="lwg-index-open.html#rand.req.urng">active issues</a> in [rand.req.urng].</p>
+<p><b>View all other</b> <a href="lwg-index.html#rand.req.urng">issues</a> in [rand.req.urng].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -17408,6 +17410,49 @@ should decide which change is best.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2327"></a>2327. Non-power-of-two URNGs should be forbidden</h3>
+<p><b>Section:</b> 26.5.1.3 [rand.req.urng] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2013-10-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#rand.req.urng">active issues</a> in [rand.req.urng].</p>
+<p><b>View all other</b> <a href="lwg-index.html#rand.req.urng">issues</a> in [rand.req.urng].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+26.5.1.3 [rand.req.urng] allows URNGs with non-power-of-two (NPOT) ranges, like <tt>[0, 1729]</tt>. This is unnecessarily permissive 
+(I cannot imagine a realistic source of randomness that would generate such a range) and has real costs for implementers, as 
+<tt>uniform_int_distribution</tt> must be prepared to accept such URNGs. The most efficient way to accumulate randomness is to 
+concatenate random bits, so NPOT randomness is not just useless, it is actively harmful (to avoid bias, if a URNG generates a 
+random number outside of a power-of-two range, the number must be discarded).
+<p/>
+Forbidding NPOT URNGs wouldn't affect users, and would simplify Standard Library implementations. It would be nice to require 
+<tt>min()</tt> to be <tt>0</tt>, but this is not necessary; it is simple for implementations to say <tt>g() - G::min()</tt> and 
+this will optimize away if <tt>min()</tt> is <tt>0</tt>. (It is vaguely plausible for a URNG to have a nonzero minimum; I can 
+imagine something that simply masks off low-order bits without shifting the rest downwards.) What is important is for the entire 
+range to have a power-of-two width; <tt>[1729, 1984]</tt> is acceptable as its size is 256.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Add a new paragraph at the end of 26.5.1.3 [rand.req.urng] as indicated:</p>
+
+<blockquote>
+<p>
+-3- The following relation shall hold: <tt>G::min() &lt; G::max()</tt>.
+<p/>
+<ins>-?- <tt>G::max() - G::min()</tt> shall be 2<sup><tt>n</tt></sup> - 1 for some <tt>n &gt; 0</tt>.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
 
 
 
