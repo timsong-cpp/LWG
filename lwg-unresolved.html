@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2013-10-11 at 22:10:29 UTC</p>
+<p>Revised 2013-10-12 at 15:10:30 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -16977,7 +16977,7 @@ Move constructors obtain an allocator by move construction from the allocator be
 <hr>
 <h3><a name="2321"></a>2321. Moving containers should (usually) be required to preserve iterators</h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2013-10-11</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2013-10-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -17013,7 +17013,7 @@ no copy constructor or assignment operator of a returned iterator throws an exce
 <li><p>
 <ins>no move constructor (or move assignment operator when 
 <tt>allocator_traits&lt;allocator_type&gt;::propagate_on_container_move_assignment::value</tt> is true) of a container 
-(except for array) invalidates any references, pointers, or iterators referring to the elements of the source container. 
+(except for <tt>array</tt>) invalidates any references, pointers, or iterators referring to the elements of the source container. 
 [<i>Note:</i> The <tt>end()</tt> iterator does not refer to any element, so it may be invalidated. &mdash; <i>end note</i>]</ins>
 </p></li>
 <li><p>
@@ -17451,6 +17451,56 @@ range to have a power-of-two width; <tt>[1729, 1984]</tt> is acceptable as its s
 <ins>-?- <tt>G::max() - G::min()</tt> shall be 2<sup><tt>n</tt></sup> - 1 for some <tt>n &gt; 0</tt>.</ins>
 </p>
 </blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2328"></a>2328. Rvalue stream extraction should use perfect forwarding</h3>
+<p><b>Section:</b> 27.7.2.6 [istream.rvalue] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2013-10-12</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+27.7.2.6 [istream.rvalue] declares <tt>operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp;&amp; is, T&amp; x)</tt>.  
+However, 27.7.2.2.3 [istream::extractors]/7 declares <tt>operator&gt;&gt;(basic_istream&lt;charT,traits&gt;&amp; in, charT* s)</tt>, 
+plus additional overloads for <tt>unsigned char*</tt> and <tt>signed char*</tt>. This means that 
+"<tt>return_rvalue_istream() &gt;&gt; &amp;arr[0]</tt>" won't compile, because <tt>T&amp;</tt> won't bind to the rvalue <tt>&amp;arr[0]</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Edit 27.7.1 [iostream.format.overview], header <tt>&lt;istream&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+  template &lt;class charT, class traits, class T&gt;
+    basic_istream&lt;charT, traits&gt;&amp;
+    operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp;&amp; is, T&amp;<ins>&amp;</ins> x);
+}
+</pre></blockquote>
+</li>
+
+<li><p>Edit 27.7.2.6 [istream.rvalue] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class charT, class traits, class T&gt;
+  basic_istream&lt;charT, traits&gt;&amp;
+  operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp;&amp; is, T&amp;<ins>&amp;</ins> x);
+</pre><blockquote>
+<p>
+-1- <i>Effects:</i> <tt>is &gt;&gt;<del>x</del> <ins>std::forward&lt;T&gt;(x)</ins></tt>
+<p/>
+-2- <i>Returns:</i> <tt>is</tt>
+</p>
+</blockquote></blockquote>
 </li>
 </ol>
 
