@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2014-01-12 at 13:01:59 UTC</p>
+<p>Revised 2014-01-12 at 14:01:21 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -19611,6 +19611,82 @@ namespace std {
   [&hellip;]
 }
 </pre></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2347"></a>2347. <tt>reverse_iterator::operator[]</tt> calls const version of <tt>current[]</tt></h3>
+<p><b>Section:</b> 24.5.1.3.12 [reverse.iter.opindex] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Timo Bingmann <b>Opened:</b> 2013-11-11 <b>Last modified:</b> 2014-01-12</p>
+<p><b>View all other</b> <a href="lwg-index.html#reverse.iter.opindex">issues</a> in [reverse.iter.opindex].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently <tt>reverse_iterator::operator[]()</tt> returns "<tt>current[-n-1]</tt>" and has
+an "<em>unspecified</em>" return type.
+<p/>
+When <tt>Iterator</tt> is a mutable random access iterator, the expression
+"<tt>current[-n-1]</tt>" calls "<tt>Iterator::operator[] const</tt>", which returns a
+const reference. This const reference cannot be converted back to a
+mutable reference.
+<p/>
+This issue is related to the "<em>unspecified</em>" return value of
+<tt>reverse_iterator::operator[]</tt>. See defect <a href="lwg-defects.html#386">386</a>.
+<p/>
+The -1 is due to "current" pointing one item beyond the
+<tt>reverse_iterator</tt>'s real current value.
+<p/>
+The current libstdc++ implementation reads "<tt>*(current + n)</tt>" for
+<tt>reverse_iterator::operator[]</tt>.
+<p/>
+This copied current, advances (backwards) via <tt>operator+</tt> and
+dereferences. It bypasses the issues due to <tt>reverse_iterator::operator[]</tt>
+being const by copying the iterator.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3797.</p>
+
+<ol>
+<li><p>Edit 24.5.1.1 [reverse.iterator], class template <tt>reverse_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator>
+  class reverse_iterator : public
+  iterator&lt;typename iterator_traits&lt;Iterator&gt;::iterator_category,
+    typename iterator_traits&lt;Iterator&gt;::value_type,
+    typename iterator_traits&lt;Iterator&gt;::difference_type,
+    typename iterator_traits&lt;Iterator&gt;::pointer,
+    typename iterator_traits&lt;Iterator&gt;::reference> {
+  public:
+    [&hellip;]
+    <del><em>unspecified</em></del><ins>reference</ins> operator[](difference_type n) const;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Edit 24.5.1.3.12 [reverse.iter.opindex] as indicated:</p>
+
+<blockquote><pre>
+<del><em>unspecified</em></del><ins>reference</ins> operator[](
+  typename reverse_iterator&lt;Iterator&gt;::difference_type n) const;
+</pre><blockquote>
+<p>
+-1- <i>Returns:</i> <tt><del>current[-n-1]</del><ins>*(current + n)</ins></tt>.
+</p>
+</blockquote></blockquote>
 </li>
 
 </ol>
