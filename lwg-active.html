@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D86)</h1>
-<p>Revised 2014-01-12 at 14:01:27 UTC</p>
+<p>Revised 2014-01-12 at 16:01:03 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D86: 2014-01-17 pre-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>205 open issues, up by 10.</li>
+<li>206 open issues, up by 11.</li>
 <li>1665 closed issues, up by 0.</li>
-<li>1870 issues total, up by 10.</li>
+<li>1871 issues total, up by 11.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 10 New issues: <a href="lwg-active.html#2338">2338</a>, <a href="lwg-active.html#2339">2339</a>, <a href="lwg-active.html#2340">2340</a>, <a href="lwg-active.html#2341">2341</a>, <a href="lwg-active.html#2342">2342</a>, <a href="lwg-active.html#2343">2343</a>, <a href="lwg-active.html#2344">2344</a>, <a href="lwg-active.html#2345">2345</a>, <a href="lwg-active.html#2346">2346</a>, <a href="lwg-active.html#2347">2347</a>.</li>
+<li>Added the following 11 New issues: <a href="lwg-active.html#2338">2338</a>, <a href="lwg-active.html#2339">2339</a>, <a href="lwg-active.html#2340">2340</a>, <a href="lwg-active.html#2341">2341</a>, <a href="lwg-active.html#2342">2342</a>, <a href="lwg-active.html#2343">2343</a>, <a href="lwg-active.html#2344">2344</a>, <a href="lwg-active.html#2345">2345</a>, <a href="lwg-active.html#2346">2346</a>, <a href="lwg-active.html#2347">2347</a>, <a href="lwg-active.html#2348">2348</a>.</li>
 <li>Changed the following 2 issues to Ready (from New): <a href="lwg-active.html#2280">2280</a>, <a href="lwg-active.html#2285">2285</a>.</li>
 <li>Changed the following 3 issues to Open (from New): <a href="lwg-active.html#2192">2192</a>, <a href="lwg-active.html#2274">2274</a>, <a href="lwg-active.html#2294">2294</a>.</li>
 <li>Changed the following 2 issues to Deferred (from New): <a href="lwg-active.html#2202">2202</a>, <a href="lwg-active.html#2230">2230</a>.</li>
@@ -23119,7 +23119,7 @@ being const by copying the iterator.
 
 <blockquote><pre>
 namespace std {
-  template &lt;class Iterator>
+  template &lt;class Iterator&gt;
   class reverse_iterator : public
   iterator&lt;typename iterator_traits&lt;Iterator&gt;::iterator_category,
     typename iterator_traits&lt;Iterator&gt;::value_type,
@@ -23144,6 +23144,104 @@ namespace std {
 </pre><blockquote>
 <p>
 -1- <i>Returns:</i> <tt><del>current[-n-1]</del><ins>*(current + n)</ins></tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2348"></a>2348. charT('1') is not the wide equivalent of '1'</h3>
+<p><b>Section:</b> 20.6 [template.bitset], 27.7.6 [quoted.manip] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-12-02 <b>Last modified:</b> 2014-01-12</p>
+<p><b>View all other</b> <a href="lwg-index.html#template.bitset">issues</a> in [template.bitset].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Example: <tt>char16_t('1') != u'1'</tt> is possible.
+<p/>
+The numeric value of <tt>char16_t</tt> is defined to be Unicode
+code point, which is same to the ASCII value and UTF-8 for
+7-bit chars.  However, <tt>char</tt> is not guaranteed to have an
+encoding which is compatible with ASCII. For example, <tt>'1'</tt> in EBCDIC is 241.
+<p/>
+I found three places in the standard casting narrow char
+literals: <tt>bitset::bitset</tt>, <tt>bitset::to_string</tt> and <tt>quoted</tt>.
+<p/>
+PJ confirmed this issue and says he has a solution used
+in their <tt>&lt;filesystem&gt;</tt> implementation, and he may want to
+propose it to the standard.
+<p/>
+The solution in my mind, for now, is to make those default
+arguments magical, where the "magic" can be implemented
+with a C11 <tt>_Generic</tt> selection (works in clang):
+</p>
+<blockquote><pre>
+#define _G(T, literal) _Generic(T{}, \
+      char: literal, \
+      wchar_t: L ## literal, \
+      char16_t: u ## literal, \
+      char32_t: U ## literal)
+
+  _G(char16_t, '1') == u'1'
+</pre></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3797.</p>
+
+[<i>Drafting note:</i> This is a sample wording fixing only one case;
+ I'm just too lazy to copy-paste it before we discussed whether
+ the solution is worth and sufficient (for example, should the
+ other `charT`s like `unsigned char` just don't compile without
+ supplying those arguments?  I hope so). &mdash; <i>end drafting note</i>]
+
+<ol>
+<li><p>Modify 20.6 [template.bitset] p1, class template <tt>bitset</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;size_t N&gt; class bitset {
+  public:
+    [&hellip;]
+    template&lt;class charT, class traits, class Allocator&gt;
+      explicit bitset(
+        const basic_string&lt;charT,traits,Allocator&gt;&amp; str,
+        typename basic_string&lt;charT,traits,Allocator&gt;::size_type pos = 0,
+        typename basic_string&lt;charT,traits,Allocator&gt;::size_type n =
+          basic_string&lt;charT,traits,Allocator&gt;::npos,
+          charT zero = <del>charT('0')</del><ins><em>see below</em></ins>, charT one = <del>charT('1')</del><ins><em>see below</em></ins>);
+     [&hellip;]
+  };
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify 20.6.1 [bitset.cons] as indicated:</p>
+
+<blockquote><pre>
+template&lt;class charT, class traits, class Allocator&gt;
+explicit 
+bitset(const basic_string&lt;charT, traits, Allocator&gt;&amp; str,
+       typename basic_string&lt;charT, traits, Allocator&gt;::size_type pos = 0,
+       typename basic_string&lt;charT, traits, Allocator&gt;::size_type n =
+         basic_string&lt;charT, traits, Allocator&gt;::npos,
+         charT zero = <del>charT('0')</del><ins><em>see below</em></ins>, charT one = <del>charT('1')</del><ins><em>see below</em></ins>);
+</pre><blockquote>
+<p>
+<ins>-?- The default values of <tt>zero</tt> and <tt>one</tt> compare equal to the
+character literals <tt>0</tt> and <tt>1</tt> of type <tt>charT</tt>, respectively.</ins>
+<p/>
+-3- <i>Requires::</i> <tt>pos &lt;= str.size()</tt>.
+<p/>
+[&hellip;]
 </p>
 </blockquote></blockquote>
 </li>
