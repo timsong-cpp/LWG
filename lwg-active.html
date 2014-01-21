@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2014-01-18</td>
+  <td align="left">2014-01-21</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -37,8 +37,8 @@
   <td align="left">Alisdair Meredith &lt;<a href="mailto:lwgchair@gmail.com">lwgchair@gmail.com</a>&gt;</td>
 </tr>
 </table>
-<h1>C++ Standard Library Active Issues List (Revision D86)</h1>
-<p>Revised 2014-01-18 at 17:01:01 UTC</p>
+<h1>C++ Standard Library Active Issues List (Revision D87)</h1>
+<p>Revised 2014-01-21 at 21:01:45 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -154,7 +154,21 @@ ownership of it.
 
 <h2>Revision History</h2>
 <ul>
-<li>D86: 2014-01-17 pre-Issaquah mailing<ul>
+<li>D87: 2014-03-01 post-Issaquah mailing<ul>
+<li><b>Summary:</b><ul>
+<li>214 open issues, up by 1.</li>
+<li>1665 closed issues, up by 0.</li>
+<li>1879 issues total, up by 1.</li>
+</ul></li>
+<li><b>Details:</b><ul>
+<li>Added the following New issue: <a href="lwg-active.html#2356">2356</a>.</li>
+<li>No issues changed.</li>
+</ul></li>
+</ul>
+</li>
+<li>R86: 
+2014-01-20 pre-Issaquah mailing
+<ul>
 <li><b>Summary:</b><ul>
 <li>213 open issues, up by 18.</li>
 <li>1665 closed issues, up by 0.</li>
@@ -23816,6 +23830,69 @@ the <tt>"s"</tt> suffix (when applied to character string literals) should be re
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2356"></a>2356. Stability of erasure in unordered associative containers</h3>
+<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-01-21 <b>Last modified:</b> 2014-01-21</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Issue <a href="lwg-defects.html#518">518</a> resolution for unordered associative containers, modelled after that of issue <a href="lwg-defects.html#371">371</a>, 
+which is related to associative containers, states that insertion, erasure and rehashing preserve the relative ordering 
+of equivalent elements. Unfortunately, this is not sufficient to guarantee the validity of code such as this:
+</p>
+<blockquote><pre>
+std::unordered_multimap&lt;int, int&gt; m;
+auto i = m.begin();
+while (i != m.end()) {
+  if (pred(i))
+    m.erase(i++);
+  else
+    ++i;
+}
+</pre></blockquote>
+<p>
+(which is a direct translation from <tt>multimap</tt> to <tt>unordered_multimap</tt> of the motivating example in <a href="lwg-defects.html#371">371</a>), 
+or even this:
+</p>
+<blockquote><pre>
+std::unordered_multimap&lt;int, int&gt; m;
+auto p = m.equal_range(k);
+while (p.first != p.second) {
+  if (pred(p.first))
+    m.erase((p.first)++);
+  else
+    ++(p.first);
+}
+</pre></blockquote>
+<p>
+because the relative ordering of non-equivalent elements elements could potentially change after erasure (not that any actual 
+implementation does that, anyway). Such an underspecification does not happen for regular associative containers, where the 
+relative ordering of non-equivalent elements is kept by design.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3797.</p>
+
+<ol>
+<li><p>Modify 23.2.5 [unord.req], p14 as indicated:</p>
+
+<blockquote><p>
+-14- The <tt>insert</tt> and <tt>emplace</tt> members shall not affect the validity of references to container elements, but may
+invalidate all iterators to the container. The <tt>erase</tt> members shall invalidate only iterators and references
+to the erased elements<ins>, and preserve the relative ordering of the remaining elements</ins>.
+</p></blockquote>
+</li>
+</ol>
 
 
 
