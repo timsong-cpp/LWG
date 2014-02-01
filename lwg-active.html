@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D87)</h1>
-<p>Revised 2014-02-01 at 20:02:45 UTC</p>
+<p>Revised 2014-02-01 at 20:02:54 UTC</p>
 
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D87: 2014-03-01 post-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>215 open issues, up by 2.</li>
+<li>216 open issues, up by 3.</li>
 <li>1665 closed issues, up by 0.</li>
-<li>1880 issues total, up by 2.</li>
+<li>1881 issues total, up by 3.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 2 New issues: <a href="lwg-active.html#2356">2356</a>, <a href="lwg-active.html#2357">2357</a>.</li>
+<li>Added the following 3 New issues: <a href="lwg-active.html#2356">2356</a>, <a href="lwg-active.html#2357">2357</a>, <a href="lwg-active.html#2358">2358</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -23945,6 +23945,62 @@ argument type. The input range shall not overlap with either of the output range
 </p></blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2358"></a>2358. Apparently-bogus definition of <tt>is_empty</tt> type trait</h3>
+<p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-01</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The 'Condition' for <tt>std::is_empty</tt> is listed as:
+</p>
+<blockquote><p>
+"<tt>T</tt> is a class type, but not a union type, with no non-static data members other than bit-fields of length 0, 
+no virtual member functions, no virtual base classes, and no base class <tt>B</tt> for which <tt>is_empty&lt;B&gt;::value</tt> 
+is false."
+</p></blockquote>
+<p>
+This is incorrect: there is no such thing as a non-static data member that is a bit-field of length 0, since bit-fields of 
+length 0 must be unnamed, and unnamed bit-fields are not members (see 9.6 [class.bit] p2).
+<p/>
+It also means that classes such as:
+</p>
+<blockquote><pre>
+struct S {
+ int : 3;
+};
+</pre></blockquote>
+<p>
+are empty (because they have no non-static data members). There's implementation divergence on the value of 
+<tt>is_empty&lt;S&gt;::value</tt>.
+<p/>
+I'm not sure what the purpose of <tt>is_empty</tt> is (or how it could be useful), but if it's desirable for the above type to 
+not be treated as empty, something like this could work:
+</p>
+<blockquote><p>
+"<tt>T</tt> is a class type, but not a union type, with no non-static data members <del>other than</del><ins>, no unnamed</ins> 
+bit-fields of <ins>non-zero</ins> length <del>0</del>, no virtual member functions, no virtual base classes, and no base class 
+<tt>B</tt> for which <tt>is_empty&lt;B&gt;::value</tt> is false."
+</p></blockquote>
+<p>
+and if the above type <em>should</em> be treated as empty, then this might be appropriate:
+</p>
+<blockquote><p>
+"<tt>T</tt> is a class type, but not a union type, with no <ins>(named)</ins> non-static data members <del>other than bit-fields of 
+length 0</del>, no virtual member functions, no virtual base classes, and no base class <tt>B</tt> for which 
+<tt>is_empty&lt;B&gt;::value</tt> is false."
+</p></blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
