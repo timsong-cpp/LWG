@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p>Revised 2014-02-13 at 05:02:28 UTC</p>
+<p>Revised 2014-02-13 at 06:02:26 UTC</p>
 <h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -6329,6 +6329,231 @@ pass those values to <tt>swap</tt>.
 
 
 <hr>
+<h3><a name="2117"></a>2117. <tt>ios_base</tt> manipulators should have <tt>showgrouping&#47;noshowgrouping</tt></h3>
+<p><b>Section:</b> 22.4.2.2.2 [facet.num.put.virtuals], 27.5.3.1.2 [ios::fmtflags], 27.5.6.1 [fmtflags.manip] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Benjamin Kosnik <b>Opened:</b> 2011-12-15 <b>Last modified:</b> 2014-02-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#facet.num.put.virtuals">active issues</a> in [facet.num.put.virtuals].</p>
+<p><b>View all other</b> <a href="lwg-index.html#facet.num.put.virtuals">issues</a> in [facet.num.put.virtuals].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Iostreams should include a manipulator to toggle grouping on&#47;off for
+locales that support grouped digits. This has come up repeatedly and
+been deferred. See LWG <a href="lwg-closed.html#826">826</a> for the previous attempt.
+<p/>
+If one is using a locale that supports grouped digits, then output
+will always include the generated grouping characters. However, very
+plausible scenarios exist where one might want to output the number,
+un-grouped. This is similar to existing manipulators that toggle
+on&#47;off the decimal point, numeric base, or positive sign.
+<p/>
+See some user commentary <a href="http://www.tablix.org/~avian/blog/archives/2008/01/c_streams_suck/">here</a>.
+</p>
+
+
+<p><i>[21012, Kona]</i></p>
+
+<p>
+Move to Open.
+</p>
+<p>
+This is a feature request.
+</p>
+<p>
+Walter is slightly uncomfortable with processing feature requests through the issues lists.
+</p>
+<p>
+Alisdair says this is far from the first feature request that has come in from the issues list.
+</p>
+<p>
+STL: The fact that you can turn off grouping on hex output is compelling.
+</p>
+<p>
+Marshall: if we add this flag, we'll need to update tables 87-91 as well.
+</p>
+<p>
+STL: If it has been implemented somewhere, and it works, we'd be glad to add it.
+</p>
+<p>
+Howard: We need to say what the default is.
+</p>
+<p>
+Alisdair sumarizes:
+</p>
+<p>
+(1) We want clear wording that says what the effect is of turning the flag off;
+</p>
+<p>
+(2) what the default values are, and
+</p>
+<p>
+(3) how this fits into tables 87-90. (and 128)
+</p>
+
+<p><i>[Issaquah 2014-02-10-12: Move to LEWG]</i></p>
+
+<p>
+Since this issue was filed, we have grown a new working group that is better placed to handle feature requests.
+</p>
+<p>
+We will track such issues with an LEWG status until we get feedback from the Library Evolution Working Group.
+</p>
+
+<p><i>[Issaquah 2014-02-12: LEWG discussion]</i></p>
+
+
+<table>
+  <caption>Do we think this feature should exist?</caption>
+  <tr><td>SF</td><td>F</td><td>N</td><td>A</td><td>SA</td></tr>
+  <tr><td>2</td> <td>4</td><td>1</td><td>0</td><td>0</td></tr>
+</table>
+
+<p>Think about the ABI break for adding a flag. But this could be
+mitigated by putting the data into an iword instead of a flag.</p>
+
+<p>This needs to change Stage 2 in [facet.num.put.virtuals].</p>
+
+<p>Previous resolution, which needs the above corrections:</p>
+<blockquote class="note">
+<p>This wording is relative to the FDIS.</p>
+
+<ol>
+<li>
+<p>Insert in 22.4.2.2.2 [facet.num.put.virtuals] paragraph 5:</p>
+
+<blockquote><p>
+<strong>Stage 1</strong>: The first action of stage 1 is to determine a conversion specifier. The tables that describe
+this determination use the following local variables
+</p>
+<pre>
+fmtflags flags = str.flags() ;
+fmtflags basefield = (flags &amp; (ios_base::basefield));
+fmtflags uppercase = (flags &amp; (ios_base::uppercase));
+fmtflags floatfield = (flags &amp; (ios_base::floatfield));
+fmtflags showpos = (flags &amp; (ios_base::showpos));
+fmtflags showbase = (flags &amp; (ios_base::showbase));
+<ins>fmtflags showgrouping = (flags &amp; (ios_base::showgrouping));</ins>
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change header <tt>&lt;ios&gt;</tt> synopsis, 27.5.1 [iostreams.base.overview] as indicated:</p>
+
+<blockquote><pre>
+#include &lt;iosfwd&gt;
+
+namespace std {
+  [&hellip;]
+  <i>// 27.5.6, manipulators:</i>
+  [&hellip;]
+  ios_base&amp; showpoint     (ios_base&amp; str);
+  ios_base&amp; noshowpoint   (ios_base&amp; str);
+  <ins>ios_base&amp; showgrouping  (ios_base&amp; str);</ins>
+  <ins>ios_base&amp; noshowgrouping(ios_base&amp; str);</ins>
+  ios_base&amp; showpos       (ios_base&amp; str);
+  ios_base&amp; noshowpos     (ios_base&amp; str);
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Change class <tt>ios_base</tt> synopsis, 27.5.3 [ios.base] as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  class ios_base {
+  public:
+  class failure;
+    <i>// 27.5.3.1.2 fmtflags</i>
+    typedef <i>T1</i> fmtflags;
+    [&hellip;]
+    static constexpr fmtflags showpoint = <i>unspecified</i> ;
+    <ins>static constexpr fmtflags showgrouping = <i>unspecified</i> ;</ins>
+    static constexpr fmtflags showpos = <i>unspecified</i> ;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+</li>
+
+<li><p>Add a new entry to Table 122 &mdash; "<tt>fmtflags</tt> effects" as indicated:</p>
+
+<table border="1">
+<caption>Table 122 &mdash; <tt>fmtflags</tt> effects</caption>
+<tr align="center">
+<th>Element</th>
+<th>Effect(s) if set</th>
+</tr> 
+
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>showpoint</tt>
+</td>
+<td>
+generates a decimal-point character unconditionally in generated floatingpoint output
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>showgrouping</tt></ins>
+</td>
+<td>
+<ins>generates grouping characters unconditionally in generated output</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+
+</table>
+ 
+</li>
+
+<li><p>After 27.5.3.1.2 [ios::fmtflags] p12 insert the following:</p>
+<blockquote><pre>
+<ins>ios_base&amp; showgrouping(ios_base&amp; str);</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Calls <tt>str.setf(ios_base::showgrouping)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns</i>: <tt>str</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>ios_base&amp; noshowgrouping(ios_base&amp; str);</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Calls <tt>str.unsetf(ios_base::showgrouping)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns</i>: <tt>str</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
 <h3><a name="2118"></a>2118. [CD] <tt>unique_ptr</tt> for array does not support <i>cv</i> qualification conversion of actual argument</h3>
 <p><b>Section:</b> 20.8.1.3 [unique.ptr.runtime] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Alf P. Steinbach <b>Opened:</b> 2011-12-16 <b>Last modified:</b> 2014-02-10</p>
@@ -10276,200 +10501,6 @@ Alisdair: defer, active topic of research Deferred
 
 
 <hr>
-<h3><a name="2205"></a>2205. Problematic postconditions of <tt>regex_match</tt> and <tt>regex_search</tt></h3>
-<p><b>Section:</b> 28.11.2 [re.alg.match], 28.11.3 [re.alg.search] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-24 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View other</b> <a href="lwg-index-open.html#re.alg.match">active issues</a> in [re.alg.match].</p>
-<p><b>View all other</b> <a href="lwg-index.html#re.alg.match">issues</a> in [re.alg.match].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-Table 142 lists post-conditions on the <tt>match_results</tt> object when a call to <tt>regex_match</tt> succeeds. 
-<tt>regex_match</tt> is required to match the entire target sequence. The post-condition for <tt>m[0].matched</tt> 
-is "true if a full match was found." Since these are conditions for a successful search which is, by definition, 
-a full match, the post-condition should be simply "true".
-</p>
-<p>
-There's an analogous probem in Table 143: the condition for <tt>m[0].matched</tt> is "true if a match was found, 
-false otherwise." But Table 143 gives post-conditions for a successful match, so the condition should be simply 
-"true".
-</p>
-<p>
-Furthermore, they have explicit requirements for <tt>m[0].first</tt>, <tt>m[0].second</tt>, and <tt>m[0].matched</tt>. 
-They also have requirements for the other elements of <tt>m</tt>, described as <tt>m[n].first</tt>, <tt>m[n].second</tt>, 
-and <tt>m[n].matched</tt>, in each case qualifying the value of <tt>n</tt> as "for <tt>n &lt; m.size()</tt>". Since 
-there is an explicit description for <tt>n == 0</tt>, this qualification should be "for <tt>0 &lt; n &lt; m.size()</tt>" 
-in all 6 places.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Change Table 142 as indicated:</p>
-
-<table border="1">
-<caption>Table 142 &mdash; Effects of <tt>regex_match</tt> algorithm</caption>
-<tr>
-<th>Element</th>
-<th>Value</th>
-</tr> 
-
-<tr>
-<td colspan="2" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[0].first</tt>
-</td>
-<td>
-<tt>first</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[0].second</tt>
-</td>
-<td>
-<tt>last</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[0].matched</tt>
-</td>
-<td>
-<tt>true</tt> <del>if a full match was found.</del>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[n].first</tt>
-</td>
-<td>
-For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, the start of the sequence
-that matched sub-expression <tt>n</tt>.<br/> 
-Alternatively, if subexpression <tt>n</tt> did not participate in the match, then <tt>last</tt>.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[n].second</tt>
-</td>
-<td>
-For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, the end of the sequence that
-matched sub-expression <tt>n</tt>.<br/> 
-Alternatively, if sub-expression <tt>n</tt> did not participate in the match, then <tt>last</tt>.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[n].matched</tt>
-</td>
-<td>
-For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, <tt>true</tt> if sub-expression 
-<tt>n</tt> participated in the match, <tt>false</tt> otherwise.
-</td>
-</tr>
-
-</table>
-</li>
-
-<li><p>Change Table 143 as indicated:</p>
-
-<table border="1">
-<caption>Table 143 &mdash; Effects of <tt>regex_search</tt> algorithm</caption>
-<tr>
-<th>Element</th>
-<th>Value</th>
-</tr> 
-
-<tr>
-<td colspan="2" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[0].first</tt>
-</td>
-<td>
-The start of the sequence of characters that matched the regular expression
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[0].second</tt>
-</td>
-<td>
-The end of the sequence of characters that matched the regular expression
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[0].matched</tt>
-</td>
-<td>
-<tt>true</tt> <del>if a match was found, and false otherwise.</del>
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[n].first</tt>
-</td>
-<td>
-For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, the start of the sequence
-that matched sub-expression <tt>n</tt>.<br/> 
-Alternatively, if subexpression <tt>n</tt> did not participate in the match, then <tt>last</tt>.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[n].second</tt>
-</td>
-<td>
-For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, the end of the sequence that
-matched sub-expression <tt>n</tt>.<br/> 
-Alternatively, if sub-expression <tt>n</tt> did not participate in the match, then <tt>last</tt>.
-</td>
-</tr>
-
-<tr>
-<td>
-<tt>m[n].matched</tt>
-</td>
-<td>
-For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, <tt>true</tt> if sub-expression 
-<tt>n</tt> participated in the match, <tt>false</tt> otherwise.
-</td>
-</tr>
-
-</table>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2206"></a>2206. Inaccuracy in <tt>initializer_list</tt> constructor requirements</h3>
 <p><b>Section:</b> 23.2.3 [sequence.reqmts], 23.2.4 [associative.reqmts], 23.2.5 [unord.req], 26.5.1.2 [rand.req.seedseq] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-21 <b>Last modified:</b> 2014-02-10</p>
@@ -10656,70 +10687,6 @@ for the third specialization, <tt>add_cv&lt;<i>TE</i>::type&gt;::type</tt>.
 <p>
 <ins>-?- In addition to being available via inclusion of the <tt>&lt;tuple&gt;</tt> header, each of the three templates are
 available when any of the headers <tt>&lt;array&gt;</tt> or <tt>&lt;utility&gt;</tt> are included.</ins>
-</p>
-</blockquote></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2213"></a>2213. Return value of <tt>std::regex_replace</tt></h3>
-<p><b>Section:</b> 28.11.4 [re.alg.replace] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-08 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View other</b> <a href="lwg-index-open.html#re.alg.replace">active issues</a> in [re.alg.replace].</p>
-<p><b>View all other</b> <a href="lwg-index.html#re.alg.replace">issues</a> in [re.alg.replace].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-In 28.11.4 [re.alg.replace], the first two variants of <tt>std::regex_replace</tt> take an output iterator named 
-"out" as their first argument. Paragraph 2 of that section says that the functions return "out". When I first implemented 
-this, many years ago, I wrote it to return the value of the output iterator after all the insertions (cf. <tt>std::copy</tt>), 
-which seems like the most useful behavior. But looking at the requirement now, it like the functions should return the 
-original value of "out" (i.e. they have to keep a copy of the iterator for no reason except to return it). Is that 
-really what was intended?
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3485.</p>
-
-<ol>
-<li><p>Edit 28.11.4 [re.alg.replace] as indicated:</p>
-<blockquote><pre>
-template &lt;class OutputIterator, class BidirectionalIterator,
-  class traits, class charT, class ST, class SA&gt;
-OutputIterator
-regex_replace(OutputIterator out, BidirectionalIterator first, BidirectionalIterator last,
-  const basic_regex&lt;charT, traits&gt;&amp; e, const basic_string&lt;charT, ST, SA&gt;&amp; fmt,
-  regex_constants::match_flag_type flags = regex_constants::match_default);
-template &lt;class OutputIterator, class BidirectionalIterator,
-  class traits, class charT&gt;
-OutputIterator
-regex_replace(OutputIterator out, BidirectionalIterator first, BidirectionalIterator last,
-  const basic_regex&lt;charT, traits&gt;&amp; e, const charT* fmt,
-  regex_constants::match_flag_type flags = regex_constants::match_default);
-</pre><blockquote>
-<p>
--1- <i>Effects</i>: Constructs a <tt>regex_iterator</tt> object <tt>i</tt> as if by 
-<tt>regex_iterator&lt;BidirectionalIterator, charT, traits&gt; i(first, last, e, flags)</tt>, 
-and uses <tt>i</tt> to enumerate through all of the matches <tt>m</tt> of type 
-<tt>match_results&lt;BidirectionalIterator&gt;</tt> that occur within the sequence <tt>[first, last)</tt>. 
-If no such matches are found and <tt>!(flags &amp; regex_constants ::format_no_copy)</tt> then calls
-<tt><ins>out = </ins>std::copy(first, last, out)</tt>. If any matches are found then, for each such match, if 
-<tt>!(flags &amp; regex_constants::format_no_copy)</tt>, calls <tt><ins>out = </ins>std::copy(m.prefix().first, 
-m.prefix().second, out)</tt>, and then calls <tt><ins>out = </ins>m.format(out, fmt, flags)</tt> 
-for the first form of the function and <tt><ins>out = </ins>m.format(out, fmt, fmt + 
-char_traits&lt;charT&gt;::length(fmt), flags)</tt> for the second. Finally, if such a match is found 
-and <tt>!(flags &amp; regex_constants ::format_no_copy)</tt>, calls 
-<tt><ins>out = </ins>std::copy(last_m.suffix().first, last_m.suffix().second, out)</tt> where 
-<tt>last_m</tt> is a copy of the last match found. If <tt>flags &amp; regex_constants::format_first_only</tt> 
-is non-zero then only the first match found is replaced.
-<p/>
--2- <i>Returns</i>: <tt>out</tt>.
 </p>
 </blockquote></blockquote>
 </li>
@@ -13581,7 +13548,7 @@ simply got sloppy in our specification.
 <hr>
 <h3><a name="2258"></a>2258. <tt>a.erase(q1, q2)</tt> unable to directly return <tt>q2</tt></h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Geoff Alexander <b>Opened:</b> 2013-05-11 <b>Last modified:</b> 2014-02-10</p>
+ <b>Submitter:</b> Geoff Alexander <b>Opened:</b> 2013-05-11 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -13632,8 +13599,9 @@ Alisdair to provide the wording.
 <tt>iterator</tt>
 </td>
 <td>
-erases all the elements in the range <tt>[q1,q2)</tt>. Returns <del><tt>q2</tt></del><ins>an iterator pointing 
-to the same element as <tt>q2</tt> or <tt>end()</tt> if <tt>q2</tt> doesn't point to an element</ins>.
+erases all the elements in the range <tt>[q1,q2)</tt>. Returns <del><tt>q2</tt></del><ins>
+an iterator pointing to the element pointed to by <tt>q2</tt> prior to any elements
+being erased. If no such element exists, <tt>a.end()</tt> is returned</ins>.
 </td>
 <td>
 <tt>log(a.size()) + N</tt> where <tt>N</tt> has the value <tt>distance(q1, q2)</tt>.
@@ -17127,129 +17095,6 @@ invalidated. &mdash; <i>end note</i>]
 
 
 <hr>
-<h3><a name="2323"></a>2323. <tt>vector::resize(n, t)</tt>'s specification should be simplified</h3>
-<p><b>Section:</b> 23.3.6.3 [vector.capacity], 23.3.3.3 [deque.capacity] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
-<p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-First, 23.3.3.3 [deque.capacity]/4 and 23.3.6.3 [vector.capacity]/16 say that <tt>resize(size_type sz, const T&amp; c)</tt> 
-"<i>Requires:</i> <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt> and <tt>CopyInsertable</tt> into <tt>*this</tt>."  
-The <tt>CopyInsertable</tt> requirement is correct (because <tt>sz</tt> might be <tt>size() + 2</tt> or more), but the 
-<tt>MoveInsertable</tt> requirement is redundant due to 23.2.1 [container.requirements.general]/13: "<tt>T</tt> is 
-<tt>CopyInsertable</tt> into <tt>X</tt> means that, in addition to <tt>T</tt> being <tt>MoveInsertable</tt> into <tt>X</tt>, the [...]".  
-(LWG <a href="lwg-defects.html#2033">2033</a>'s resolution said that this was "not redundant, because <tt>CopyInsertable</tt> is not necessarily a refinement 
-of <tt>MoveInsertable</tt>" which was true at the time, but then LWG <a href="lwg-defects.html#2177">2177</a>'s resolution made it a refinement.)
-<p/>
-Second, 23.3.6.3 [vector.capacity]/17 says "<i>Remarks:</i> If an exception is thrown other than by the move constructor of a 
-non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects." This is confusing because <tt>T</tt> is required to be 
-<tt>CopyInsertable</tt>. (/14 says the same thing for <tt>resize(size_type sz)</tt>, where it is correct because that overload 
-requires only <tt>MoveInsertable</tt> and <tt>DefaultInsertable</tt>.)
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3691.</p>
-
-<ol>
-<li><p>Edit 23.3.3.3 [deque.capacity]/4 as indicated:</p>
-
-<blockquote><pre>
-void resize(size_type sz, const T&amp; c);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--4- <i>Requires:</i> <tt>T</tt> shall be <del><tt>MoveInsertable</tt> into <tt>*this</tt> and</del> <tt>CopyInsertable</tt> into 
-<tt>*this</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Edit 23.3.6.3 [vector.capacity]/16+17 as indicated:</p>
-
-<blockquote><pre>
-void resize(size_type sz, const T&amp; c);
-</pre><blockquote>
-<p>
-[&hellip;]
-<p/>
--16- <i>Requires:</i> <tt>T</tt> shall be <del><tt>MoveInsertable</tt> into <tt>*this</tt> and</del> <tt>CopyInsertable</tt> into 
-<tt>*this</tt>.
-<p/>
--17- <i>Remarks:</i> If an exception is thrown <del>other than by the move constructor of a non-<tt>CopyInsertable</tt> <tt>T</tt></del> 
-there are no effects.
-</p>
-</blockquote></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2324"></a>2324. Insert iterator constructors should use <tt>addressof()</tt></h3>
-<p><b>Section:</b> 24.5.2.2.1 [back.insert.iter.cons], 24.5.2.4.1 [front.insert.iter.cons], 24.5.2.6.1 [insert.iter.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-24.5.2.2.1 [back.insert.iter.cons]/1, 24.5.2.4.1 [front.insert.iter.cons]/1, and 24.5.2.6.1 [insert.iter.cons]/1 
-say "Initializes container with <tt>&amp;x</tt>", which doesn't defend against containers overloading <tt>operator&amp;()</tt>.  
-Containers are now required to have such defenses for their elements, so we may as well be consistent here.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3691.</p>
-
-<ol>
-<li><p>Edit 24.5.2.2.1 [back.insert.iter.cons]/1 as indicated:</p>
-
-<blockquote><pre>
-explicit back_insert_iterator(Container&amp; x);
-</pre><blockquote>
-<p>
--1- <i>Effects:</i> Initializes <tt>container</tt> with <tt><del>&amp;x</del><ins>std::addressof(x)</ins></tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Edit 24.5.2.4.1 [front.insert.iter.cons]/1 as indicated:</p>
-
-<blockquote><pre>
-explicit front_insert_iterator(Container&amp; x);
-</pre><blockquote>
-<p>
--1- <i>Effects:</i> Initializes <tt>container</tt> with <tt><del>&amp;x</del><ins>std::addressof(x)</ins></tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-<li><p>Edit 24.5.2.6.1 [insert.iter.cons]/1 as indicated:</p>
-
-<blockquote><pre>
-insert_iterator(Container&amp; x, typename Container::iterator i);
-</pre><blockquote>
-<p>
--1- <i>Effects:</i> Initializes <tt>container</tt> with <tt><del>&amp;x</del><ins>std::addressof(x)</ins></tt> and <tt>iter</tt> with <tt>i</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2325"></a>2325. <tt>minmax_element()</tt>'s behavior differing from <tt>max_element()</tt>'s should be noted</h3>
 <p><b>Section:</b> 25.4.7 [alg.min.max] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-10</p>
@@ -18106,74 +17951,6 @@ can be converted into a primary sort key then returns that key, otherwise return
 
 
 <hr>
-<h3><a name="2339"></a>2339. Wording issue in <tt>nth_element</tt></h3>
-<p><b>Section:</b> 25.4.2 [alg.nth.element] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Christopher Jefferson <b>Opened:</b> 2013-10-19 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View all other</b> <a href="lwg-index.html#alg.nth.element">issues</a> in [alg.nth.element].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-The wording of <tt>nth_element</tt> says:
-</p>
-<blockquote><pre>
-template&lt;class RandomAccessIterator&gt;
-  void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
-                   RandomAccessIterator last);
-</pre><blockquote>
-<p>
-After <tt>nth_element</tt> the element in the position pointed to by <tt>nth</tt> is the element that would be in that
-position if the whole range were sorted. Also for every iterator <tt>i</tt> in the range <tt>[first,nth)</tt> and every
-iterator <tt>j</tt> in the range <tt>[nth,last)</tt> it holds that: <tt>!(*j &lt; *i)</tt> or <tt>comp(*j, *i) == false</tt>.
-</p>
-</blockquote></blockquote>
-<p>
-That wording, to me, implies that there must be an element at '<tt>nth</tt>'.
-However, gcc at least accepts <tt>nth == last</tt>, and returns without effect
-(which seems like the sensible option).
-<p/>
-Is it intended to accept <tt>nth == last</tt>? If so, then I would suggest adding
-this to the wording explicitly, say:
-</p>
-<blockquote>
-<p>
-After <tt>nth_element</tt> the element in the position pointed to by <tt>nth</tt> is the element that would be in that
-position if the whole range were sorted<ins>, unless <tt>nth == last</tt></ins>. Also for every iterator <tt>i</tt> in the 
-range <tt>[first,nth)</tt> and every iterator <tt>j</tt> in the range <tt>[nth,last)</tt> it holds that: <tt>!(*j &lt; *i)</tt> 
-or <tt>comp(*j, *i) == false</tt>.
-</p>
-</blockquote>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3797.</p>
-
-<ol>
-<li><p>Modify 25.4.2 [alg.nth.element]/1 as indicated:</p>
-
-<blockquote><pre>
-template&lt;class RandomAccessIterator&gt;
-  void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
-                   RandomAccessIterator last);
-template&lt;class RandomAccessIterator, class Compare&gt;
-  void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
-                   RandomAccessIterator last, Compare comp);
-</pre><blockquote>
-<p>
--1- After <tt>nth_element</tt> the element in the position pointed to by <tt>nth</tt> is the element that would be in that
-position if the whole range were sorted<ins>, unless <tt>nth == last</tt></ins>. Also for every iterator <tt>i</tt> in the 
-range <tt>[first,nth)</tt> and every iterator <tt>j</tt> in the range <tt>[nth,last)</tt> it holds that: <tt>!(*j &lt; *i)</tt> 
-or <tt>comp(*j, *i) == false</tt>.
-</p>
-</blockquote></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2340"></a>2340. Replacement allocation functions declared as inline</h3>
 <p><b>Section:</b> 17.6.4.6 [replacement.functions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> David Majnemer <b>Opened:</b> 2013-10-20 <b>Last modified:</b> 2014-02-10</p>
@@ -18207,76 +17984,6 @@ The program's <del>definitions</del><ins>declarations</ins> shall not be specifi
 Such replacement occurs prior to program startup (3.2, 3.6). The program's <del>definitions</del><ins>declarations</ins> 
 shall not be specified as <tt>inline</tt>. No diagnostic is required.</p>
 </blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2341"></a>2341. Inconsistency between <tt>basic_ostream::seekp(pos)</tt> and <tt>basic_ostream::seekp(off, dir)</tt></h3>
-<p><b>Section:</b> 27.7.3.5 [ostream.seeks] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Marshall Clow  <b>Opened:</b> 2013-10-21 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-In 27.7.3.5 [ostream.seeks], we have:
-</p>
-<blockquote><pre>
-basic_ostream&lt;charT,traits&gt;&amp; seekp(pos_type pos);
-</pre><blockquote>
-<p>
--3- <i>Effects:</i> If <tt>fail() != true</tt>, executes <tt>rdbuf()-&gt;pubseekpos(pos, ios_base::out)</tt>. In case of failure, 
-the function calls <tt>setstate(failbit)</tt> (which may throw <tt>ios_base::failure</tt>).
-<p/>
--4- <i>Returns:</i> <tt>*this</tt>.
-</p>
-</blockquote></blockquote>
-<blockquote><pre>
-basic_ostream&lt;charT,traits&gt;&amp; seekp(off_type off, ios_base::seekdir dir);
-</pre><blockquote>
-<p>
--5- <i>Effects:</i> If <tt>fail() != true</tt>, executes <tt>rdbuf()-&gt;pubseekoff(off, dir, ios_base::out)</tt>.
-<p/>
--6- <i>Returns:</i> <tt>*this</tt>.
-</p>
-</blockquote></blockquote>
-<p>
-The first call is required to set the <tt>failbit</tt> on failure, but the second is not
-<p/>
-So (given two ostreams, <tt>os1</tt> and <tt>os2</tt>) the following code (confusingly) works:
-</p>
-<blockquote><pre>
-os1.seekp(-1);
-assert(os1.fail());
-
-os2.seekp(-1, std::ios_base::beg);
-assert(os2.good());
-</pre></blockquote>
-<p>
-Note that the description of <tt>basic_istream&lt;charT,traits&gt;&amp; seekg(off_type off, ios_base::seekdir dir)</tt> in 
-27.7.2.3 [istream.unformatted] p43 <em>does</em> require setting <tt>failbit</tt>.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3797.</p>
-
-<ol>
-<li><p>Modify 27.7.3.5 [ostream.seeks]p5 as indicated:</p>
-
-<blockquote><pre>
-basic_ostream&lt;charT,traits&gt;&amp; seekp(off_type off, ios_base::seekdir dir);
-</pre><blockquote>
-<p>
--5- <i>Effects:</i> If <tt>fail() != true</tt>, executes <tt>rdbuf()-&gt;pubseekoff(off, dir, ios_base::out)</tt>.
-<ins>In case of failure, the function calls <tt>setstate(failbit)</tt> (which may throw <tt>ios_base::failure</tt>).</ins>
-<p/>
--6- <i>Returns:</i> <tt>*this</tt>.
-</p>
-</blockquote></blockquote>
 </li>
 
 </ol>
@@ -19308,58 +19015,6 @@ to the erased elements<ins>, and preserve the relative ordering of the remaining
 
 
 <hr>
-<h3><a name="2357"></a>2357. Remaining "<tt>Assignable</tt>" requirement</h3>
-<p><b>Section:</b> 25.3.13 [alg.partitions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View all other</b> <a href="lwg-index.html#alg.partitions">issues</a> in [alg.partitions].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-The <i>Requires</i> element of <tt>partition_copy</tt> says (emphasis mine):
-</p>
-<blockquote><p>
-<i>Requires</i>: <tt>InputIterator</tt>'s value type shall be <b><tt>Assignable</tt></b>, and &hellip;
-</p></blockquote>
-<p>
-The C++03 term <tt>Assignable</tt> was replaced by <tt>CopyAssignable</tt>, remaining cleanups happened via LWG issue
-<a href="lwg-closed.html#972">972</a>, but algorithm <tt>partition_copy</tt> was not affected at that time (during that time the requirements
-of <tt>partition_copy</tt> didn't mention writable nor assignable, but I cannot track down at the moment where these requirements
-had been added). Presumably this requirement should be corrected similarly to the approach used in <a href="lwg-closed.html#972">972</a>.
-<p/>
-Another question is whether a <tt>CopyAssignable</tt> is needed here, given the fact that we already require "writable to" an 
-<tt>OutputIterator</tt> which is defined in 24.2.1 [iterator.requirements.general] and does already impose the necessary
-statement
-</p>
-<blockquote><pre>
-*out = *in;
-</pre></blockquote>
-<p>
-Given the fact that <tt>partition_copy</tt> never touches any input value twice, there is no reason why anything more than
-<i>writable to</i> should be necessary.
-<p/>
-The below suggested primary resolution does not respond to the second part of this question.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3797.</p>
-
-<ol>
-<li><p>Modify 25.3.13 [alg.partitions], p12 as indicated:</p>
-
-<blockquote><p>
--12- <i>Requires</i>: <tt>InputIterator</tt>'s value type shall be <tt><ins>Copy</ins>Assignable</tt>, and shall be writable 
-to the <tt>out_true</tt> and <tt>out_false</tt> <tt>OutputIterator</tt>s, and shall be convertible to <tt>Predicate</tt>'s 
-argument type. The input range shall not overlap with either of the output ranges.
-</p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2358"></a>2358. Apparently-bogus definition of <tt>is_empty</tt> type trait</h3>
 <p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-10</p>
@@ -19410,63 +19065,6 @@ length 0</del>, no virtual member functions, no virtual base classes, and no bas
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2359"></a>2359. How does <tt>regex_constants::nosubs</tt> affect <tt>basic_regex::mark_count()</tt>?</h3>
-<p><b>Section:</b> 28.5.1 [re.synopt] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-10</p>
-<p><b>View other</b> <a href="lwg-index-open.html#re.synopt">active issues</a> in [re.synopt].</p>
-<p><b>View all other</b> <a href="lwg-index.html#re.synopt">issues</a> in [re.synopt].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-As discussed in <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=35399">c++std-lib-35399</a> and its replies, 
-I can see two possible interpretations of the effects of <tt>regex_constants::nosubs</tt>:
-</p>
-<ol style="list-style-type:decimal">
-<li><p>
-The effect of <tt>nosubs</tt> only applies during matching. Parentheses are
-still recognized as marking a sub-expression by the <tt>basic_regex</tt>
-compiler, and <tt>basic_regex::mark_count()</tt> still returns the number of
-marked sub-expressions, but anything they match is not stored in the
-results. This means it is not always true that <tt>results.size() == r.mark_count() + 1</tt> 
-for a successful match.
-</p></li>
-<li><p>
-<tt>nosubs</tt> affects how a regular expression is compiled, altering the
-state of the <tt>std::basic_regex</tt> object so that <tt>mark_count()</tt> returns
-zero. This also affects any subsequent matching.
-</p></li>
-</ol>
-<p>
-The definition of <tt>nosubs</tt> should make this clear.
-<p/>
-The wording in 28.5.1 [re.synopt]/1 seems to imply that <tt>nosubs</tt> only has
-effects during matching, which is (1), but all known implementations
-do (2). John Maddock confirmed that (2) was intended.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3797.</p>
-
-<ol>
-<li><p>Apply the following edit to the table in 28.5.1 [re.synopt]/1</p>
-
-<blockquote><p>
-Specifies that <ins>no sub-expressions shall be considered to be
-marked, so that</ins> when a regular expression is matched against a character container
-sequence, no sub-expression matches shall be stored in the supplied
-<tt>match_results</tt> structure.
-</p></blockquote>
-</li>
-</ol>
-
 
 
 
