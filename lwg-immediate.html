@@ -19,12 +19,160 @@
 </style>
 </head>
 <body>
-<p>Revised 2014-02-14 at 06:02:40 UTC</p>
+<p>Revised 2014-02-14 at 07:02:35 UTC</p>
 <h2>Immediate Issues</h2>
+<hr>
+<h3><a name="1450"></a>1450. Contradiction in <tt>regex_constants</tt></h3>
+<p><b>Section:</b> 28.5.2 [re.matchflag] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> BSI <b>Opened:</b> 2010-08-25 <b>Last modified:</b> 2014-02-13</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses GB-127</b></p>
+
+<p>
+The Bitmask Type requirements in 17.5.2.1.3 [bitmask.types] p.3 say that
+all elements on a bitmask type have distinct values, but
+28.5.2 [re.matchflag] defines <tt>regex_constants::match_default</tt> and
+<tt>regex_constants::format_default</tt> as elements of the
+bitmask type <tt>regex_constants::match_flag_type</tt>, both with
+value 0. This is a contradiction.
+</p>
+
+<p><i>[
+Resolution proposed by ballot comment:
+]</i></p>
+
+<blockquote><p>
+One of the bitmask elements should be removed
+from the declaration and should be defined
+separately, in the same manner as
+<tt>ios_base::adjustfield</tt>, <tt>ios_base::basefield</tt> and
+<tt>ios_base::floatfield</tt> are defined by 27.5.3.1.2 [ios::fmtflags] p.2
+and Table 120. These are constants of a bitmask
+type, but are not distinct elements, they have
+more than one value set in the bitmask.
+<tt>regex_constants::format_default</tt> should be
+specified as a constant with the same value as
+<tt>regex_constants::match_default</tt>.
+</p></blockquote>
+
+<p><i>[
+2010-10-31 Daniel comments:
+]</i></p>
+
+<p>
+Strictly speaking, a bitmask type cannot have any element of value 0 at all, because
+any such value would contradict the requirement expressed in 17.5.2.1.3 [bitmask.types] p. 3:
+</p>
+<blockquote><p>
+for any pair <em>Ci</em> and <em>Cj</em>, <em>Ci</em> &amp; <em>Ci</em> is nonzero
+</p></blockquote>
+<p>
+So, actually <em>both</em> <tt>regex_constants::match_default</tt> and
+<tt>regex_constants::format_default</tt> are only constants of the type
+<tt>regex_constants::match_flag_type</tt>, and no bitmask elements.
+</p>
+
+<p><i>[
+2010-11-03 Daniel comments and provides a proposed resolution:
+]</i></p>
+
+
+<p>The proposed resolution is written against N3126 and considered as a further improvement
+of the fixes suggested by <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3110.html">n3110</a>.
+</p>
+
+<blockquote>
+<p>
+Add the following sentence to 28.5.2 [re.matchflag]  paragraph 1:
+</p>
+<blockquote><p>
+1 The type <tt>regex_constants::match_flag_type</tt> is an implementation-defined bitmask type (17.5.2.1.3).
+Matching a regular expression against a sequence of characters [first,last) proceeds according to the
+rules of the grammar specified for the regular expression object, modified according to the effects listed in
+Table 136 for any bitmask elements set. <ins>Type <tt>regex_constants::match_flag_type</tt> also defines the 
+constants <tt>regex_constants::match_default</tt> and <tt>regex_constants::format_default</tt>.</ins>
+</p></blockquote>
+</blockquote>
+
+<p><i>[
+2011 Bloomington
+]</i></p>
+
+
+<p>
+It appears the key problem is the phrasing of the bitmask requirements.  Jeremiah supplies updated wording.
+</p>
+
+<p>
+Pete Becker has also provided an alternative resolution.
+</p>
+
+<p>
+Ammend 17.5.2.1.3 [bitmask.types]:
+</p>
+<p>
+Change the list of values for "enum bit mask" in p2 from
+</p>
+<p>
+<tt><i>V0</i> = 1 &lt;&lt; 0, <i>V1</i> = 1 &lt;&lt; 1, <i>V2</i> = 1 &lt;&lt; 2, <i>V3</i> = 1 &lt;&lt; 3, ...</tt>.
+</p>
+<p>
+to
+</p>
+<p>
+<tt><i>V0</i> = 0, <i>V1</i> = 1 &lt;&lt; 0, <i>V2</i> = 1 &lt;&lt; 1, <i>V3</i> = 1 &lt;&lt; 2,  ...</tt>.
+</p>
+<p>
+Here, the names <i>C0</i>, <i>C1</i>, etc. represent <i>bitmask elements</i> for this particular
+bitmask type. All such <ins>non-zero</ins> elements have distinct values such that, for any pair
+<i>Ci</i> and <i>Cj</i> <ins>where <i>i</i> != <i>j</i></ins>, <del><i>Ci &amp; Ci</i> is nonzero
+and</del> <i>Ci &amp; Cj</i> is zero.
+</p>
+<p>
+Change bullet 3 of paragraph 4:
+</p>
+<p>
+<del>The</del><ins>A non-zero</ins> value Y is set in the object X if the expression X &amp; Y is nonzero.
+</p>
+
+<p><i>[2014-02-13 Issaquah:]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+Ammend 17.5.2.1.3 [bitmask.types] p3:
+</p>
+<p>
+Here, the names <i>C0</i>, <i>C1</i>, etc. represent <i>bitmask elements</i> for this particular
+bitmask type. All such elements have distinct<ins>, nonzero</ins> values such that, for any pair
+<i>Ci</i> and <i>Cj</i> <ins>where <i>i</i> != <i>j</i>,</ins> <i>Ci &amp; Ci</i> is nonzero
+and <i>Ci &amp; Cj</i> is zero. <ins>Additionally, the value 0 is used to represent an
+<i>empty bitmask</i>, in which no bitmask elements are set.</ins>
+</p>
+
+<p>
+Add the following sentence to 28.5.2 [re.matchflag]  paragraph 1:
+</p>
+<blockquote><p>
+1 The type <tt>regex_constants::match_flag_type</tt> is an implementation-defined bitmask type (17.5.2.1.3).
+<ins>The constants of that type, except for <tt>match_default</tt> and <tt>format_default</tt>, are bitmask
+elements. The <tt>match_default</tt> and <tt>format_default</tt> constants are empty bitmasks.</ins> Matching
+a regular expression against a sequence of characters [first,last) proceeds according to the rules of the
+grammar specified for the regular expression object, modified according to the effects listed in Table 136
+for any bitmask elements set.
+</p></blockquote>
+
+
+
+
+
 <hr>
 <h3><a name="2182"></a>2182. <tt>Container::[const_]reference</tt> types are misleadingly specified</h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-20 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-20 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -169,7 +317,7 @@ compile time
 <hr>
 <h3><a name="2205"></a>2205. Problematic postconditions of <tt>regex_match</tt> and <tt>regex_search</tt></h3>
 <p><b>Section:</b> 28.11.2 [re.alg.match], 28.11.3 [re.alg.search] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-24 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-24 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.alg.match">active issues</a> in [re.alg.match].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.alg.match">issues</a> in [re.alg.match].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -366,7 +514,7 @@ For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, <tt>true</tt> if su
 <hr>
 <h3><a name="2213"></a>2213. Return value of <tt>std::regex_replace</tt></h3>
 <p><b>Section:</b> 28.11.4 [re.alg.replace] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-08 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-08 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.alg.replace">active issues</a> in [re.alg.replace].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.alg.replace">issues</a> in [re.alg.replace].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -434,7 +582,7 @@ is non-zero then only the first match found is replaced.
 <hr>
 <h3><a name="2293"></a>2293. Wrong facet used by <tt>num_put::do_put</tt></h3>
 <p><b>Section:</b> 22.4.2.2.2 [facet.num.put.virtuals] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#facet.num.put.virtuals">active issues</a> in [facet.num.put.virtuals].</p>
 <p><b>View all other</b> <a href="lwg-index.html#facet.num.put.virtuals">issues</a> in [facet.num.put.virtuals].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -591,6 +739,54 @@ participate in overload resolution unless the <del>type</del><ins>qualified-id</
 
 
 <hr>
+<h3><a name="2301"></a>2301. Why is <tt>std::tie</tt> not <tt>constexpr</tt>?</h3>
+<p><b>Section:</b> 20.4.2.4 [tuple.creation] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Rein Halbersma <b>Opened:</b> 2013-09-11 <b>Last modified:</b> 2014-02-13</p>
+<p><b>View all other</b> <a href="lwg-index.html#tuple.creation">issues</a> in [tuple.creation].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3471.html">N3471</a>, a bunch of routines from header 
+<tt>&lt;tuple&gt;</tt> were made <tt>constexpr</tt>.
+<p/>
+<tt>make_tuple/tuple_cat/get&lt;&gt;(tuple)/</tt>relational operators &mdash; all these were "<tt>constexpr</tt>-ified".     
+<p/>
+But not <tt>tie</tt>. This is similar to Issue <a href="lwg-defects.html#2275">2275</a>, where the same observation was made about <tt>forward_as_tuple</tt>.
+</p>
+
+<p><i>[2014-02-13 Issaquah: Move as Immediate]</i></p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Change the header <tt>&lt;tuple&gt;</tt> synopsis, 20.4.1 [tuple.general] p2 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class... Types&gt;
+  <ins>constexpr</ins> tuple&lt;Types&amp;...&gt; tie(Types&amp;...) noexcept;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.4.2.4 [tuple.creation] around p7 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class... Types&gt;
+  <ins>constexpr</ins> tuple&lt;Types&amp;...&gt; tie(Types&amp;... t) noexcept;
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2304"></a>2304. Complexity of <tt>count</tt> in unordered associative containers</h3>
 <p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
  <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2013-09-20 <b>Last modified:</b> 2014-02-13</p>
@@ -666,7 +862,7 @@ Average case &#x1d4aa;(<tt><del>1</del><ins>b.count(k)</ins></tt>), worst case &
 <hr>
 <h3><a name="2306"></a>2306. <tt>match_results::reference</tt> should be <tt>value_type&amp;</tt>, not <tt>const value_type&amp;</tt></h3>
 <p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-09-25 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-09-25 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -781,7 +977,7 @@ note: the destructor is applied to every element of <tt>a</tt>; <del>all the</de
 <hr>
 <h3><a name="2313"></a>2313. <tt>tuple_size</tt> should always derive from <tt>integral_constant&lt;size_t, N&gt;</tt></h3>
 <p><b>Section:</b> 20.4.2.5 [tuple.helper] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.helper">issues</a> in [tuple.helper].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -923,7 +1119,7 @@ integral_constant&lt;<del>remove_cv&lt;decltype(TS::value)&gt;::type</del><ins>s
 <hr>
 <h3><a name="2314"></a>2314. <tt>apply()</tt> should return <tt>decltype(auto)</tt> and use <tt>decay_t</tt> before <tt>tuple_size</tt></h3>
 <p><b>Section:</b> 20.5.1 [intseq.general] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -971,9 +1167,113 @@ template&lt;class F, class Tuple&gt;
 
 
 <hr>
+<h3><a name="2315"></a>2315. <tt>weak_ptr</tt> should be movable</h3>
+<p><b>Section:</b> 20.8.2.3 [util.smartptr.weak] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.weak">issues</a> in [util.smartptr.weak].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Like <tt>shared_ptr</tt>, <tt>weak_ptr</tt> should be movable to avoid unnecessary atomic increments/decrements of the weak refcount.
+</p>
+
+<p><i>[2014-02-13 Issaquah: Move to Immediate]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Edit 20.8.2.3 [util.smartptr.weak]/1, class template <tt>weak_ptr</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template&lt;class T&gt; class weak_ptr {
+  public:
+    typedef T element_type;
+
+    <i>// 20.9.2.3.1, constructors</i>
+    constexpr weak_ptr() noexcept;
+    template&lt;class Y&gt; weak_ptr(shared_ptr&lt;Y&gt; const&amp; r) noexcept;
+    weak_ptr(weak_ptr const&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt; const&amp; r) noexcept;
+    <ins>weak_ptr(weak_ptr&amp;&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+
+    [&hellip;]
+
+    <i>// 20.9.2.3.3, assignment</i>
+    weak_ptr&amp; operator=(weak_ptr const&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt; const&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr&amp; operator=(shared_ptr&lt;Y&gt; const&amp; r) noexcept;
+    <ins>weak_ptr&amp; operator=(weak_ptr&amp;&amp; r) noexcept;
+    template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+  };
+}
+</pre></blockquote>
+</li>
+
+<li><p>Add the following new paragraphs at the end of sub-clause 20.8.2.3.1 [util.smartptr.weak.const]:</p>
+
+<blockquote><pre>
+<ins>weak_ptr(weak_ptr&amp;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Remark:</i> The second constructor shall not participate in overload resolution unless <tt>Y*</tt> is implicitly 
+convertible to <tt>T*</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Move-constructs a <tt>weak_ptr</tt> instance from <tt>r</tt>.</ins>
+<p/>
+<ins>-?- <i>Postconditions:</i> <tt>*this</tt> shall contain the old value of <tt>r</tt>. <tt>r</tt> shall be <em>empty</em>. 
+<tt>r.use_count() == 0</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit 20.8.2.3.3 [util.smartptr.weak.assign] as indicated:</p>
+
+<blockquote><pre>
+weak_ptr&amp; operator=(const weak_ptr&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr&amp; operator=(const weak_ptr&lt;Y&gt;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr&amp; operator=(const shared_ptr&lt;Y&gt;&amp; r) noexcept;
+</pre><blockquote>
+<p>
+-1- <i>Effects:</i> [&hellip;]
+<p/>
+-2- <i>Remarks:</i> [&hellip;]
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote><pre>
+<ins>weak_ptr&amp; operator=(weak_ptr&amp;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>weak_ptr(std::move(r)).swap(*this)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2316"></a>2316. <tt>weak_ptr::lock()</tt> should be atomic</h3>
 <p><b>Section:</b> 20.8.2.3.5 [util.smartptr.weak.obs] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.weak.obs">issues</a> in [util.smartptr.weak.obs].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1026,7 +1326,7 @@ shared_ptr&lt;T&gt; lock() const noexcept;
 <hr>
 <h3><a name="2317"></a>2317. The type property queries should be <tt>UnaryTypeTraits</tt> returning <tt>size_t</tt></h3>
 <p><b>Section:</b> 20.10.5 [meta.unary.prop.query] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -1112,7 +1412,7 @@ Move constructors obtain an allocator by move construction from the allocator be
 <hr>
 <h3><a name="2322"></a>2322. Associative(<tt>initializer_list</tt>, stuff) constructors are underspecified</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -1294,7 +1594,7 @@ Same as <tt>X(il.begin(), il.end())</tt>.
 <hr>
 <h3><a name="2323"></a>2323. <tt>vector::resize(n, t)</tt>'s specification should be simplified</h3>
 <p><b>Section:</b> 23.3.6.3 [vector.capacity], 23.3.3.3 [deque.capacity] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -1364,7 +1664,7 @@ there are no effects.
 <hr>
 <h3><a name="2324"></a>2324. Insert iterator constructors should use <tt>addressof()</tt></h3>
 <p><b>Section:</b> 24.5.2.2.1 [back.insert.iter.cons], 24.5.2.4.1 [front.insert.iter.cons], 24.5.2.6.1 [insert.iter.cons] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -1423,6 +1723,80 @@ insert_iterator(Container&amp; x, typename Container::iterator i);
 
 
 <hr>
+<h3><a name="2329"></a>2329. <tt>regex_match()/regex_search()</tt> with <tt>match_results</tt> should forbid temporary strings</h3>
+<p><b>Section:</b> 28.4 [re.syn] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.syn">issues</a> in [re.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Consider the following code:
+</p>
+<blockquote><pre>
+const regex r(R"(meow(\d+)\.txt)");
+smatch m;
+if (regex_match(dir_iter-&gt;path().filename().string(), m, r)) {
+  DoSomethingWith(m[1]);
+}
+</pre></blockquote>
+<p>
+This occasionally crashes. The problem is that <tt>dir_iter-&gt;path().filename().string()</tt> returns a temporary string, 
+so the <tt>match_results</tt> contains invalidated iterators into a destroyed temporary string.
+<p/>
+It's fine for <tt>regex_match/regex_search(str, reg)</tt> to accept temporary strings, because they just return <tt>bool</tt>. 
+However, the overloads taking <tt>match_results</tt> should forbid temporary strings.
+</p>
+
+<p><i>[2014-02-13 Issaquah: Move as Immediate]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Edit 28.4 [re.syn], header <tt>&lt;regex&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+#include &lt;initializer_list&gt;
+
+namespace std {
+
+  [&hellip;]
+  
+  <i>// 28.11.2, function template regex_match:</i>
+  [&hellip;]
+  <ins>template &lt;class ST, class SA, class Allocator, class charT, class traits&gt; 
+  bool regex_match(const basic_string&lt;charT, ST, SA&gt;&amp;&amp;, 
+                   match_results&lt;
+                     typename basic_string&lt;charT, ST, SA&gt;::const_iterator, 
+                     Allocator&gt;&amp;, 
+                   const basic_regex&lt;charT, traits&gt;&amp;, 
+                   regex_constants::match_flag_type = 
+                     regex_constants::match_default) = delete;</ins>
+
+  <i>// 28.11.3, function template regex_search:</i>
+  [&hellip;]
+  <ins>template &lt;class ST, class SA, class Allocator, class charT, class traits&gt; 
+  bool regex_search(const basic_string&lt;charT, ST, SA&gt;&amp;&amp;, 
+                    match_results&lt;
+                      typename basic_string&lt;charT, ST, SA&gt;::const_iterator, 
+                      Allocator&gt;&amp;, 
+                    const basic_regex&lt;charT, traits&gt;&amp;, 
+                    regex_constants::match_flag_type = 
+                      regex_constants::match_default) = delete;</ins>
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2330"></a>2330. <tt>regex("meow", regex::icase)</tt> is technically forbidden but should be permitted</h3>
 <p><b>Section:</b> 28.5.1 [re.synopt] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
  <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
@@ -1466,7 +1840,7 @@ one of the <ins>grammar</ins> elements <tt>ECMAScript</tt>, <tt>basic</tt>, <tt>
 <hr>
 <h3><a name="2339"></a>2339. Wording issue in <tt>nth_element</tt></h3>
 <p><b>Section:</b> 25.4.2 [alg.nth.element] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Christopher Jefferson <b>Opened:</b> 2013-10-19 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Christopher Jefferson <b>Opened:</b> 2013-10-19 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.nth.element">issues</a> in [alg.nth.element].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1537,7 +1911,7 @@ or <tt>comp(*j, *i) == false</tt>.
 <hr>
 <h3><a name="2341"></a>2341. Inconsistency between <tt>basic_ostream::seekp(pos)</tt> and <tt>basic_ostream::seekp(off, dir)</tt></h3>
 <p><b>Section:</b> 27.7.3.5 [ostream.seeks] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Marshall Clow  <b>Opened:</b> 2013-10-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Marshall Clow  <b>Opened:</b> 2013-10-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -1611,7 +1985,7 @@ basic_ostream&lt;charT,traits&gt;&amp; seekp(off_type off, ios_base::seekdir dir
 <hr>
 <h3><a name="2346"></a>2346. <tt>integral_constant</tt>'s member functions should be marked <tt>noexcept</tt></h3>
 <p><b>Section:</b> 20.10.3 [meta.help] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-11-05 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-11-05 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.help">issues</a> in [meta.help].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1655,7 +2029,7 @@ namespace std {
 <hr>
 <h3><a name="2350"></a>2350. <tt>min</tt>, <tt>max</tt>, and <tt>minmax</tt> should be <tt>constexpr</tt></h3>
 <p><b>Section:</b> 25.4.7 [alg.min.max] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2013-12-15 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2013-12-15 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#alg.min.max">active issues</a> in [alg.min.max].</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.min.max">issues</a> in [alg.min.max].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -1719,9 +2093,75 @@ template&lt;class T, class Compare>
 
 
 <hr>
+<h3><a name="2356"></a>2356. Stability of erasure in unordered associative containers</h3>
+<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-01-21 <b>Last modified:</b> 2014-02-13</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Issue <a href="lwg-defects.html#518">518</a> resolution for unordered associative containers, modelled after that of issue <a href="lwg-defects.html#371">371</a>, 
+which is related to associative containers, states that insertion, erasure and rehashing preserve the relative ordering 
+of equivalent elements. Unfortunately, this is not sufficient to guarantee the validity of code such as this:
+</p>
+<blockquote><pre>
+std::unordered_multimap&lt;int, int&gt; m;
+auto i = m.begin();
+while (i != m.end()) {
+  if (pred(i))
+    m.erase(i++);
+  else
+    ++i;
+}
+</pre></blockquote>
+<p>
+(which is a direct translation from <tt>multimap</tt> to <tt>unordered_multimap</tt> of the motivating example in <a href="lwg-defects.html#371">371</a>), 
+or even this:
+</p>
+<blockquote><pre>
+std::unordered_multimap&lt;int, int&gt; m;
+auto p = m.equal_range(k);
+while (p.first != p.second) {
+  if (pred(p.first))
+    m.erase((p.first)++);
+  else
+    ++(p.first);
+}
+</pre></blockquote>
+<p>
+because the relative ordering of <em>non-equivalent</em> elements elements could potentially change after erasure (not that any actual 
+implementation does that, anyway). Such an underspecification does not happen for regular associative containers, where the 
+relative ordering of non-equivalent elements is kept by design.
+</p>
+
+<p><i>[2014-02-13 Issaquah: Move to Immediate]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3797.</p>
+
+<ol>
+<li><p>Modify 23.2.5 [unord.req], p14 as indicated:</p>
+
+<blockquote><p>
+-14- The <tt>insert</tt> and <tt>emplace</tt> members shall not affect the validity of references to container elements, but may
+invalidate all iterators to the container. The <tt>erase</tt> members shall invalidate only iterators and references
+to the erased elements<ins>, and preserve the relative order of the elements that are not erased</ins>.
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2357"></a>2357. Remaining "<tt>Assignable</tt>" requirement</h3>
 <p><b>Section:</b> 25.3.13 [alg.partitions] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.partitions">issues</a> in [alg.partitions].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1777,7 +2217,7 @@ argument type. The input range shall not overlap with either of the output range
 <hr>
 <h3><a name="2359"></a>2359. How does <tt>regex_constants::nosubs</tt> affect <tt>basic_regex::mark_count()</tt>?</h3>
 <p><b>Section:</b> 28.5.1 [re.synopt] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.synopt">active issues</a> in [re.synopt].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.synopt">issues</a> in [re.synopt].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
