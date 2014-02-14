@@ -19,12 +19,12 @@
 </style>
 </head>
 <body>
-<p>Revised 2014-02-14 at 17:02:06 UTC</p>
+<p>Revised 2014-02-14 at 19:02:21 UTC</p>
 <h2>Immediate Issues</h2>
 <hr>
 <h3><a name="1450"></a>1450. Contradiction in <tt>regex_constants</tt></h3>
 <p><b>Section:</b> 28.5.2 [re.matchflag] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> BSI <b>Opened:</b> 2010-08-25 <b>Last modified:</b> 2014-02-14</p>
+ <b>Submitter:</b> BSI <b>Opened:</b> 2010-08-25 <b>Last modified:</b> 2014-02-13</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p><b>Addresses GB-127</b></p>
@@ -240,9 +240,401 @@ Add to the specifications of <tt>iterator erase(const_iterator p);</tt>, <tt>ite
 
 
 <hr>
+<h3><a name="2104"></a>2104. <tt>unique_lock</tt> move-assignment should not be <tt>noexcept</tt></h3>
+<p><b>Section:</b> 30.4.2.2 [thread.lock.unique] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Anthony Williams <b>Opened:</b> 2011-11-27 <b>Last modified:</b> 2014-02-14</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+I just noticed that the <tt>unique_lock</tt> move-assignment operator is declared <tt>noexcept</tt>. This 
+function may call <tt>unlock()</tt> on the wrapped mutex, which may throw.
+<p/>
+Suggested change: remove the <tt>noexcept</tt> specification from <tt>unique_lock::operator=(unique_lock&amp;&amp;)</tt> 
+in 30.4.2.2 [thread.lock.unique] and 30.4.2.2.1 [thread.lock.unique.cons]. 
+<p/>
+Daniel:
+<p/>
+I think the situation is actually a bit more complex as it initially looks.
+<p/>
+First, the effects of the move-assignment operator are (emphasize mine):
+</p>
+<blockquote><p>
+<i>Effects</i>: <strong>If</strong> <tt>owns</tt> calls <tt>pm->unlock()</tt>.
+</p></blockquote>
+<p>
+Now according to the <tt>BasicLockable</tt> requirements:
+</p>
+<blockquote><p>
+<tt>m.unlock()</tt>
+<p/>
+3 <i>Requires</i>: The current execution agent shall hold a lock on <tt>m</tt>.
+<p/>
+4 <i>Effects</i>: Releases a lock on <tt>m</tt> held by the current execution agent.
+<p/>
+<i>Throws</i>: Nothing.
+</p></blockquote>
+<p>
+This shows that unlock itself is a function with narrow contract and for 
+this reasons no unlock function of a mutex or lock itself does have a noexcept 
+specifier according to our mental model.
+<p/>
+Now the move-assignment operator <strong>attempts</strong> to satisfy these
+requirement of the function and calls it only when it assumes that the conditions 
+are ok, so from the view-point of the caller of the move-assignment operator it 
+looks as if the move-assignment operator would in total a function with a
+wide contract.
+<p/>
+The problem with this analysis so far is, that it depends on the assumed 
+correctness of the state "owns".
+<p/>
+Looking at the construction or state-changing functions, there do exist several 
+ones that depend on caller-code satisfying the requirements and there is one 
+guy, who looks most suspicious:
+</p>
+<blockquote><p>
+<tt>unique_lock(mutex_type&amp; m, adopt_lock_t);</tt>
+<p/>
+11 <i>Requires</i>: The calling thread own the mutex.<br/>
+[&hellip;]<br/>
+13 <i>Postconditions</i>: <tt>pm == &amp;m</tt> and <tt>owns == true</tt>.<br/>
+</p></blockquote>
+<p>
+because this function does not even call <tt>lock()</tt> (which may, but is not 
+required to throw an exception if the calling thread does already own the mutex). 
+So we have in fact still a move-assignment operator that might throw an exception, 
+if the mutex was either constructed or used (call of lock) incorrectly.
+<p/>
+The correct fix seems to me to also add a "<i>Throws</i>: Nothing" element to
+the move-assignment operator, because using it correctly shall not throw an
+exception.
+</p>
+
+<p><i>[Issaquah 20014-10-11: Move to Immediate after SG1 review]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to the FDIS.</p>
+
+<ol>
+<li>
+<p>Change 30.4.2.2 [thread.lock.unique], class template <tt>unique_lock</tt> synopsis as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Mutex&gt;
+  class unique_lock {
+  public:
+    typedef Mutex mutex_type;
+    [&hellip;]
+    unique_lock(unique_lock&amp;&amp; u) noexcept;
+    unique_lock&amp; operator=(unique_lock&amp;&amp; u) <del>noexcept</del>;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+</li>
+
+<li>
+<p>Change 30.4.2.2.1 [thread.lock.unique.cons] around p22 as indicated:</p>
+
+<blockquote><pre>
+unique_lock&amp; operator=(unique_lock&amp;&amp; u) <del>noexcept</del>;
+</pre><blockquote>
+<p>
+-22- <i>Effects</i>: If <tt>owns</tt> calls <tt>pm->unlock()</tt>.
+<p/>
+-23- <i>Postconditions</i>: <tt>pm == u_p.pm</tt> and <tt>owns == u_p.owns</tt> (where <tt>u_p</tt> 
+is the state of <tt>u</tt> just prior to this construction), <tt>u.pm == 0</tt> and <tt>u.owns == false</tt>.
+<p/>
+-24- [<i>Note</i>: With a recursive mutex it is possible for both <tt>*this</tt> and <tt>u</tt> to own 
+the same mutex before the assignment. In this case, <tt>*this</tt> will own the mutex after the assignment 
+and <tt>u</tt> will not. &mdash; <i>end note</i>]
+</p>
+<ins>-??- <i>Throws</i>: Nothing.</ins>
+<p/>
+</blockquote></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2112"></a>2112. User-defined classes that cannot be derived from</h3>
+<p><b>Section:</b> 17.6.5 [conforming], 20.7.8 [allocator.traits], 20.13.1 [allocator.adaptor.syn] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-11-30 <b>Last modified:</b> 2014-02-14</p>
+<p><b>View all other</b> <a href="lwg-index.html#conforming">issues</a> in [conforming].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+It is a very established technique for implementations to derive internally from user-defined class types that are
+used to customize some library component, e.g. deleters and allocators are typical candidates. The advantage of this
+approach is to possibly take advantage of the empty-base-class optimization (EBCO).
+<p/>
+Whether or whether not libraries did take advantage of such a detail didn't much matter in C++03. Even though there
+did exist a portable idiom to prevent that a class type could be derived from, this idiom has never reached great
+popularity: The <a href="http://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Final_Class">technique</a> required
+to introduce a virtual base class and it did not really prevent the derivation, but only any construction of
+such a type. Further, such types are not <em>empty</em> as defined by the <tt>std::is_empty</tt> trait, so
+could easily be detected by implementations from TR1 on.
+<p/>
+With the new C++11 feature of final classes and final member functions it is now very easy to define an empty,
+but not derivable from class type. From the point of the user it is quite natural to use this feature for
+types that he or she did not foresee to be derivable from.
+<p/>
+On the other hand, most library implementations (including third-party libraries) often take advantage of EBCO 
+applied to user-defined types used to instantiate library templates internally. As the time of submitting this 
+issue the following program failed to compile on all tested library implementations:
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+
+struct Noop <span style="color:#C80000;font-weight:bold">final</span> {
+ template&lt;class Ptr&gt;
+ void operator()(Ptr) const {}
+};
+
+std::unique_ptr&lt;int, Noop&gt; up;
+</pre></blockquote>
+<p>
+In addition, many <tt>std::tuple</tt> implementations with empty, final classes as element types failed as well, 
+due to a popular inheritance-based implementation technique. EBCO has also a long tradition to be 
+used in library containers to efficiently store potentially stateless, empty allocators.
+<p/>
+It seems that both user and library did the best they could: None of the affected types did impose explicit
+requirements on the corresponding user-defined types to be derivable from (This capability was not part of
+the required operations), and libraries did apply EBCO whereever possible to the convenience of the customer.
+<p/>
+Nonetheless given the existence of non-derivable-from class types in C++11, libraries have to cope with
+failing derivations. How should that problem be solved?
+<p/>
+It would certainly be possible to add weazel wording to the allocator requirements similar to what we had
+in C++03, but restricted to derivation-from requirements. I consider this as the bad solution, because it
+would add new requirements that never had existed before in this explicit form onto types like allocators.
+<p/>
+Existing libraries presumably will need internal traits like <tt>__is_final</tt> or <tt>__is_derivable</tt>
+to make EBCO possible in the current form but excluding non-derivable class types. As of this writing this
+seems to happen already. Problem is that without a <tt>std::is_derivable</tt> trait, third-party libraries
+have no portable means to do the same thing as standard library implementations. This should be a good 
+reason to make such a trait public available soon, but seems not essential to have now. Further, this issue
+should also be considered as a chance to recognice that EBCO has always been a very special corner case
+(There exist parallels to the previously existing odd core language rule that did make the interplay 
+between <tt>std::auto_ptr</tt> and <tt>std::auto_ptr_ref</tt> possible) and that it would be better to
+provide explicit means for space-efficient storage, not necessarily restricted to inheritance relations, 
+e.g. by marking data members with a special attribute.
+<p/>
+At least two descriptions in the current standard should be fixed now for better clarification:
+</p>
+<ol>
+<li><p>As mentioned by Ganesh, 20.7.8 [allocator.traits] p1 currently contains a (non-normative) note
+"Thus, it is always possible to create a derived class from an allocator." which should be removed.
+</p>
+</li>
+<li><p>As pointed out by Howard, the specification of <tt>scoped_allocator_adaptor</tt> as of
+20.13.1 [allocator.adaptor.syn] already requires derivation from <tt>OuterAlloc</tt>, but 
+only implies indirectly the same for the inner allocators due to the <em>exposition-only</em> 
+description of member <tt>inner</tt>. This indirect implication should be normatively required for 
+all participating allocators.
+</p></li>
+</ol>
+
+
+<p><i>[2012, Kona]</i></p>
+
+<p>
+What we really need is a type trait to indicate if a type can be derived from.  Howard reports
+Clang and libc++ have had success with this approach.
+</p>
+<p>
+Howard to provide wording, and AJM to alert Core that we may be wanting to add a new trait
+that requires compiler support.
+</p>
+
+<p><i>[2014-02, Issaquah: Howard and Daniel comment and provide wording]</i></p>
+
+
+<p>
+Several existing C++11 compilers do already provide an internal <tt>__is_final</tt> intrinsic (e.g. clang and gcc) and therefore 
+we believe that this is evidence enough that this feature is implementable today.
+<p/>
+We believe that both a simple and clear definition of the <tt>is_final</tt> query should result in a true outcome 
+if and only if the current existing language definition holds that a complete class type (either union or non-union) 
+has been marked with the <i>class-virt-specifier</i> <code>final</code> &mdash; nothing more.
+<p/>
+The following guidelines lead to the design decision and the wording choice given below:
+<p/>
+It has been expressed several times that a high-level trait such as "<tt>is_derivable</tt>" would be preferred and
+would be more useful for non-experts. One problem with that request is that it is astonishingly hard to find a common denominator 
+for what the <em>precise</em> definition of this trait should be, especially regarding corner-cases. Another example of getting very 
+differing points of view is to ask a bunch of C++ experts what the best definition of the <tt>is_empty</tt> trait
+should be (which can be considered as a kind of higher-level trait).
+<p/>
+Once we have a fundamental trait like <tt>is_final</tt> available, we can easily define higher-level traits in the future
+on top of this by a proper logical combination of the low-level traits.
+<p/>
+A critical question is whether providing such a low-level compile-time introspection might be considered as disadvantageous,
+because it could constrain the freedom of existing implementations even further and whether a high-level trait would solve
+this dilemma. We assert that since C++11 the static introspection capabilities are already very large and we believe that
+making the presence or absence of the <tt>final</tt> keyword testable does not make the current situation worse.
+<p/>
+Below code example demonstrates the intention and the implementability of this feature:
+</p>
+<blockquote><pre>
+#include &lt;type_traits&gt;
+
+namespace std
+{
+
+template &lt;class T&gt;
+struct is_final
+  : public integral_constant&lt;bool, __is_final(T)&gt;
+{};
+
+}  // std
+
+// test it
+
+union FinalUnion <span style="color:#009900;font-weight:bolder">final</span> { };
+
+union NonFinalUnion { };
+
+class FinalClass <span style="color:#009900;font-weight:bolder">final</span> { };
+
+struct NonFinalClass { };
+
+class Incomplete;
+
+int main()
+{
+  using std::is_final;
+  static_assert( is_final&lt;const volatile FinalUnion&gt;{}, "");
+  static_assert(!is_final&lt;FinalUnion[]&gt;{}, "");
+  static_assert(!is_final&lt;FinalUnion[1]&gt;{}, "");
+  static_assert(!is_final&lt;NonFinalUnion>{}, "");
+  static_assert( is_final&lt;FinalClass&gt;{}, "");
+  static_assert(!is_final&lt;FinalClass&amp;&gt;{}, "");
+  static_assert(!is_final&lt;FinalClass*&gt;{}, "");
+  static_assert(!is_final&lt;NonFinalClass&gt;{}, "");
+  static_assert(!is_final&lt;void&gt;{}, "");
+  static_assert(!is_final&lt;int&gt;{}, "");
+  static_assert(!is_final&lt;Incomplete&gt;{}, ""); // <span style="color:#C80000;font-weight:bolder">error incomplete type 'Incomplete' used in type trait expression</span>
+}
+</pre></blockquote>
+
+<p><i>[2014-02-14, Issaquah: Move to Immediate]</i></p>
+
+<p>
+This is an important issue, that we really want to solve for C++14.
+</p>
+
+<p>
+Move to Immediate after polling LEWG, and then the NB heads of delegation.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to N3797.</p>
+
+<ol>
+<li><p>Change 20.10.2 [meta.type.synop], header <tt>&lt;type_traits&gt;</tt> synopsis, as indicated</p>
+
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+  <i>// 20.10.4.3, type properties:</i>
+  [&hellip;]
+  template &lt;class T&gt; struct is_empty;
+  template &lt;class T&gt; struct is_polymorphic;
+  template &lt;class T&gt; struct is_abstract;
+  <ins>template &lt;class T&gt; struct is_final;</ins>
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Change 20.10.4.3 [meta.unary.prop], Table 49 &mdash; Type property predicates, as indicated</p>
+
+<table border="1">
+<caption>Table 49 &mdash; Type property predicates</caption>
+<tr>
+<th>Template</th>
+<th>Condition</th>
+<th>Preconditions</th>
+</tr> 
+<tr>
+<td>
+<tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_abstract;</tt>
+</td>
+<td>
+[&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>template &lt;class T&gt;</tt><br/>
+<tt>struct is_final;</tt></ins>
+</td>
+<td>
+<ins><code>T</code> is a class type marked with the <i>class-virt-specifier</i> <code>final</code> (9 [class]).<br/> 
+[<i>Note:</i> A union is a class type that can be marked with <code>final</code>. &mdash; <i>end note</i>]</ins>
+</td>
+<td>
+<ins>If <tt>T</tt> is a class type, <tt>T</tt> shall be a complete type</ins>
+</td>
+</tr>
+
+</table>
+
+</li>
+
+<li><p>After 20.10.4.3 [meta.unary.prop] p5 add one further example as indicated:</p>
+
+<blockquote><p>
+<ins>[<i>Example</i>:</ins>
+</p>
+<blockquote><pre>
+<ins><i>// Given:</i>
+struct P final { };
+union U1 { };
+union U2 final { };
+
+<i>// the following assertions hold:</i>
+static_assert(!is_final&lt;int&gt;::value, "Error!");
+static_assert( is_final&lt;P&gt;::value, "Error!");
+static_assert(!is_final&lt;U1&gt;::value, "Error!");
+static_assert( is_final&lt;U2&gt;::value, "Error!");</ins>
+</pre></blockquote>
+<p>
+<ins>&mdash; <i>end example</i>]</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
 <h3><a name="2182"></a>2182. <tt>Container::[const_]reference</tt> types are misleadingly specified</h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-20 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-20 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -385,6 +777,87 @@ compile time
 
 
 <hr>
+<h3><a name="2186"></a>2186. Incomplete action on <tt>async/launch::deferred</tt></h3>
+<p><b>Section:</b> 30.6.8 [futures.async] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Vicente J. Botet Escriba <b>Opened:</b> 2012-09-20 <b>Last modified:</b> 2014-02-14</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The description of the effects of <tt>async</tt> when the launch policy is <tt>launch::deferred</tt> doesn't 
+state what is done with the result of the deferred function invocation and the possible exceptions as it is done 
+for the asynchronous function when the policy is <tt>launch::async</tt>.
+</p>
+
+<p><i>[2012, Portland: move to Open]</i></p>
+
+<p>
+Detlef: agree with the problem but not with the resolution. The wording should be applied to all launch policies
+        rather than having to be separately specified for each one.
+</p>
+<p>
+Hans: we should redraft to factor out the proposed text outside the two bullets. Needs to be carefully worded to
+      be compatible with the resolution of <a href="lwg-defects.html#2120">2120</a> (see above).
+</p>
+<p>
+Moved to open
+</p>
+
+<p><i>[Issaquah 20014-10-11: Move to Immediate after SG1 review]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p><i>[This wording is relative to N3376.]</i></p>
+
+
+<ol>
+<li><p>Change 30.6.8 [futures.async] p3 bullet 2 as indicated:</p>
+<blockquote><pre>
+template &lt;class F, class... Args&gt;
+future&lt;typename result_of&lt;typename decay&lt;F&gt;::type(typename decay&lt;Args>::type...)&gt;::type&gt;
+async(F&amp;&amp; f, Args&amp;&amp;... args);
+template &lt;class F, class... Args&gt;
+future&lt;typename result_of&lt;typename decay&lt;F&gt;::type(typename decay&lt;Args&gt;::type...)&gt;::type&gt;
+async(launch policy, F&amp;&amp; f, Args&amp;&amp;... args);
+</pre><blockquote><p>
+-2- <i>Requires</i>: [&hellip;]
+<p/>
+-3- <i>Effects:</i>: The first function behaves the same as a call to the second function with a <tt>policy</tt> argument of
+<tt>launch::async | launch::deferred</tt> and the same arguments for <tt>F</tt> and <tt>Args</tt>. [&hellip;] The further 
+behavior of the second function depends on the <tt>policy</tt> argument as follows (if more than one of these conditions
+applies, the implementation may choose any of the corresponding policies):
+</p>
+<ul>
+<li><p>if <tt>policy &amp; launch::async</tt> is non-zero [&hellip;]</p></li>
+<li><p>if <tt>policy &amp; launch::deferred</tt> is non-zero &mdash; Stores <tt><i>DECAY_COPY</i>(std::forward&lt;F&gt;(f))</tt> 
+and <tt><i>DECAY_COPY</i>(std::forward&lt;Args>(args))...</tt> in the shared state. These copies of <tt>f</tt> and <tt>args</tt>
+constitute a <em>deferred function</em>. Invocation of the deferred function evaluates <tt><i>INVOKE</i>(std::move(g), std::move(xyz))</tt> 
+where <tt>g</tt> is the stored value of <tt><i>DECAY_COPY</i>(std::forward&lt;F>(f))</tt> and <tt>xyz</tt> is
+the stored copy of <tt><i>DECAY_COPY</i>(std::forward&lt;Args>(args))...</tt>. <ins>Any return value is stored as the 
+result in the shared state. Any exception propagated from the execution of the deferred function is stored as the 
+exceptional result in the shared state.</ins> The shared state is not made ready until the function has completed. 
+The first call to a non-timed waiting function (30.6.4 [futures.state]) on an asynchronous return object referring 
+to this shared state shall invoke the deferred function in the thread that called the waiting function. Once evaluation 
+of <tt><i>INVOKE</i>(std::move(g), std::move(xyz))</tt> begins, the function is no longer considered deferred. 
+[<i>Note</i>: If this policy is specified together with other policies, such as when using a policy value of 
+<tt>launch::async | launch::deferred</tt>, implementations should defer invocation or the selection of the <tt>policy</tt> 
+when no more concurrency can be effectively exploited. &mdash; <i>end note</i>]
+</p></li>
+</ul>
+</blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
 <h3><a name="2188"></a>2188. Reverse iterator does not fully support targets that overload <tt>operator&amp;</tt></h3>
 <p><b>Section:</b> 24.5.1.3.5 [reverse.iter.opref] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
  <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-09-23 <b>Last modified:</b> 2014-02-14</p>
@@ -437,9 +910,586 @@ Revise 24.5.1.3.5 [reverse.iter.opref] p1, as indicated:
 
 
 <hr>
+<h3><a name="2193"></a>2193. Default constructors for standard library containers are explicit</h3>
+<p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-10-04 <b>Last modified:</b> 2014-02-14</p>
+<p><b>View other</b> <a href="lwg-index-open.html#containers">active issues</a> in [containers].</p>
+<p><b>View all other</b> <a href="lwg-index.html#containers">issues</a> in [containers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Most (all?) of the standard library containers have explicit default constructors. Consequently:
+</p>
+<blockquote><pre>
+std::set&lt;int&gt; s1 = { 1, 2 }; // ok
+std::set&lt;int&gt; s2 = { 1 }; // ok
+std::set&lt;int&gt; s3 = {}; // ill-formed, copy-list-initialization selected an explicit constructor
+</pre></blockquote>
+<p>
+Note that Clang + libc++ rejects the declaration of <tt>s3</tt> for this reason. This cannot possibly match the intent.
+</p>
+<p>
+Suggested fix: apply this transformation throughout the standard library:
+</p>
+<blockquote><pre>
+<ins>set() : set(Compare()) {}</ins>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+
+<p><i>[
+2012-10-06: Daniel adds concrete wording.
+]</i></p>
+
+
+<p><i>[2012, Portland: Move to Open]</i></p>
+
+<p>
+This may be an issue better solved by a core language tweak.  Throw the issue over to EWG and see whether they
+believe the issue is better resolved in Core or Library.
+</p>
+
+<p>
+AJM suggest we spawn a new status of 'EWG' to handle such issues - and will move this issue appropriately when
+the software can record such resolutions.
+</p>
+
+<p><i>[2013-08-27, Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz comments:]</i></p>
+
+
+<p>
+For the record, I'd like to point out that the resolution proposed by the submitter, namely replacing
+</p>
+
+<blockquote><pre>
+explicit basic_string(const Allocator&amp; a = Allocator());
+</pre></blockquote>
+
+<p>
+by
+</p>
+
+<blockquote><pre>
+basic_string() : basic_string(Allocator()) {}
+explicit basic_string(const Allocator&amp; a);
+</pre></blockquote>
+
+<p>
+(and similarly for other container and container-like classes) might introduce a potential
+backwards-compatibility problem related with explicit instantiation. Consider for instance
+</p>
+
+<blockquote><pre>
+struct my_allocator
+{
+  my_allocator(...); // no default ctor
+  ...
+};
+
+template class std::basic_string&lt;char, std::char_traits&lt;char&gt;, my_allocator&lt;char&gt;&gt;;
+</pre></blockquote>
+
+<p>
+This (which I understand is currently a valid explicit instantiation of <tt>std::basic_string</tt>) will break if
+<tt>std::basic_string</tt> ctors are modified as proposed by this issue, since <tt>my_allocator</tt> doesn't have
+a default ctor.
+</p>
+
+<p><i>[2013-10-06, Daniel comments:]</i></p>
+
+
+<p>
+Issue <a href="lwg-active.html#2303">2303</a> describes the more general problem related to explicit instantiation requests in the current
+library and may help to solve this problem here as well.
+</p>
+
+<p><i>[2014-02-13, Issaquah, Jonathan revises wording]</i></p>
+
+
+<p><strong>Previous resolution from Daniel [SUPERSEDED]:</strong></p>
+
+<blockquote class="note">
+
+<p>This wording is relative to N3376.</p>
+
+<p>The more general criterion for performing the suggested transformation was: Any type with an initializer-list 
+constructor that also has an explicit default constructor.</p>
+
+<ol>
+<li><p>Change class template <tt>basic_string</tt> synopsis, 21.4 [basic.string] p5 as indicated:</p>
+<blockquote><pre>
+<ins>basic_string() : basic_string(Allocator()) {}</ins>
+explicit basic_string(const Allocator&amp; a<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 21.4.2 [string.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit basic_string(const Allocator&amp; a<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>deque</tt> synopsis, 23.3.3.1 [deque.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>deque() : deque(Allocator()) {}</ins>
+explicit deque(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.3.2 [deque.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit deque(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>forward_list</tt> synopsis, 23.3.4.1 [forwardlist.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>forward_list() : forward_list(Allocator()) {}</ins>
+explicit forward_list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.4.2 [forwardlist.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit forward_list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>list</tt> synopsis, 23.3.5.1 [list.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>list() : list(Allocator()) {}</ins>
+explicit list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.5.2 [list.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>vector</tt> synopsis, 23.3.6.1 [vector.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>vector() : vector(Allocator()) {}</ins>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.6.2 [vector.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template specialization <tt>vector&lt;bool&gt;</tt> synopsis, 23.3.7 [vector.bool] p1 as indicated:</p>
+<blockquote><pre>
+<ins>vector() : vector(Allocator()) {}</ins>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>map</tt> synopsis, 23.4.4.1 [map.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>map() : map(Compare()) {}</ins>
+explicit map(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.4.2 [map.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit map(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>multimap</tt> synopsis, 23.4.5.1 [multimap.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>multimap() : multimap(Compare()) {}</ins>
+explicit multimap(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.5.2 [multimap.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit multimap(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>set</tt> synopsis, 23.4.6.1 [set.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>set() : set(Compare()) {}</ins>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.6.2 [set.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>multiset</tt> synopsis, 23.4.7.1 [multiset.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>multiset() : multiset(Compare()) {}</ins>
+explicit multiset(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.7.2 [multiset.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit multiset(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_map</tt> synopsis, 23.5.4.1 [unord.map.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_map() : unordered_map(<i>see below</i>) {}</ins>
+explicit unordered_map(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.4.2 [unord.map.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_map() : unordered_map(<i>see below</i>) {}</ins>
+explicit unordered_map(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_multimap</tt> synopsis, 23.5.5.1 [unord.multimap.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multimap() : unordered_multimap(<i>see below</i>) {}</ins>
+explicit unordered_multimap(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.5.2 [unord.multimap.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multimap() : unordered_multimap(<i>see below</i>) {}</ins>
+explicit unordered_multimap(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_set</tt> synopsis, 23.5.6.1 [unord.set.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_set() : unordered_set(<i>see below</i>) {}</ins>
+explicit unordered_set(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.6.2 [unord.set.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_set() : unordered_set(<i>see below</i>) {}</ins>
+explicit unordered_set(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_multiset</tt> synopsis, 23.5.7.1 [unord.multiset.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multiset() : unordered_multiset(<i>see below</i>) {}</ins>
+explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.7.2 [unord.multiset.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multiset() : unordered_multiset(<i>see below</i>) {}</ins>
+explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[Issaquah 20014-10-11: Move to Immediate after final review]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3376.</p>
+
+<p>The more general criterion for performing the suggested transformation was: Any type with an initializer-list 
+constructor that also has an explicit default constructor.</p>
+
+<ol>
+<li><p>Change class template <tt>basic_string</tt> synopsis, 21.4 [basic.string] p5 as indicated:</p>
+<blockquote><pre>
+<ins>basic_string() : basic_string(Allocator()) { }</ins>
+explicit basic_string(const Allocator&amp; a<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 21.4.2 [string.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit basic_string(const Allocator&amp; a<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>deque</tt> synopsis, 23.3.3.1 [deque.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>deque() : deque(Allocator()) { }</ins>
+explicit deque(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.3.2 [deque.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit deque(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>forward_list</tt> synopsis, 23.3.4.1 [forwardlist.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>forward_list() : forward_list(Allocator()) { }</ins>
+explicit forward_list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.4.2 [forwardlist.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit forward_list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>list</tt> synopsis, 23.3.5.1 [list.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>list() : list(Allocator()) { }</ins>
+explicit list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.5.2 [list.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit list(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>vector</tt> synopsis, 23.3.6.1 [vector.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>vector() : vector(Allocator()) { }</ins>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.3.6.2 [vector.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template specialization <tt>vector&lt;bool&gt;</tt> synopsis, 23.3.7 [vector.bool] p1 as indicated:</p>
+<blockquote><pre>
+<ins>vector() : vector(Allocator()) { }</ins>
+explicit vector(const Allocator&amp;<del> = Allocator()</del>);
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>map</tt> synopsis, 23.4.4.1 [map.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>map() : map(Compare()) { }</ins>
+explicit map(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.4.2 [map.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit map(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>multimap</tt> synopsis, 23.4.5.1 [multimap.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>multimap() : multimap(Compare()) { }</ins>
+explicit multimap(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.5.2 [multimap.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit multimap(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>set</tt> synopsis, 23.4.6.1 [set.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>set() : set(Compare()) { }</ins>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.6.2 [set.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit set(const Compare&amp; comp<del> = Compare()</del>,
+             const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>multiset</tt> synopsis, 23.4.7.1 [multiset.overview] p2 as indicated:</p>
+<blockquote><pre>
+<ins>multiset() : multiset(Compare()) { }</ins>
+explicit multiset(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.4.7.2 [multiset.cons] before p1 as indicated:</p>
+<blockquote><pre>
+explicit multiset(const Compare&amp; comp<del> = Compare()</del>,
+                  const Allocator&amp; = Allocator());
+</pre></blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_map</tt> synopsis, 23.5.4.1 [unord.map.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_map();</ins>
+explicit unordered_map(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.4.2 [unord.map.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_map() : unordered_map(size_type(<i>see below</i>)) { }</ins>
+explicit unordered_map(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre>
+
+-1- <i>Effects:</i> Constructs an empty <code>unordered_map</code> using the specified hash function, key equality func-<br />
+tion, and allocator, and using at least <i>n</i> buckets. <del>If <i>n</i> is not provided,</del> <ins>For the default constructor</ins><br />
+the number of buckets is implementation-defined. <code>max_load_factor()</code> returns 1.0.
+</blockquote>
+
+</li>
+
+<li><p>Change class template <tt>unordered_multimap</tt> synopsis, 23.5.5.1 [unord.multimap.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multimap();</ins>
+explicit unordered_multimap(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.5.2 [unord.multimap.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multimap() : unordered_multimap(size_type(<i>see below</i>)) { }</ins>
+explicit unordered_multimap(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre>
+
+-1- <i>Effects:</i> Constructs an empty <code>unordered_multimap</code> using the specified hash function, key equality<br />
+function, and allocator, and using at least <i>n</i> buckets. <del>If <i>n</i> is not provided,</del> <ins>For the default constructor</ins><br />
+the number of buckets is implementation-defined. <code>max_load_factor()</code> returns 1.0.
+
+</blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_set</tt> synopsis, 23.5.6.1 [unord.set.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_set();</ins>
+explicit unordered_set(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.6.2 [unord.set.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_set() : unordered_set(size_type(<i>see below</i>)) { }</ins>
+explicit unordered_set(size_type n<del> = <i>see below</i></del>,
+                       const hasher&amp; hf = hasher(),
+                       const key_equal&amp; eql = key_equal(),
+                       const allocator_type&amp; a = allocator_type());
+</pre>
+
+-1- <i>Effects:</i> Constructs an empty <code>unordered_set</code> using the specified hash function, key equality func-<br />
+tion, and allocator, and using at least <i>n</i> buckets. <del>If <i>n</i> is not provided,</del> <ins>For the default constructor</ins><br />
+the number of buckets is implementation-defined. <code>max_load_factor()</code> returns 1.0.
+
+</blockquote>
+</li>
+
+<li><p>Change class template <tt>unordered_multiset</tt> synopsis, 23.5.7.1 [unord.multiset.overview] p3 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multiset();</ins>
+explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+</li>
+
+<li><p>Change 23.5.7.2 [unord.multiset.cnstr] before p1 as indicated:</p>
+<blockquote><pre>
+<ins>unordered_multiset() : unordered_multiset(size_type(<i>see below</i>)) { }</ins>
+explicit unordered_multiset(size_type n<del> = <i>see below</i></del>,
+                            const hasher&amp; hf = hasher(),
+                            const key_equal&amp; eql = key_equal(),
+                            const allocator_type&amp; a = allocator_type());
+</pre>
+
+-1- <i>Effects:</i> Constructs an empty <code>unordered_multiset</code> using the specified hash function, key equality<br />
+function, and allocator, and using at least <i>n</i> buckets. <del>If <i>n</i> is not provided,</del> <ins>For the default constructor</ins><br />
+the number of buckets is implementation-defined. <code>max_load_factor()</code> returns 1.0.
+
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
 <h3><a name="2205"></a>2205. Problematic postconditions of <tt>regex_match</tt> and <tt>regex_search</tt></h3>
 <p><b>Section:</b> 28.11.2 [re.alg.match], 28.11.3 [re.alg.search] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-24 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-24 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.alg.match">active issues</a> in [re.alg.match].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.alg.match">issues</a> in [re.alg.match].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -636,7 +1686,7 @@ For all integers <tt><ins>0 &lt;</ins> n &lt; m.size()</tt>, <tt>true</tt> if su
 <hr>
 <h3><a name="2213"></a>2213. Return value of <tt>std::regex_replace</tt></h3>
 <p><b>Section:</b> 28.11.4 [re.alg.replace] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-08 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-08 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.alg.replace">active issues</a> in [re.alg.replace].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.alg.replace">issues</a> in [re.alg.replace].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -963,7 +2013,7 @@ of the container's <tt>const_iterator</tt> type referring to the same element wi
 <hr>
 <h3><a name="2293"></a>2293. Wrong facet used by <tt>num_put::do_put</tt></h3>
 <p><b>Section:</b> 22.4.2.2.2 [facet.num.put.virtuals] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#facet.num.put.virtuals">active issues</a> in [facet.num.put.virtuals].</p>
 <p><b>View all other</b> <a href="lwg-index.html#facet.num.put.virtuals">issues</a> in [facet.num.put.virtuals].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -1122,7 +2172,7 @@ participate in overload resolution unless the <del>type</del><ins>qualified-id</
 <hr>
 <h3><a name="2301"></a>2301. Why is <tt>std::tie</tt> not <tt>constexpr</tt>?</h3>
 <p><b>Section:</b> 20.4.2.4 [tuple.creation] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Rein Halbersma <b>Opened:</b> 2013-09-11 <b>Last modified:</b> 2014-02-14</p>
+ <b>Submitter:</b> Rein Halbersma <b>Opened:</b> 2013-09-11 <b>Last modified:</b> 2014-02-13</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.creation">issues</a> in [tuple.creation].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1243,7 +2293,7 @@ Average case &#x1d4aa;(<tt><del>1</del><ins>b.count(k)</ins></tt>), worst case &
 <hr>
 <h3><a name="2306"></a>2306. <tt>match_results::reference</tt> should be <tt>value_type&amp;</tt>, not <tt>const value_type&amp;</tt></h3>
 <p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-09-25 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-09-25 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -1358,7 +2408,7 @@ note: the destructor is applied to every element of <tt>a</tt>; <del>all the</de
 <hr>
 <h3><a name="2313"></a>2313. <tt>tuple_size</tt> should always derive from <tt>integral_constant&lt;size_t, N&gt;</tt></h3>
 <p><b>Section:</b> 20.4.2.5 [tuple.helper] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.helper">issues</a> in [tuple.helper].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1500,7 +2550,7 @@ integral_constant&lt;<del>remove_cv&lt;decltype(TS::value)&gt;::type</del><ins>s
 <hr>
 <h3><a name="2314"></a>2314. <tt>apply()</tt> should return <tt>decltype(auto)</tt> and use <tt>decay_t</tt> before <tt>tuple_size</tt></h3>
 <p><b>Section:</b> 20.5.1 [intseq.general] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -1550,7 +2600,7 @@ template&lt;class F, class Tuple&gt;
 <hr>
 <h3><a name="2315"></a>2315. <tt>weak_ptr</tt> should be movable</h3>
 <p><b>Section:</b> 20.8.2.3 [util.smartptr.weak] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-14</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.weak">issues</a> in [util.smartptr.weak].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1654,7 +2704,7 @@ template&lt;class Y&gt; weak_ptr&amp; operator=(weak_ptr&lt;Y&gt;&amp;&amp; r) n
 <hr>
 <h3><a name="2316"></a>2316. <tt>weak_ptr::lock()</tt> should be atomic</h3>
 <p><b>Section:</b> 20.8.2.3.5 [util.smartptr.weak.obs] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.weak.obs">issues</a> in [util.smartptr.weak.obs].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1707,7 +2757,7 @@ shared_ptr&lt;T&gt; lock() const noexcept;
 <hr>
 <h3><a name="2317"></a>2317. The type property queries should be <tt>UnaryTypeTraits</tt> returning <tt>size_t</tt></h3>
 <p><b>Section:</b> 20.10.5 [meta.unary.prop.query] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -1793,7 +2843,7 @@ Move constructors obtain an allocator by move construction from the allocator be
 <hr>
 <h3><a name="2322"></a>2322. Associative(<tt>initializer_list</tt>, stuff) constructors are underspecified</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -1975,7 +3025,7 @@ Same as <tt>X(il.begin(), il.end())</tt>.
 <hr>
 <h3><a name="2323"></a>2323. <tt>vector::resize(n, t)</tt>'s specification should be simplified</h3>
 <p><b>Section:</b> 23.3.6.3 [vector.capacity], 23.3.3.3 [deque.capacity] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -2045,7 +3095,7 @@ there are no effects.
 <hr>
 <h3><a name="2324"></a>2324. Insert iterator constructors should use <tt>addressof()</tt></h3>
 <p><b>Section:</b> 24.5.2.2.1 [back.insert.iter.cons], 24.5.2.4.1 [front.insert.iter.cons], 24.5.2.6.1 [insert.iter.cons] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -2106,7 +3156,7 @@ insert_iterator(Container&amp; x, typename Container::iterator i);
 <hr>
 <h3><a name="2329"></a>2329. <tt>regex_match()/regex_search()</tt> with <tt>match_results</tt> should forbid temporary strings</h3>
 <p><b>Section:</b> 28.4 [re.syn] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-14</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-13</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.syn">issues</a> in [re.syn].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -2221,7 +3271,7 @@ one of the <ins>grammar</ins> elements <tt>ECMAScript</tt>, <tt>basic</tt>, <tt>
 <hr>
 <h3><a name="2339"></a>2339. Wording issue in <tt>nth_element</tt></h3>
 <p><b>Section:</b> 25.4.2 [alg.nth.element] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Christopher Jefferson <b>Opened:</b> 2013-10-19 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Christopher Jefferson <b>Opened:</b> 2013-10-19 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.nth.element">issues</a> in [alg.nth.element].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -2292,7 +3342,7 @@ or <tt>comp(*j, *i) == false</tt>.
 <hr>
 <h3><a name="2341"></a>2341. Inconsistency between <tt>basic_ostream::seekp(pos)</tt> and <tt>basic_ostream::seekp(off, dir)</tt></h3>
 <p><b>Section:</b> 27.7.3.5 [ostream.seeks] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Marshall Clow  <b>Opened:</b> 2013-10-21 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Marshall Clow  <b>Opened:</b> 2013-10-21 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -2366,7 +3416,7 @@ basic_ostream&lt;charT,traits&gt;&amp; seekp(off_type off, ios_base::seekdir dir
 <hr>
 <h3><a name="2346"></a>2346. <tt>integral_constant</tt>'s member functions should be marked <tt>noexcept</tt></h3>
 <p><b>Section:</b> 20.10.3 [meta.help] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-11-05 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-11-05 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.help">issues</a> in [meta.help].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -2410,7 +3460,7 @@ namespace std {
 <hr>
 <h3><a name="2350"></a>2350. <tt>min</tt>, <tt>max</tt>, and <tt>minmax</tt> should be <tt>constexpr</tt></h3>
 <p><b>Section:</b> 25.4.7 [alg.min.max] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2013-12-15 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2013-12-15 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#alg.min.max">active issues</a> in [alg.min.max].</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.min.max">issues</a> in [alg.min.max].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -2476,7 +3526,7 @@ template&lt;class T, class Compare>
 <hr>
 <h3><a name="2356"></a>2356. Stability of erasure in unordered associative containers</h3>
 <p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-01-21 <b>Last modified:</b> 2014-02-14</p>
+ <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-01-21 <b>Last modified:</b> 2014-02-13</p>
 <p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
 <p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
@@ -2542,7 +3592,7 @@ to the erased elements<ins>, and preserve the relative order of the elements tha
 <hr>
 <h3><a name="2357"></a>2357. Remaining "<tt>Assignable</tt>" requirement</h3>
 <p><b>Section:</b> 25.3.13 [alg.partitions] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.partitions">issues</a> in [alg.partitions].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -2598,7 +3648,7 @@ argument type. The input range shall not overlap with either of the output range
 <hr>
 <h3><a name="2359"></a>2359. How does <tt>regex_constants::nosubs</tt> affect <tt>basic_regex::mark_count()</tt>?</h3>
 <p><b>Section:</b> 28.5.1 [re.synopt] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-13</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-12</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.synopt">active issues</a> in [re.synopt].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.synopt">issues</a> in [re.synopt].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
