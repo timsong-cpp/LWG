@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-03-23 at 15:03:04 UTC</p>
+<p><p>Revised 2014-03-23 at 20:03:03 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -13410,7 +13410,7 @@ for this subobject</ins>.
 <hr>
 <h3><a name="2290"></a>2290. Top-level "SFINAE"-based constraints should get a separate definition in Clause 17</h3>
 <p><b>Section:</b> 20.10 [meta] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-02 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-02 <b>Last modified:</b> 2014-03-23</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta">issues</a> in [meta].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -13424,7 +13424,7 @@ The expression <tt>declval&lt;T&gt;() = declval&lt;U&gt;()</tt> is well-formed w
 Access checking is performed as if in a context unrelated to <tt>T</tt> and <tt>U</tt>. Only the validity of the immediate context 
 of the assignment expression is considered. [<i>Note:</i> The compilation of the expression can result in side effects 
 such as the instantiation of class template specializations and function template specializations, the generation of
-implicitly-defined functions, and so on. Such side effects are not in the “immediate context” and can result in the program
+implicitly-defined functions, and so on. Such side effects are not in the "immediate context" and can result in the program
 being ill-formed. &mdash; <i>end note</i>]
 </p></blockquote>
 
@@ -15882,6 +15882,96 @@ defined, and presumably means "the requirements on a shared timed mutex type" or
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2364"></a>2364. <tt>deque</tt> and <tt>vector</tt> <tt>pop_back</tt> don't specify iterator invalidation requirements</h3>
+<p><b>Section:</b> 23.3.3.4 [deque.modifiers], 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Deskin Miller <b>Opened:</b> 2014-02-17 <b>Last modified:</b> 2014-03-23</p>
+<p><b>View all other</b> <a href="lwg-index.html#deque.modifiers">issues</a> in [deque.modifiers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+I think it's obvious that <tt>vector::pop_back</tt> invalidates the path-the-end iterator, but I cannot find language that says so to 
+my satisfaction in the Standard. N3797 23.2.3 [sequence.reqmts] Table 101 lists <tt>a.pop_back()</tt> semantics as "Destroys the 
+last element", but nowhere do I see this required to invalidate the end iterator (or iterators previously referring to the last element). 
+ [container.reqmts.general]/11 states "Unless otherwise specified (either explicitly or by defining a function in terms of 
+other functions), invoking a container member function or passing a container as an argument to a library function shall not 
+invalidate iterators to, or change the values of, objects within that container." 23.3.6.5 [vector.modifiers]/3 says that each 
+flavor of <tt>vector::erase</tt> "Invalidates iterators and references at or after the point of the erase", but <tt>pop_back</tt> isn't 
+discussed, and it wasn't specified in terms of <tt>erase</tt>.
+</p>
+<p>
+Similarly for <tt>std::deque</tt>, 23.2.3 [sequence.reqmts] Table 101 and  [container.reqmts.general]/11 both apply. 
+Yet 23.3.3.4 [deque.modifiers] likewise doesn't discuss <tt>pop_back</tt> nor <tt>pop_front</tt>. Furthermore paragraph 4 fails to 
+specify the iterator-invalidation guarantees when erasing the first element but not the last.
+<p/>
+Both <tt>std::vector</tt> and <tt>std::deque</tt> are in contrast to <tt>std::list</tt>, which says in 23.3.5.4 [list.modifiers]/3 
+regarding <tt>pop_back</tt> (as well as all forms of <tt>erase</tt>, <tt>pop_front</tt>, and <tt>clear</tt>) "Effects: Invalidates only 
+the iterators and references to the erased elements."
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 23.3.3.4 [deque.modifiers] as indicated:</p>
+
+<blockquote>
+<pre>
+iterator erase(const_iterator position);
+iterator erase(const_iterator first, const_iterator last);
+</pre>
+<blockquote><p>
+-4- <i>Effects</i>: An erase operation that erases the last element of a deque invalidates only the past-the-end
+iterator and all iterators and references to the erased elements. An erase operation that erases the first
+element of a deque but not the last element invalidates only <ins>iterators and references to</ins> the erased elements. 
+An erase operation that erases neither the first element nor the last element of a deque invalidates the past-the-end iterator
+and all iterators and references to all the elements of the deque.
+<p/>
+-5- [&hellip;]
+<p/>
+-6- [&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<ins>void pop_front();
+void pop_back();</ins>
+</pre>
+<blockquote><p>
+<ins>-?- <i>Effects</i>: <tt>pop_front</tt> invalidates iterators and references to the first element of the <tt>deque</tt>. 
+<tt>pop_back</tt> invalidates the past-the-end iterator, and all iterators and references to the last element of the <tt>deque</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 23.3.6.5 [vector.modifiers] as indicated:</p>
+<blockquote>
+<blockquote>
+<p>
+-5- [&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<ins>void pop_back();</ins>
+</pre>
+<blockquote><p>
+<ins>-?- <i>Effects</i>: Invalidates the past-the-end iterator, and iterators and references to the last element of the vector.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 
 
 
