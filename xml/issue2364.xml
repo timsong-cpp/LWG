@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2364" status="New">
+<title><tt>deque</tt> and <tt>vector</tt> <tt>pop_back</tt> don't specify iterator invalidation requirements</title>
+<section><sref ref="[deque.modifiers]"/>, <sref ref="[vector.modifiers]"/></section>
+<submitter>Deskin Miller</submitter>
+<date>17 Feb 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+I think it's obvious that <tt>vector::pop_back</tt> invalidates the path-the-end iterator, but I cannot find language that says so to 
+my satisfaction in the Standard. N3797 <sref ref="[sequence.reqmts]"/> Table 101 lists <tt>a.pop_back()</tt> semantics as "Destroys the 
+last element", but nowhere do I see this required to invalidate the end iterator (or iterators previously referring to the last element). 
+<sref ref="[container.reqmts.general]"/>/11 states "Unless otherwise specified (either explicitly or by defining a function in terms of 
+other functions), invoking a container member function or passing a container as an argument to a library function shall not 
+invalidate iterators to, or change the values of, objects within that container." <sref ref="[vector.modifiers]"/>/3 says that each 
+flavor of <tt>vector::erase</tt> "Invalidates iterators and references at or after the point of the erase", but <tt>pop_back</tt> isn't 
+discussed, and it wasn't specified in terms of <tt>erase</tt>.
+</p>
+<p>
+Similarly for <tt>std::deque</tt>, <sref ref="[sequence.reqmts]"/> Table 101 and <sref ref="[container.reqmts.general]"/>/11 both apply. 
+Yet <sref ref="[deque.modifiers]"/> likewise doesn't discuss <tt>pop_back</tt> nor <tt>pop_front</tt>. Furthermore paragraph 4 fails to 
+specify the iterator-invalidation guarantees when erasing the first element but not the last.
+<p/>
+Both <tt>std::vector</tt> and <tt>std::deque</tt> are in contrast to <tt>std::list</tt>, which says in <sref ref="[list.modifiers]"/>/3 
+regarding <tt>pop_back</tt> (as well as all forms of <tt>erase</tt>, <tt>pop_front</tt>, and <tt>clear</tt>) "Effects: Invalidates only 
+the iterators and references to the erased elements."
+</p>
+
+</discussion>
+
+<resolution>
+
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[deque.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+iterator erase(const_iterator position);
+iterator erase(const_iterator first, const_iterator last);
+</pre>
+<blockquote><p>
+-4- <i>Effects</i>: An erase operation that erases the last element of a deque invalidates only the past-the-end
+iterator and all iterators and references to the erased elements. An erase operation that erases the first
+element of a deque but not the last element invalidates only <ins>iterators and references to</ins> the erased elements. 
+An erase operation that erases neither the first element nor the last element of a deque invalidates the past-the-end iterator
+and all iterators and references to all the elements of the deque.
+<p/>
+-5- [&hellip;]
+<p/>
+-6- [&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<ins>void pop_front();
+void pop_back();</ins>
+</pre>
+<blockquote><p>
+<ins>-?- <i>Effects</i>: <tt>pop_front</tt> invalidates iterators and references to the first element of the <tt>deque</tt>. 
+<tt>pop_back</tt> invalidates the past-the-end iterator, and all iterators and references to the last element of the <tt>deque</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[vector.modifiers]"/> as indicated:</p>
+<blockquote>
+<blockquote>
+<p>
+-5- [&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<ins>void pop_back();</ins>
+</pre>
+<blockquote><p>
+<ins>-?- <i>Effects</i>: Invalidates the past-the-end iterator, and iterators and references to the last element of the vector.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
