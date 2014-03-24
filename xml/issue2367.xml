@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2367" status="New">
+<title><tt>pair</tt> and <tt>tuple</tt> are not correctly implemented for <tt>is_constructible</tt> with no args</title>
+<section><sref ref="[meta.unary.prop]"/></section>
+<submitter>Howard Hinnant</submitter>
+<date>19 Feb 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider:
+</p>
+<blockquote><pre>
+struct X
+{
+  X() = delete;
+};
+
+int main()
+{
+  typedef std::pair&lt;int, X&gt; P;
+  static_assert(!std::is_constructible&lt;P&gt;::value, "");
+  static_assert(!std::is_default_constructible&lt;P&gt;::value, "");
+  typedef std::tuple&lt;int, X&gt; T;
+  static_assert(!std::is_constructible&lt;T&gt;::value, "");
+  static_assert(!std::is_default_constructible&lt;T&gt;::value, "");
+}
+</pre></blockquote>
+<p>
+For me these <tt>static_asserts</tt> fail. And worse than that, even asking the question fails (as opposed to gets the wrong answer):
+</p>
+<blockquote><pre>
+assert(!std::is_constructible&lt;P&gt;::value);
+</pre></blockquote>
+<p>
+In file included from test.cpp:2:
+</p>
+<blockquote><pre>
+error:
+      call to deleted constructor of 'X'
+   pair() : first(), second() {}
+                     ^
+note: function has been explicitly marked deleted here
+    X() = delete;
+    ^
+1 error generated.
+</pre></blockquote>
+<p>
+This can be solved by specializing <tt>is_constructible</tt> on <tt>pair</tt> and <tt>tuple</tt> for zero Args:
+</p>
+<blockquote><pre>
+template &lt;class T, class U&gt;
+struct is_constructible&lt;pair&lt;T, U&gt;&gt;
+  : integral_constant&lt;bool, is_default_constructible&lt;T&gt;::value &amp;&amp;
+                            is_default_constructible&lt;U&gt;::value&gt;
+{};
+
+template &lt;class ...T&gt;
+struct is_constructible&lt;tuple&lt;T...&gt;&gt;
+  : integral_constant&lt;bool,
+                      __all&lt;is_default_constructible&lt;T&gt;::value...&gt;::value&gt;
+{};
+</pre></blockquote>
+<p>
+Now everything just works.
+</p>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Add to <sref ref="[pairs.spec]"/>:</p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class T, class U&gt;
+struct is_constructible&lt;pair&lt;T, U&gt;&gt;
+  : integral_constant&lt;bool, is_default_constructible&lt;T&gt;::value &amp;&amp;
+                            is_default_constructible&lt;U&gt;::value&gt;
+{};</ins>
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add to <sref ref="[tuple.special]"/>:</p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class ...T&gt;
+struct is_constructible&lt;tuple&lt;T...&gt;&gt;
+  : integral_constant&lt;bool, <i>see below</i>&gt;
+{};</ins>
+</pre>
+<blockquote><p>
+<ins>-?- The second argument to <tt>integral_constant</tt> shall be true if for each <tt>T</tt>, 
+<tt>is_default_constructible&lt;T&gt;::value</tt> is true.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
