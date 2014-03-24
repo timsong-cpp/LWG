@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2014-03-23</td>
+  <td align="left">2014-03-24</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D88)</h1>
-<p><p>Revised 2014-03-23 at 20:03:15 UTC</p>
+<p><p>Revised 2014-03-24 at 21:03:56 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D88: 2014-05-30 pre-Rapperswil mailing<ul>
 <li><b>Summary:</b><ul>
-<li>159 open issues, up by 6.</li>
+<li>160 open issues, up by 7.</li>
 <li>1730 closed issues, up by 0.</li>
-<li>1889 issues total, up by 6.</li>
+<li>1890 issues total, up by 7.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 6 New issues: <a href="lwg-active.html#2361">2361</a>, <a href="lwg-active.html#2362">2362</a>, <a href="lwg-active.html#2363">2363</a>, <a href="lwg-active.html#2364">2364</a>, <a href="lwg-active.html#2365">2365</a>, <a href="lwg-active.html#2366">2366</a>.</li>
+<li>Added the following 7 New issues: <a href="lwg-active.html#2361">2361</a>, <a href="lwg-active.html#2362">2362</a>, <a href="lwg-active.html#2363">2363</a>, <a href="lwg-active.html#2364">2364</a>, <a href="lwg-active.html#2365">2365</a>, <a href="lwg-active.html#2366">2366</a>, <a href="lwg-active.html#2367">2367</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -18771,6 +18771,114 @@ the iterators should compare equal.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2367"></a>2367. <tt>pair</tt> and <tt>tuple</tt> are not correctly implemented for <tt>is_constructible</tt> with no args</h3>
+<p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2014-02-19 <b>Last modified:</b> 2014-03-24</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Consider:
+</p>
+<blockquote><pre>
+struct X
+{
+  X() = delete;
+};
+
+int main()
+{
+  typedef std::pair&lt;int, X&gt; P;
+  static_assert(!std::is_constructible&lt;P&gt;::value, "");
+  static_assert(!std::is_default_constructible&lt;P&gt;::value, "");
+  typedef std::tuple&lt;int, X&gt; T;
+  static_assert(!std::is_constructible&lt;T&gt;::value, "");
+  static_assert(!std::is_default_constructible&lt;T&gt;::value, "");
+}
+</pre></blockquote>
+<p>
+For me these <tt>static_asserts</tt> fail. And worse than that, even asking the question fails (as opposed to gets the wrong answer):
+</p>
+<blockquote><pre>
+assert(!std::is_constructible&lt;P&gt;::value);
+</pre></blockquote>
+<p>
+In file included from test.cpp:2:
+</p>
+<blockquote><pre>
+error:
+      call to deleted constructor of 'X'
+   pair() : first(), second() {}
+                     ^
+note: function has been explicitly marked deleted here
+    X() = delete;
+    ^
+1 error generated.
+</pre></blockquote>
+<p>
+This can be solved by specializing <tt>is_constructible</tt> on <tt>pair</tt> and <tt>tuple</tt> for zero Args:
+</p>
+<blockquote><pre>
+template &lt;class T, class U&gt;
+struct is_constructible&lt;pair&lt;T, U&gt;&gt;
+  : integral_constant&lt;bool, is_default_constructible&lt;T&gt;::value &amp;&amp;
+                            is_default_constructible&lt;U&gt;::value&gt;
+{};
+
+template &lt;class ...T&gt;
+struct is_constructible&lt;tuple&lt;T...&gt;&gt;
+  : integral_constant&lt;bool,
+                      __all&lt;is_default_constructible&lt;T&gt;::value...&gt;::value&gt;
+{};
+</pre></blockquote>
+<p>
+Now everything just works.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Add to 20.3.3 [pairs.spec]:</p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class T, class U&gt;
+struct is_constructible&lt;pair&lt;T, U&gt;&gt;
+  : integral_constant&lt;bool, is_default_constructible&lt;T&gt;::value &amp;&amp;
+                            is_default_constructible&lt;U&gt;::value&gt;
+{};</ins>
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add to 20.4.2.9 [tuple.special]:</p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class ...T&gt;
+struct is_constructible&lt;tuple&lt;T...&gt;&gt;
+  : integral_constant&lt;bool, <i>see below</i>&gt;
+{};</ins>
+</pre>
+<blockquote><p>
+<ins>-?- The second argument to <tt>integral_constant</tt> shall be true if for each <tt>T</tt>, 
+<tt>is_default_constructible&lt;T&gt;::value</tt> is true.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 
 
 
