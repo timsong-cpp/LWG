@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D88)</h1>
-<p><p>Revised 2014-03-24 at 21:03:17 UTC</p>
+<p><p>Revised 2014-03-24 at 22:03:33 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D88: 2014-05-30 pre-Rapperswil mailing<ul>
 <li><b>Summary:</b><ul>
-<li>161 open issues, up by 8.</li>
+<li>162 open issues, up by 9.</li>
 <li>1730 closed issues, up by 0.</li>
-<li>1891 issues total, up by 8.</li>
+<li>1892 issues total, up by 9.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 8 New issues: <a href="lwg-active.html#2361">2361</a>, <a href="lwg-active.html#2362">2362</a>, <a href="lwg-active.html#2363">2363</a>, <a href="lwg-active.html#2364">2364</a>, <a href="lwg-active.html#2365">2365</a>, <a href="lwg-active.html#2366">2366</a>, <a href="lwg-active.html#2367">2367</a>, <a href="lwg-active.html#2368">2368</a>.</li>
+<li>Added the following 9 New issues: <a href="lwg-active.html#2361">2361</a>, <a href="lwg-active.html#2362">2362</a>, <a href="lwg-active.html#2363">2363</a>, <a href="lwg-active.html#2364">2364</a>, <a href="lwg-active.html#2365">2365</a>, <a href="lwg-active.html#2366">2366</a>, <a href="lwg-active.html#2367">2367</a>, <a href="lwg-active.html#2368">2368</a>, <a href="lwg-active.html#2369">2369</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -18938,11 +18938,68 @@ are not compatible.
 <p/>
 From what I have been able to determine, gcc has a hack for the special case of <tt>operator new</tt> to ignore the differences in 
 (at least) the two cases I show above. But can users expect all compilers to quietly ignore the incompatibility?
+<p/>
+The blanket permission to add any explicit exception specification could cause a problem for any user-overridable function. 
+Different implementations could provide incompatible specifications, making portable code impossible to write.
 </p>
 
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2369"></a>2369. <tt>constexpr max(initializer_list)</tt> vs <tt>max_element</tt></h3>
+<p><b>Section:</b> 25.4.7 [alg.min.max] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2014-02-21 <b>Last modified:</b> 2014-03-24</p>
+<p><b>View other</b> <a href="lwg-index-open.html#alg.min.max">active issues</a> in [alg.min.max].</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.min.max">issues</a> in [alg.min.max].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+As part of the resolution for LWG issue <a href="lwg-defects.html#2350">2350</a>, <tt>max(initializer_list)</tt> was marked as <tt>constexpr</tt>. Looking 
+at two implementations of this function (libstdc++ and libc++), both implement it in terms of <tt>max_element</tt>, which is <em>not</em> 
+marked as <tt>constexpr</tt>. This is inconsistent and forces some small amount of code duplication in the implementation. Unless we 
+remove <tt>constexpr</tt> from this overload of <tt>max</tt>, I believe we should add <tt>constexpr</tt> to <tt>max_element</tt>.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>In 25.1 [algorithms.general], header <tt>&lt;algorithm&gt;</tt> synopsis, and 25.4.7 [alg.min.max], change as 
+indicated (add <tt>constexpr</tt> to every signature from the first <tt>min_element</tt> to the second <tt>minmax_element</tt>)::</p>
+
+<blockquote>
+<pre>
+template&lt;class ForwardIterator&gt;
+<ins>constexpr</ins> ForwardIterator min_element(ForwardIterator first, ForwardIterator last);
+template&lt;class ForwardIterator, class Compare&gt;
+<ins>constexpr</ins> ForwardIterator min_element(ForwardIterator first, ForwardIterator last,
+                                      Compare comp);
+[&hellip;]
+template&lt;class ForwardIterator&gt;
+<ins>constexpr</ins> ForwardIterator max_element(ForwardIterator first, ForwardIterator last);
+template&lt;class ForwardIterator, class Compare&gt;
+<ins>constexpr</ins> ForwardIterator max_element(ForwardIterator first, ForwardIterator last,
+                                      Compare comp);
+[&hellip;]
+template&lt;class ForwardIterator&gt;
+<ins>constexpr</ins> pair&lt;ForwardIterator, ForwardIterator&gt;
+minmax_element(ForwardIterator first, ForwardIterator last);
+template&lt;class ForwardIterator, class Compare&gt;
+<ins>constexpr</ins> pair&lt;ForwardIterator, ForwardIterator&gt;
+minmax_element(ForwardIterator first, ForwardIterator last, Compare comp);
+</pre>
+</blockquote>
+</li>
+
+</ol>
 
 
 
