@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2372" status="New">
+<title>Assignment from int to std::string</title>
+<section><sref ref="[basic.string]"/></section>
+<submitter>Andrzej Krzemie&#324;ski</submitter>
+<date>13 Mar 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The following code works in C++:
+</p>
+<blockquote><pre>
+int i = 300;
+std::string threeHundred;
+threeHundred = i;
+</pre></blockquote>
+<p>
+"Works" == "Compiles and doesn't have an undefined behavior". But it may not be obvious and in fact misleading what it does. 
+This assignment converts an <tt>int</tt> to <tt>char</tt> and then uses <tt>string</tt>'s assignment from <tt>char</tt>. While 
+the assignment from <tt>char</tt> can be considered a feature, being able to assign from an int looks like a safety gap. Someone 
+may believe C++ works like "dynamically typed" languages and expect a lexical conversion to take place.
+<p/>
+Ideally the assignment from <tt>char</tt> could be deprecated and later removed, but as a less intrusive alternative one could 
+consider adding a SFINAEd deleted function template:
+</p>
+<blockquote><pre>
+template &lt;typename IntT&gt; // enable if is_integral&lt;IntT&gt;::value
+basic_string&amp; operator=(IntT) = delete;
+</pre></blockquote>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>To <sref ref="[basic.string]"/>, class template <tt>basic_string</tt> synopsis, add as indicated:</p>
+
+<blockquote><pre>
+basic_string&amp; operator=(const basic_string&amp; str);
+basic_string&amp; operator=(basic_string&amp;&amp; str) noexcept;
+basic_string&amp; operator=(const charT* s);
+basic_string&amp; operator=(charT c);
+<ins>template &lt;class IntT&gt; basic_string&amp; operator=(IntT i) = delete;</ins>
+basic_string&amp; operator=(initializer_list&lt;charT&gt;);
+</pre></blockquote>
+</li>
+
+<li><p>Add after <sref ref="[string.cons]"/> p26 as indicated:</p>
+
+<blockquote>
+<pre>
+basic_string&amp; operator=(charT c);
+</pre>
+<blockquote>
+<p>
+-26- <i>Returns</i>: <tt>*this = basic_string(1,c)</tt>.
+</p>
+</blockquote>
+
+<pre>
+<ins>template &lt;class IntT&gt; basic_string&amp; operator=(IntT i) = delete;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Remarks</i>: This signature shall not participate in overload resolution unless <tt>is_integral&lt;T&gt;::value</tt> is 
+<tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
