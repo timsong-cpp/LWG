@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-03-25 at 18:03:14 UTC</p>
+<p><p>Revised 2014-03-25 at 19:03:55 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -1822,7 +1822,7 @@ Valid C++ 2003 code that uses these functions may fail to compile with this Inte
 <hr>
 <h3><a name="2062"></a>2062. Effect contradictions w&#47;o no-throw guarantee of <tt>std::function</tt> swaps</h3>
 <p><b>Section:</b> 20.9.11.2 [func.wrap.func], 20.9.11.2.2 [func.wrap.func.mod] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2014-03-25</p>
 <p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -2008,6 +2008,68 @@ void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;
 </li>
 
 </ol>
+
+<p><i>[2014-02-28 (Post Issaquah), Pablo provides more information]</i></p>
+
+
+<p>
+For cross-referencing purposes: The resolution of this issue should be
+harmonized with any resolution to LWG <a href="lwg-active.html#2370">2370</a>, which addresses
+inappropriate <tt>noexcept</tt>s in some function constructors.
+</p>
+
+<p>We have the following choices:</p>
+
+<ol>
+<li>
+<p><tt>swap()</tt> does not throw</p>
+
+<blockquote><p>
+<i>Discussion</i>: This definition is desirable, and allows assignment
+   to be implemented with the strong exception guarantee, but it does have
+   consequences: The implementation cannot use the small-object optimization
+   for a function-object <tt>F</tt> unless <tt>F</tt> is <tt>NothrowMovable</tt> 
+   (nothrow-swappable is unimportant because <tt>F</tt> is not swapped with another <tt>F</tt>). 
+   Note that many functors written before C++11 will not have move constructors decorated
+   with <tt>noexcept</tt>, so this limitation could affect a lot of code.
+</p>
+<p>
+It is not clear what other implementation restrictions might be
+   needed. Allocators are required not to throw on move or copy. Is that
+   sufficient?
+</p>
+</blockquote>
+</li>
+
+<li>
+<p><tt>swap()</tt> can throw</p>
+
+<blockquote>
+<p>
+<i>Discussion</i>: This definition gives maximum latitude to implementation to
+   use small-object optimization. However, the strong guarantee on assignment
+   is difficult to achieve.  Should we consider giving up on the strong
+   guarantee? How much are we willing to pessimize code for exceptions?
+</p>
+</blockquote>
+</li>
+<li>
+<p><tt>swap()</tt> will not throw if both functions have <tt>NoThrowMoveable</tt> functors</p>
+
+<blockquote>
+<p>
+<i>Discussion</i>: This definition is similar to option 2, but gives slightly
+  stronger guarantees.  Here, <tt>swap()</tt> can throw, but the programmer can
+  theoretically prevent that from happening. This should be straight-forward
+  to implement and gives the implementation a lot of latitude for
+  optimization. However, because this is a dynamic decision, the program is
+  not as easy to reason about. Also, the strong guarantee for assignment is
+  compromized as in option 2.
+</p>
+</blockquote>
+</li>
+</ol>
+
 
 
 
