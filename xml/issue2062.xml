@@ -190,6 +190,67 @@ void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;
 </li>
 
 </ol>
+
+<note>2014-02-28 (Post Issaquah), Pablo provides more information</note>
+
+<p>
+For cross-referencing purposes: The resolution of this issue should be
+harmonized with any resolution to LWG <iref ref="2370"/>, which addresses
+inappropriate <tt>noexcept</tt>s in some function constructors.
+</p>
+
+<p>We have the following choices:</p>
+
+<ol>
+<li>
+<p><tt>swap()</tt> does not throw</p>
+
+<blockquote><p>
+<i>Discussion</i>: This definition is desirable, and allows assignment
+   to be implemented with the strong exception guarantee, but it does have
+   consequences: The implementation cannot use the small-object optimization
+   for a function-object <tt>F</tt> unless <tt>F</tt> is <tt>NothrowMovable</tt> 
+   (nothrow-swappable is unimportant because <tt>F</tt> is not swapped with another <tt>F</tt>). 
+   Note that many functors written before C++11 will not have move constructors decorated
+   with <tt>noexcept</tt>, so this limitation could affect a lot of code.
+</p>
+<p>
+It is not clear what other implementation restrictions might be
+   needed. Allocators are required not to throw on move or copy. Is that
+   sufficient?
+</p>
+</blockquote>
+</li>
+
+<li>
+<p><tt>swap()</tt> can throw</p>
+
+<blockquote>
+<p>
+<i>Discussion</i>: This definition gives maximum latitude to implementation to
+   use small-object optimization. However, the strong guarantee on assignment
+   is difficult to achieve.  Should we consider giving up on the strong
+   guarantee? How much are we willing to pessimize code for exceptions?
+</p>
+</blockquote>
+</li>
+<li>
+<p><tt>swap()</tt> will not throw if both functions have <tt>NoThrowMoveable</tt> functors</p>
+
+<blockquote>
+<p>
+<i>Discussion</i>: This definition is similar to option 2, but gives slightly
+  stronger guarantees.  Here, <tt>swap()</tt> can throw, but the programmer can
+  theoretically prevent that from happening. This should be straight-forward
+  to implement and gives the implementation a lot of latitude for
+  optimization. However, because this is a dynamic decision, the program is
+  not as easy to reason about. Also, the strong guarantee for assignment is
+  compromized as in option 2.
+</p>
+</blockquote>
+</li>
+</ol>
+
 </discussion>
 
 
