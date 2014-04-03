@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2379" status="New">
+<title>Obtaining native handle of the current thread</title>
+<section><sref ref="[thread.req.native]"/>, <sref ref="[thread.thread.this]"/></section>
+<submitter>Matt Austern</submitter>
+<date>31 Mar 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Class <tt>thread</tt> contains an implementation-defined type <tt>thread::native_handle_type</tt>, and an implementation-defined 
+function <tt>thread::native_handle()</tt> that returns a value of that type. The presence and semantics of those members is 
+implementation-defined; the intention is that they can be used for interoperability with libraries that rely on operating system 
+specific features. (Posix libraries that accept arguments of type <tt>pthread_t</tt>, for example.)
+<p/>
+Unfortunately, there appears to be no native handle support for the equivalent of <tt>pthread_self()</tt>. We can use 
+<tt>this_thread::get_id()</tt> to obtain the <tt>thread::id</tt> of the current thread, but there is no mechanism for converting 
+a <tt>thread::id</tt> to a <tt>thread::native_handle</tt>.
+<p/>
+<em>Proposed wording:</em>
+<p/>
+In <sref ref="[thread.thread.this]"/> add:
+</p>
+<blockquote><pre>
+thread::native_handle_type native_handle(); <i>// See 30.2.3</i>
+</pre></blockquote>
+<p>
+ to the <tt>this_thread</tt> namespace synopsis.
+<p/>
+<em>Rationale:</em>
+<p/>
+Informally, we could address this issue either by adding a new function in <tt>this_thread</tt> or by providing a mechanism for converting 
+between <tt>thread::id</tt> and <tt>thread::native_handle</tt>. I propose the former because it seems more localized, and doesn't involve 
+saying anything more about implementation defined native functionality than we currently do.
+<p/>
+It's intentional that the proposed resolution adds a declaration of <tt>native_handle()</tt> without adding a paragraph explaining what 
+it does. This is because everything about <tt>native_handle()</tt> is implementation-defined. The standard does the same thing in 
+<sref ref="[thread.thread.member]"/>. 
+</p>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>In <sref ref="[thread.threads]"/>, header <tt>&lt;thread&gt;</tt> synopsis, add:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  namespace this_thread {
+    thread::id get_id() noexcept;
+    <ins>thread::native_handle_type native_handle();</ins>
+    [&hellip;]
+  }
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>In <sref ref="[thread.thread.this]"/> add:</p>
+<blockquote>
+<pre>
+namespace std {
+  namespace this_thread {
+    thread::id get_id() noexcept;
+    <ins>thread::native_handle_type native_handle(); <i>// See <sref ref="[thread.req.native]"/></i></ins>
+    [&hellip;]
+  }
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
