@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2381" status="New">
+<title>Inconsistency in parsing floating point numbers</title>
+<section><sref ref="[facet.num.get.virtuals]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>30 Apr 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <sref ref="[facet.num.get.virtuals]"/> we have:
+</p>
+<blockquote><p>
+Stage 3: The sequence of chars accumulated in stage 2 (the field) is converted to a numeric value by the
+rules of one of the functions declared in the header <tt>&lt;cstdlib&gt;</tt>:
+</p>
+<ul>
+<li><p>For a signed integer value, the function <tt>strtoll</tt>.</p></li>
+<li><p>For an unsigned integer value, the function <tt>strtoull</tt>.</p></li>
+<li><p>For a floating-point value, the function <tt>strtold</tt>.</p></li>
+</ul>
+</blockquote>
+<p>
+This implies that for many cases, this routine should return true:
+</p>
+<blockquote><pre>
+bool is_same(const char* p) 
+{
+  std::string str{p};
+  double val1 = std::strtod(str.c_str(), nullptr);
+  std::stringstream ss(str);
+  double val2;
+  ss &gt;&gt; val2;
+  return std::isinf(val1) == std::isinf(val2) &amp;&amp;                 // either they're both infinity
+         std::isnan(val1) == std::isnan(val2) &amp;&amp;                 // or they're both NaN
+         (std::isinf(val1) || std::isnan(val1) || val1 == val2); // or they're equal
+}
+</pre></blockquote>
+<p>
+and this is indeed true, for many strings:
+</p>
+<blockquote><pre>
+assert(is_same("0"));
+assert(is_same("1.0"));
+assert(is_same("-1.0"));
+assert(is_same("100.123"));
+assert(is_same("1234.456e89"));
+</pre></blockquote>
+<p>
+but not for others
+</p>
+<blockquote><pre>
+assert(is_same("0xABp-4")); // hex float
+assert(is_same("inf"));
+assert(is_same("+inf"));
+assert(is_same("-inf"));
+assert(is_same("nan"));
+assert(is_same("+nan"));
+assert(is_same("-nan"));
+
+assert(is_same("infinity"));
+assert(is_same("+infinity"));
+assert(is_same("-infinity"));
+</pre></blockquote>
+<p>
+These are all strings that are correctly parsed by <tt>std::strtod</tt>, but not by the stream extraction operators.
+They contain characters that are deemed invalid in stage 2 of parsing.
+<p/>
+If we're going to say that we're converting by the rules of <tt>strtold</tt>, then we should accept all the things that 
+<tt>strtold</tt> accepts.
+</p>
+
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
