@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D88)</h1>
-<p><p>Revised 2014-05-14 at 21:05:39 UTC</p>
+<p><p>Revised 2014-05-14 at 21:05:57 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -19032,7 +19032,7 @@ Now everything just works.
 
 <p>
 The proposed resolution is incomplete, because it wouldn't work for <i>cv</i>-qualified objects of
-<tt>pair</tt> or references of them during reference-initialization.
+<tt>pair</tt> or for references of them during reference-initialization.
 <p/>
 I would like to point out that the approach suggested in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3739.html">N3739</a>
 can be easily extended to solve the problem without need to muddle with specializing <tt>is_constructible</tt>:
@@ -19042,12 +19042,56 @@ template&lt;class U1 = T1, class U2 = T2,
   typename enable_if&lt;
     is_default_constructible&lt;U1&gt;::value &amp;&amp; is_default_constructible&lt;U2&gt;::value
   , bool&gt;::type = false
->
+&gt;
 constexpr pair();
 </pre></blockquote>
 <p>
-The following represents an alternative wording change that I would strongly prefer:
+The new wording proposal represents an alternative wording change that I would strongly prefer.
 </p>
+
+<strong>Previous resolution from Howard [SUPERSEDED]:</strong>
+<p/>
+<blockquote class="note">
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Add to 20.3.3 [pairs.spec]:</p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class T, class U&gt;
+struct is_constructible&lt;pair&lt;T, U&gt;&gt;
+  : integral_constant&lt;bool, is_default_constructible&lt;T&gt;::value &amp;&amp;
+                            is_default_constructible&lt;U&gt;::value&gt;
+{};</ins>
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add to 20.4.2.9 [tuple.special]:</p>
+
+<blockquote>
+<pre>
+<ins>template &lt;class ...T&gt;
+struct is_constructible&lt;tuple&lt;T...&gt;&gt;
+  : integral_constant&lt;bool, <i>see below</i>&gt;
+{};</ins>
+</pre>
+<blockquote><p>
+<ins>-?- The second argument to <tt>integral_constant</tt> shall be true if for each <tt>T</tt>, 
+<tt>is_default_constructible&lt;T&gt;::value</tt> is true.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
 <ol>
 <li><p>Change 20.3.2 [pairs.pair] around p3 as indicated:</p>
 
@@ -19082,42 +19126,6 @@ constexpr tuple();
 <p/>
 <ins>-?- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
 <tt>is_default_constructible&lt;<i>T<sub>i</sub></i>&gt;::value</tt> is true for all <i>i</i>.</ins>
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>Add to 20.3.3 [pairs.spec]:</p>
-
-<blockquote>
-<pre>
-<ins>template &lt;class T, class U&gt;
-struct is_constructible&lt;pair&lt;T, U&gt;&gt;
-  : integral_constant&lt;bool, is_default_constructible&lt;T&gt;::value &amp;&amp;
-                            is_default_constructible&lt;U&gt;::value&gt;
-{};</ins>
-</pre>
-</blockquote>
-</li>
-
-<li><p>Add to 20.4.2.9 [tuple.special]:</p>
-
-<blockquote>
-<pre>
-<ins>template &lt;class ...T&gt;
-struct is_constructible&lt;tuple&lt;T...&gt;&gt;
-  : integral_constant&lt;bool, <i>see below</i>&gt;
-{};</ins>
-</pre>
-<blockquote><p>
-<ins>-?- The second argument to <tt>integral_constant</tt> shall be true if for each <tt>T</tt>, 
-<tt>is_default_constructible&lt;T&gt;::value</tt> is true.</ins>
 </p>
 </blockquote>
 </blockquote>
