@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D88)</h1>
-<p><p>Revised 2014-05-14 at 19:05:22 UTC</p>
+<p><p>Revised 2014-05-14 at 21:05:39 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -18964,7 +18964,7 @@ the iterators should compare equal.
 <hr>
 <h3><a name="2367"></a>2367. <tt>pair</tt> and <tt>tuple</tt> are not correctly implemented for <tt>is_constructible</tt> with no args</h3>
 <p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2014-02-19 <b>Last modified:</b> 2014-03-24</p>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2014-02-19 <b>Last modified:</b> 2014-05-14</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -19027,6 +19027,66 @@ struct is_constructible&lt;tuple&lt;T...&gt;&gt;
 Now everything just works.
 </p>
 
+<p><i>[2014-05-14, Daniel comments]</i></p>
+
+
+<p>
+The proposed resolution is incomplete, because it wouldn't work for <i>cv</i>-qualified objects of
+<tt>pair</tt> or references of them during reference-initialization.
+<p/>
+I would like to point out that the approach suggested in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3739.html">N3739</a>
+can be easily extended to solve the problem without need to muddle with specializing <tt>is_constructible</tt>:
+</p>
+<blockquote><pre>
+template&lt;class U1 = T1, class U2 = T2,
+  typename enable_if&lt;
+    is_default_constructible&lt;U1&gt;::value &amp;&amp; is_default_constructible&lt;U2&gt;::value
+  , bool&gt;::type = false
+>
+constexpr pair();
+</pre></blockquote>
+<p>
+The following represents an alternative wording change that I would strongly prefer:
+</p>
+<ol>
+<li><p>Change 20.3.2 [pairs.pair] around p3 as indicated:</p>
+
+<blockquote><pre>
+constexpr pair();
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Requires</i>: <tt>is_default_constructible&lt;first_type&gt;::value</tt> is true and 
+<tt>is_default_constructible&lt;second_type&gt;::value</tt> is true.</del>
+<p/>
+-4- <i>Effects</i>: Value-initializes first and second.
+<p/>
+<ins>-?- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<tt>is_default_constructible&lt;first_type&gt;::value</tt> is true and 
+<tt>is_default_constructible&lt;second_type&gt;::value</tt> is true.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.4.2.1 [tuple.cnstr] around p4 as indicated:</p>
+
+<blockquote><pre>
+constexpr tuple();
+</pre>
+<blockquote>
+<p>
+<del>-4- <i>Requires</i>: <tt>is_default_constructible&lt;<i>T<sub>i</sub></i>&gt;::value</tt> is true for all <i>i</i>.</del>
+<p/>
+-5- <i>Effects</i>: Value initializes each element.
+<p/>
+<ins>-?- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<tt>is_default_constructible&lt;<i>T<sub>i</sub></i>&gt;::value</tt> is true for all <i>i</i>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 <p><b>Proposed resolution:</b></p>
