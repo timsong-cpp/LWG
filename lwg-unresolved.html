@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-05-06 at 21:05:27 UTC</p>
+<p><p>Revised 2014-05-14 at 19:05:22 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -17022,6 +17022,118 @@ If we're going to say that we're converting by the rules of <tt>strtold</tt>, th
 <tt>strtold</tt> accepts.
 </p>
 
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2382"></a>2382. Unclear order of container update versus object destruction on removing an object</h3>
+<p><b>Section:</b> 17.6.5.8 [reentrancy] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Peter Kasting <b>Opened:</b> 2014-05-06 <b>Last modified:</b> 2014-05-14</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The standard does not seem to discuss reentrant access to a container during removal of an element, 
+leaving it unclear whether a removed object is destroyed before or after it is removed from the container.  
+For example, the behavior of the following code seems to be unspecified:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+
+struct T;
+typedef std::map&lt;int, std::shared_ptr&lt;T&gt;&gt; TMap;
+
+struct T {
+  T(TMap* t_map, int index) : t_map(t_map), index(index) {}
+  ~T() {
+    std::cout &lt;&lt; "Object " &lt;&lt; index &lt;&lt; " is ";
+    if (t_map->count(index))
+      std::cout &lt;&lt; "destroyed before being removed from the map" &lt;&lt; std::endl;
+    else
+      std::cout &lt;&lt; "removed from the map before being destroyed" &lt;&lt; std::endl;
+  }
+
+  static void AddToMap(TMap* map, int index) {
+    (*map)[index] = std::make_shared&lt;T&gt;(map, index);
+  }
+
+  TMap* t_map;
+  int index;
+};
+
+int main()
+{
+  TMap t_map;
+  T::AddToMap(&amp;t_map, 0);
+  T::AddToMap(&amp;t_map, 1);
+  t_map.erase(1);
+  t_map.erase(0);
+}
+</pre></blockquote>
+<p>
+The output of this program in Visual Studio 2013 is:
+</p>
+<blockquote><pre>
+Object 1 is removed from the map before being destroyed
+Object 0 is destroyed before being removed from the map
+</pre></blockquote>
+<p>
+The core issue here is whether an object removed from a container should be destroyed before or after 
+it is removed from the container. The current standard seems to be silent on this issue. 
+The above output demonstrates that the behavior is actually inconsistent. (It's difficult to fully 
+describe Visual Studio's behavior; for example, changing <tt>main()</tt> in the above example to the following:)
+</p>
+<blockquote><pre>
+int main()
+{
+  TMap t_map;
+  T::AddToMap(&amp;t_map, 0);
+  T::AddToMap(&amp;t_map, 1);
+  T::AddToMap(&amp;t_map, 2);
+  T::AddToMap(&amp;t_map, 3);
+  t_map.erase(3);
+  t_map.clear();
+}
+</pre></blockquote>
+<p>
+(...gives this output:)
+</p>
+<blockquote><pre>
+Object 3 is removed from the map before being destroyed
+Object 2 is destroyed before being removed from the map
+Object 1 is destroyed before being removed from the map
+Object 0 is removed from the map before being destroyed
+</pre></blockquote>
+<p>
+In my opinion, the standard should explicitly describe when objects are destroyed as part of removal from a container. 
+To me, it makes the most sense to say that objects should be removed from the container before they are destroyed.
+</p>
+<p><i>[2014-05-07, Jeffrey Yasskin comments]</i></p>
+
+<p>
+I think there are two main points here beyond this writeup:
+</p>
+<ol>
+<li><p>We can't make recursive use of a standard library container valid
+in all cases.</p></li>
+<li><p>If recursion through especially <tt>erase()</tt> is undefined behavior,
+that's pretty scary for existing large applications with code in
+destructors. Of course, "scary" doesn't mean we have to define the
+behavior.</p></li>
+</ol>
+<p>
+I'll add a third: The language in 17.6.5.8 [reentrancy] nearly makes this
+undefined behavior already. I think any fix is probably going to live
+there, and extend the current "implementation-defined" on recursive
+reentrancy for individual functions to recursive reentrancy on class
+instances. I'm not sure exactly how to word that.
+</p>
 
 
 <p><b>Proposed resolution:</b></p>
