@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2014-05-16</td>
+  <td align="left">2014-05-17</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D88)</h1>
-<p><p>Revised 2014-05-16 at 19:05:32 UTC</p>
+<p><p>Revised 2014-05-17 at 15:05:16 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -17320,7 +17320,7 @@ template &lt;class T&gt; struct hash&lt;optional&lt;T&gt;&gt;;
 <hr>
 <h3><a name="2334"></a>2334. <tt>atomic</tt>'s default constructor requires "uninitialized" state even for types with non-trivial default-constructor</h3>
 <p><b>Section:</b> 29.6.5 [atomics.types.operations.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-10-03 <b>Last modified:</b> 2013-10-13</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-10-03 <b>Last modified:</b> 2014-05-17</p>
 <p><b>View all other</b> <a href="lwg-index.html#atomics.types.operations.req">issues</a> in [atomics.types.operations.req].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -17373,9 +17373,20 @@ language used here and has some similarities to wording that was incorrectly use
 as described by LWG <a href="lwg-defects.html#2159">2159</a>.
 </p>
 
+<p><i>[2014-05-17, Daniel comments and provides alternative wording]</i></p>
 
 
-<p><b>Proposed resolution:</b></p>
+<p>
+The current wording was considered controversial as expressed by reflector discussions. To me, the actual problem is not newly
+introduced by that wording, but instead is already present in basically all paragraphs specifying semantics of atomic types,
+since the wording never clearly distinguishes the value of the actual atomic type <i>A</i> and the value of the "underlying",
+corresponding non-atomic type <i>C</i>. The revised proposed wording attempts to improve the current ambiguity of these two
+kinds of values.
+</p>
+
+<strong>Previous resolution from Daniel [SUPERSEDED]:</strong>
+<p/>
+<blockquote class="note">
 <p>This wording is relative to N3691.</p>
 
 <ol>
@@ -17394,6 +17405,177 @@ with <tt>C</tt>. &mdash; <i>end note</i>]
 </blockquote></blockquote>
 </li>
 
+</ol>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Modify 29.6.5 [atomics.types.operations.req] p2 as indicated: <em>[Editorial note: This is a near-to editorial
+change not directly affecting this issue, but <tt>atomic_address</tt> does no longer exist and the pointed to definition is
+relevant in the context of this issue resolution.]</em>
+</p>
+<blockquote>
+<p>
+-2- In the following operation definitions:
+</p>
+<ul>
+<li><p>an <i>A</i> refers to one of the atomic types.</p></li>
+<li><p>a <i>C</i> refers to its corresponding non-atomic type. <del>The <tt>atomic_address</tt> atomic type corresponds to the
+<tt>void*</tt> non-atomic type.</del></p></li>
+<li><p>[&hellip;]</p></li>
+</ul>
+</blockquote>
+</li>
+
+<li><p>Modify 29.6.5 [atomics.types.operations.req] p4 and the following as indicated: <em>[Editorial note: There 
+is no exposition-only member in <tt>atomic</tt>, which makes it a bit hard to specify what actually is initialized, but 
+the introductory wording of 29.6.5 [atomics.types.operations.req] p2 b2 defines: "a <i>C</i> refers to its 
+corresponding non-atomic type." which helps to specify the semantics in terms of "the <i>C</i> value referred to by the 
+atomic object"]</em></p>
+
+<blockquote>
+<pre>
+<i>A</i>::<i>A</i>() noexcept = default;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> <del>leaves the atomic object in an uninitialized state</del><ins>Default-initializes (8.5 [dcl.init]) 
+the <i>C</i> value referred to by the atomic object</ins>. [<i>Note:</i> These semantics ensure compatibility with <tt>C</tt>. 
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+
+<pre>
+constexpr <i>A</i>::<i>A</i>(<i>C</i> desired) noexcept;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> <ins>Direct-i</ins><del>I</del>nitializes the <ins><i>C</i> value referred to by the atomic</ins> object 
+with the value <tt>desired</tt>. Initialization is not an atomic operation (1.10). [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+void atomic_init(volatile <i>A</i>* object, <i>C</i> desired) noexcept;
+void atomic_init(<i>A</i>* object, <i>C</i> desired) noexcept;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Non-atomically initializes <ins>the <i>C</i> value referred to by</ins> <tt>*object</tt> with value 
+<tt>desired</tt>. [&hellip;]
+</p>
+</blockquote>
+
+<pre>
+void atomic_store(volatile <i>A</i>* object, <i>C</i> desired) noexcept;
+[&hellip;]
+void <i>A</i>::store(<i>C</i> desired, memory_order order = memory_order_seq_cst) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- [&hellip;]
+<p/>
+-10- <i>Effects:</i> Atomically replaces the <ins><i>C</i></ins> value pointed to by 
+<tt>object</tt> or by <tt>this</tt> with the value of <tt>desired</tt>. [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<i>C</i> atomic_load(const volatile <i>A</i>* object) noexcept;
+[&hellip;]
+<i>C</i> <i>A</i>::load(memory_order order = memory_order_seq_cst) const noexcept;
+</pre>
+<blockquote>
+<p>
+-13- [&hellip;]
+<p/>
+-14- [&hellip;]
+<p/>
+-15- <i>Returns:</i> Atomically returns the <ins><i>C</i></ins> value pointed to by <tt>object</tt> or by <tt>this</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<i>C</i> atomic_exchange(volatile <i>A</i>* object, C desired) noexcept;
+[&hellip;]
+<i>C</i> <i>A</i>::exchange(C desired, memory_order order = memory_order_seq_cst) noexcept;
+</pre>
+<blockquote>
+<p>
+-18- <i>Effects</i>: Atomically replaces the <ins><i>C</i></ins> value pointed to by <tt>object</tt> or by <tt>this</tt> with <tt>desired</tt>. [&hellip;]
+<p/>
+-19- <i>Returns:</i> Atomically returns the <ins><i>C</i></ins> value pointed to by <tt>object</tt> or by <tt>this</tt> 
+immediately before the effects.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+<i>C</i> atomic_fetch_key(volatile <i>A</i>* object, <i>M</i> operand) noexcept;
+[&hellip;]
+<i>C</i> <i>A</i>::fetch_key(<i>M</i> operand, memory_order order = memory_order_seq_cst) noexcept;
+</pre>
+<blockquote>
+<p>
+-28- <i>Effects</i>: Atomically replaces the <ins><i>C</i></ins> value pointed to by <tt>object</tt> or by <tt>this</tt> with 
+the result of the computation applied to the <ins><i>C</i></ins> value pointed to by <tt>object</tt> or by <tt>this</tt> and 
+the given <tt>operand</tt>. [&hellip;]
+<p/>
+-29- <i>Returns:</i> Atomically<del>,</del> <ins>returns</ins> the <ins><i>C</i></ins> value pointed to by <tt>object</tt>
+or by <tt>this</tt> immediately before the effects.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Modify 29.7 [atomics.flag] p5 and the following as indicated:</p>
+
+<blockquote>
+<pre>
+bool atomic_flag_test_and_set(volatile atomic_flag* object) noexcept;
+[&hellip;]
+bool atomic_flag::test_and_set(memory_order order = memory_order_seq_cst) noexcept;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: Atomically sets the <ins>bool</ins> value pointed to by <tt>object</tt> or by <tt>this</tt> to <tt>true</tt>. 
+[&hellip;]
+<p/>
+-6- <i>Returns</i>: Atomically<del>,</del> <ins>returns</ins> the <ins>bool</ins> value <del>of the</del><ins>pointed 
+to by</ins> <tt>object</tt> <ins>or by <tt>this</tt></ins> immediately before the effects.
+</p>
+</blockquote>
+
+<pre>
+void atomic_flag_clear(volatile atomic_flag* object) noexcept;
+[&hellip;]
+void atomic_flag::clear(memory_order order = memory_order_seq_cst) noexcept;
+</pre>
+<blockquote>
+<p>
+-7- [&hellip;]
+<p/>
+-8- <i>Effects</i>: Atomically sets the <ins>bool</ins> value pointed to by <tt>object</tt> or by <tt>this</tt> to <tt>false</tt>. 
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+
+</li>
 </ol>
 
 
