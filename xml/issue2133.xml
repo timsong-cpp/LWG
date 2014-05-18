@@ -72,9 +72,71 @@ Moved to Open.
 There are real questions here, that may require a paper to explore and answer properly.
 </p>
 
+<note>2014-05-18, Daniel comments and suggests concrete wording</note>
+
+<p>
+Other issues, such as <iref ref="2114"/> already follow a similar spirit as the one suggested by bullet 2 of the
+issue submitter. I assert that consideration of possible user-provided overloads of the comma-operator were not intended
+by the original wording and doing so afterwards would unnecessarily complicate a future conceptualization of the library
+and would needlessly restrict implementations.
+<p/>
+I don't think that a paper is needed to solve this issue, there is a simply way to ensure that the code-semantics
+excludes consideration of user-provided comma operators. The provided wording below clarifies this by explicitly
+casting the first argument of the operator to <tt>void</tt>. 
+</p>
+
 </discussion>
 
 <resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[uninitialized.copy]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class InputIterator, class ForwardIterator&gt;
+  ForwardIterator uninitialized_copy(InputIterator first, InputIterator last,
+                                     ForwardIterator result);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>:
+</p>
+<blockquote>
+<pre>
+for (; first != last; <ins>(void)</ins>++result, ++first)
+  ::new (static_cast&lt;void*&gt;(&amp;*result))
+    typename iterator_traits&lt;ForwardIterator&gt;::value_type(*first);
+</pre>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+template &lt;class InputIterator, class Size,class ForwardIterator&gt;
+  ForwardIterator uninitialized_copy_n(InputIterator first, Size n,
+                                       ForwardIterator result);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>:
+</p>
+<blockquote>
+<pre>
+for (; n &gt; 0; <ins>(void)</ins>++result, <ins>(void)</ins>++first, --n)
+  ::new (static_cast&lt;void*&gt;(&amp;*result))
+    typename iterator_traits&lt;ForwardIterator&gt;::value_type(*first);
+</pre>
+</blockquote>
+</blockquote>
+
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
