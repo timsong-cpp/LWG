@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-05-23 at 14:05:58 UTC</p>
+<p><p>Revised 2014-05-23 at 15:05:23 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -18207,8 +18207,8 @@ destroy and re-construct objects &mdash; there is no reason why function should
 make that especially easy.
 <p/>
 I propose, therefore, that we make no attempt at giving the current interface
-a meaningful definition of questionable unility, but simply get rid of it
-all together.  This leaves us with only two questions:
+a meaningful definition of questionable utility, but simply get rid of it
+all together. This leaves us with only two questions:
 </p>
 <ol>
 <li><p>Should we deprecate the interface or just remove it?</p></li>
@@ -18297,6 +18297,128 @@ template&lt;class F, class A&gt; void assign(F&amp;&amp; f, const A&amp; a);
 
 </blockquote>
 </li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2386"></a>2386. <tt>function::operator=</tt> handles allocators incorrectly</h3>
+<p><b>Section:</b> 20.9.11.2.1 [func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2014-05-23 <b>Last modified:</b> 2014-05-23</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.con">issues</a> in [func.wrap.func.con].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <i>Effects</i> clauses for the assignment operator for class template function are
+written as code that constructs a temporary function and then swaps it with this.
+The intention appears to be that assignment should have the strong exception 
+guarantee, i.e., <tt>*this</tt> is not modified if an exception is thrown. However, the current 
+description is incorrect when this was constructed using an allocator.
+<p/>
+Part of the problem is the under-specification of <tt>swap</tt>, which does not state the 
+allocator requirements or allocator postconditions. If <tt>swap</tt> behaves like the rest of the 
+standard library, swapping function objects constructed with different allocators 
+would be undefined behavior. Alternatively <tt>swap</tt> could exchange the allocators, 
+though I would argue against this specification.
+<p/>
+For either specification of <tt>swap</tt>, the current <i>Effects</i> clauses for <tt>operator=</tt> are
+incorrect. If <tt>swap</tt> does not exchange the allocators, then <tt>operator=</tt> would have 
+undefined behavior, which is clearly not desired. If <tt>swap</tt> does exchange the allocators, 
+then <tt>operator=</tt> would always leave the left-hand side (lhs) of the assignment with a 
+default allocator. The latter would be surprising behavior, as the allocator instance is 
+normally unchanged for the lifetime of an object (for good reason), and is certainly not 
+reset to default arbitrarily.
+<p/>
+The desired behavior is that assignment would leave the allocator of the lhs
+unchanged. The way to achieve this behavior is to construct the temporary function 
+using the original allocator. Unfortunately, we cannot describe the desired behavior in 
+pure code, because there is no way to name the type-erased value of the allocator. 
+(N3916 would improve this situation for the Library Fundamentals TS, but even with 
+those changes, there is no way to recover the original type of the allocator.) The PR 
+below, therefore, uses pseudo-code, inventing a fictitious <tt>ALLOCATOR_OF(f)</tt> 
+expression that evaluates to the actual allocator type, even if that allocator was type 
+erased. I have implemented this PR successfully.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.9.11.2.1 [func.wrap.func.con] as indicated:</p>
+
+<blockquote>
+<p>
+<ins>In the following descriptions, <tt><i>ALLOCATOR_OF</i>(f)</tt> is a copy of the allocator specified in the 
+construction of <tt>function</tt> <tt>f</tt>, or <tt>allocator&lt;char&gt;()</tt> if no allocator was specified.</ins>
+</p>
+<pre>
+function&amp; operator=(const function&amp; f);
+</pre>
+<blockquote>
+<p>
+-12- <i>Effects</i>: <tt>function(<ins>allocator_arg, <i>ALLOCATOR_OF</i>(*this),</ins> f).swap(*this);</tt>
+<p/>
+-13- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+<pre>
+function&amp; operator=(function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-14- <i>Effects</i>: <del>Replaces the target of <tt>*this</tt> with the target of <tt>f</tt>.</del><ins><tt>function(allocator_arg,
+<i>ALLOCATOR_OF</i>(*this), std::move(f)).swap(*this);</tt></ins>
+<p/>
+-15- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+<pre>
+function&amp; operator=(nullptr_t);
+</pre>
+<blockquote>
+<p>
+-16- <i>Effects</i>: If <tt>*this != nullptr</tt>, destroys the target of <tt>this</tt>.
+<p/>
+-17- <i>Postconditions</i>: <tt>!(*this)</tt>. <ins>The allocator is unchanged.</ins>
+<p/>
+-18- <i>Returns</i>: <tt>*this</tt>
+<p/>
+<ins>-?- <i>Throws</i>: Nothing.</ins>
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; function&amp; operator=(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-19- <i>Effects</i>: <tt>function(<ins>allocator_arg, <i>ALLOCATOR_OF</i>(*this),</ins> std::forward&lt;F&gt;(f)).swap(*this);</tt>
+<p/>
+-20- <i>Returns</i>: <tt>*this</tt>
+<p/>
+-21- <i>Remarks</i>: This assignment operator shall not participate in overload resolution unless 
+<tt>declval&lt;typename decay&lt;F&gt;::type&amp;&gt;()</tt> is <tt>Callable</tt> (20.9.11.2) for argument types 
+<tt>ArgTypes...</tt> and return type <tt>R</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; function&amp; operator=(reference_wrapper&lt;F&gt; f);
+</pre>
+<blockquote>
+<p>
+-22- <i>Effects</i>: <tt>function(<ins>allocator_arg, <i>ALLOCATOR_OF</i>(*this),</ins> f).swap(*this);</tt>
+<p/>
+-23- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
 </ol>
 
 
