@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D89)</h1>
-<p><p>Revised 2014-05-29 at 11:05:37 UTC</p>
+<p><p>Revised 2014-05-29 at 13:05:30 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D89: 2014-06-24 post-Rapperswil mailing<ul>
 <li><b>Summary:</b><ul>
-<li>182 open issues, up by 0.</li>
+<li>183 open issues, up by 1.</li>
 <li>1730 closed issues, up by 0.</li>
-<li>1912 issues total, up by 0.</li>
+<li>1913 issues total, up by 1.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>No issues added.</li>
+<li>Added the following New issue: <a href="lwg-active.html#2390">2390</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -22293,6 +22293,8 @@ return old_val;
 <h3><a name="2389"></a>2389. [fund.ts] <tt>function::operator=</tt> is over-specified and handles allocators incorrectly</h3>
 <p><b>Section:</b> X [mods.func.wrap] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2014-05-23 <b>Last modified:</b> 2014-05-29</p>
+<p><b>View other</b> <a href="lwg-index-open.html#mods.func.wrap">active issues</a> in [mods.func.wrap].</p>
+<p><b>View all other</b> <a href="lwg-index.html#mods.func.wrap">issues</a> in [mods.func.wrap].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p><b>Addresses: fund.ts</b></p>
@@ -22394,6 +22396,88 @@ template&lt;class F&gt; function&amp; operator=(reference_wrapper&lt;F&gt; f);
 </p>
 </blockquote>
 </blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2390"></a>2390. [fund.ts] Invocation types and rvalues</h3>
+<p><b>Section:</b> X [mods.func.wrap] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Michael Spertus <b>Opened:</b> 2014-05-26 <b>Last modified:</b> 2014-05-29</p>
+<p><b>View other</b> <a href="lwg-index-open.html#mods.func.wrap">active issues</a> in [mods.func.wrap].</p>
+<p><b>View all other</b> <a href="lwg-index.html#mods.func.wrap">issues</a> in [mods.func.wrap].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts</b></p>
+
+<p>
+<tt>invocation_type</tt> falls short of its stated goals in the following case. Using the notation of 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3866.html">Invocation type traits</a>, 
+consider
+</p>
+<blockquote>
+<pre>
+void f(int const&amp; i);
+more_perfect_forwarding_async(f, int(7)); // Oops. Dangling reference because rvalue gone when async runs
+</pre>
+</blockquote>
+<p>
+This was always the advertised intent of the proposal, but while the language reflects this for the first parameter in the 
+case of a member pointer, it failed to include corresponding language for other parameters.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3908.html">N3908</a>.</p>
+
+<ol>
+<li><p>Change Table 3, [meta.trans.other] in the <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3908.html#meta.trans.other">Library TS</a> 
+as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 3 &mdash; Other type transformations</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Comments</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class Fn, class... ArgTypes&gt;<br/>
+struct invocation_type&lt;Fn(ArgTypes...)&gt;;</tt>
+</td>
+<td>
+<tt>Fn</tt> and all types in the parameter pack <tt>ArgTypes</tt><br/>
+shall be complete types, (possibly <i>cv</i>-qualified) <tt>void</tt>,<br/> 
+or arrays of unknown bound. 
+</td>
+<td>
+If <ins><tt>A1, A2,...</tt> denotes <tt>ArgTypes...</tt> and</ins><br/> 
+<tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+is the function type <tt>R(T1, T2, ...)</tt> <ins>then let <tt>Ui</tt> be<br/> 
+<tt>decay&lt;Ai&gt;::type</tt> if <tt>Ai</tt> is an rvalue otherwise <tt>Ti</tt>.<br/> 
+If</ins> <del>and</del> <tt>Fn</tt> is a pointer to member type and <tt>T1</tt> is<br/>
+an rvalue reference, then <ins>let <tt>U1</tt> be</ins> <tt><del>R(</del>decay&lt;T1&gt;::type<del>,<br/> 
+T2, ...)</del></tt>.<br/> 
+<del>Otherwise, <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt></del><br/>
+<ins>The member typedef <tt>type</tt> shall equal <tt>R(U1, U2, ...)</tt></ins>.
+</td>
+</tr>
+
+</table>
+</blockquote>
+
 </li>
 </ol>
 
