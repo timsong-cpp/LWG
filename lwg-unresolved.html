@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-06-03 at 16:06:12 UTC</p>
+<p><p>Revised 2014-06-03 at 21:06:04 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -18618,6 +18618,179 @@ language only defines a "wide-character set" and "wide-character literal".
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2393"></a>2393. <tt>std::function</tt>'s <em>Callable</em> definition is broken</h3>
+<p><b>Section:</b> 20.9.11.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-06-03 <b>Last modified:</b> 2014-06-03</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The existing definition of <tt>std::function</tt>'s <em>Callable</em> requirements provided in 20.9.11.2 [func.wrap.func]
+p2,
+</p>
+<blockquote><p>
+A callable object <tt>f</tt> of type <tt>F</tt> is <em>Callable</em> for argument types <tt>ArgTypes</tt> and return type 
+<tt>R</tt> if the expression <tt><i>INVOKE</i>(f, declval&lt;ArgTypes&gt;()..., R)</tt>, considered as an unevaluated operand 
+(Clause 5), is well formed (20.9.2).
+</p></blockquote>
+<p>
+is defective in several aspects:
+</p>
+<ol style="list-style-type:upper-roman">
+<li><p>The wording can be read to be defined in terms of callable objects, not of callable types.</p>
+</li>
+<li><p>Contrary to that, 20.9.11.2.5 [func.wrap.func.targ] p2 speaks of "<tt>T</tt> shall be a type that is <em>Callable</em> 
+(20.9.11.2) for parameter types <tt>ArgTypes</tt> and return type <tt>R</tt>."</p>
+</li>
+<li><p>
+The required value category of the callable object during the call expression (lvalue or rvalue) strongly depends on
+an interpretation of the expression <tt>f</tt> and should be improved.
+</p></li>
+</ol>
+<p>
+The intention of original <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2002/n1402.html">proposal</a> 
+(see IIIa. Relaxation of target requirements) was to refer to both types and values ("we say that the function object <tt>f</tt> 
+(and its type <tt>F</tt>) is <em>Callable</em> [&hellip;]"), but that intention is not really deducible from the
+existing wording. A clearer type-dependence would also make the sfinae-conditions specified in 20.9.11.2.1 [func.wrap.func.con] 
+p8 and p21 ("[&hellip;] shall not participate in overload resolution unless <tt>f</tt> is Callable (20.9.11.2)
+for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt>.") easier to interpret.
+<p/>
+My understanding always had been (see e.g. Howard's 2009-05-01 comment in LWG <a href="lwg-defects.html#815">815</a>), that <tt>std::function</tt> invokes
+the call operator of its target via an <b>lvalue</b>. The required value-category is relevant, because it allows to reflect
+upon whether an callable object such as
+</p>
+<blockquote><pre>
+struct RVF 
+{
+  void operator()() const &amp;&amp; {}
+};
+</pre></blockquote>
+<p>
+would be a feasible target object for <tt>std::function&lt;void()&gt;</tt> or not.
+<p/>
+Clarifying the current <em>Callable</em> definition seems also wise to make a future transition to language-based concepts
+easier. A local fix of the current wording is simple to achieve, e.g. by rewriting it as follows:
+</p>
+<blockquote><p>
+A callable <del>object <tt>f</tt> of</del> type <ins>(20.9.1 [func.def])</ins> <tt>F</tt> is <em>Callable</em> 
+for argument types <tt>ArgTypes</tt> and return type <tt>R</tt> if the expression <tt><i>INVOKE</i>(<del>f</del><ins>declval&lt;F&amp;&gt;()</ins>, 
+declval&lt;ArgTypes&gt;()..., R)</tt>, considered as an unevaluated operand (Clause 5), is well formed (20.9.2).
+</p></blockquote>
+<p>
+It seems appealing to move such a general <em>Callable</em> definition to a more appropriate place (e.g. as another
+paragraph of 20.9.1 [func.def]), but the question arises, whether such a more general concept should impose
+the requirement that the call expression is invoked on an <b>lvalue</b> of the callable object &mdash; such a
+special condition would also conflict with the more general definition of the <tt>result_of</tt> trait, which
+is defined for either lvalues or rvalues of the callable type <tt>Fn</tt>. In this context I would like to point out that
+"<em>Lvalue-Callable</em>" is not the one and only <em>Callable</em> requirement in the library. Counter examples are
+<tt>std::thread</tt>, <tt>call_once</tt>, or <tt>async</tt>, which depend on "<em>Rvalue-Callable</em>", because they 
+all act on functor rvalues, see e.g. 30.3.1.2 [thread.thread.constr]:
+</p>
+<blockquote><p>
+[&hellip;] The new thread of execution executes <tt><i>INVOKE</i>(<i>DECAY_COPY</i>(std::forward&lt;F&gt;(f)), 
+<i>DECAY_COPY</i>(std::forward&lt;Args&gt;(args))...)</tt> [&hellip;]
+</p></blockquote>
+<p>
+Assuming that <tt>F</tt> is a class-based function object, the result of <i>DECAY_COPY</i> is an rvalue. Note that
+these implied rvalue function calls had been deliberately introduced via LWG <a href="lwg-defects.html#2021">2021</a> (see the 2011-06-13 comment)
+and existing implementations respect these constraints. Just to give an example,
+</p>
+<blockquote><pre>
+#include &lt;thread&gt;
+
+struct LVF 
+{
+  void operator()() &amp; {}
+};
+
+int main()
+{
+  LVF lf;
+  std::thread t(lf);
+  t.join();
+}
+</pre></blockquote>
+<p>
+is supposed to be rejected.
+<p/>
+The below presented wording changes are suggested to be minimal (still local to <tt>std::function</tt>), but the used approach
+would simplify a future (second) conceptualization or any further generalization of <em>Callable</em> requirements of the Library.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.9.11.2 [func.wrap.func] p2 as indicated:</p>
+
+<blockquote><p>
+-2- A callable <del>object <tt>f</tt> of</del> type <ins>(20.9.1 [func.def])</ins> <tt>F</tt> is <em><ins>Lvalue-</ins>Callable</em> 
+for argument types <tt>ArgTypes</tt> and return type <tt>R</tt> if the expression <tt><i>INVOKE</i>(<del>f</del><ins>declval&lt;F&amp;&gt;()</ins>, 
+declval&lt;ArgTypes&gt;()..., R)</tt>, considered as an unevaluated operand (Clause 5), is well formed (20.9.2).
+</p></blockquote>
+</li>
+
+<li><p>Change 20.9.11.2.1 [func.wrap.func.con] p8+p21 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F&gt; function(F f);
+template &lt;class F, class A&gt; function(allocator_arg_t, const A&amp; a, F f);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-8- <i>Remarks</i>: These constructors shall not participate in overload resolution unless <tt><del>f</del><ins>F</ins></tt> is 
+<tt><ins>Lvalue-</ins>Callable</tt> (20.9.11.2) for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+template&lt;class F&gt; function&amp; operator=(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-21- <i>Remarks</i>: This assignment operator shall not participate in overload resolution unless 
+<tt><del>declval&lt;typename decay&lt;F&gt;::type&amp;&gt;()</del><ins>decay_t&lt;F&gt;</ins></tt> is 
+<tt><ins>Lvalue-</ins>Callable</tt> (20.9.11.2) for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt>.
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Change 20.9.11.2.5 [func.wrap.func.targ] p2 as indicated: [<i>Editorial comment</i>: It is unclear to me, why
+this requirement exists at all, because the <tt>target()</tt> functions seemingly do not depend on it, the
+corresponding wording exists since it's <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2004/n1667.pdf">initial proposal</a> 
+&mdash; <i>end comment</i>]</p>
+
+<blockquote><pre>
+template&lt;class T&gt; T* target() noexcept;
+template&lt;class T&gt; const T* target() const noexcept;
+</pre>
+<blockquote>
+<p>
+-2- <i>Requires</i>: <tt>T</tt> shall be a type that is <tt><ins>Lvalue-</ins>Callable</tt> (20.9.11.2) for parameter types 
+<tt>ArgTypes</tt> and return type <tt>R</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
