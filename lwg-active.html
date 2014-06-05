@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2014-06-04</td>
+  <td align="left">2014-06-05</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D89)</h1>
-<p><p>Revised 2014-06-04 at 20:06:59 UTC</p>
+<p><p>Revised 2014-06-05 at 18:06:44 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -21749,7 +21749,7 @@ or a run-time error, not ill-formed.
 <hr>
 <h3><a name="2384"></a>2384. Allocator's <tt>deallocate</tt> function needs better specification</h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-05-19 <b>Last modified:</b> 2014-05-19</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-05-19 <b>Last modified:</b> 2014-06-05</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -21802,6 +21802,38 @@ that this note does more harm than good. In addition to wording from <tt>operato
 to obfuscate the normative wording. 
 </p>
 
+<p><i>[2014-05-24 Alisdair comments]</i></p>
+
+
+<p>
+Now that I am reading it very precisely, there is another mis-stated assumption
+as a precondition for <tt>deallocate</tt>:
+</p>
+<blockquote><p>
+All <tt>n T</tt> objects in the area pointed to by <tt>p</tt> shall be destroyed prior to this call.
+</p></blockquote>
+<p>
+This makes a poor assumption that every possible object in the allocated buffer
+was indeed constructed, but this is often not the case, e.g., a <tt>vector</tt> that is not
+filled to capacity. We should require calling the destructor for only those objects
+actually constructed in the buffer, which may be fewer than <tt>n</tt>, or even 0.
+<p/>
+I wonder if we really require all objects to be destroyed before calling <tt>deallocate</tt>
+though. Are we really so concerned about leaking objects that might not manage
+resources? Should this not be the proper concern of the library managing the
+objects and memory?
+</p>
+
+<p><i>[2014-06-05 Daniel responds and improves wording]</i></p>
+
+
+<p>
+I fully agree with the last comment and I think that this requirement should be removed. We have no such
+requirements for comparable functions such as <tt>operator delete</tt> or <tt>return_temporary_buffer()</tt>,
+and this wording seems to be a wording rudiment that exists since C++98.
+</p>
+
+
 
 <p><b>Proposed resolution:</b></p>
 
@@ -21838,8 +21870,8 @@ to obfuscate the normative wording.
 call to <tt>allocate</tt> which has not been invalidated by<br/> 
 an intervening call to <tt>deallocate</tt>. <tt>n</tt> shall<br/> 
 match the value passed to <tt>allocate</tt> to obtain this<br/> 
-memory.</ins> All <tt>n T</tt> objects in the area pointed to by<br/> 
-<tt>p</tt> shall be destroyed prior to this call.<br/>
+memory.</ins> <del>All <tt>n T</tt> objects in the area pointed to by<br/> 
+<tt>p</tt> shall be destroyed prior to this call.</del><br/>
 <ins><i>Throws</i>: Nothing.</ins><del><tt>n</tt><br/>
 shall match the value passed to<br/>
 allocate to obtain this<br/>
