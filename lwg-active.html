@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D89)</h1>
-<p><p>Revised 2014-06-07 at 13:06:11 UTC</p>
+<p><p>Revised 2014-06-07 at 15:06:00 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -10857,7 +10857,7 @@ a temporary object of type <tt>T</tt> is value-initialized <ins>or aggregate-ini
 <hr>
 <h3><a name="2173"></a>2173. The meaning of operator + in the description of the algorithms</h3>
 <p><b>Section:</b> 25 [algorithms] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-08-01 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-08-01 <b>Last modified:</b> 2014-06-07</p>
 <p><b>View all other</b> <a href="lwg-index.html#algorithms">issues</a> in [algorithms].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -10895,9 +10895,63 @@ first))</tt> starting from <tt>first</tt> and proceeding to <tt>last</tt>. For e
 See also message <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32908">c++std-lib-32908</a>.
 </p>
 
+<p><i>[2014-06-07 Daniel comments and provides wording]</i></p>
+
+<p>
+The specification for output iterators is somewhat tricky, because here a sequence of increments is required to
+be combined with intervening <em>assignments</em> to the dereferenced iterator. I tried to respect this
+fact by using a conceptual assignment operation as part of the specification.
+<p/>
+Another problem in the provided as-if-code is the question which requirements are imposed on <tt>n</tt>. Unfortunately,
+the corresponding function <tt>advance</tt> is completely underspecified in this regard, so I couldn't borrow wording
+from it. We cannot even assume here that <tt>n</tt> is the difference type of the iterator, because for output iterators there is
+no requirements for this associated type to be defined. The presented wording attempts to minimize assumptions, but still
+can be considered as controversial. 
+</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 25.1 [algorithms.general] around p12 as indicated:</p>
+
+<blockquote>
+<p>
+-12- In the description of the algorithms operators <tt>+</tt> and <tt>-</tt> are used for some of the iterator categories for which
+they do not have to be defined. In these cases the semantics of <tt>a+n</tt> is the same as that of
+</p>
+<blockquote>
+<pre>
+X tmp = a;
+advance(tmp, n);
+return tmp;
+</pre>
+</blockquote>
+<p>
+<ins>when <tt>X</tt> meets the input iterator requirements (24.2.3 [input.iterators]), otherwise it is the same as that of</ins>
+</p>
+<blockquote>
+<pre>
+<ins>X tmp = a;
+for (auto i = n; i; ++tmp, (void) --i) 
+  *tmp = <i>Expr</i>(i); 
+return tmp;</ins>
+</pre>
+</blockquote>
+<p>
+<ins>where <tt><i>Expr</i>(i)</tt> denotes the <tt>n-i</tt>-th conceptual assignment expression for the corresponding operation;</ins> 
+and that of <tt>b-a</tt> is the same as of
+</p>
+<blockquote>
+<pre>
+return distance(a, b);
+</pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
