@@ -45,9 +45,62 @@ first))</tt> starting from <tt>first</tt> and proceeding to <tt>last</tt>. For e
 See also message <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=32908">c++std-lib-32908</a>.
 </p>
 
+<note>2014-06-07 Daniel comments and provides wording</note>
+<p>
+The specification for output iterators is somewhat tricky, because here a sequence of increments is required to
+be combined with intervening <em>assignments</em> to the dereferenced iterator. I tried to respect this
+fact by using a conceptual assignment operation as part of the specification.
+<p/>
+Another problem in the provided as-if-code is the question which requirements are imposed on <tt>n</tt>. Unfortunately,
+the corresponding function <tt>advance</tt> is completely underspecified in this regard, so I couldn't borrow wording
+from it. We cannot even assume here that <tt>n</tt> is the difference type of the iterator, because for output iterators there is
+no requirements for this associated type to be defined. The presented wording attempts to minimize assumptions, but still
+can be considered as controversial. 
+</p>
+
 </discussion>
 
 <resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[algorithms.general]"/> around p12 as indicated:</p>
+
+<blockquote>
+<p>
+-12- In the description of the algorithms operators <tt>+</tt> and <tt>-</tt> are used for some of the iterator categories for which
+they do not have to be defined. In these cases the semantics of <tt>a+n</tt> is the same as that of
+</p>
+<blockquote>
+<pre>
+X tmp = a;
+advance(tmp, n);
+return tmp;
+</pre>
+</blockquote>
+<p>
+<ins>when <tt>X</tt> meets the input iterator requirements (<sref ref="[input.iterators]"/>), otherwise it is the same as that of</ins>
+</p>
+<blockquote>
+<pre>
+<ins>X tmp = a;
+for (auto i = n; i; ++tmp, (void) --i) 
+  *tmp = <i>Expr</i>(i); 
+return tmp;</ins>
+</pre>
+</blockquote>
+<p>
+<ins>where <tt><i>Expr</i>(i)</tt> denotes the <tt>n-i</tt>-th conceptual assignment expression for the corresponding operation;</ins> 
+and that of <tt>b-a</tt> is the same as of
+</p>
+<blockquote>
+<pre>
+return distance(a, b);
+</pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
