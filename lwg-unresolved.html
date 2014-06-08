@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-06-08 at 10:06:44 UTC</p>
+<p><p>Revised 2014-06-08 at 13:06:59 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -4765,7 +4765,7 @@ and "<tt>operator int()</tt>", which might behave differently (or be deleted, et
 <li>
 <p>
 About requirement (IV): This is kind of tricky. What we'd like to say is, "<tt>BooleanTestable</tt> can't ever trigger 
-an overloaded logical operator". However, given a perfectly reasonable type Nice - perhaps even <tt>bool</tt> itself! - 
+an overloaded logical operator". However, given a perfectly reasonable type <tt>Nice</tt> - perhaps even <tt>bool</tt> itself! - 
 other code (perhaps a third-party library) could overload <tt>operator&amp;&amp;(Nice, Evil)</tt>. Therefore, I believe 
 that the requirement should be "no first use" - the Standard Library will ask for various <tt>BooleanTestable</tt> types 
 from users (for example, the result of "<tt>first != last</tt>" and the result of "<tt>pred(args)</tt>"), and as long 
@@ -5139,9 +5139,9 @@ to <tt>bool</tt> (Clause 4). The result values of both kinds of conversions shal
 [<i>Example</i>: The types <tt>bool</tt>, <tt>std::true_type</tt>, and <tt>std::bitset&lt;&gt;::reference</tt> are 
 <tt>BooleanTestable</tt> types. &mdash; <i>end example</i>]
 <p/>
-In Table ??, <tt>B2</tt> denotes a type (possibly equal to <tt>B</tt>) that meets the <tt>BooleanTestable</tt> requirements, 
-<tt>b1</tt> denotes a (possibly <tt>const</tt>) value of <tt>B</tt>, <tt>b2</tt> denotes a (possibly <tt>const</tt>) value of 
-<tt>B2</tt>, and <tt>t1</tt> denotes a value of type <tt>bool</tt>.
+In Table ??, <tt>B2</tt> and <tt>Bn</tt> denotes types (possibly equal to <tt>B</tt> or to each other) that meet the 
+<tt>BooleanTestable</tt> requirements, <tt>b1</tt> denotes a (possibly <tt>const</tt>) value of <tt>B</tt>, <tt>b2</tt> 
+denotes a (possibly <tt>const</tt>) value of <tt>B2</tt>, and <tt>t1</tt> denotes a value of type <tt>bool</tt>.
 </p>
 </blockquote>
 </blockquote>
@@ -5177,7 +5177,7 @@ the assigned table number):</p>
 <tt>!b1</tt>
 </td>
 <td>
-<tt>B2</tt>
+<tt>Bn</tt>
 </td>
 <td>
 <i>Remarks</i>: <tt>bool(b1) == !bool(!b1)</tt> for<br/>
@@ -5577,37 +5577,36 @@ denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantes
 </blockquote>
 </li>
 
-<li><p>Change 25.1 [algorithms.general] p5+p8+p9 as indicated:</p>
+<li><p>Change 25.1 [algorithms.general] p8+p9 as indicated: [<i>Drafting note</i>: The wording change also fixes
+unusual wording forms used ("should work") which are unclear in which sense they are imposing normative requirements.
+Upon applying the new wording it became obvious that the wording has the effect that currently algorithms such as
+<tt>adjacent_find</tt>, <tt>search_n</tt>, <tt>unique</tt>, and <tt>unique_copy</tt> are not correctly described 
+(because they have no iterator argument named <tt>first1</tt>), which could give raise to a new library issue. 
+&mdash; <i>end drafting note</i>]</p>
 
 <blockquote>
 <p>
--5- Throughout this Clause, the names of template parameters are used to express type requirements. If an algorithm's
-template parameter is <tt>InputIterator</tt>, <tt>InputIterator1</tt>, or <tt>InputIterator2</tt>, the actual template
-argument shall satisfy the requirements of an input iterator (24.2.3). [&hellip;] If an algorithm's template parameter 
-is <tt>RandomAccessIterator</tt>, <tt>RandomAccessIterator1</tt>, or <tt>RandomAccessIterator2</tt>, the actual template 
-argument shall satisfy the requirements of a random-access iterator (24.2.7). <ins>If an algorithm's template parameter 
-is <tt>Predicate</tt> or <tt>BinaryPredicate</tt>, the actual template argument shall satisfy the requirements of a 
-function object type (20.9 [function.objects]) with a return type of its function call operator that meets the
-<tt>BooleanTestable</tt> requirements ([booleantestable.requirements]).</ins>
-<p/>
-[&hellip;]
-<p/>
 -8- The <tt>Predicate</tt> parameter is used whenever an algorithm expects a function object (20.9) that, when applied
-to the result of dereferencing the corresponding iterator, returns a value testable as <tt>true</tt>. In other words,
-if an algorithm takes <tt>Predicate pred</tt> as its argument and first as its iterator argument, it should work
-correctly in the construct <tt>pred(*first)</tt> <del>contextually</del> converted to 
-<tt>bool</tt> <del>(Clause 4)</del>. The function object <tt>pred</tt> shall not apply any non-constant function through 
-the dereferenced iterator.
+to the result of dereferencing the corresponding iterator, returns a value testable as <tt>true</tt>. <del>In other words,
+i</del><ins>I</ins>f an algorithm takes <tt>Predicate pred</tt> as its argument and <tt>first</tt> as its iterator argument, 
+<del>it should work correctly in the construct <tt>pred(*first)</tt> contextually converted to 
+<tt>bool</tt> (Clause 4)</del><ins>the expression <tt>pred(*first)</tt> shall have a type that meets the <tt>BooleanTestable</tt> 
+requirements ( [booleantestable.requirements])</ins>. 
+The function object <tt>pred</tt> shall not apply any non-constant function through <del>the</del><ins>any</ins> dereferenced 
+iterator <ins>argument</ins>.
 <p/>
 -9- The <tt>BinaryPredicate</tt> parameter is used whenever an algorithm expects a function object that when applied
 to the result of dereferencing two corresponding iterators or to dereferencing an iterator and type
-<tt>T</tt> when <tt>T</tt> is part of the signature returns a value testable as <tt>true</tt>. In other words, if an algorithm takes
-<tt>BinaryPredicate binary_pred</tt> as its argument and <tt>first1</tt> and <tt>first2</tt> as its iterator arguments, it should
-work correctly in the construct <tt>binary_pred(*first1, *first2)</tt> <del>contextually</del> converted 
-to <tt>bool</tt> <del>(Clause 4)</del>. <tt>BinaryPredicate</tt> always takes the first iterator's <tt>value_type</tt> as its 
-first argument, that is, in those cases when <tt>T</tt> value is part of the signature, it should work correctly in the construct
-<tt>binary_pred(*first1, value)</tt> <del>contextually</del> converted to <tt>bool</tt> <del>(Clause 4)</del>. 
-<tt>binary_pred</tt> shall not apply any non-constant function through the dereferenced iterators.
+<tt>T</tt> when <tt>T</tt> is part of the signature returns a value testable as <tt>true</tt>. <del>In other words, 
+i</del><ins>I</ins>f an algorithm takes <tt>BinaryPredicate binary_pred</tt> as its argument and <tt>first1</tt> and 
+<tt>first2</tt> as its iterator arguments, <del>it should work correctly in the construct <tt>binary_pred(*first1, *first2)</tt> 
+contextually converted to <tt>bool</tt> (Clause 4)</del><ins>the expression <tt>binary_pred(*first1, *first2)</tt> shall 
+have a type that meets the <tt>BooleanTestable</tt> requirements ( [booleantestable.requirements])</ins>. 
+<tt>BinaryPredicate</tt> always takes the first iterator's <tt>value_type</tt> as its first argument, that is, in those cases 
+when <tt>T</tt> value is part of the signature, <del>it should work correctly in the construct <tt>binary_pred(*first1, value)</tt> 
+contextually converted to <tt>bool</tt> (Clause 4)</del><ins>the expression <tt>binary_pred(*first1, value)</tt> shall have a 
+type that meets the <tt>BooleanTestable</tt> requirements ( [booleantestable.requirements])</ins>. <tt>binary_pred</tt> 
+shall not apply any non-constant function through <del>the</del><ins>any</ins> dereferenced iterator<del>s</del> <ins>arguments</ins>.
 </p>
 </blockquote>
 </li>
@@ -5618,12 +5617,15 @@ first argument, that is, in those cases when <tt>T</tt> value is part of the sig
 <p>
 [&hellip;]
 <p/>
--2- <tt>Compare</tt> is a function object type (20.9) <ins>with a return type of its function call operator that meets 
-the <tt>BooleanTestable</tt> requirements ([booleantestable.requirements])</ins>. The return value of the function call 
-operation applied to an object of type <tt>Compare</tt><del>, when contextually</del> converted 
-to <tt>bool</tt> <del>(Clause 4)</del>, yields <tt>true</tt> if the first argument of the call is less than the second, 
-and <tt>false</tt> otherwise. <tt>Compare comp</tt> is used throughout for algorithms assuming an ordering relation. It is 
-assumed that <tt>comp</tt> will not apply any non-constant function through the dereferenced iterator.
+-2- <tt>Compare</tt> is a function object type (20.9). <del>The return value of the function call 
+operation applied to an object of type <tt>Compare</tt>, when contextually converted 
+to <tt>bool</tt>(Clause 4), yields <tt>true</tt> if the first argument of the call is less than the second, 
+and <tt>false</tt> otherwise.</del> <tt>Compare comp</tt> is used throughout for algorithms assuming an ordering relation. 
+<ins>Let <tt>a</tt> and <tt>b</tt> denote two argument values whose types depend on the corresponding algorithm. Then the expression 
+<tt>comp(a, b)</tt> shall have a type that meets the <tt>BooleanTestable</tt> requirements ( [booleantestable.requirements]).
+The return value of the <tt>comp(a, b)</tt>, converted to <tt>bool</tt>, yields <tt>true</tt> if the 
+first argument <tt>a</tt> is less than the second argument <tt>b</tt>, and <tt>false</tt> otherwise.</ins> It is assumed that 
+<tt>comp</tt> will not apply any non-constant function through <del>the</del><ins>any</ins> dereferenced iterator <ins>argument</ins>.
 <p/>
 [&hellip;]
 </p>
@@ -5694,10 +5696,10 @@ assumed that <tt>comp</tt> will not apply any non-constant function through the 
 <blockquote>
 <p>
 -2- <del>If a parameter is <tt>Predicate</tt>, <tt>operator()</tt> applied to the actual template argument shall return a value that
-is convertible to <tt>bool</tt></del><ins><tt>Predicate</tt> is a function object type (20.9 [function.objects]) with a 
-return type of its function call operator that meets the <tt>BooleanTestable</tt> requirements ([booleantestable.requirements]).
-The return value of the function call operation applied to an object of type <tt>Predicate</tt> converted to <tt>bool</tt>, 
-yields <tt>true</tt> if the corresponding test condition is satisfied, and <tt>false</tt> otherwise</ins>.
+is convertible to <tt>bool</tt></del><ins><tt>Predicate</tt> is a function object type (20.9 [function.objects]).
+Let <tt>pred</tt> denote an lvalue of type <tt>Predicate</tt>. Then the expression <tt>pred()</tt> shall have a type that meets the 
+<tt>BooleanTestable</tt> requirements ( [booleantestable.requirements]). The return value of <tt>pred()</tt>, 
+converted to <tt>bool</tt>, yields <tt>true</tt> if the corresponding test condition is satisfied, and <tt>false</tt> otherwise</ins>.
 </p>
 </blockquote>
 </li>
