@@ -90,7 +90,26 @@ we have a group familiar with any evolutionary direction.
 After approval of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3652.html"/>N3652<a/>,
 <tt>void</tt> is now a literal type and <tt>constexpr</tt> functions can contain multiple statements, so
 this makes the guarantee that <tt>assert</tt> expressions are per-se  <tt>constexpr</tt>-friendly even more
-relevant.
+relevant. A possible wording form could be along the lines of:
+</p>
+<blockquote>
+<p>
+For every core constant expression <em>e</em> of scalar type that evaluates to <tt>true</tt> after being contextually 
+converted to <tt>bool</tt>, the expression <tt>assert(<em>e</em>)</tt> shall be a prvalue core constant expression of type 
+<tt>void</tt>.
+</p>
+</blockquote>
+<p>
+Richard Smith pointed out some weaknesses of this wording form, for example it would not guarantee to require
+the following example to work:
+</p>
+<blockquote><pre>
+constexpr void check(bool b) { assert(b); }
+</pre></blockquote>
+<p>
+because <tt>b</tt> is not a core constant expression in this context.
+<p/>
+He suggested improvements that lead to the wording form presented below (all defects mine). 
 </p>
 
 </discussion>
@@ -99,15 +118,31 @@ relevant.
 <p>This wording is relative to N3936.</p>
 
 <ol>
-<li><p>Insert a new paragraph following <sref ref="[assertions]"/> p1 as indicated: [<i>Drafting note</i>: The reference
-to scalar types is based on the C99 requirement that the argument of <tt>assert</tt> shall have scalar type &mdash; <i>end 
-drafting note</i>]</p>
+<li><p>Introduce the following new definition to the existing list in <sref ref="[definitions]"/>:</p>
 
 <blockquote>
 <p>
-<ins>-?- For every core constant expression <em>e</em> of scalar type that evaluates to <tt>true</tt> after being contextually 
-converted to <tt>bool</tt>, the expression <tt>assert(<em>e</em>)</tt> shall be a prvalue core constant expression of type 
-<tt>void</tt>.</ins>
+<strong>constant subexpression</strong> [defns.const.subexpr]
+<p/>
+an expression whose evaluation as subexpression of a <em>conditional-expression</em> <em>CE</em> (<sref ref="[expr.cond]"/>) 
+would not prevent <em>CE</em> from being a core constant expression (<sref ref="[expr.cond]"/>).
+</p>
+</blockquote>
+</li>
+
+<li><p>Insert a new paragraph following <sref ref="[assertions]"/> p1 as indicated:</p>
+
+<blockquote>
+<p>
+<ins>-?- Given an expression <tt><em>e</em></tt>, if either</ins>
+</p>
+<ul>
+<li><p><ins><tt>NDEBUG</tt> is defined at the point where <tt>assert(<em>e</em>)</tt> is evaluated, or</ins></p></li>
+<li><p><ins><tt><em>e</em></tt> contextually converted to <tt>bool</tt>, is a constant subexpression (<sref ref="[defns.const.subexpr]"/>), 
+that evaluates to <tt>true</tt>,</ins></p></li>
+</ul>
+<p>
+<ins>the expression <tt>assert(<em>e</em>)</tt> is a constant subexpression.</ins>
 </p>
 </blockquote>
 </li>
