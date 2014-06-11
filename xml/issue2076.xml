@@ -44,7 +44,6 @@ I think you are right.
 Proposed resolution: drop "non-" from <sref ref="[set.cons]"/> paragraph 3.
 </p>
 
-
 <note>2012, Kona</note>
 <p>
 The wording is in this area will be affected by Pablo's paper being adopted at this meeting.
@@ -76,14 +75,54 @@ then <tt>Key</tt> shall be <tt>CopyConstructible</tt>.
 </blockquote>
 
 <note>2014-05-18, Daniel comments</note>
-
 <p>
 According to Pablo, the current P/R correctly incorporates the changes from his paper (which was adopted in Kona)
 </p>
 
-</discussion>
+<note>2014-06-10, STL comments and suggests better wording</note>
+<p>
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1858.html">N1858</a> was voted into WP 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2284.pdf">N2284</a> but was 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2283.html">"(reworded)"</a>, introducing the "non-const" damage.
+<p/>
+N1858 wanted to add this for map:
+</p>
+<blockquote><p>
+<i>Requires</i>: Does not require <tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced 
+<tt>InputIterator</tt> returns a non-const rvalue <tt>pair&lt;key_type, mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> 
+is required for both <tt>key_type</tt> and <tt>mapped_type</tt>.
+</p></blockquote>
+<p>
+And this for set:
+</p>
+<blockquote><p>
+<i>Requires</i>: <tt>Key</tt> must be <tt>CopyConstructible</tt> only if the dereferenced <tt>InputIterator</tt> returns an lvalue 
+or const rvalue.
+</p></blockquote>
+<p>
+(And similarly for multi.)
+<p/>
+This was reworded to N2284 23.3.1.1 [map.cons]/3 and N2284 23.3.3.1 [set.cons]/4, and it slightly changed over the years into 
+N3936 23.4.4.2 [map.cons]/3 and N3936 23.4.6.2 [set.cons]/4.
+<p/>
+In 2005/2007, this was the best known way to say "hey, we should try to move this stuff", as the fine-grained element requirements 
+were taking shape.
+<p/>
+Then in 2010, <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3173.pdf">N3173</a> was 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3226.html">voted</a> into WP 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3225.pdf">N3225</a>, adding the definition of 
+<tt>EmplaceConstructible</tt> and modifying the container requirements tables to make the range constructors require 
+<tt>EmplaceConstructible</tt>.
+<p/>
+After looking at this history and double-checking our implementation (where <tt>map</tt>/<tt>set</tt> range construction goes through 
+emplacement, with absolutely no special-casing for <tt>map</tt>'s pairs), I am convinced that N3173 superseded N1858 here. 
+(Range-<tt>insert()</tt> and the unordered containers are unaffected.)
+</p>
 
-<resolution>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to the N3936.</p>
 
 <p>
@@ -103,6 +142,83 @@ then <tt>Key</tt> shall be <tt>CopyInsertible</tt> into <tt>*this</tt>.
 -5- <i>Complexity</i>: Linear in <tt>N</tt> if the range [<tt>first,last</tt>) is already sorted using 
 <tt>comp</tt> and otherwise <tt>N logN</tt>, where <tt>N</tt> is <tt>last - first</tt>.
 </p></blockquote></blockquote>
+</blockquote>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to the N3936.</p>
+
+<ol>
+<li><p>
+Remove <sref ref="[map.cons]"/> p4:
+</p> 
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+  map(InputIterator first, InputIterator last,
+      const Compare&amp; comp = Compare(), const Allocator&amp; = Allocator());
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+<del>-4- <i>Requires</i>: If the iterator's indirection operator returns an lvalue or a <tt>const</tt> rvalue
+<tt>pair&lt;key_type, mapped_type&gt;</tt>, then both <tt>key_type</tt> and <tt>mapped_type</tt> shall be 
+<tt>CopyInsertible</tt> into <tt>*this</tt>.</del>
+</p></blockquote></blockquote>
+</li>
+
+<li><p>
+Remove <sref ref="[multimap.cons]"/> p3:
+</p> 
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+  multimap(InputIterator first, InputIterator last,
+           const Compare&amp; comp = Compare(), 
+           const Allocator&amp; = Allocator());
+</pre><blockquote>
+<p>
+<del>-3- <i>Requires</i>: If the iterator's indirection operator returns an lvalue or a <tt>const</tt> rvalue
+<tt>pair&lt;key_type, mapped_type&gt;</tt>, then both <tt>key_type</tt> and <tt>mapped_type</tt> shall be 
+<tt>CopyInsertible</tt> into <tt>*this</tt>.</del>
+<p/>
+[&hellip;]
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>
+Remove <sref ref="[set.cons]"/> p4:
+</p> 
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+  set(InputIterator first, InputIterator last,
+      const Compare&amp; comp = Compare(), const Allocator&amp; = Allocator());
+</pre><blockquote>
+<p>
+[&hellip;]
+<p/>
+<del>-4- <i>Requires</i>: If the iterator's indirection operator returns an lvalue or a non-<tt>const</tt> rvalue, then 
+<tt>Key</tt> shall be <tt>CopyInsertible</tt> into <tt>*this</tt>.</del>
+</p></blockquote></blockquote>
+</li>
+
+<li><p>
+Remove <sref ref="[multiset.cons]"/> p3:
+</p> 
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+  multiset(InputIterator first, InputIterator last,
+           const Compare&amp; comp = Compare(), 
+           const Allocator&amp; = Allocator());
+</pre><blockquote>
+<p>
+<del>-3- <i>Requires</i>: If the iterator's indirection operator returns an lvalue or a <tt>const</tt> rvalue, then 
+<tt>Key</tt> shall be <tt>CopyInsertible</tt> into <tt>*this</tt>.</del>
+<p/>
+[&hellip;]
+</p></blockquote></blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
