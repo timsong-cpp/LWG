@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-06-12 at 18:06:25 UTC</p>
+<p><p>Revised 2014-06-12 at 19:06:08 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -19675,6 +19675,7 @@ Substitute all <i>Preconditions:</i> with <i>Requires:</i>.
 <h3><a name="2396"></a>2396. <tt>underlying_type</tt> doesn't say what to do for an incomplete enumeration type</h3>
 <p><b>Section:</b> 20.10.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-06-12 <b>Last modified:</b> 2014-06-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -19740,6 +19741,62 @@ T shall be <ins>a complete</ins> <del>an</del> enumeration type (7.2)
 </blockquote>
 
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2397"></a>2397. <tt>map&lt;K, V&gt;::emplace</tt> and explicit <tt>V</tt> constructors</h3>
+<p><b>Section:</b> 20.10.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Peter Dimov <b>Opened:</b> 2014-06-12 <b>Last modified:</b> 2014-06-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Please consider the following example:
+</p>
+<blockquote><pre>
+#include &lt;map&gt;
+#include &lt;atomic&gt;
+
+int main()
+{
+   std::map&lt;int, std::atomic&lt;int&gt;&gt; map_;
+
+   map_.emplace(1, 0);  // <span style="color:#C80000;font-weight:bold">fail</span>
+   map_.emplace(1);     // <span style="color:#C80000;font-weight:bold">fail</span>
+   map_.emplace(1, {}); // <span style="color:#C80000;font-weight:bold">fail</span>
+
+   map_.emplace(std::piecewise_construct,
+       std::tuple&lt;int&gt;(1), std::tuple&lt;>()); // <span style="color:#006600;font-weight:bold">OK</span>
+}
+</pre></blockquote>
+<p>
+The first three calls represent attempts by an ordinary programmer (in which role I appear today) to construct 
+a map element. Since <tt>std::atomic&lt;int&gt;</tt> is non-copyable and immovable, I was naturally drawn to 
+<tt>emplace()</tt> because it constructs in-place and hence doesn't need to copy or move. The logic behind the 
+attempts was that <tt>K=int</tt> would be constructed from '<tt>1</tt>', and <tt>V=std::atomic&lt;int&gt;</tt> would be 
+(directly) constructed by '<tt>0</tt>', default constructed, or constructed by '<tt>{}</tt>'.
+<p/>
+Yet none of the obvious attempts worked.
+<p/>
+I submit that at least two of the three ought to have worked, and that we have therefore a defect in either 
+<tt>map::emplace</tt> or <tt>pair</tt>.
+<p/>
+Ville:
+<p/>
+There exists a related <a href="http://cplusplus.github.io/EWG/ewg-active.html#114">EWG issue</a> for this.
+<p/>
+Daniel:
+<p/>
+If the proposal <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3739.html">N3739</a>
+would be accepted, it would solve the problem mentioned here.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
