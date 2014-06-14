@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2402" status="New">
+<title><tt>basic_string(const basic_string&amp; str, size_type pos, size_type n = npos)</tt> shouldn't use <tt>Allocator()</tt></title>
+<section><sref ref="[string.cons]"/></section>
+<submitter>Stephan T. Lavavej</submitter>
+<date>14 Jun 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[string.cons]"/> p3 specifies:
+</p>
+<blockquote>
+<pre>
+basic_string(const basic_string&amp; str, size_type pos, size_type n = npos, const Allocator&amp; a = Allocator());
+</pre>
+<p>
+But this implies that <tt>basic_string(str, pos)</tt> and <tt>basic_string(str, pos, n)</tt> use <tt>Allocator()</tt> 
+instead of getting an allocator from <tt>str</tt>.
+<p/>
+<sref ref="[string.require]"/> p3 says "The <tt>Allocator</tt> object used shall be obtained as described in 23.2.1."  
+<sref ref="[container.requirements.general]"/> p8 says "Copy constructors for these container types obtain an allocator 
+by calling <tt>allocator_traits&lt;allocator_type&gt;::select_on_container_copy_construction</tt> on the allocator 
+belonging to the container being copied.", but this isn't exactly a copy constructor. Then it talks about move constructors 
+(which this definitely isn't), and finally says that "All other constructors for these container types take a 
+<tt>const allocator_type&amp;</tt> argument. [&hellip;] A copy of this allocator is used for any memory allocation performed".
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[basic.string]"/> p5, class template <tt>basic_string</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 21.4.2, construct/copy/destroy:</i>
+[&hellip;]
+basic_string(basic_string&amp;&amp; str) noexcept;
+<ins>basic_string(const basic_string&amp; str, size_type pos, size_type n = npos);</ins>
+basic_string(const basic_string&amp; str, size_type pos, size_type n<del> = npos</del>,
+            const Allocator&amp; a<del> = Allocator()</del>);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[string.cons]"/> around p3 as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>basic_string(const basic_string&amp; str, 
+             size_type pos, size_type n = npos);</ins>
+basic_string(const basic_string&amp; str, 
+             size_type pos, size_type n<del> = npos</del>,
+             const Allocator&amp; a<del> = Allocator()</del>);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Effects</i>: Constructs an object of class <tt>basic_string</tt> and determines the effective length <tt>rlen</tt> of the
+initial string value as the smaller of <tt>n</tt> and <tt>str.size() - pos</tt>, as indicated in Table 65. <ins>The first constructor 
+obtains an allocator by calling <tt>allocator_traits&lt;allocator_type&gt;::select_on_container_copy_construction</tt> on the 
+allocator belonging to <tt>str</tt>.</ins>
+<p/>
+Table 65 &mdash; <ins>basic_string(const basic_string&amp;, size_type, size_type) and</ins>
+basic_string(const basic_string&amp;, size_type, size_type, const Allocator&amp;) effects
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
