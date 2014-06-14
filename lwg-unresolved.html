@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-06-14 at 17:06:50 UTC</p>
+<p><p>Revised 2014-06-14 at 17:06:23 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -19958,6 +19958,77 @@ template &lt;class D, class T&gt; get_deleter(const shared_ptr&lt;T&gt;&amp; p) 
 <tt><del>&amp;</del><ins>std::addressof(</ins>d<ins>)</ins></tt>; 
 otherwise returns <tt><del>0</del><ins>nullptr</ins></tt>. [&hellip;]
 </p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2401"></a>2401. <tt>std::function</tt> needs more <tt>noexcept</tt></h3>
+<p><b>Section:</b> 20.9.11.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2014-06-14</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+There are two issues here:
+</p>
+<ol>
+<li><p><tt>std::function</tt>'s constructor from <tt>nullptr_t</tt> is marked as <tt>noexcept</tt>, but its assignment operator 
+from <tt>nullptr_t</tt> isn't. This assignment can and should be marked as <tt>noexcept</tt>.</p></li>
+<li><p><tt>std::function</tt>'s comparisons with <tt>nullptr_t</tt> are marked as <tt>noexcept</tt> in two out of three places.</p></li>
+</ol>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.9 [function.objects] p2, header <tt>&lt;functional&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// 20.9.11 polymorphic function wrappers:</i>
+  [&hellip;]
+  template&lt;class R, class... ArgTypes&gt;
+  bool operator==(const function&lt;R(ArgTypes...)&gt;&amp;, nullptr_t) <ins>noexcept</ins>;
+  template&lt;class R, class... ArgTypes&gt;
+  bool operator==(nullptr_t, const function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+  template&lt;class R, class... ArgTypes&gt;
+  bool operator!=(const function&lt;R(ArgTypes...)&gt;&amp;, nullptr_t) <ins>noexcept</ins>;
+  template&lt;class R, class... ArgTypes&gt;
+  bool operator!=(nullptr_t, const function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.9.11.2 [func.wrap.func], class template <tt>function</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 20.9.11.2.1, construct/copy/destroy:</i>
+[&hellip;]
+function&amp; operator=(nullptr_t) <ins>noexcept</ins>;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.9.11.2.1 [func.wrap.func.con] before p16 as indicated:</p>
+
+<blockquote>
+<pre>
+function&amp; operator=(nullptr_t) <ins>noexcept</ins>;
+</pre>
 </blockquote>
 </li>
 </ol>
