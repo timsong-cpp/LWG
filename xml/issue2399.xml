@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2399" status="New">
+<title><tt>shared_ptr</tt>'s constructor from <tt>unique_ptr</tt> should be constrained</title>
+<section><sref ref="[util.smartptr.shared.const]"/></section>
+<submitter>Stephan T. Lavavej</submitter>
+<date>12 Jun 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following code:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+
+using namespace std;
+
+void meow(const shared_ptr&lt;int&gt;&amp; sp) {
+  cout &lt;&lt; "int: " &lt;&lt; *sp &lt;&lt; endl;
+}
+
+void meow(const shared_ptr&lt;string&gt;&amp; sp) {
+  cout &lt;&lt; "string: " &lt; *sp &lt;&lt; endl;
+}
+
+int main() {
+  meow(make_unique&lt;int&gt;(1729));
+  meow(make_unique&lt;string&gt;("kitty"));
+}
+</pre></blockquote>
+<p>
+This fails to compile due to ambiguous overload resolution, but we can easily make this work. (Note: <tt>shared_ptr</tt>'s 
+constructor from <tt>auto_ptr</tt> is also affected, but I believe that it's time to remove <tt>auto_ptr</tt> completely.)
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[util.smartptr.shared.const]"/> around p33 as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<p>
+<ins>-?- <i>Remark</i>: This constructor shall not participate in overload resolution unless <tt>unique_ptr&lt;Y, D&gt;::pointer</tt> 
+is convertible to <tt>T*</tt>.</ins>
+<p/>
+-33- <i>Effects</i>: Equivalent to <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
+otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
