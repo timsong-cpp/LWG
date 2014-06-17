@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-06-17 at 11:06:41 UTC</p>
+<p><p>Revised 2014-06-17 at 21:06:01 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -8429,9 +8429,9 @@ See also follow-up discussion of c++std-lib-32780.
 
 <hr>
 <h3><a name="2168"></a>2168. Inconsistent specification of <tt>uniform_real_distribution</tt> constructor</h3>
-<p><b>Section:</b> 26.5.8.2.2 [rand.dist.uni.real] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2012-07-14 <b>Last modified:</b> 2014-06-14</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Section:</b> 26.5.8.2.2 [rand.dist.uni.real] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2012-07-14 <b>Last modified:</b> 2014-06-17</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -14490,127 +14490,6 @@ as indicated in this issue here.
 
 
 <hr>
-<h3><a name="2305"></a>2305. [fund.ts] <tt>optional</tt> forwarding construction/assignment</h3>
-<p><b>Section:</b> X [optional.object.ctor] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Cassio Neri <b>Opened:</b> 2013-09-23 <b>Last modified:</b> 2014-06-17</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p><b>Addresses: fund.ts</b></p>
-
-<p>
-Consider:
-</p>
-<blockquote><pre>
-struct foo {
-  foo(std::initializer_list&lt;int&gt;&amp;);        // 1
-  foo(const std::initializer_list&lt;int&gt;&amp;);  // 2
-  foo(std::initializer_list&lt;int&gt;&amp;&amp;);       // 3
-  foo(const std::initializer_list&lt;int&gt;&amp;&amp;); // 4
-};
-
-std::initializer_list&lt;int&gt; il{0, 1, 2};
-
-foo foo_0{1, 2, 3};                                 // calls 3
-foo foo_1{il};                                      // calls 1
-foo foo_2((const std::initializer_list&lt;int&gt;&amp;) il);  // calls 2
-foo foo_3{(std::initializer_list&lt;int&gt;&amp;&amp;) il};       // calls 3
-foo foo_4((const std::initializer_list&lt;int&gt;&amp;&amp;) il); // calls 4
-</pre></blockquote>
-<p>
-Although the constructors of <tt>foo</tt> are unusual (<tt>initializer_list</tt>s are <i>normally</i> passed by
-value) users of <tt>optional</tt> could naturally expect perfect forwarding of <tt>initializer_list</tt>s. However,
-all lines below end up calling 1.
-</p>
-<blockquote><pre>
-optional&lt;foo&gt; opt0{in_place, {1, 2, 3}};
-optional&lt;foo&gt; opt1{in_place, il};                    
-optional&lt;foo&gt; opt3{in_place, (const std::initializer_list&lt;int&gt;&amp;) il};
-optional&lt;foo&gt; opt2{in_place, (std::initializer_list&lt;int&gt;&amp;&amp;) il};
-optional&lt;foo&gt; opt4{in_place, (const std::initializer_list&lt;int&gt;&amp;&amp;) il};
-
-opt0.emplace({1, 2, 3});
-opt0.emplace(il);
-opt0.emplace((const std::initializer_list&lt;int&gt;&amp;) il);
-opt0.emplace((std::initializer_list&lt;int&gt;&amp;&amp;) il);
-opt0.emplace((const std::initializer_list&lt;int&gt;&amp;&amp;) il);
-</pre></blockquote>
-<p>
-The constructor
-</p>
-<blockquote><pre>
-template &lt;class... Args&gt; constexpr explicit optional(in_place_t, Args&amp;&amp;... args);
-</pre></blockquote>
-<p>
-can handle all constructor calls above, except the one taking <tt>{1, 2, 3}</tt>. Hence, a simple
-<ins>modification</ins> of
-</p>
-<blockquote><pre>
-template &lt;class U, class... Args&gt;
-constexpr explicit optional(in_place_t, initializer_list&lt;U&gt;<ins>&amp;&amp;</ins> il, Args&amp;&amp;... args);
-</pre></blockquote>
-<p>
-allows perfect forwarding of <tt>std::initializer_list&lt;U&gt;</tt>s to be complete.
-</p>
-
-<p><i>[2014-06-06 pre-Rapperswill]</i></p>
-
-<p>
-This issue has been reopened as fundamentals-ts.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3691.</p>
-
-<ol>
-<li><p>Change X [optional.object.ctor] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class U, class... Args&gt; 
-constexpr explicit optional(in_place_t, initializer_list&lt;U&gt;<ins>&amp;&amp;</ins> il, Args&amp;&amp;... args);
-</pre><blockquote>
-<p>
--27- <i>Requires</i>: <tt>is_constructible&lt;T, initializer_list&lt;U&gt;&amp;<ins>&amp;</ins>, Args&amp;&amp;...>::value</tt> is <tt>true.</tt>
-<p/>
--28- <i>Effects</i>: Initializes the contained value as if constructing an object of type <tt>T</tt> with the arguments
-<tt><del>il</del><ins>std::move(il)</ins></tt>, <tt>std::forward&lt;Args&gt;(args)...</tt>.
-<p/>
-[&hellip;]
-<p/>
-<del>-31- <i>Remarks</i>: The function shall not participate in overload resolution unless
-<tt>is_constructible&lt;T, initializer_list&lt;U&gt;&amp;, Args&amp;&amp;...&gt;::value</tt> is <tt>true</tt>.</del>
-</p>
-</blockquote>
-</blockquote>
-</li>
-<li><p>Change X [optional.object.assign] as indicated:</p>
-
-<blockquote><pre>
-template &lt;class U, class... Args&gt;
-void optional&lt;T&gt;::emplace(initializer_list&lt;U&gt;<ins>&amp;&amp;</ins> il, Args&amp;&amp;... args);
-</pre><blockquote>
-<p>
--27- <i>Requires</i>: <tt>is_constructible&lt;T, initializer_list&lt;U&gt;&amp;<ins>&amp;</ins>, Args&amp;&amp;...>::value</tt> is <tt>true.</tt>
-<p/>
--28- <i>Effects</i>: Calls <tt>*this = nullopt</tt>. Then initializes the contained value as if constructing an object of
-type <tt>T</tt> with the arguments <tt><del>il</del><ins>std::move(il)</ins></tt>, <tt>std::forward&lt;Args&gt;(args)...</tt>.
-<p/>
-[&hellip;]
-<p/>
-<del>-32- <i>Remarks</i>: This function shall not participate in overload resolution unless
-<tt>is_constructible&lt;T, initializer_list&lt;U&gt;&amp;, Args&amp;&amp;...>::value</tt> is <tt>true.</tt></del>
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2307"></a>2307. Should the Standard Library use <tt>explicit</tt> only when necessary?</h3>
 <p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-09-26 <b>Last modified:</b> 2014-06-14</p>
@@ -18610,11 +18489,11 @@ return old_val;
 
 <hr>
 <h3><a name="2389"></a>2389. [fund.ts] <tt>function::operator=</tt> is over-specified and handles allocators incorrectly</h3>
-<p><b>Section:</b> X [mods.func.wrap] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+<p><b>Section:</b> X [mods.func.wrap] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2014-05-23 <b>Last modified:</b> 2014-06-17</p>
 <p><b>View other</b> <a href="lwg-index-open.html#mods.func.wrap">active issues</a> in [mods.func.wrap].</p>
 <p><b>View all other</b> <a href="lwg-index.html#mods.func.wrap">issues</a> in [mods.func.wrap].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p><b>Addresses: fund.ts</b></p>
 
@@ -19109,38 +18988,6 @@ why it's written in this roundabout way.
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2395"></a>2395. [fund.ts] <i>Preconditions:</i> is defined nowhere</h3>
-<p><b>Section:</b> X [mods.func.wrap], X [memory.resource.priv], X [memory.polymorphic.allocator.ctor], X [memory.polymorphic.allocator.mem], X [memory.resource.pool.ctor], X [memory.resource.monotonic.buffer.ctor] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2014-06-09 <b>Last modified:</b> 2014-06-17</p>
-<p><b>View other</b> <a href="lwg-index-open.html#mods.func.wrap">active issues</a> in [mods.func.wrap].</p>
-<p><b>View all other</b> <a href="lwg-index.html#mods.func.wrap">issues</a> in [mods.func.wrap].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p><b>Addresses: fund.ts</b></p>
-
-<p>
-This element has been introduced by <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3916.pdf">N3916</a>, 
-but the standard does not define it. The standard defines <i>Requires:</i> to indicate a precondition 
-(17.5.1.4 [structure.specifications] p3).
-<p/>
-<em>Proposed wording</em>:
-<p/>
-Substitute all <i>Preconditions:</i> with <i>Requires:</i>.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html">N4023</a>.</p>
-
-<ol>
-<li><p>Substitute all <i>Preconditions:</i> with <i>Requires:</i>.</p></li>
-</ol>
 
 
 
