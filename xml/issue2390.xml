@@ -3,7 +3,7 @@
   <!ENTITY nbsp "&#160;">
 ] >
 
-<issue num="2390" status="New">
+<issue num="2390" status="Open">
 <title>[fund.ts] Invocation types and rvalues</title>
 <section><sref ref="[mods.func.wrap]"/></section>
 <submitter>Michael Spertus</submitter>
@@ -28,9 +28,15 @@ more_perfect_forwarding_async(f, int(7)); // Oops. Dangling reference because rv
 This was always the advertised intent of the proposal, but while the language reflects this for the first parameter in the 
 case of a member pointer, it failed to include corresponding language for other parameters.
 </p>
-</discussion>
 
-<resolution>
+<note>2014-06-18, Rapperswil</note>
+<p>
+Mike Spertus, Richard Smith, Jonathan Wakely, and Jeffrey Yasskin suggest improved wording.
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<p/>
+<blockquote class="note">
 <p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3908.html">N3908</a>.</p>
 
 <ol>
@@ -72,6 +78,68 @@ an rvalue reference, then <ins>let <tt>U1</tt> be</ins> <tt><del>R(</del>decay&l
 T2, ...)</del></tt>.<br/> 
 <del>Otherwise, <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt></del><br/>
 <ins>The member typedef <tt>type</tt> shall equal <tt>R(U1, U2, ...)</tt></ins>.
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html">N4023</a>.</p>
+
+<ol>
+<li><p>Change Table 3, [meta.trans.other] in the <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html#meta.trans.other">Library TS</a> 
+as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 3 &mdash; Other type transformations</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Comments</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class Fn, class... ArgTypes&gt;<br/>
+struct invocation_type&lt;Fn(ArgTypes...)&gt;;</tt>
+</td>
+<td>
+<tt>Fn</tt> and all types in the parameter pack <tt>ArgTypes</tt><br/>
+shall be complete types, (possibly <i>cv</i>-qualified) <tt>void</tt>,<br/> 
+or arrays of unknown bound. 
+</td>
+<td>
+<ins>
+The nested typedef <tt>invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+shall be defined as follows. If <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+does not exist, there shall be no member typedef <tt>type</tt>. Otherwise:<br/>
+<ul>
+<li><p><ins>Let <tt>R(T1, T2, ...)</tt> denote<br/>
+<tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt></ins></p></li>
+<li><p><ins>Let <tt>A1, A2,...</tt> denote <tt>ArgTypes...</tt></ins></p></li>
+<li><p><ins>Then the member typedef <tt>type</tt> shall name the function type <tt>R(U1, U2, ...)</tt><br/>
+where <tt>Ui</tt> is <tt>decay&lt;Ai&gt;_t</tt> if <tt>Ai</tt> is an rvalue otherwise <tt>Ti</tt>.</ins></p></li>
+</ul>
+</ins>
+<del>If <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+is the function type <tt>R(T1, T2, ...)</tt> <br/> 
+and <tt>Fn</tt> is a pointer to member type and <tt>T1</tt> is<br/>
+an rvalue reference, then <tt>R(decay&lt;T1&gt;::type,<br/> 
+T2, ...)</tt>.<br/> 
+Otherwise, <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt>.<br/></del>
 </td>
 </tr>
 
