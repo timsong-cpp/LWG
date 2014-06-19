@@ -1,0 +1,179 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2408" status="New">
+<title>SFINAE-friendly <tt>common_type/iterator_traits</tt> should be part of C++14</title>
+<section><sref ref="[meta.trans.other]"/>, <sref ref="[iterator.traits]"/></section>
+<submitter>Daniel Kr&uuml;gler</submitter>
+<date>19 Jun 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+During the Rapperswil meeting the proposal <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4041.html">N4041</a>
+had been discussed and there seemed to be strong consensus to apply the SFINAE-friendly definitions
+that currently exist within the fundamentals-ts to the C++14 working draft (and to remove them from as additions to the fundamentals-ts 
+specification). This issue requests this change to happen.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936 in regard to C++14 changes and is relative to 4023 in regard to
+fundamental-ts changes.</p>
+
+<ol>
+<li><p>Change the C++14 working draft, <sref ref="[meta.trans.other]"/> p3 as indicated:</p>
+
+<blockquote>
+<p>
+-3- <ins>For the <tt>common_type</tt> trait applied to a parameter pack <tt>T</tt> of types, 
+the member <tt>type</tt> shall be either defined or not present as follows:</ins>
+<ul>
+<li><p><ins>If <tt>sizeof...(T)</tt> is zero, there shall be no member <tt>type</tt>.</ins></p></li>
+<li><p><ins>If <tt>sizeof...(T)</tt> is one, let <tt>T0</tt> denote the sole type comprising <tt>T</tt>. 
+The member typedef <tt>type</tt> shall denote the same type as <tt>decay_t&lt;T0&gt;</tt>.</ins></p></li>
+<li><p><ins>If <tt>sizeof...(T)</tt> is greater than one, let <tt>T1</tt>, <tt>T2</tt>, and <tt>R</tt>, 
+respectively, denote the first, second, and (pack of) remaining types comprising <tt>T</tt>. 
+[<i>Note</i>: <tt>sizeof...(R)</tt> may be zero. &mdash; <i>end note</i>] Finally, let <tt>C</tt> denote 
+the type, if any, of an unevaluated conditional expression (<sref ref="[expr.cond]"/>) whose first operand is an arbitrary value 
+of type <tt>bool</tt>, whose second operand is an xvalue of type <tt>T1</tt>, and whose third operand is 
+an xvalue of type <tt>T2</tt>. If there is such a type <tt>C</tt>, the member typedef <tt>type</tt> shall 
+denote the same type, if any, as <tt>common_type_t&lt;C,R...&gt;</tt>. Otherwise, there shall be no member 
+<tt>type</tt>.</ins></p></li>
+</ul>
+<del>The nested typedef <tt>common_type::type</tt> shall be defined as follows:</del>
+</p>
+<blockquote>
+<pre>
+<del>template &lt;class ...T&gt; struct common_type;
+
+template &lt;class T&gt;
+struct common_type&lt;T&gt; {
+  typedef decay_t&lt;T&gt; type;
+};
+
+template &lt;class T, class U&gt;
+struct common_type&lt;T, U&gt; {
+  typedef decay_t&lt;decltype(true ? declval&lt;T&gt;() : declval&lt;U&gt;())&gt; type;
+};
+
+template &lt;class T, class U, class... V&gt;
+struct common_type&lt;T, U, V...&gt; {
+  typedef common_type_t&lt;common_type_t&lt;T, U&gt;, V...&gt; type;
+};</del>
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change the C++14 working draft, <sref ref="[iterator.traits]"/> p2 as indicated:</p>
+
+<blockquote>
+<p>
+-2- The template <tt>iterator_traits&lt;Iterator&gt;</tt> <del>is defined as</del><ins>shall have 
+the following as publicly accessible members, and have no other members, if and only if 
+<tt>Iterator</tt> has valid (<sref ref="[temp.deduct]"/>) member types <tt>difference_type</tt>, 
+<tt>value_type</tt>, <tt>pointer</tt>, <tt>reference</tt>, and <tt>iterator_category</tt>; otherwise, 
+the template shall have no members:</ins>
+</p>
+<blockquote>
+<pre>
+<del>namespace std {
+  template&lt;class Iterator&gt; struct iterator_traits {</del>
+    typedef typename Iterator::difference_type difference_type;
+    typedef typename Iterator::value_type value_type;
+    typedef typename Iterator::pointer pointer;
+    typedef typename Iterator::reference reference;
+    typedef typename Iterator::iterator_category iterator_category;
+  <del>};
+}</del>
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>In fundamental-ts, change Table 2 &mdash; "Significant features in this technical specification" as
+indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 2 &mdash; Significant features in this technical specification</caption>
+<tr>
+<th align="center">Doc.<br/>No.</th>
+<th align="center">Title</th>
+<th align="center">Primary<br/>Section</th>
+<th align="center">Macro Name Suffix</th>
+<th align="center">Value</th>
+<th align="center">Header</th>
+</tr>
+
+<tr>
+<td colspan="6" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<del>N3843</del><br/>
+</td>
+<td>
+<del>A SFINAE-<br/>Friendly<br/><tt>common_type</tt></del>
+</td>
+<td>
+<del>2.4 [mods.meta.trans.other]</del><br/>
+</td>
+<td>
+<del><tt>common_type_sfinae</tt></del>
+</td>
+<td>
+<del><tt>201402</tt></del>
+</td>
+<td>
+<del><tt>&lt;type_traits&gt;</tt></del><br/>
+</td>
+</tr>
+
+<tr>
+<td>
+<del>N3843</del><br/>
+</td>
+<td>
+<del>A SFINAE-<br/>Friendly<br/><tt>iterator_traits</tt></del>
+</td>
+<td>
+<del>2.5 [mods.iterator.traits]</del><br/>
+</td>
+<td>
+<del><tt>iterator_traits_sfinae</tt></del>
+</td>
+<td>
+<del><tt>201402</tt></del>
+</td>
+<td>
+<del><tt>&lt;iterator&gt;</tt></del><br/>
+</td>
+</tr>
+
+<tr>
+<td colspan="6" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Remove the existing sub-clause 2.4 [mods.meta.trans.other] in its entirety.</p>
+</li>
+
+<li><p>Remove the existing sub-clause 2.5 [mods.iterator.traits] in its entirety.</p>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
