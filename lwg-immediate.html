@@ -27,7 +27,7 @@
 </tr>
 <tr>
 <td align="left">Date:</td>
-<td align="left"><p>Revised 2014-06-19 at 10:06:32 UTC</p>
+<td align="left"><p>Revised 2014-06-19 at 12:06:15 UTC</p>
 </td>
 </tr>
 <tr>
@@ -271,6 +271,159 @@ template&lt;class F&gt; function&amp; operator=(reference_wrapper&lt;F&gt; f);
 
 
 <hr>
+<h3><a name="2390"></a>2390. [fund.ts] Invocation types and rvalues</h3>
+<p><b>Section:</b> X [mods.func.wrap] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Michael Spertus <b>Opened:</b> 2014-05-26 <b>Last modified:</b> 2014-06-19</p>
+<p><b>View other</b> <a href="lwg-index-open.html#mods.func.wrap">active issues</a> in [mods.func.wrap].</p>
+<p><b>View all other</b> <a href="lwg-index.html#mods.func.wrap">issues</a> in [mods.func.wrap].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts</b></p>
+
+<p>
+<tt>invocation_type</tt> falls short of its stated goals in the following case. Using the notation of 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3866.html">Invocation type traits</a>, 
+consider
+</p>
+<blockquote>
+<pre>
+void f(int const&amp; i);
+more_perfect_forwarding_async(f, int(7)); // Oops. Dangling reference because rvalue gone when async runs
+</pre>
+</blockquote>
+<p>
+This was always the advertised intent of the proposal, but while the language reflects this for the first parameter in the 
+case of a member pointer, it failed to include corresponding language for other parameters.
+</p>
+
+<p><i>[2014-06-18, Rapperswil]</i></p>
+
+<p>
+Mike Spertus, Richard Smith, Jonathan Wakely, and Jeffrey Yasskin suggest improved wording.
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<p/>
+<blockquote class="note">
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3908.html">N3908</a>.</p>
+
+<ol>
+<li><p>Change Table 3, [meta.trans.other] in the <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3908.html#meta.trans.other">Library TS</a> 
+as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 3 &mdash; Other type transformations</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Comments</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class Fn, class... ArgTypes&gt;<br/>
+struct invocation_type&lt;Fn(ArgTypes...)&gt;;</tt>
+</td>
+<td>
+<tt>Fn</tt> and all types in the parameter pack <tt>ArgTypes</tt><br/>
+shall be complete types, (possibly <i>cv</i>-qualified) <tt>void</tt>,<br/> 
+or arrays of unknown bound. 
+</td>
+<td>
+If <ins><tt>A1, A2,...</tt> denotes <tt>ArgTypes...</tt> and</ins><br/> 
+<tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+is the function type <tt>R(T1, T2, ...)</tt> <ins>then let <tt>Ui</tt> be<br/> 
+<tt>decay&lt;Ai&gt;::type</tt> if <tt>Ai</tt> is an rvalue otherwise <tt>Ti</tt>.<br/> 
+If</ins> <del>and</del> <tt>Fn</tt> is a pointer to member type and <tt>T1</tt> is<br/>
+an rvalue reference, then <ins>let <tt>U1</tt> be</ins> <tt><del>R(</del>decay&lt;T1&gt;::type<del>,<br/> 
+T2, ...)</del></tt>.<br/> 
+<del>Otherwise, <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt></del><br/>
+<ins>The member typedef <tt>type</tt> shall equal <tt>R(U1, U2, ...)</tt></ins>.
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html">N4023</a>.</p>
+
+<ol>
+<li><p>Change Table 3, [meta.trans.other] in the <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html#meta.trans.other">Library TS</a> 
+as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 3 &mdash; Other type transformations</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Comments</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class Fn, class... ArgTypes&gt;<br/>
+struct invocation_type&lt;Fn(ArgTypes...)&gt;;</tt>
+</td>
+<td>
+<tt>Fn</tt> and all types in the parameter pack <tt>ArgTypes</tt><br/>
+shall be complete types, (possibly <i>cv</i>-qualified) <tt>void</tt>,<br/> 
+or arrays of unknown bound. 
+</td>
+<td>
+<ins>
+The nested typedef <tt>invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+shall be defined as follows. If<br/>
+<tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+does not exist, there shall be no member typedef <tt>type</tt>. Otherwise:<br/>
+<ul>
+<li><p><ins>Let <tt>A1, A2,</tt> &hellip; denote <tt>ArgTypes...</tt></ins></p></li>
+<li><p><ins>Let <tt>R(T1, T2, &hellip;)</tt> denote<br/>
+<tt>raw_invocation_type_t&lt;Fn(ArgTypes...)&gt;</tt></ins></p></li>
+<li><p><ins>Then the member typedef <tt>type</tt> shall name the function<br/>
+type <tt>R(U1, U2, &hellip;)</tt> where <tt>Ui</tt> is <tt>decay_t&lt;Ai&gt;</tt><br/> 
+if <tt>declval&lt;Ai&gt;()</tt> is an rvalue otherwise <tt>Ti</tt>.</ins></p></li>
+</ul>
+</ins>
+<del>If <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt><br/> 
+is the function type <tt>R(T1, T2, &hellip;)</tt> <br/> 
+and <tt>Fn</tt> is a pointer to member type and <tt>T1</tt> is<br/>
+an rvalue reference, then <tt>R(decay&lt;T1&gt;::type,<br/> 
+T2, &hellip;)</tt>.<br/> 
+Otherwise, <tt>raw_invocation_type&lt;Fn(ArgTypes...)&gt;::type</tt>.<br/></del>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2395"></a>2395. [fund.ts] <i>Preconditions:</i> is defined nowhere</h3>
 <p><b>Section:</b> X [mods.func.wrap], X [memory.resource.priv], X [memory.polymorphic.allocator.ctor], X [memory.polymorphic.allocator.mem], X [memory.resource.pool.ctor], X [memory.resource.monotonic.buffer.ctor] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
  <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2014-06-09 <b>Last modified:</b> 2014-06-17</p>
@@ -302,6 +455,129 @@ Move to Immediate
 
 <ol>
 <li><p>Substitute all <i>Preconditions:</i> with <i>Requires:</i>.</p></li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2409"></a>2409. [fund.ts] SFINAE-friendly <tt>common_type/iterator_traits</tt> should be removed from the fundamental-ts</h3>
+<p><b>Section:</b> X [mods.meta.trans.other], X [mods.iterator.traits] <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-06-19 <b>Last modified:</b> 2014-06-19</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts</b></p>
+<p>
+During the Rapperswil meeting the proposal <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4041.html">N4041</a>
+had been discussed and there seemed to be strong consensus to apply the SFINAE-friendly definitions
+that currently exist within the fundamentals-ts to the C++17 working draft. If this happens, the fundamentals-ts 
+needs to remove its own specification regarding these templates. This issue requests this change to happen.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4023 in regard to fundamental-ts changes.</p>
+
+<ol>
+<li><p>In fundamental-ts, change Table 2 &mdash; "Significant features in this technical specification" as
+indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 2 &mdash; Significant features in this technical specification</caption>
+<tr>
+<th align="center">Doc.<br/>No.</th>
+<th align="center">Title</th>
+<th align="center">Primary<br/>Section</th>
+<th align="center">Macro Name Suffix</th>
+<th align="center">Value</th>
+<th align="center">Header</th>
+</tr>
+
+<tr>
+<td colspan="6" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<del>N3843</del><br/>
+</td>
+<td>
+<del>A SFINAE-<br/>Friendly<br/><tt>common_type</tt></del>
+</td>
+<td>
+<del>2.4 [mods.meta.trans.other]</del><br/>
+</td>
+<td>
+<del><tt>common_type_sfinae</tt></del>
+</td>
+<td>
+<del><tt>201402</tt></del>
+</td>
+<td>
+<del><tt>&lt;type_traits&gt;</tt></del><br/>
+</td>
+</tr>
+
+<tr>
+<td>
+<del>N3843</del><br/>
+</td>
+<td>
+<del>A SFINAE-<br/>Friendly<br/><tt>iterator_traits</tt></del>
+</td>
+<td>
+<del>2.5 [mods.iterator.traits]</del><br/>
+</td>
+<td>
+<del><tt>iterator_traits_sfinae</tt></del>
+</td>
+<td>
+<del><tt>201402</tt></del>
+</td>
+<td>
+<del><tt>&lt;iterator&gt;</tt></del><br/>
+</td>
+</tr>
+
+<tr>
+<td colspan="6" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>In fundamental-ts, remove the existing sub-clause 2.4 [mods.meta.trans.other] in its entirety:</p>
+
+<p>
+<del><b>2.4 Changes to <tt>std::common_type</tt> [mods.meta.trans.other]</b></del>
+</p>
+<blockquote>
+<p>
+<del>-1- [&hellip;]</del>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>In fundamental-ts, remove the existing sub-clause 2.5 [mods.iterator.traits] in its entirety:</p>
+
+<p>
+<del><b>2.5 Changes to <tt>std::iterator_traits</tt> [mods.iterator.traits]</b></del>
+</p>
+<blockquote>
+<p>
+<del>-1- [&hellip;]</del>
+</p>
+</blockquote>
+</li>
+
 </ol>
 
 
