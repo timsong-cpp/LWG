@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D89)</h1>
-<p><p>Revised 2014-06-29 at 11:06:47 UTC</p>
+<p><p>Revised 2014-06-29 at 12:06:26 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2011(E)</p>
   <p>Also see:</p>
@@ -156,14 +156,14 @@ ownership of it.
 <ul>
 <li>D89: 2014-06-24 post-Rapperswil mailing<ul>
 <li><b>Summary:</b><ul>
-<li>198 open issues, up by 16.</li>
+<li>199 open issues, up by 17.</li>
 <li>1736 closed issues, up by 6.</li>
-<li>1934 issues total, up by 22.</li>
+<li>1935 issues total, up by 23.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following 3 Immediate issues: <a href="lwg-active.html#2390">2390</a>, <a href="lwg-active.html#2395">2395</a>, <a href="lwg-active.html#2409">2409</a>.</li>
 <li>Added the following 6 Ready issues: <a href="lwg-active.html#2396">2396</a>, <a href="lwg-active.html#2399">2399</a>, <a href="lwg-active.html#2400">2400</a>, <a href="lwg-active.html#2401">2401</a>, <a href="lwg-active.html#2404">2404</a>, <a href="lwg-active.html#2408">2408</a>.</li>
-<li>Added the following 11 New issues: <a href="lwg-active.html#2391">2391</a>, <a href="lwg-active.html#2392">2392</a>, <a href="lwg-active.html#2393">2393</a>, <a href="lwg-active.html#2394">2394</a>, <a href="lwg-active.html#2398">2398</a>, <a href="lwg-active.html#2402">2402</a>, <a href="lwg-active.html#2403">2403</a>, <a href="lwg-active.html#2406">2406</a>, <a href="lwg-active.html#2407">2407</a>, <a href="lwg-active.html#2410">2410</a>, <a href="lwg-active.html#2411">2411</a>.</li>
+<li>Added the following 12 New issues: <a href="lwg-active.html#2391">2391</a>, <a href="lwg-active.html#2392">2392</a>, <a href="lwg-active.html#2393">2393</a>, <a href="lwg-active.html#2394">2394</a>, <a href="lwg-active.html#2398">2398</a>, <a href="lwg-active.html#2402">2402</a>, <a href="lwg-active.html#2403">2403</a>, <a href="lwg-active.html#2406">2406</a>, <a href="lwg-active.html#2407">2407</a>, <a href="lwg-active.html#2410">2410</a>, <a href="lwg-active.html#2411">2411</a>, <a href="lwg-active.html#2412">2412</a>.</li>
 <li>Added the following Open issue: <a href="lwg-active.html#2397">2397</a>.</li>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2405">2405</a>.</li>
 <li>Changed the following 3 issues to Immediate (from New): <a href="lwg-active.html#2371">2371</a>, <a href="lwg-active.html#2374">2374</a>, <a href="lwg-active.html#2389">2389</a>.</li>
@@ -5376,6 +5376,7 @@ is <tt>true</tt>, else <tt>::new((void *)p) U{std::forward&lt;Args&gt;(args)...}
 <h3><a name="2095"></a>2095. <tt>promise</tt> and <tt>packaged_task</tt> missing constructors needed for uses-allocator construction</h3>
 <p><b>Section:</b> 30.6.5 [futures.promise], 30.6.9 [futures.task] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-01 <b>Last modified:</b> 2014-06-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.promise">active issues</a> in [futures.promise].</p>
 <p><b>View all other</b> <a href="lwg-index.html#futures.promise">issues</a> in [futures.promise].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -24889,6 +24890,77 @@ allowing their use in standard containers. Specializations of <tt>shared_ptr</tt
 <tt>bool</tt>, allowing their use in boolean expressions and declarations in conditions. The template parameter <tt>T</tt> of
 <tt>shared_ptr</tt> may be an incomplete type.
 </p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2412"></a>2412. <tt>promise::set_value()</tt> and <tt>promise::get_future()</tt> should not race</h3>
+<p><b>Section:</b> 30.6.5 [futures.promise] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-06-23 <b>Last modified:</b> 2014-06-29</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.promise">active issues</a> in [futures.promise].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.promise">issues</a> in [futures.promise].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The following code has a data race according to the standard:
+</p>
+<blockquote>
+<pre>
+std::promise&lt;void&gt; p;
+std::thread t{ []{
+  p.get_future().wait();
+}};
+p.set_value();
+t.join();
+</pre>
+</blockquote>
+<p>
+The problem is that both <tt>promise::set_value()</tt> and
+<tt>promise::get_future()</tt> are non-const member functions which modify the
+same object, and we only have wording saying that the <tt>set_value()</tt> and
+<tt>wait()</tt> calls (i.e. calls setting and reading the shared state) are
+synchronized.
+<p/>
+The calls don't actually access the same memory locations, so the
+standard should allow it. My suggestion is to state that calling
+<tt>get_future()</tt> does not conflict with calling the various functions that
+make the shared state ready, but clarify with a note that this does
+not imply any synchronization or "happens before", only being free
+from data races.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 30.6.5 [futures.promise] around p12 as indicated:</p>
+
+<blockquote>
+<pre>
+future&lt;R&gt; get_future();
+</pre>
+<blockquote>
+<p>
+-12- <i>Returns</i>: A <tt>future&lt;R&gt;</tt> object with the same shared state as <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Synchronization</i>: Calls to this function do not conflict (1.10 [intro.multithread]) 
+with calls to <tt>set_value</tt>, <tt>set_exception</tt>, <tt>set_value_at_thread_exit</tt> or
+<tt>set_exception_at_thread_exit</tt>. [<i>Note</i>: Such calls need not be synchronized, but implementations 
+must ensure they do not introduce data races. &mdash; <i>end note</i>]</ins>
+<p/>
+-13- <i>Throws</i>: <tt>future_error</tt> if <tt>*this</tt> has no shared state or if <tt>get_future</tt> has already been called on a
+<tt>promise</tt> with the same shared state as <tt>*this</tt>.
+<p/>
+-14- <i>Error conditions</i>: [&hellip;]
+</p>
+</blockquote>
 </blockquote>
 </li>
 
