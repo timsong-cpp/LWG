@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2412" status="New">
+<title><tt>promise::set_value()</tt> and <tt>promise::get_future()</tt> should not race</title>
+<section><sref ref="[futures.promise]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>23 Jun 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The following code has a data race according to the standard:
+</p>
+<blockquote>
+<pre>
+std::promise&lt;void&gt; p;
+std::thread t{ []{
+  p.get_future().wait();
+}};
+p.set_value();
+t.join();
+</pre>
+</blockquote>
+<p>
+The problem is that both <tt>promise::set_value()</tt> and
+<tt>promise::get_future()</tt> are non-const member functions which modify the
+same object, and we only have wording saying that the <tt>set_value()</tt> and
+<tt>wait()</tt> calls (i.e. calls setting and reading the shared state) are
+synchronized.
+<p/>
+The calls don't actually access the same memory locations, so the
+standard should allow it. My suggestion is to state that calling
+<tt>get_future()</tt> does not conflict with calling the various functions that
+make the shared state ready, but clarify with a note that this does
+not imply any synchronization or "happens before", only being free
+from data races.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[futures.promise]"/> around p12 as indicated:</p>
+
+<blockquote>
+<pre>
+future&lt;R&gt; get_future();
+</pre>
+<blockquote>
+<p>
+-12- <i>Returns</i>: A <tt>future&lt;R&gt;</tt> object with the same shared state as <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Synchronization</i>: Calls to this function do not conflict (<sref ref="[intro.multithread]"/>) 
+with calls to <tt>set_value</tt>, <tt>set_exception</tt>, <tt>set_value_at_thread_exit</tt> or
+<tt>set_exception_at_thread_exit</tt>. [<i>Note</i>: Such calls need not be synchronized, but implementations 
+must ensure they do not introduce data races. &mdash; <i>end note</i>]</ins>
+<p/>
+-13- <i>Throws</i>: <tt>future_error</tt> if <tt>*this</tt> has no shared state or if <tt>get_future</tt> has already been called on a
+<tt>promise</tt> with the same shared state as <tt>*this</tt>.
+<p/>
+-14- <i>Error conditions</i>: [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
