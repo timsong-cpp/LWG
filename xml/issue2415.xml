@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2415" status="New">
+<title>Inconsistency between <tt>unique_ptr</tt> and <tt>shared_ptr</tt></title>
+<section><sref ref="[util.smartptr.shared.const]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>3 Jul 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>unique_ptr</tt> guarantees that it will not invoke its deleter if it stores
+a null pointer, which is useful for deleters that must not be called
+with a null pointer e.g.
+</p>
+<blockquote><pre>
+unique_ptr&lt;FILE, int(*)(FILE*)&gt; fptr(file, &amp;::fclose);
+</pre></blockquote>
+<p>
+However, <tt>shared_ptr</tt> does invoke the deleter if it owns a null pointer,
+which is a silent change in behaviour when transferring
+ownership from <tt>unique_ptr</tt> to <tt>shared_ptr</tt>. That means the following
+leads to undefined behaviour:
+</p>
+<blockquote><pre>
+std:shared_ptr&lt;FILE&gt; fp = std::move(fptr);
+</pre></blockquote>
+<p>
+Peter Dimov's suggested fix is to construct an empty <tt>shared_ptr</tt> from a
+<tt>unique_ptr</tt> that contains a null pointer.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change <sref ref="[util.smartptr.shared.const]"/> p33 as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+-33- <i>Effects</i>: Equivalent to <ins><tt>shared_ptr()</tt> if <tt>r.get() == nullptr</tt>,
+otherwise equivalent to</ins> <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
+otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
