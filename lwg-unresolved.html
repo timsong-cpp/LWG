@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-07-02 at 20:07:33 UTC</p>
+<p><p>Revised 2014-07-03 at 22:07:12 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -19603,6 +19603,61 @@ very specific scenarios.
 -1- Except where explicitly specified in this standard, it is implementation-defined which functions <ins>(including different 
 member functions called on a single object)</ins> in the Standard C++ library may be recursively reentered.
 </p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2415"></a>2415. Inconsistency between <tt>unique_ptr</tt> and <tt>shared_ptr</tt></h3>
+<p><b>Section:</b> 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-07-03 <b>Last modified:</b> 2014-07-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.const">active issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.const">issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>unique_ptr</tt> guarantees that it will not invoke its deleter if it stores
+a null pointer, which is useful for deleters that must not be called
+with a null pointer e.g.
+</p>
+<blockquote><pre>
+unique_ptr&lt;FILE, int(*)(FILE*)&gt; fptr(file, &amp;::fclose);
+</pre></blockquote>
+<p>
+However, <tt>shared_ptr</tt> does invoke the deleter if it owns a null pointer,
+which is a silent change in behaviour when transferring
+ownership from <tt>unique_ptr</tt> to <tt>shared_ptr</tt>. That means the following
+leads to undefined behaviour:
+</p>
+<blockquote><pre>
+std:shared_ptr&lt;FILE&gt; fp = std::move(fptr);
+</pre></blockquote>
+<p>
+Peter Dimov's suggested fix is to construct an empty <tt>shared_ptr</tt> from a
+<tt>unique_ptr</tt> that contains a null pointer.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.8.2.2.1 [util.smartptr.shared.const] p33 as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+-33- <i>Effects</i>: Equivalent to <ins><tt>shared_ptr()</tt> if <tt>r.get() == nullptr</tt>,
+otherwise equivalent to</ins> <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
+otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
+</p>
+</blockquote>
 </blockquote>
 </li>
 </ol>
