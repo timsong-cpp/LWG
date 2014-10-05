@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2418" status="New">
+<title>[fund.ts] <tt>apply</tt> does not work with member pointers</title>
+<section><sref ref="[tuple.apply]"/></section>
+<submitter>Zhihao Yuan</submitter>
+<date>8 Jul 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts</b></p>
+<p>
+The definition of <tt>apply</tt> present in &sect;3.2.2 [tuple.apply] prevents this
+function template to be used with pointer to members type passed as the first argument.
+</p>
+<blockquote>
+<i>Effects:</i> 
+<p/>
+[&hellip;]
+<p/>
+<tt>return std::forward&lt;F&gt;(f)(std::get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);</tt>
+</blockquote>
+<p>
+This makes this utility inconsistent with other standard library components and limits its usability.
+<p/>
+We propose to define its functionally in terms of <tt><i>INVOKE</i></tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4081.html">N4081</a> 
+in regard to fundamental-ts changes.</p>
+
+<ol>
+<li><p>Edit &sect;3.2.2 [tuple.apply] paragraph 2:</p>
+
+<blockquote>
+<pre>
+template &lt;class F, class Tuple&gt;
+constexpr decltype(auto) apply(F&amp;&amp; f, Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Given the exposition only function
+</p>
+<blockquote>
+<pre>
+template &lt;class F, class Tuple, size_t... I&gt;
+constexpr decltype(auto) apply_impl(  // <i>exposition only</i>
+    F&amp;&amp; f, Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) {
+  return <ins><i>INVOKE</i>(</ins>std::forward&lt;F&gt;(f)<del>(</del><ins>, </ins>std::get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);
+}
+</pre>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
