@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2421" status="New">
+<title>Non-specification of handling zero size in <tt>std::align</tt> [ptr.align]</title>
+<section><sref ref="[ptr.align]"/></section>
+<submitter>Myria</submitter>
+<date>6 Aug 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of <tt>std::align</tt> does not appear to specify what happens when the value of the <tt>size</tt> 
+parameter is 0. (The question of what happens when <tt>alignment</tt> is 0 is mentioned in another Defect Report, <iref ref="2377"/>; 
+it would change the behavior to be undefined rather than potentially implementation-defined.)
+<p/>
+The case of <tt>size</tt> being 0 is interesting because the result is ambiguous. Consider the following code's output:
+</p>
+<blockquote>
+<pre>
+#include &lt;cstdio&gt;
+#include &lt;memory&gt;
+
+int main()
+{
+  alignas(8) char buffer[8];
+  void *ptr = &amp;buffer[1];
+  std::size_t space = sizeof(buffer) - sizeof(char[1]);
+
+  void *result = std::align(8, 0, ptr, space);
+
+  std::printf("%d %td\n", !!result, result ? (static_cast&lt;char*&gt;(result) - buffer) : std::ptrdiff_t(-1));
+}
+</pre>
+</blockquote>
+<p>
+There are four straightforward answers as to what the behavior of <tt>std::align</tt> with size 0 should be:
+</p>
+<ol>
+<li><p>The behavior is undefined because the size is invalid.</p></li>
+<li><p>The behavior is implementation-defined. This seems to be the status quo, with current implementations using #3.</p></li>
+<li><p>Act the same as <tt>size == 1</tt>, except that if <tt>size == 1</tt> would fail but would be defined and succeed 
+if space were exactly 1 larger, the result is a pointer to the byte past the end of the <tt>ptr</tt> buffer. That is, the 
+"aligned" version of a 0-byte object can be one past the end of an allocation. Such pointers are, of course, valid when not 
+dereferenced (and a "0-byte object" shouldn't be), but whether that is desired is not specified in the Standard's definition 
+of <tt>std::align</tt>, it appears. The output of the code sample is "<tt>1 8</tt>" in this case.</p></li>
+<li><p>Act the same as <tt>size == 1</tt>; this means that returning "one past the end" is not a possible result. In this case, 
+the code sample's output is "<tt>0 -1</tt>".</p></li>
+</ol>
+<p>
+The two compilers I could get working with <tt>std::align</tt>, Visual Studio 2013 and Clang 3.4, implement #3. (Change <tt>%td</tt> to 
+<tt>%Id</tt> on Visual Studio 2013 and earlier. 2014 and later will have <tt>%td</tt>.)
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
