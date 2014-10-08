@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-10-07 at 21:10:30 UTC</p>
+<p><p>Revised 2014-10-08 at 17:10:44 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -20999,7 +20999,7 @@ invocation through multiple overloaded operators or through other means.</del>
 <hr>
 <h3><a name="2436"></a>2436. Comparators for associative containers should always be <tt>CopyConstructible</tt></h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-10-07</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-10-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -21031,7 +21031,7 @@ This wording is relative to N3936.
 
 <blockquote>
 <table border="1">
-<caption>Table 102 &mdash; Associative container requirements (in addition to container)</caption>
+<caption>Table 102 &mdash; Associative container requirements</caption>
 <tr>
 <th>Expression</th>
 <th>Return type</th>
@@ -21254,6 +21254,129 @@ X a(i, j, n, hf);</tt>
 </td>
 </tr>
 
+</table>
+</blockquote></li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2437"></a>2437. <tt>iterator_traits&lt;OutIt&gt;::reference</tt> can and can't be <tt>void</tt></h3>
+<p><b>Section:</b> 24.2.2 [iterator.iterators] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-10-08</p>
+<p><b>View all other</b> <a href="lwg-index.html#iterator.iterators">issues</a> in [iterator.iterators].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+24.2.4 [output.iterators]/1 requires an <tt>OutputIterator</tt>'s <tt>*r = o</tt> to do its job, 
+so <tt>*r</tt> clearly can't return <tt>void</tt>.
+<p/>
+24.4.1 [iterator.traits]/1 says: "In the case of an output iterator, the types
+</p>
+<blockquote><pre>
+iterator_traits&lt;Iterator&gt;::difference_type
+iterator_traits&lt;Iterator&gt;::value_type
+iterator_traits&lt;Iterator&gt;::reference
+iterator_traits&lt;Iterator&gt;::pointer
+</pre></blockquote>
+<p>
+may be defined as <tt>void</tt>."
+<p/>
+This is contradictory. I suggest fixing this by moving the offending requirement down from <tt>Iterator</tt> to 
+<tt>InputIterator</tt>, and making <tt>Iterator</tt> say that <tt>*r</tt> returns an unspecified type. This will 
+have the following effects:
+</p>
+<ul>
+<li><p>Output-only iterators will inherit Iterator's "<tt>*r</tt> returns unspecified" requirement, while 
+24.4.1 [iterator.traits]/1 clearly permits reference/etc. to be <tt>void</tt>.</p></li>
+<li><p>Input-or-stronger iterators (whether constant or mutable) are unaffected &mdash; they still have to satisfy 
+"<tt>*r</tt> returns reference", they're just getting that requirement from <tt>InputIterator</tt> instead of 
+<tt>Iterator</tt>.</p></li>
+</ul>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N3936.
+</p>
+
+<ol>
+<li><p>In 24.2.2 [iterator.iterators] Table 106 "Iterator requirements" change as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 106 &mdash; Iterator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational<br/>semantics</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td>
+<tt>*r</tt>
+</td>
+<td>
+<del><tt>reference</tt></del><ins>unspecified</ins>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<i>pre</i>: <tt>r</tt> is dereferenceable.
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+</table>
+</blockquote></li>
+
+<li><p>In 24.2.3 [input.iterators] Table 107 "Input iterator requirements" change as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 107 &mdash; Input iterator requirements (in addition to Iterator)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational<br/>semantics</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>*a</tt>
+</td>
+<td>
+<ins><tt>reference</tt>,</ins> convertible to <tt>T</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
 </table>
 </blockquote></li>
 </ol>
