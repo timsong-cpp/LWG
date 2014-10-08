@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-10-08 at 19:10:54 UTC</p>
+<p><p>Revised 2014-10-08 at 20:10:55 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -21886,6 +21886,76 @@ typedefs"), as depicted:</p>
 </tr>
 
 </table>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2442"></a>2442. <tt>call_once()</tt> shouldn't <tt>DECAY_COPY()</tt></h3>
+<p><b>Section:</b> 30.4.4.2 [thread.once.callonce] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-10-08</p>
+<p><b>View all other</b> <a href="lwg-index.html#thread.once.callonce">issues</a> in [thread.once.callonce].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+When LWG <a href="lwg-defects.html#891">891</a> overhauled <tt>call_once()</tt>'s specification, it used <tt>decay_copy()</tt>, following 
+LWG <a href="lwg-defects.html#929">929</a>'s overhaul of <tt>thread</tt>'s constructor.
+<p/>
+In <tt>thread</tt>'s constructor, this is necessary and critically important. 30.3.1.2 [thread.thread.constr]/5 
+"The new thread of execution executes <tt><i>INVOKE</i>(<i>DECAY_COPY</i>(std::forward&lt;F&gt;(f)), 
+<i>DECAY_COPY</i>(std::forward&lt;Args&gt;(args))...)</tt> 
+with the calls to <tt><i>DECAY_COPY</i></tt> being evaluated in the constructing thread." requires the parent thread 
+to copy arguments for the child thread to access.
+<p/>
+In <tt>call_once()</tt>, this is unnecessary and harmful. It's unnecessary because <tt>call_once()</tt> doesn't transfer 
+arguments between threads. It's harmful because:
+</p>
+<ul>
+<li><p><tt>decay_copy()</tt> returns a prvalue. Given <tt>meow(int&amp;)</tt>, <tt>meow(i)</tt> can be called directly, 
+but <tt>call_once(flag, meow, i)</tt> won't compile.</p></li>
+<li><p><tt>decay_copy()</tt> moves from modifiable rvalues. Given <tt>purr(const unique_ptr&lt;int&gt;&amp;)</tt>, 
+<tt>purr(move(up))</tt> won't modify <tt>up</tt>. (This is observable, because moved-from <tt>unique_ptr</tt>s are 
+guaranteed empty.) However, <tt>call_once(flag, purr, move(up))</tt> will leave <tt>up</tt> empty after the first active 
+execution. Observe the behavioral difference &mdash; if <tt>purr()</tt> is directly called like this repeatedly until it 
+doesn't throw an exception, each call will observe <tt>up</tt> unchanged. With <tt>call_once()</tt>, the second active 
+execution will observe <tt>up</tt> to be empty.</p></li>
+</ul>
+<p>
+<tt>call_once()</tt> should use perfect forwarding without <tt>decay_copy()</tt>, in order to avoid interfering with the call like this.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+<tt>&lt;atomic&gt;</tt> doesn't provide counterparts for <tt>&lt;inttypes.h&gt;</tt>'s most useful typedefs, possibly 
+because they're quasi-optional. We can easily fix this.
+</p>
+
+<ol>
+<li><p>Change 30.4.4.2 [thread.once.callonce] p1+p2 as depicted:</p>
+
+<blockquote>
+<pre>
+template&lt;class Callable, class ...Args&gt;
+  void call_once(once_flag&amp; flag, Callable&amp;&amp; func, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires</i>: <del><tt>Callable</tt> and each <tt>Ti</tt> in <tt>Args</tt> shall satisfy the <tt>MoveConstructible</tt> 
+requirements.</del> <tt><i>INVOKE</i>(<del><i>DECAY_COPY</i>(</del>std::forward&lt;Callable&gt;(func)<del>)</del>, 
+<del><i>DECAY_COPY</i>(</del>std::forward&lt;Args&gt;(args)<del>)</del>...)</tt>
+(20.9.2) shall be a valid expression.
+<p/>
+-2- <i>Effects</i>; [&hellip;] An active execution shall call 
+<tt><i>INVOKE</i>(<del><i>DECAY_COPY</i>(</del>std::forward&lt;Callable&gt;(func)<del>)</del>, 
+<del><i>DECAY_COPY</i>(</del>std::forward&lt;Args&gt;(args)<del>)</del>...)</tt>. [&hellip;]
+</p>
+</blockquote>
 </blockquote>
 </li>
 </ol>
