@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2443" status="New">
+<title><tt>std::array</tt> member functions should be <tt>constexpr</tt></title>
+<section><sref ref="[array]"/></section>
+<submitter>Peter Sommerlad</submitter>
+<date>6 Oct 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When experimenting with C++14 relaxed <tt>constexpr</tt> functions I made the observation that I couldn't 
+use <tt>std::array</tt> to create a table of data at compile time directly using loops in a function. 
+However, a simple substitute I could use instead:
+</p>
+<blockquote>
+<pre>
+template &lt;typename T, size_t n&gt;
+struct ar {
+  T a[n];
+  constexpr ar() : a{{}}{}
+  constexpr auto data() const { return &amp;a[0];}
+  constexpr T const &amp; operator[](size_t i) const { return a[i]; }
+  constexpr T &amp; operator[](size_t i) { return a[i]; }
+};
+
+template &lt;size_t n&gt;
+using arr = ar&lt;size_t, n&gt;; // std::array&lt;size_t, n&gt;;
+
+template &lt;size_t n&gt;
+constexpr auto make_tab(){
+  arr&lt;n&gt; result;
+  for(size_t i=0; i &lt; n; ++i)
+    result[i] = (i+1)*(i+1); // cannot define operator[] for mutable array...
+  return result;
+}
+
+template &lt;size_t n&gt;
+constexpr auto squares=make_tab&lt; n&gt;();
+
+int main() {
+  int dummy[squares&lt;5&gt;[3]];
+}
+</pre>
+</blockquote>
+<p>
+Therefore, I suggest that all member functions of <tt>std::array</tt> should be made <tt>constexpr</tt> 
+to make the type usable in <tt>constexpr</tt> functions.
+<p/>
+Wording should be straight forward, may be with the exception of <tt>fill</tt>, which would require 
+<tt>fill_n</tt> to be <tt>constexpr</tt> as well.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
