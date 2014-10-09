@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-10-09 at 18:10:40 UTC</p>
+<p><p>Revised 2014-10-09 at 19:10:51 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -10375,7 +10375,7 @@ different definition. &mdash; <i>end note</i> ]
 <hr>
 <h3><a name="2219"></a>2219. <tt><i>INVOKE</i></tt>-ing a pointer to member with a <tt>reference_wrapper</tt> as the object expression</h3>
 <p><b>Section:</b> 20.9.2 [func.require] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-28 <b>Last modified:</b> 2014-06-06</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-28 <b>Last modified:</b> 2014-10-09</p>
 <p><b>View other</b> <a href="lwg-index-open.html#func.require">active issues</a> in [func.require].</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.require">issues</a> in [func.require].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -10489,9 +10489,23 @@ is not one of the types described in the previous item;
 
 </blockquote>
  
+<p><i>[2014-10-01, STL adds discussion and provides an improved resolution]</i></p>
 
+<p>
+Because neither <tt>t1.*f</tt> nor <tt>(*t1).*f</tt> will compile when <tt>t1</tt> is <tt>reference_wrapper&lt;U&gt;</tt> 
+for any <tt>U</tt>, we don't need to inspect <tt>U</tt> carefully. We can bluntly detect all <tt>reference_wrapper</tt>s 
+and use <tt>get()</tt> for them.
+<p/>
+We would have to be more careful if we had to deal with pointers to members of <tt>reference_wrapper</tt> itself.  
+Fortunately, we don't. First, it doesn't have user-visible data members. Second, users technically can't take the 
+addresses of its member functions (this is a consequence of 17.6.5.5 [member.functions], the Implementer's Best Friend).
+<p/>
+While we're in the neighborhood, I recommend simplifying and clarifying the wording used to detect base/derived objects.
+</p>
 
-<p><b>Proposed resolution:</b></p>
+<p><strong>Previous resolution from Mike Spertus [SUPERSEDED]:</strong></p>
+
+<blockquote class="note">
 <p>This wording is relative to N3936.</p>
 
 <ol>
@@ -10541,6 +10555,63 @@ where <tt>U</tt> is either the type <tt>T</tt> or a type derived from <tt>T</tt>
 <li><p>
 <tt>(*t1).*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and <tt>t1</tt> 
 is not one of the types described in the previous item;
+</p></li>
+
+<li><p>
+<tt>f(t1, t2, ..., tN)</tt> in all other cases.
+</p></li>
+</ul>
+
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.9.2 [func.require] p1 as depicted:</p>
+<blockquote><p>
+Define <tt><i>INVOKE</i>(f, t1, t2, ..., tN)</tt> as follows:
+</p>
+<ul>
+<li><p>
+<tt>(t1.*f)(t2, ..., tN)</tt> when <tt>f</tt> is a pointer to a member function of a class <tt>T</tt> and 
+<del><tt>t1</tt> is an object of type <tt>T</tt> or a reference to an object of type <tt>T</tt> or a reference 
+to an object of a type derived from <tt>T</tt></del><ins><tt>is_base_of&lt;T, decay_t&lt;decltype(t1)&gt;&gt;::value</tt> 
+is true</ins>;
+</p>
+</li>
+
+<li><p>
+<ins><tt>(t1.get().*f)(t2, ..., tN)</tt> when <tt>f</tt> is a pointer to a member function of a class <tt>T</tt> and 
+<tt>decay_t&lt;decltype(t1)&gt;</tt> is a specialization of <tt>reference_wrapper</tt>;</ins>
+</p></li>
+
+<li><p>
+<tt>((*t1).*f)(t2, ..., tN)</tt> when <tt>f</tt> is a pointer to a member function of a class <tt>T</tt> and 
+<tt>t1</tt> <del>is not one of the types described in the previous item</del><ins>does not satisfy the previous two 
+items</ins>;
+</p></li>
+
+<li><p> 
+<tt>t1.*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and <del><tt>t1</tt> 
+is an object of type <tt>T</tt> or a reference to an object of type <tt>T</tt> or a reference to an object of a 
+type derived from <tt>T</tt></del><ins><tt>is_base_of&lt;T, decay_t&lt;decltype(t1)&gt;&gt;::value</tt> 
+is true</ins>;
+</p></li>
+
+<li><p>
+<ins><tt>t1.get().*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and 
+<tt>decay_t&lt;decltype(t1)&gt;</tt> is a specialization of <tt>reference_wrapper</tt>;</ins>
+</p></li>
+
+<li><p>
+<tt>(*t1).*f</tt> when <tt>N == 1</tt> and <tt>f</tt> is a pointer to member data of a class <tt>T</tt> and <tt>t1</tt> 
+<del>is not one of the types described in the previous item</del><ins>does not satisfy the previous two items</ins>;
 </p></li>
 
 <li><p>
