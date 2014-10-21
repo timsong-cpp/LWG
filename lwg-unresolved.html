@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-10-18 at 16:10:39 UTC</p>
+<p><p>Revised 2014-10-21 at 21:10:47 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -22547,6 +22547,49 @@ linear
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2449"></a>2449. <tt>vector::insert</tt> invalidates <tt>end()</tt>?</h3>
+<p><b>Section:</b> 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2014-10-21 <b>Last modified:</b> 2014-10-21</p>
+<p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+this issue is based on the discussion <a href="https://groups.google.com/a/isocpp.org/d/topic/std-discussion/oYvKscnl280/discussion">here</a>.
+<p/>
+23.3.6.5 [vector.modifiers] says about <tt>vector::insert</tt>: "If no reallocation happens, all the iterators and references 
+before the insertion point remain valid." This doesn't seem to guarantee anything about the iterator <em>at</em> the point of insertion.
+<p/>
+The question comes from people asking if the following is valid, assuming a sufficient call to <tt>reserve()</tt> was done first:
+</p>
+<blockquote><pre>
+v.insert(v.end(), v.begin(), v.end());
+</pre></blockquote>
+<p>
+It could fail for an implementation using a sentinel for the end of the vector, but I don't know of any (it would be quite 
+inconvenient). And for any implementation using a simple position as iterator (pointer (possibly in a wrapper), or base+offset), 
+this is needlessly restrictive. The fact that this alternative:
+</p>
+<blockquote><pre>
+v.insert(v.end(), &amp;v[0], &amp;v[0]+v.size())
+</pre></blockquote>
+<p>
+is arguably valid (again assuming a large enough <tt>reserve()</tt>) makes it a bit confusing that the first version isn't 
+(23.2.3 [sequence.reqmts] has a precondition that iterator arguments to <tt>insert()</tt> do not point into the sequence, 
+but <tt>vector::insert</tt> is more refined and seems to give enough guarantees that it cannot fail).
+<p/>
+Then we might as well say that <tt>vector</tt> iterators act as positions, and that after a reallocation-free operation an 
+iterator points to the same position, whatever may be there now&hellip;
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 

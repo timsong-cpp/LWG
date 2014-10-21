@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2014-10-18</td>
+  <td align="left">2014-10-21</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D91)</h1>
-<p><p>Revised 2014-10-18 at 16:10:39 UTC</p>
+<p><p>Revised 2014-10-21 at 21:10:47 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D91: 2014-10-13 Urbana meeting<ul>
 <li><b>Summary:</b><ul>
-<li>229 open issues, up by 2.</li>
+<li>230 open issues, up by 3.</li>
 <li>1742 closed issues, up by 0.</li>
-<li>1971 issues total, up by 2.</li>
+<li>1972 issues total, up by 3.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 2 New issues: <a href="lwg-active.html#2447">2447</a>, <a href="lwg-active.html#2448">2448</a>.</li>
+<li>Added the following 3 New issues: <a href="lwg-active.html#2447">2447</a>, <a href="lwg-active.html#2448">2448</a>, <a href="lwg-active.html#2449">2449</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -27514,6 +27514,49 @@ linear
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2449"></a>2449. <tt>vector::insert</tt> invalidates <tt>end()</tt>?</h3>
+<p><b>Section:</b> 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2014-10-21 <b>Last modified:</b> 2014-10-21</p>
+<p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+this issue is based on the discussion <a href="https://groups.google.com/a/isocpp.org/d/topic/std-discussion/oYvKscnl280/discussion">here</a>.
+<p/>
+23.3.6.5 [vector.modifiers] says about <tt>vector::insert</tt>: "If no reallocation happens, all the iterators and references 
+before the insertion point remain valid." This doesn't seem to guarantee anything about the iterator <em>at</em> the point of insertion.
+<p/>
+The question comes from people asking if the following is valid, assuming a sufficient call to <tt>reserve()</tt> was done first:
+</p>
+<blockquote><pre>
+v.insert(v.end(), v.begin(), v.end());
+</pre></blockquote>
+<p>
+It could fail for an implementation using a sentinel for the end of the vector, but I don't know of any (it would be quite 
+inconvenient). And for any implementation using a simple position as iterator (pointer (possibly in a wrapper), or base+offset), 
+this is needlessly restrictive. The fact that this alternative:
+</p>
+<blockquote><pre>
+v.insert(v.end(), &amp;v[0], &amp;v[0]+v.size())
+</pre></blockquote>
+<p>
+is arguably valid (again assuming a large enough <tt>reserve()</tt>) makes it a bit confusing that the first version isn't 
+(23.2.3 [sequence.reqmts] has a precondition that iterator arguments to <tt>insert()</tt> do not point into the sequence, 
+but <tt>vector::insert</tt> is more refined and seems to give enough guarantees that it cannot fail).
+<p/>
+Then we might as well say that <tt>vector</tt> iterators act as positions, and that after a reallocation-free operation an 
+iterator points to the same position, whatever may be there now&hellip;
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
