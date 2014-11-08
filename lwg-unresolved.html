@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-11-08 at 10:11:33 UTC</p>
+<p><p>Revised 2014-11-08 at 17:11:01 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -8096,204 +8096,6 @@ Maybe it would be useful to introduce a new name for such conditional requiremen
 
 
 <hr>
-<h3><a name="2160"></a>2160. Unintended destruction ordering-specification of <tt>resize</tt></h3>
-<p><b>Section:</b> 23.3.6.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-06-07 <b>Last modified:</b> 2014-06-28</p>
-<p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
-<p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-As part of resolving LWG issue <a href="lwg-defects.html#2033">2033</a> a wording change was done for <tt>resize()</tt> to 
-respect the problem mentioned in the question:
-</p>
-<blockquote><p>
-Does a call to 'void resize(size_type sz)' of <tt>std::vector</tt> require the element type to be 
-<tt>MoveAssignable</tt> because the call <tt>erase(begin() + sz, end())</tt> mentioned in the Effects 
-paragraph would require the element type to be <tt>MoveAssignable</tt>?
-</p></blockquote>
-<p>
-The wording change was to replace in 23.3.3.3 [deque.capacity] and 23.3.6.3 [vector.capacity]:
-</p>
-<blockquote><p>
--1- <i>Effects</i>: If <tt>sz &lt;= size()</tt>, equivalent to <tt>erase(begin() + sz, end())</tt>; [&hellip;]
-</p></blockquote>
-<p>
-by:
-</p>
-<blockquote><p>
--1- <i>Effects</i>: If <tt>sz &lt;= size()</tt>, equivalent to calling <tt>pop_back() size() - sz</tt> times. [&hellip;]
-</p></blockquote>
-<p>
-The overlooked side-effect of this wording change is that this implies a destruction order
-of the removed elements to be in reverse order of construction, but the previous version
-did not impose any specific destruction order due to the way how the semantics of <tt>erase</tt>
-is specified in Table 100.
-<p/>
-Given the program:
-</p>
-<blockquote><pre>
-#include &lt;vector&gt;
-#include &lt;iostream&gt;
-
-struct Probe {
-  int value;
-  Probe() : value(0) {}
-  Probe(int value) : value(value) {}
-  ~Probe() { std::cout &lt;&lt; "~Probe() of " &lt;&lt; value &lt;&lt; std::endl; }
-};
-
-int main() {
-  std::vector&lt;Probe&gt; v;
-  v.push_back(Probe(1));
-  v.push_back(Probe(2));
-  v.push_back(Probe(3));
-  std::cout &lt;&lt; "---" &lt;&lt; std::endl;
-  <span style="color:#C80000;font-weight:bold">v.resize(0)</span>;
-}
-</pre></blockquote>
-<p>
-the last three lines of the output for every compiler I tested was:
-</p>
-<blockquote><pre>
-~Probe() of 1
-~Probe() of 2
-~Probe() of 3
-</pre></blockquote>
-<p>
-but a conforming implementation would now need to change this order to
-</p>
-<blockquote><pre>
-~Probe() of 3
-~Probe() of 2
-~Probe() of 1
-</pre></blockquote>
-<p>
-This possible stringent interpretation makes sense, because one can argue that sequence containers 
-(or at least <tt>std::vector</tt>) should have the same required destruction order of it's elements,
-as elements of a C array or controlled by memory deallocated with an array <tt>delete</tt> have.
-I also learned that libc++ does indeed implement <tt>std::vector::resize</tt> in a way that the
-second output form is observed.
-<p/>
-While I agree that required reverse-destruction would better mimic the natural behaviour of
-<tt>std::vector</tt> this was not required in C++03 and this request may be too strong. My current 
-suggestion would be to restore the effects of the previous wording <em>in regard to the destruction order</em>, 
-because otherwise several currently existing implementations would be broken just because of this
-additional requirement.
-</p>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
-<p>
-Moved to Open.
-</p>
-<p>
-Jonathan says that he believes this is a valid issue.
-</p>
-<p>
-Walter wonders if this was intended when we made the previous change - if so, this would be NAD.
-</p>
-<p>
-Jonathan said that Issue <a href="lwg-defects.html#2033">2033</a> doesn't mention ordering.
-</p>
-<p>
-Walter then asked if anyone is really unhappy that we're destroying items in reverse order of construction.
-</p>
-<p>
-Jonathan points out that this conflicts with existing practice (libstc++, but not libc++).
-</p>
-<p>
-Jonathan asked for clarification as to whether this change was intended by <a href="lwg-defects.html#2033">2033</a>.
-</p>
-
-<p><i>[2014-06 Rapperswil]</i></p>
-
-<p>
-Daniel points out that the ordering change was not intended.
-<p/>
-General agreement that implementations should not be required to change.
-</p>
-
-<p><i>[2014-06-28 Daniel provides alternative wording]</i></p>
-
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p> 
-
-<ol>
-<li><p>Change 23.3.3.3 [deque.capacity] as indicated: [<i>Drafting note</i>: The chosen wording form is similar to that for
-<tt>forward_list</tt>. Note that the existing <i>Requires</i> element already specifies the necessary operational requirements 
-on the value type. &mdash; <i>end drafting note</i>]</p>
-
-<blockquote>
-<pre>
-void resize(size_type sz);
-</pre>
-<blockquote>
-<p>
--1- <i>Effects</i>: If <tt>sz &lt;<del>=</del> size()</tt>, <ins>erases the last <tt>size() - sz</tt> elements from the 
-sequence</ins><del>equivalent to calling <tt>pop_back() size() - sz</tt> times</del>. <ins>Otherwise</ins><del>If <tt>size() 
-&lt;= sz</tt></del>, appends <tt>sz - size()</tt> default-inserted elements to the sequence.
-<p/>
-[&hellip;]
-</p>
-</blockquote>
-<pre>
-void resize(size_type sz, const T&amp; c);
-</pre>
-<blockquote>
-<p>
--3- <i>Effects</i>: If <tt>sz &lt;<del>=</del> size()</tt>, <ins>erases the last <tt>size() - sz</tt> elements from the 
-sequence</ins><del>equivalent to calling <tt>pop_back() size() - sz</tt> times</del>. <ins>Otherwise</ins><del>If <tt>size() 
-&lt; sz</tt></del>, appends <tt>sz - size()</tt> copies of <tt>c</tt> to the sequence.
-<p/>
-[&hellip;]
-</p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 23.3.6.3 [vector.capacity] as indicated: [<i>Drafting note</i>: See <tt>deque</tt> for the rationale of the
-used wording. &mdash; <i>end drafting note</i>]</p>
-
-<blockquote>
-<pre>
-void resize(size_type sz);
-</pre>
-<blockquote>
-<p>
--12- <i>Effects</i>: If <tt>sz &lt;<del>=</del> size()</tt>, <ins>erases the last <tt>size() - sz</tt> elements from the 
-sequence</ins><del>equivalent to calling <tt>pop_back() size() - sz</tt> times</del>. <ins>Otherwise</ins><del>If <tt>size() 
-&lt; sz</tt></del>, appends <tt>sz - size()</tt> default-inserted elements to the sequence.
-<p/>
-[&hellip;]
-</p>
-</blockquote>
-<pre>
-void resize(size_type sz, const T&amp; c);
-</pre>
-<blockquote>
-<p>
--15- <i>Effects</i>: If <tt>sz &lt;<del>=</del> size()</tt>, <ins>erases the last <tt>size() - sz</tt> elements from the 
-sequence</ins><del>equivalent to calling <tt>pop_back() size() - sz</tt> times</del>. <ins>Otherwise</ins><del>If <tt>size() 
-&lt; sz</tt></del>, appends <tt>sz - size()</tt> copies of <tt>c</tt> to the sequence.
-<p/>
-[&hellip;]
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2161"></a>2161. <tt>const</tt> equivalence of <tt>std::map</tt></h3>
 <p><b>Section:</b> 23.4 [associative], 23.5 [unord] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Bjarne Stroustrup <b>Opened:</b> 2012-06-18 <b>Last modified:</b> 2014-02-12</p>
@@ -14865,10 +14667,10 @@ as indicated in this issue here.
 
 <hr>
 <h3><a name="2307"></a>2307. Should the Standard Library use <tt>explicit</tt> only when necessary?</h3>
-<p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-09-26 <b>Last modified:</b> 2014-02-12</p>
+<p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-09-26 <b>Last modified:</b> 2014-11-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#containers">issues</a> in [containers].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 LWG <a href="lwg-defects.html#2193">2193</a> yields <tt>explicit</tt> for default ctors to allow <tt>{}</tt>, but not for
@@ -14884,6 +14686,10 @@ but the behavior is inconsistent with that of
 <blockquote><pre>
 vector(size_type count, const T&amp; value, const Allocator&amp; alloc = Allocator());
 </pre></blockquote>
+
+<p><i>[Urbana 2014-11-07: Move to Open]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -14946,9 +14752,9 @@ Detlef provides wording
 
 <hr>
 <h3><a name="2310"></a>2310. Public <em>exposition only</em> member in <tt>std::array</tt></h3>
-<p><b>Section:</b> 23.3.2.1 [array.overview] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-09-30 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Section:</b> 23.3.2.1 [array.overview] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-09-30 <b>Last modified:</b> 2014-11-08</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 23.3.2.1 [array.overview] shows <tt>std::array</tt> with an "exposition only" data member, <tt>elems</tt>.
@@ -14963,6 +14769,10 @@ implementation to provide "equivalent external behavior" to a public
 array member, then 17.5.2.3 [objects.within.classes] needs to cover public
 members too, or some other form should be used in 23.3.2.1 [array.overview].
 </p>
+
+<p><i>[Urbana 2014-11-07: Move to Open]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -16988,166 +16798,6 @@ even better to some new <tt>SharedLockable</tt> requirements (to be defined) &md
 
 
 <hr>
-<h3><a name="2364"></a>2364. <tt>deque</tt> and <tt>vector</tt> <tt>pop_back</tt> don't specify iterator invalidation requirements</h3>
-<p><b>Section:</b> 23.3.3.4 [deque.modifiers], 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Deskin Miller <b>Opened:</b> 2014-02-17 <b>Last modified:</b> 2014-06-28</p>
-<p><b>View all other</b> <a href="lwg-index.html#deque.modifiers">issues</a> in [deque.modifiers].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-I think it's obvious that <tt>vector::pop_back</tt> invalidates the path-the-end iterator, but I cannot find language that says so to 
-my satisfaction in the Standard. N3797 23.2.3 [sequence.reqmts] Table 101 lists <tt>a.pop_back()</tt> semantics as "Destroys the 
-last element", but nowhere do I see this required to invalidate the end iterator (or iterators previously referring to the last element). 
- [container.reqmts.general]/11 states "Unless otherwise specified (either explicitly or by defining a function in terms of 
-other functions), invoking a container member function or passing a container as an argument to a library function shall not 
-invalidate iterators to, or change the values of, objects within that container." 23.3.6.5 [vector.modifiers]/3 says that each 
-flavor of <tt>vector::erase</tt> "Invalidates iterators and references at or after the point of the erase", but <tt>pop_back</tt> isn't 
-discussed, and it wasn't specified in terms of <tt>erase</tt>.
-</p>
-<p>
-Similarly for <tt>std::deque</tt>, 23.2.3 [sequence.reqmts] Table 101 and  [container.reqmts.general]/11 both apply. 
-Yet 23.3.3.4 [deque.modifiers] likewise doesn't discuss <tt>pop_back</tt> nor <tt>pop_front</tt>. Furthermore paragraph 4 fails to 
-specify the iterator-invalidation guarantees when erasing the first element but not the last.
-<p/>
-Both <tt>std::vector</tt> and <tt>std::deque</tt> are in contrast to <tt>std::list</tt>, which says in 23.3.5.4 [list.modifiers]/3 
-regarding <tt>pop_back</tt> (as well as all forms of <tt>erase</tt>, <tt>pop_front</tt>, and <tt>clear</tt>) "Effects: Invalidates only 
-the iterators and references to the erased elements."
-</p>
-
-<p><i>[2014-06-16 Jonathan comments and improves wording]</i></p>
-
-
-<p>
-I believe this reflects our preferred form discussed earlier,
-specifically putting the signatures with the <tt>erase</tt> signatures, so that
-the full specification of <tt>erase()</tt> applies to the <tt>pop_xxx()</tt> functions.
-This covers the case for <tt>deque</tt> where <tt>pop_front()</tt> erases the only
-element (which is both the first and last element).
-<p/>
-Open question: the "erase" wording talks about "An erase operation" &mdash;
-are <tt>pop_front</tt> and <tt>pop_back</tt> clearly covered by "erase operations"? I
-believe so, as 23.3.3.1 [deque.overview]/1 and other places talk about "insert
-and erase operations" which covers <tt>push</tt>/<tt>pop</tt> functions too. I've added
-a note which could be used to clarify that if desired.
-</p>
-
-<strong>Previous resolution [SUPERSEDED]:</strong>
-<p/>
-<blockquote class="note">
-<p>This wording is relative to N3936.</p> 
-
-<ol>
-<li><p>Change 23.3.3.4 [deque.modifiers] as indicated:</p>
-
-<blockquote>
-<pre>
-iterator erase(const_iterator position);
-iterator erase(const_iterator first, const_iterator last);
-</pre>
-<blockquote><p>
--4- <i>Effects</i>: An erase operation that erases the last element of a deque invalidates only the past-the-end
-iterator and all iterators and references to the erased elements. An erase operation that erases the first
-element of a deque but not the last element invalidates only <ins>iterators and references to</ins> the erased elements. 
-An erase operation that erases neither the first element nor the last element of a deque invalidates the past-the-end iterator
-and all iterators and references to all the elements of the deque.
-<p/>
--5- [&hellip;]
-<p/>
--6- [&hellip;]
-</p>
-</blockquote>
-
-<pre>
-<ins>void pop_front();
-void pop_back();</ins>
-</pre>
-<blockquote><p>
-<ins>-?- <i>Effects</i>: <tt>pop_front</tt> invalidates iterators and references to the first element of the <tt>deque</tt>. 
-<tt>pop_back</tt> invalidates the past-the-end iterator, and all iterators and references to the last element of the <tt>deque</tt>.</ins>
-</p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 23.3.6.5 [vector.modifiers] as indicated:</p>
-<blockquote>
-<blockquote>
-<p>
--5- [&hellip;]
-</p>
-</blockquote>
-
-<pre>
-<ins>void pop_back();</ins>
-</pre>
-<blockquote><p>
-<ins>-?- <i>Effects</i>: Invalidates the past-the-end iterator, and iterators and references to the last element of the vector.</ins>
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-</blockquote>
-
-<p><i>[2014-06-21 Rapperswil]</i></p>
-
-<p>
-Tony van Eerd: Would be good to define "an erase operation is ..." somewhere.
-<p/>
-AM: The containers clause is known to be suboptimal in many ways.
-<p/>
-Looks good 
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>Change 23.3.3.4 [deque.modifiers] as indicated:</p>
-
-<blockquote>
-<pre>
-iterator erase(const_iterator position);
-iterator erase(const_iterator first, const_iterator last);
-<ins>void pop_front();
-void pop_back();</ins>
-</pre>
-<blockquote><p>
--4- <i>Effects</i>: An erase operation that erases the last element of a deque invalidates only the past-the-end
-iterator and all iterators and references to the erased elements. An erase operation that erases the first
-element of a deque but not the last element invalidates only <ins>iterators and references to</ins> the erased elements. 
-An erase operation that erases neither the first element nor the last element of a deque invalidates the past-the-end iterator
-and all iterators and references to all the elements of the deque. <ins>[<i>Note</i>: <tt>pop_front</tt> and <tt>pop_back</tt> 
-are erase operations &mdash; <i>end note</i>]</ins>
-</p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 23.3.6.5 [vector.modifiers] as indicated:</p>
-<blockquote>
-<pre>
-iterator erase(const_iterator position);
-iterator erase(const_iterator first, const_iterator last);
-<ins>void pop_back();</ins>
-</pre>
-<blockquote><p>
--3- <i>Effects</i>: Invalidates iterators and references at or after the point of the erase.
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2366"></a>2366. <tt>istreambuf_iterator</tt> end-of-stream equality</h3>
 <p><b>Section:</b> 24.6.3 [istreambuf.iterator] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Hyman Rosen <b>Opened:</b> 2014-02-19 <b>Last modified:</b> 2014-06-24</p>
@@ -18286,9 +17936,9 @@ If we're going to say that we're converting by the rules of <tt>strtold</tt>, th
 
 <hr>
 <h3><a name="2383"></a>2383. Overflow cannot be ill-formed for chrono::duration integer literals</h3>
-<p><b>Section:</b> 20.12.5.8 [time.duration.literals] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-05-16 <b>Last modified:</b> 2014-06-24</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Section:</b> 20.12.5.8 [time.duration.literals] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-05-16 <b>Last modified:</b> 2014-11-08</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 20.12.5.8 [time.duration.literals] p3 says:
@@ -18307,6 +17957,10 @@ Overflow could be detected if the duration integer literals were
 literal operator templates, otherwise overflow can either be undefined
 or a run-time error, not ill-formed.
 </p>
+
+<p><i>[Urbana 2014-11-07: Move to Open]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -19386,141 +19040,6 @@ Table 65 &mdash; <ins><tt>basic_string(const basic_string&amp;, size_type, size_
 
 
 <hr>
-<h3><a name="2403"></a>2403. <tt>stof()</tt> should call <tt>strtof()</tt> and <tt>wcstof()</tt></h3>
-<p><b>Section:</b> 21.5 [string.conversions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2014-06-29</p>
-<p><b>View all other</b> <a href="lwg-index.html#string.conversions">issues</a> in [string.conversions].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-<tt>stof()</tt> is currently specified to call <tt>strtod()</tt>/<tt>wcstod()</tt> (which converts the given string to 
-<tt>double</tt>) and then it's specified to convert that <tt>double</tt> to <tt>float</tt>. This performs rounding twice, 
-which introduces error. Here's an example written up by James McNellis:
-<p/>
-Consider the following number <tt>X</tt>:
-</p>
-<blockquote>
-<pre>
-1.999999821186065729339276231257827021181583404541015625 (X)
-</pre>
-</blockquote>
-<p>
-This number is exactly representable in binary as:
-</p>
-<blockquote>
-<pre>
-1.111111111111111111111101000000000000000000000000000001
-* ^1st                  ^23rd                        ^52nd
-</pre>
-</blockquote>
-<p>
-I've marked the 23rd and 52nd fractional bits. These are the least significant bits for <tt>float</tt> and <tt>double</tt>, 
-respectively.
-<p/>
-If we convert this number directly to <tt>float</tt>, we take the 23 most significant bits:
-</p>
-<blockquote>
-<pre>
-1.11111111111111111111110
-</pre>
-</blockquote>
-<p>
-The next bit is a one and the tail is nonzero (the 54th fractional bit is a one), so we round up. This gives us the correctly 
-rounded result:
-</p>
-<blockquote>
-<pre>
-1.11111111111111111111111
-</pre>
-</blockquote>
-<p>
-So far so good. But... If we convert <tt>X</tt> to <tt>double</tt>, we take the 52 most significant bits:
-</p>
-<blockquote>
-<pre>
-1.1111111111111111111111010000000000000000000000000000 (Y)
-</pre>
-</blockquote>
-<p>
-The next bit is a zero, so we round down (truncating the value). If we then convert <tt>Y</tt> to <tt>float</tt>, we take 
-its 23 most significant bits:
-</p>
-<blockquote>
-<pre>
-1.11111111111111111111110
-</pre>
-</blockquote>
-<p>
-The next bit is a one and the tail is zero, so we round to even (leaving the value unchanged). This is off by 1ulp from the 
-correctly rounded result.
-</p>
-
-<p><i>[2014-06 Rapperswil]</i></p>
-
-<p>
-Marshall Clow will look at this.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>Change 21.5 [string.conversions] p4+p6 as indicated:</p>
-
-<blockquote>
-<pre>
-float stof(const string&amp; str, size_t* idx = 0);
-double stod(const string&amp; str, size_t* idx = 0);
-long double stold(const string&amp; str, size_t* idx = 0);
-</pre>
-<blockquote>
-<p>
--4- <i>Effects</i>: <del>the first two</del><ins>These</ins> functions call <ins><tt>strtof(str.c_str(), ptr)</tt>,</ins> 
-<tt>strtod(str.c_str(), ptr)</tt><ins>,</ins> and <del>the third function calls</del> <tt>strtold(str.c_str(), ptr)</tt><ins>, 
-respectively</ins>. Each function returns the converted result, if any. [&hellip;]
-<p/>
-[&hellip;]
-<p/>
--6- <i>Throws</i>: <tt>invalid_argument</tt> if <ins><tt>strtof</tt>,</ins> <tt>strtod</tt><ins>,</ins> or <tt>strtold</tt> reports 
-that no conversion could be performed. Throws <tt>out_of_range</tt> if <ins><tt>strtof</tt>,</ins> <tt>strtod</tt><ins>,</ins> or 
-<tt>strtold</tt> sets <tt>errno</tt> to <tt>ERANGE</tt> or if the converted value is outside the range of representable 
-values for the return type.
-</p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 21.5 [string.conversions] p11+p13 as indicated:</p>
-
-<blockquote>
-<pre>
-float stof(const wstring&amp; str, size_t* idx = 0);
-double stod(const wstring&amp; str, size_t* idx = 0);
-long double stold(const wstring&amp; str, size_t* idx = 0);
-</pre>
-<blockquote>
-<p>
--11- <i>Effects</i>: <del>the first two</del><ins>These</ins> functions call <ins><tt>wcstof(str.c_str(), ptr)</tt>,</ins> 
-<tt>wcstod(str.c_str(), ptr)</tt><ins>,</ins> and <del>the third function calls</del> <tt>wcstold(str.c_str(), ptr)</tt><ins>, 
-respectively</ins>. Each function returns the converted result, if any. [&hellip;]
-<p/>
-[&hellip;]
-<p/>
--13- <i>Throws</i>: <tt>invalid_argument</tt> if <ins><tt>wcstof</tt>,</ins> <tt>wcstod</tt><ins>,</ins> or <tt>wcstold</tt> 
-reports that no conversion could be performed. Throws <tt>out_of_range</tt> if <ins><tt>wcstof</tt>,</ins> <tt>wcstod</tt><ins>,</ins> 
-or <tt>wcstold</tt> sets <tt>errno</tt> to <tt>ERANGE</tt>.
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2406"></a>2406. <tt>negative_binomial_distribution</tt> should reject <tt>p == 1</tt></h3>
 <p><b>Section:</b> 26.5.8.3.4 [rand.dist.bern.negbin] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2014-11-05</p>
@@ -19727,57 +19246,6 @@ otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
 
 
 <hr>
-<h3><a name="2411"></a>2411. <tt>shared_ptr</tt> is only contextually convertible to <tt>bool</tt></h3>
-<p><b>Section:</b> 20.8.2.2 [util.smartptr.shared] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-06-21 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared">active issues</a> in [util.smartptr.shared].</p>
-<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared">issues</a> in [util.smartptr.shared].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-N3920 made this edit, which is correct but unrelated to the support for arrays:
-</p>
-<blockquote>
-<p>Change 20.7.2.2 [util.smartptr.shared] p2 as follows:</p>
-<blockquote>
-<p>
-Specializations of <tt>shared_ptr</tt> shall be <tt>CopyConstructible</tt>, <tt>CopyAssignable</tt>, and <tt>LessThanComparable</tt>, 
-allowing their use in standard containers. Specializations of <tt>shared_ptr</tt> shall be <ins>contextually</ins> convertible to 
-<tt>bool</tt>, allowing their use in boolean expressions and declarations in conditions. [&hellip;]
-</p>
-</blockquote>
-</blockquote>
-<p>
-That change is actually fixing a defect in the current wording and should be applied directly to the working paper, not just to the
-Library Fundamentals TS. The declarations of the conversion operator in 20.8.2.2 [util.smartptr.shared] and 
-20.8.2.2.5 [util.smartptr.shared.obs] are <tt>explicit</tt> which contradicts the "convertible to <tt>bool</tt>" statement. The
-intention is definitely for <tt>shared_ptr</tt> to only be contextually convertible to <tt>bool</tt>.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>Change 20.8.2.2 [util.smartptr.shared] p2 as indicated:</p>
-
-<blockquote>
-<p>
--2- Specializations of <tt>shared_ptr</tt> shall be <tt>CopyConstructible</tt>, <tt>CopyAssignable</tt>, and <tt>LessThanComparable</tt>,
-allowing their use in standard containers. Specializations of <tt>shared_ptr</tt> shall be <ins>contextually</ins> convertible to 
-<tt>bool</tt>, allowing their use in boolean expressions and declarations in conditions. The template parameter <tt>T</tt> of
-<tt>shared_ptr</tt> may be an incomplete type.
-</p>
-</blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2412"></a>2412. <tt>promise::set_value()</tt> and <tt>promise::get_future()</tt> should not race</h3>
 <p><b>Section:</b> 30.6.5 [futures.promise], 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-06-23 <b>Last modified:</b> 2014-06-29</p>
@@ -19907,10 +19375,10 @@ The corresponding resolution should take care not to conflict with the intention
 
 <hr>
 <h3><a name="2414"></a>2414. Member function reentrancy should be implementation-defined</h3>
-<p><b>Section:</b> 17.6.5.8 [reentrancy] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-07-01 <b>Last modified:</b> 2014-07-02</p>
+<p><b>Section:</b> 17.6.5.8 [reentrancy] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-07-01 <b>Last modified:</b> 2014-11-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#reentrancy">issues</a> in [reentrancy].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 N3936 17.6.5.8 [reentrancy]/1 talks about "functions", but that doesn't address the scenario of calling different member 
@@ -19922,6 +19390,10 @@ very specific scenarios.
 <p/>
 (For clarity, this issue has been split off from LWG <a href="lwg-closed.html#2382">2382</a>.)
 </p>
+
+<p><i>[Urbana 2014-11-07: Move to Open]</i></p>
+
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -20418,64 +19890,6 @@ types (3.9 [basic.types]).</ins>
 
 
 <hr>
-<h3><a name="2425"></a>2425. <tt>operator delete(void*, size_t)</tt> doesn't invalidate pointers sufficiently</h3>
-<p><b>Section:</b> 18.6.1 [new.delete] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-08-29 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View other</b> <a href="lwg-index-open.html#new.delete">active issues</a> in [new.delete].</p>
-<p><b>View all other</b> <a href="lwg-index.html#new.delete">issues</a> in [new.delete].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-18.6.1.1 [new.delete.single]/12 says:
-</p>
-<blockquote><p>
-<i>Requires</i>: <tt>ptr</tt> shall be a null pointer or its value shall be a value returned by an earlier call to the 
-(possibly replaced) <tt>operator new(std::size_t)</tt> or <tt>operator new(std::size_t,const std::nothrow_t&amp;)</tt> 
-which has not been invalidated by an intervening call to <tt>operator delete(void*)</tt>.
-</p></blockquote>
-<p>
-This should say:
-</p>
-<blockquote><p>
-[&hellip;] by an intervening call to <tt>operator delete(void*)</tt> <ins>or <tt>operator delete(void*, std::size_t)</tt></ins>.
-</p></blockquote>
-<p>
-Likewise at the end of 18.6.1.2 [new.delete.array]/11, <ins><tt>operator delete[](void*, std::size_t)</tt></ins>.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<ol>
-<li><p>Change 18.6.1.1 [new.delete.single]p12 as indicated:</p>
-
-<blockquote>
-<p>
--12- <i>Requires</i>: <tt>ptr</tt> shall be a null pointer or its value shall be a value returned by an earlier call to the 
-(possibly replaced) <tt>operator new(std::size_t)</tt> or <tt>operator new(std::size_t,const std::nothrow_t&amp;)</tt> which 
-has not been invalidated by an intervening call to <tt>operator delete(void*)</tt> <ins>or 
-<tt>operator delete(void*, std::size_t)</tt></ins>.
-</p>
-</blockquote>
-</li>
-
-<li><p>Change 18.6.1.2 [new.delete.array]p11 as indicated:</p>
-
-<blockquote>
-<p>
--11- <i>Requires</i>: <tt>ptr</tt> shall be a null pointer or its value shall be the value returned by an earlier call to 
-<tt>operator new[](std::size_t)</tt> or <tt>operator new[](std::size_t,const std::nothrow_t&amp;)</tt> which 
-has not been invalidated by an intervening call to <tt>operator delete[](void*)</tt> <ins>or 
-<tt>operator delete[](void*, std::size_t)</tt></ins>.
-</p>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2426"></a>2426. Issue about <tt>compare_exchange</tt></h3>
 <p><b>Section:</b> 29.6.5 [atomics.types.operations.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Hans Boehm <b>Opened:</b> 2014-08-25 <b>Last modified:</b> 2014-10-07</p>
@@ -20726,94 +20140,6 @@ do {
 
 
 <hr>
-<h3><a name="2427"></a>2427. Container adaptors as sequence containers, redux</h3>
-<p><b>Section:</b> 23.3.1 [sequences.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2014-08-29 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-LWG <a href="lwg-defects.html#2194">2194</a> removed "These container adaptors meet the requirements for sequence containers." from 
-23.6.1 [container.adaptors.general].
-<p/>
-However, N3936 23.3.1 [sequences.general]/p2 still says "The headers <tt>&lt;queue&gt;</tt> and <tt>&lt;stack&gt;</tt> 
-define container adaptors (23.6) that also meet the requirements for sequence containers." I assume this is just an oversight.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<ol>
-<li><p>Delete paragraph 2 of 23.3.1 [sequences.general] as indicated:</p>
-
-<blockquote>
-<p>
-<del>-2- The headers <tt>&lt;queue&gt;</tt> and <tt>&lt;stack&gt;</tt> define container adaptors (23.6) that 
-also meet the requirements for sequence containers.</del>
-</p>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2428"></a>2428. "External declaration" used without being defined</h3>
-<p><b>Section:</b> 17.6.2.2 [using.headers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2014-09-03 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View all other</b> <a href="lwg-index.html#using.headers">issues</a> in [using.headers].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-17.6.2.2 [using.headers]/3 says
-</p>
-<blockquote><p>
-A translation unit shall include a header only outside of any external declaration or definition [&hellip;]
-</p></blockquote>
-<p>
-This wording appears to be borrowed from the C standard. However, the term "external declaration" is not defined 
-in the C++ standard, and in fact is only used here as far as I can tell, so it is unclear what it means. The C 
-standard does define external declarations as (WG14 N1570 6.9 External definitions/4-5):
-</p>
-<blockquote><p>
-As discussed in 5.1.1.1, the unit of program text after preprocessing is a translation unit, which consists of a 
-sequence of external declarations. These are described as "external" because they appear outside any function 
-(and hence have file scope). [...] An external definition is an external declaration that is also a definition of 
-a function (other than an inline definition) or an object.
-</p></blockquote>
-<p>
-The corresponding description of a translation unit in C++ is "A translation unit consists of a sequence of declarations." 
-(3.5 [basic.link]/3).
-<p/>
-So it appears that the C++ counterpart of "external declaration" in C is simply a "declaration" at file scope. There 
-is no need to specifically limit the statement in 17.6.2.2 [using.headers]/3 to file-scope declarations, however, 
-since every non-file-scope declaration is necessarily inside a file-scope declaration, so banning including a header 
-inside file-scope declarations necessarily bans including one inside non-file-scope declarations as well.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N3936.
-</p>
-<ol>
-<li><p>Edit 17.6.2.2 [using.headers] as indicated:</p>
-
-<blockquote>
-<p>
-A translation unit shall include a header only outside of any <del>external</del> declaration or definition, and shall
-include the header lexically before the first reference in that translation unit to any of the entities declared
-in that header. No diagnostic is required.
-</p>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2431"></a>2431. Missing regular expression traits requirements</h3>
 <p><b>Section:</b> 28.3 [re.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-09-30 <b>Last modified:</b> 2014-11-04</p>
@@ -20893,196 +20219,6 @@ namespace std {
 </pre>
 </blockquote>
 
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2433"></a>2433. <tt>uninitialized_copy()</tt>/etc. should tolerate overloaded <tt>operator&amp;</tt></h3>
-<p><b>Section:</b> 20.7.12 [specialized.algorithms] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View all other</b> <a href="lwg-index.html#specialized.algorithms">issues</a> in [specialized.algorithms].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-This restriction isn't necessary anymore. In fact, this is the section that defines <tt>addressof()</tt>.
-</p>
-<p>
-(Editorial note: We can depict these algorithms as calling <tt>addressof()</tt> instead of <tt>std::addressof()</tt> 
-thanks to 17.6.1.1 [contents]/3 "Whenever a name <tt>x</tt> defined in the standard library is mentioned, the name 
-<tt>x</tt> is assumed to be fully qualified as <tt>::std::x</tt>, unless explicitly described otherwise.")
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N3936.
-</p>
-
-<ol>
-<li><p>Change 20.7.12 [specialized.algorithms] p1 as depicted:</p>
-
-<blockquote>
-<p>
--1- <del>All the iterators that are used as formal template parameters in the following algorithms are required to
-have their <tt>operator*</tt> return an object for which <tt>operator&amp;</tt> is defined and returns a pointer to 
-<tt>T</tt>.</del> In the algorithm <tt>uninitialized_copy</tt>, the formal template parameter <tt>InputIterator</tt> 
-is required to satisfy the requirements of an input iterator (24.2.3). In all of the following algorithms, the formal 
-template parameter <tt>ForwardIterator</tt> is required to satisfy the requirements of a forward iterator (24.2.5), 
-and is required to have the property that no exceptions are thrown from increment, assignment, comparison, or indirection
-through valid iterators. In the following algorithms, if an exception is thrown there are no effects.
-</p>
-</blockquote>
-</li>
-
-<li><p>Change 20.7.12.2 [uninitialized.copy] p1 as depicted:</p>
-<blockquote>
-<p>
--1- <i>Effects</i>:
-</p>
-<blockquote>
-<pre>
-for (; first != last; ++result, ++first)
-  ::new (static_cast&lt;void*&gt;(<ins>addressof(</ins><del>&amp;</del>*result<ins>)</ins>))
-    typename iterator_traits&lt;ForwardIterator&gt;::value_type(*first);
-</pre>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 20.7.12.2 [uninitialized.copy] p3 as depicted:</p>
-<blockquote>
-<p>
--3- <i>Effects</i>:
-</p>
-<blockquote>
-<pre>
-for (; n &gt; 0; ++result, ++first, --n) {
-  ::new (static_cast&lt;void*&gt;(<ins>addressof(</ins><del>&amp;</del>*result<ins>)</ins>))
-    typename iterator_traits&lt;ForwardIterator&gt;::value_type(*first);
-}
-</pre>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 20.7.12.3 [uninitialized.fill] p1 as depicted:</p>
-<blockquote>
-<p>
--1- <i>Effects</i>:
-</p>
-<blockquote>
-<pre>
-for (; first != last; ++first)
-  ::new (static_cast&lt;void*&gt;(<ins>addressof(</ins><del>&amp;</del>*first<ins>)</ins>))
-    typename iterator_traits&lt;ForwardIterator&gt;::value_type(x);
-</pre>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 20.7.12.4 [uninitialized.fill.n] p1 as depicted:</p>
-<blockquote>
-<p>
--1- <i>Effects</i>:
-</p>
-<blockquote>
-<pre>
-for (; n--; ++first)
-  ::new (static_cast&lt;void*&gt;(<ins>addressof(</ins><del>&amp;</del>*first<ins>)</ins>))
-    typename iterator_traits&lt;ForwardIterator&gt;::value_type(x);
-return first;
-</pre>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2434"></a>2434. <tt>shared_ptr::use_count()</tt> is efficient</h3>
-<p><b>Section:</b> 20.8.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.obs">active issues</a> in [util.smartptr.shared.obs].</p>
-<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.obs">issues</a> in [util.smartptr.shared.obs].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-<tt>shared_ptr</tt> and <tt>weak_ptr</tt> have Notes that their <tt>use_count()</tt> might be inefficient. 
-This is an attempt to acknowledge reflinked implementations (which can be used by Loki smart pointers, for 
-example). However, there aren't any <tt>shared_ptr</tt> implementations that use reflinking, especially 
-after C++11 recognized the existence of multithreading. Everyone uses atomic refcounts, so <tt>use_count()</tt> 
-is just an atomic load.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N3936.
-</p>
-
-<ol>
-<li><p>Change 20.8.2.2.5 [util.smartptr.shared.obs] p7-p10 as depicted:</p>
-
-<blockquote>
-<pre>
-long use_count() const noexcept;
-</pre>
-<blockquote>
-<p>
--7- <i>Returns</i>: the number of <tt>shared_ptr</tt> objects, <tt>*this</tt> included, that <em>share ownership</em> with 
-<tt>*this</tt>, or 0 when <tt>*this</tt> is <em>empty</em>.
-<p/>
-<del>-8- [<i>Note</i>: <tt>use_count()</tt> is not necessarily efficient. &mdash; <i>end note</i>]</del>
-</p>
-</blockquote>
-<pre>
-bool unique() const noexcept;
-</pre>
-<blockquote>
-<p>
--9- <i>Returns</i>: <tt>use_count() == 1</tt>.
-<p/>
--10- [<i>Note</i>: <del><tt>unique()</tt> may be faster than <tt>use_count()</tt>.</del> If you are using <tt>unique()</tt> 
-to implement copy on write, do not rely on a specific value when <tt>get() == 0</tt>. &mdash; <i>end note</i>]
-</p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 20.8.2.3.5 [util.smartptr.weak.obs] p1-p4 as depicted:</p>
-
-<blockquote>
-<pre>
-long use_count() const noexcept;
-</pre>
-<blockquote>
-<p>
--1- <i>Returns</i>: 0 if <tt>*this</tt> is <em>empty</em>; otherwise, the number of <tt>shared_ptr</tt> instances 
-that <em>share ownership</em> with <tt>*this</tt>.
-<p/>
-<del>-2- [<i>Note</i>: <tt>use_count()</tt> is not necessarily efficient. &mdash; <i>end note</i>]</del>
-</p>
-</blockquote>
-<pre>
-bool expired() const noexcept;
-</pre>
-<blockquote>
-<p>
--3- <i>Returns</i>: <tt>use_count() == 0</tt>.
-<p/>
-<del>-4- [<i>Note</i>: <tt>expired()</tt> may be faster than <tt>use_count()</tt>. &mdash; <i>end note</i>]</del>
-</p>
-</blockquote>
-</blockquote>
 </li>
 </ol>
 
@@ -21523,385 +20659,6 @@ This wording is relative to N3936.
 </td>
 </tr>
 </table>
-</blockquote></li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2438"></a>2438. <tt>std::iterator</tt> inheritance shouldn't be mandated</h3>
-<p><b>Section:</b> 24.4.2 [iterator.basic] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-For LWG convenience, nine STL iterators are depicted as deriving from <tt>std::iterator</tt> to get their 
-<tt>iterator_category</tt>/etc. typedefs. Unfortunately (and unintentionally), this also mandates the 
-inheritance, which is observable (not just through <tt>is_base_of</tt>, but also overload resolution). 
-This is unfortunate because it confuses users, who can be misled into thinking that their own iterators 
-must derive from <tt>std::iterator</tt>, or that overloading functions to take <tt>std::iterator</tt> is 
-somehow meaningful. This is also unintentional because the STL's most important iterators, the container 
-iterators, aren't required to derive from <tt>std::iterator</tt>. (Some are even allowed to be raw pointers.)  
-Finally, this unnecessarily constrains implementers, who may not want to derive from <tt>std::iterator</tt>.  
-(For example, to simplify debugger views.)
-<p/>
-We could add wording to 24.4.2 [iterator.basic] saying that any depicted inheritance is for exposition 
-only, but that wouldn't really solve reader confusion. Replacing the depicted inheritance with direct typedefs 
-will prevent confusion. Note that implementers won't be required to change their code &mdash; they are free to 
-continue deriving from <tt>std::iterator</tt> if they want.
-<p/>
-(Editorial note: The order of the typedefs follows the order of <tt>std::iterator</tt>'s template parameters.)
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N3936.
-</p>
-
-<ol>
-<li><p>Change 20.7.10 [storage.iterator], class template <tt>raw_storage_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class OutputIterator, class T&gt;
-class raw_storage_iterator
-  <del>: public iterator&lt;output_iterator_tag,void,void,void,void&gt;</del> {
-public:
-  <ins>typedef output_iterator_tag iterator_category;
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;</ins>
-
-  explicit raw_storage_iterator(OutputIterator x);
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.5.1.1 [reverse.iterator], class template <tt>reverse_iterator</tt> synopsis, as depicted
-(editorial note: this reorders "<tt>reference</tt>, <tt>pointer</tt>" to "<tt>pointer</tt>, <tt>reference</tt>" 
-and aligns whitespace):</p>
-
-<blockquote>
-<pre>
-template &lt;class Iterator&gt;
-class reverse_iterator <del>: public 
-  iterator&lt;typename iterator_traits&lt;Iterator&gt;::iterator_category,
-  typename iterator_traits&lt;Iterator&gt;::value_type,
-  typename iterator_traits&lt;Iterator&gt;::difference_type,
-  typename iterator_traits&lt;Iterator&gt;::pointer,
-  typename iterator_traits&lt;Iterator&gt;::reference&gt;</del> {
-public:
-  <del>typedef Iterator iterator_type;
-  typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
-  typedef typename iterator_traits&lt;Iterator&gt;::reference reference;
-  typedef typename iterator_traits&lt;Iterator&gt;::pointer pointer;</del>
-  <ins>typedef Iterator                                              iterator_type;
-  typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
-  typedef typename iterator_traits&lt;Iterator&gt;::value_type        value_type;
-  typedef typename iterator_traits&lt;Iterator&gt;::difference_type   difference_type;
-  typedef typename iterator_traits&lt;Iterator&gt;::pointer           pointer;
-  typedef typename iterator_traits&lt;Iterator&gt;::reference         reference;</ins>
-
-  reverse_iterator();
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.5.2.1 [back.insert.iterator], class template <tt>back_insert_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class Container&gt;
-class back_insert_iterator <del>: 
-  public iterator&lt;output_iterator_tag,void,void,void,void&gt;</del> {
-protected:
-  Container* container;
-
-public:
-  <ins>typedef output_iterator_tag iterator_category;
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;</ins>
-  typedef Container container_type;
-  explicit back_insert_iterator(Container&amp; x);
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.5.2.3 [front.insert.iterator], class template <tt>front_insert_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class Container&gt;
-class front_insert_iterator <del>: 
-  public iterator&lt;output_iterator_tag,void,void,void,void&gt;</del> {
-protected:
-  Container* container;
-
-public:
-  <ins>typedef output_iterator_tag iterator_category;
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;</ins>
-  typedef Container container_type;
-  explicit front_insert_iterator(Container&amp; x);
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.5.2.5 [insert.iterator], class template <tt>insert_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class Container&gt;
-class insert_iterator <del>: 
-  public iterator&lt;output_iterator_tag,void,void,void,void&gt;</del> {
-protected:
-  Container* container;
-  typename Container::iterator iter;
-
-public:
-  <ins>typedef output_iterator_tag iterator_category;
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;</ins>
-  typedef Container container_type;
-  insert_iterator(Container&amp; x, typename Container::iterator i);
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.6.1 [istream.iterator], class template <tt>istream_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class T, class charT = char, class traits = char_traits&lt;charT&gt;,
-  class Distance = ptrdiff_t&gt;
-class istream_iterator <del>: 
-  public iterator&lt;input_iterator_tag, T, Distance, const T*, const T&amp;&gt;</del> {
-public:
-  <ins>typedef input_iterator_tag iterator_category;
-  typedef T value_type;
-  typedef Distance difference_type;
-  typedef const T* pointer;
-  typedef const T&amp; reference;</ins>
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.6.2 [ostream.iterator], class template <tt>ostream_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class T, class charT = char, class traits = char_traits&lt;charT&gt;&gt;
-class ostream_iterator <del>: 
-  public iterator&lt;output_iterator_tag, void, void, void, void&gt;</del> {
-public:
-  <ins>typedef output_iterator_tag iterator_category;
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;</ins>
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.6.3 [istreambuf.iterator], class template <tt>istreambuf_iterator</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-template &lt;class charT = char, class traits = char_traits&lt;charT&gt; &gt;
-class istreambuf_iterator <del>: 
-  public iterator&lt;input_iterator_tag, charT,
-                  typename traits::off_type, <em>unspecified</em>, charT&gt;</del> {
-public:
-  <ins>typedef input_iterator_tag iterator_category;
-  typedef charT value_type;
-  typedef typename traits::off_type difference_type;
-  typedef <em>unspecified</em> pointer;
-  typedef charT reference;</ins>
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 24.6.4 [ostreambuf.iterator], class template <tt>ostreambuf_iterator</tt> synopsis, as depicted 
-(editorial note: this removes a redundant "public:"):</p>
-
-<blockquote>
-<pre>
-template &lt;class charT = char, class traits = char_traits&lt;charT&gt;&gt;
-class ostreambuf_iterator <del>: 
-  public iterator&lt;output_iterator_tag, void, void, void, void&gt;</del> {
-public:
-  <ins>typedef output_iterator_tag iterator_category;
-  typedef void value_type;
-  typedef void difference_type;
-  typedef void pointer;
-  typedef void reference;</ins>
-  [&hellip;]
-<del>public:</del>
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2439"></a>2439. <tt>unique_copy()</tt> sometimes can't fall back to reading its output</h3>
-<p><b>Section:</b> 25.3.9 [alg.unique] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View all other</b> <a href="lwg-index.html#alg.unique">issues</a> in [alg.unique].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-<tt>unique_copy()</tt>'s wording says that if it's given input-only and output-only iterators, it needs 
-the input's value type to be copyable. This is correct, because in this case the algorithm must have a 
-local element copy in order to detect duplicates.
-<p/>
-The wording also says that if it's given an <tt>InputIterator</tt> that's forward or stronger, the input's 
-value type doesn't have to be copyable. This is also correct, because in this case the algorithm can reread 
-the input in order to detect duplicates.
-<p/>
-Finally, the wording says that if it's given an input-only iterator with an <tt>OutputIterator</tt> that's 
-forward or stronger, the input's value type doesn't have to be copyable. This is telling the algorithm to 
-compare its input to its output in order to detect duplicates, but that isn't always possible! If the input 
-and output have the same value type, then they can be compared (as long as <tt>*result = *first</tt> behaves 
-sanely; see below). If they have different value types, then we can't compare them.
-<p/>
-This could be resolved by requiring heterogeneous value types to be comparable in this situation, but that 
-would be extremely tricky to wordsmith (as it would challenge the concept of "group of equal elements" used 
-by the Effects). It will be vastly simpler and more effective to extend the "local element copy" requirement 
-to this scenario.
-<p/>
-Note that the input-only, output forward-or-stronger, identical value types scenario needs a bit of work too.  
-We always require *result = *first to be "valid", but in this case we need to additionally require that the 
-assignment actually transfers the value. (Otherwise, we'd be allowing an <tt>op=()</tt> that ignores <tt>*first</tt> 
-and always sets <tt>*result</tt> to zero, or other unacceptable behavior.) This is just <tt>CopyAssignable</tt>.
-<p/>
-(What happens when <tt>unique_copy()</tt> is given a <tt>move_iterator</tt> is a separate issue.)
-<p/>
-To summarize:
-</p>
-<blockquote><p>
-input forward+: no additional requirements
-<p/>
-input-only, output forward+, same value types: needs <tt>CopyAssignable</tt>
-<p/>
-input-only, output forward+, different value types: needs <tt>CopyConstructible</tt> and <tt>CopyAssignable</tt>
-<p/>
-input-only, output-only: needs <tt>CopyConstructible</tt> and <tt>CopyAssignable</tt>
-</p></blockquote>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N3936.
-</p>
-
-<ol>
-<li><p>Change 25.3.9 [alg.unique] p5, as depicted:</p>
-
-<blockquote>
-<pre>
-template&lt;class InputIterator, class OutputIterator>
-OutputIterator
-unique_copy(InputIterator first, InputIterator last,
-            OutputIterator result);
-template&lt;class InputIterator, class OutputIterator,
-         class BinaryPredicate>
-OutputIterator
-unique_copy(InputIterator first, InputIterator last,
-            OutputIterator result, BinaryPredicate pred);
-</pre>
-<blockquote>
-<p>
--5- <i>Requires</i>: The comparison function shall be an equivalence relation. The ranges [<tt>first,last</tt>) and
-[<tt>result,result+(last-first)</tt>) shall not overlap. The expression <tt>*result = *first</tt> shall be valid.
-<del>If neither <tt>InputIterator</tt> nor <tt>OutputIterator</tt> meets the requirements of forward iterator then the
-value type of <tt>InputIterator</tt> shall be <tt>CopyConstructible</tt> (Table 21) and <tt>CopyAssignable</tt> (Table 23).
-Otherwise <tt>CopyConstructible</tt> is not required.</del><ins>Let <tt>T</tt> be the value type of <tt>InputIterator</tt>. 
-If <tt>InputIterator</tt> meets the forward iterator requirements, then there are no additional requirements for <tt>T</tt>. 
-Otherwise, if <tt>OutputIterator</tt> meets the forward iterator requirements and its value type is the same as <tt>T</tt>, 
-then <tt>T</tt> shall be <tt>CopyAssignable</tt> (Table 23). Otherwise, <tt>T</tt> shall be both <tt>CopyConstructible</tt> 
-(Table 21) and <tt>CopyAssignable</tt>.</ins>
-</p>
-</blockquote></blockquote></li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2440"></a>2440. <tt>seed_seq::size()</tt> should be <tt>noexcept</tt></h3>
-<p><b>Section:</b> 26.5.7.1 [rand.util.seedseq] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2014-11-03</p>
-<p><b>View other</b> <a href="lwg-index-open.html#rand.util.seedseq">active issues</a> in [rand.util.seedseq].</p>
-<p><b>View all other</b> <a href="lwg-index.html#rand.util.seedseq">issues</a> in [rand.util.seedseq].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-Obvious.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N3936.
-</p>
-
-<ol>
-<li><p>Change 26.5.7.1 [rand.util.seedseq], class <tt>seed_seq</tt> synopsis, as depicted:</p>
-
-<blockquote>
-<pre>
-class seed_seq
-{
-public:
-  [&hellip;]
-  size_t size() const <ins>noexcept</ins>;
-  [&hellip;]
-};
-</pre>
-</blockquote></li>
-
-<li><p>Change 26.5.7.1 [rand.util.seedseq] around p10, as depicted:</p>
-
-<blockquote>
-<pre>
-size_t size() const <ins>noexcept</ins>;
-</pre>
-<blockquote>
-<p>
--10- <i>Returns</i>: The number of 32-bit units that would be returned by a call to <tt>param()</tt>.
-<p/>
-<del>-11- <i>Throws</i>: Nothing.</del>
-<p/>
--12- <i>Complexity</i>: Constant time.
-</p>
-</blockquote>
 </blockquote></li>
 </ol>
 
