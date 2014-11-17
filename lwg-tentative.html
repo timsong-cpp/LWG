@@ -19,7 +19,1716 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-11-09 at 23:11:06 UTC</p>
+<p><p>Revised 2014-11-17 at 19:11:07 UTC</p>
 </p><h2>Tentative Issues</h2>
+<hr>
+<h3><a name="2106"></a>2106. <tt>move_iterator</tt> wrapping iterators returning prvalues</h3>
+<p><b>Section:</b> 24.5.3 [move.iterators] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-11-30 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View all other</b> <a href="lwg-index.html#move.iterators">issues</a> in [move.iterators].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Shouldn't <tt>move_iterator</tt> be specialized so that if the iterator it wraps
+returns a prvalue when dereferenced, the <tt>move_iterator</tt> also returns by
+value? Otherwise, it creates a dangling reference.
+<p/>
+Howard: I believe just changing <tt>move_iterator&lt;I&gt;::reference</tt> would do.
+A direction might be testing on <tt>is_reference&lt;iterator_traits&lt;I&gt;::reference&gt;</tt>, 
+or <tt>is_reference&lt;decltype(*declval&lt;I&gt;())&gt;</tt>.
+<p/>
+Daniel: I would prefer to use a consistent style among the iterator adaptors, so I
+suggest to keep with the <tt>iterator_traits</tt> typedefs if possible. 
+</p>
+<blockquote><pre>
+using reference = typename conditional&lt;
+  is_reference&lt;typename iterator_traits&lt;Iterator&gt;::reference&gt;::value,
+  value_type&amp;&amp;,
+  value_type
+&gt;::type;
+</pre></blockquote>
+<p>
+We might also want to ensure that if <tt>Iterator</tt>'s <tt>reference</tt> type <em>is</em>
+a reference, the referent is equal to <tt>value_type</tt> (after removal of <i>cv</i>-qualifiers). 
+In <em>general</em> we have no such guarantee.
+<p/>
+Marc: In the default case where we don't return <tt>value_type&amp;&amp;</tt>, should we use 
+<tt>value_type</tt> or should we keep the <tt>reference</tt> type of the wrapped iterator?
+<p/>
+Daniel: This suggestion looks appealing at first, but the problem here is that using this typedef
+can make it impossible for <tt>move_iterator</tt> to satisfy its contract, which means returning
+an rvalue of the value type (Currently it says rvalue-reference, but this must be fixed as of
+this issue anyway). I think that user-code can reasonably expect that when it has constructed
+an object <tt>m</tt> of <tt>move_iterator&lt;It&gt;</tt>, where <tt>It</tt> is a valid 
+mutable iterator type, the expression
+</p>
+<blockquote><pre>
+<span style="color:#C80000;font-weight:bold">It::value_type&amp;&amp; rv = *m;</span>
+</pre></blockquote>
+<p>
+is well-formed.
+<p/>
+Let's set <tt>R</tt> equal to <tt>iterator_traits&lt;Iterator&gt;::reference</tt>
+in the following. We can discuss the following situations:
+</p>
+<ol><li><tt>R</tt> is a reference type: We can only return the corresponding xvalue of <tt>R</tt>,
+if <tt>value_type</tt> is reference-related to the referent type, else this is presumably no
+forward iterator and we cannot say much about it, except that it must be convertible to
+<tt>value_type</tt>, so it better should return a prvalue.</li>
+<li><tt>R</tt> is not a reference type: In this case we can rely on a conversion to
+<tt>value_type</tt> again, but not much more. Assume we would return <tt>R</tt> directly,
+this might turn out to have a conversion to an lvalue-reference type of the value type (for
+example). If that is the case, this would indirectly violate the contract of 
+<tt>move_iterator</tt>.</li>
+</ol>
+<p>
+In regard to the first scenario I suggest that implementations are simply required to
+check that <tt>V2 = remove_cv&lt;remove_reference&lt;R&gt;::type&gt;::type</tt> is equal
+to the value type <tt>V1</tt> as a criterion to return this reference as an xvalue, in all other
+cases it should return the value type directly as prvalue.
+<p/>
+The additional advantage of this strategy is, that we always ensure that <tt>reference</tt> has 
+the correct <i>cv</i>-qualification, if <tt>R</tt> is a real reference.
+<p/>
+It is possible to improve this a bit by indeed supporting reference-related types,
+this would require to test <tt>is_same&lt;V1, V2&gt;::value || is_base_of&lt;V1, V2&gt;::value</tt> 
+instead. I'm unsure whether (a) this additional effort is worth it and (b) a strict reading of
+the forward iterator requirements seems not to allow to return a reference-related type (Whether 
+this is a defect or not is another question).
+</p>
+
+<p><i>[2011-12-05: Marc Glisse comments and splits into two resolution alternatives]</i></p>
+
+
+<p>
+I guess I am looking at the speed of:
+</p>
+<blockquote><pre>
+value_type x;
+x = *m;
+</pre></blockquote>
+<p>
+(copy construction would likely trigger copy elision and thus be neutral)
+
+instead of the validity of:
+</p>
+<blockquote><pre>
+value_type&amp;&amp; x = *m;
+</pre></blockquote>
+<p>
+In this sense, Daniels earlier proposition that ignored <tt>value_type</tt> and just did 
+<tt>switch_lvalue_ref_to_rvalue_ref&lt;reference&gt;</tt> was easier to understand (and it didn't 
+require thinking about reference related types).
+<p/>
+The currently proposed resolution has been split into two alternatives.
+</p>
+
+
+<p><i>[2012, Kona]</i></p>
+
+<p>
+Move to Review.
+</p>
+<p>
+Alisdair: This only applies to input iterators, so keep that in mind when thinking about this.
+</p>
+<p>
+STL: I see what B is doing, but not A.
+</p>
+<p>
+Howard: I agree.
+</p>
+<p>
+Alisdair: Should we use <tt>add_rvalue_reference</tt>?
+</p>
+<p>
+STL: No, we do not want reference collapsing.
+</p>
+<p>
+STL: Re A, messing with the CV qualification scares me.
+</p>
+<p>
+Alisdair: Agree. That would break my intent.
+</p>
+<p>
+STL: Actually I don't think it's actually wrong, but I still don't see what it's doing.
+</p>
+<p>
+Alisdair: A is picking the value type, B is picking the proxy type.
+</p>
+<p>
+Howard: I like returning the proxy type.
+</p>
+<p>
+STL: Returning a reference (B) seems right, because the requirements say "reference".
+I suspect that B works correctly if you have a move iterator wrapping a move iterator
+wrapping a thing.  I think that A would mess up the type in the middle.
+</p>
+<p>
+Considerable discussion about which version is correct, checking various examples.
+</p>
+<p>
+STL: Still think B is right. Still don't understand A. In A we are losing the proxyness.
+</p>
+<p>
+Howard: Agree 100%. We don't want to lose the proxy. If it's const, so be it.
+</p>
+<p>
+STL: B is also understandable by mortals.
+</p>
+<p>
+Howard: Remove to review, keep A but move it out of the proposed resolution area
+(but keep it for rational).
+</p>
+<p>
+Alisdair: Adding an explanatory note might be a good idea, if someone wants to write one.
+</p>
+<p>
+Walter: Concerned about losing the word "reference" in p.1.
+</p>
+<p>
+Howard: <tt>move_iterator</tt> will return an xvalue or a prvalue, both of which are rvalues.
+</p>
+
+<p><i>[Proposed resolution A, rejected in preference to the currently proposed resolution (B)
+
+<ol>
+<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
+
+<blockquote><p>
+Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
+except that its dereference operator implicitly converts the value returned by the underlying iterator's
+dereference operator to an rvalue <del>reference</del><ins>of the value type</ins>. Some generic algorithms 
+can be called with move iterators to replace copying with moving.
+</p></blockquote>
+</li>
+
+<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+    typedef Iterator pointer;
+    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
+    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
+24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
+
+<blockquote><p>
+<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt> and
+let <tt><i>V</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::value_type</tt>. If 
+<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt> and if 
+<tt>remove_cv&lt;remove_reference&lt;<i>R</i>&gt;::type&gt;::type</tt> is the same type as <tt><i>V</i></tt>, 
+the template instantiation <tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type 
+named <tt>reference</tt> as a synonym for <tt>remove_reference&lt;<i>R</i>&gt;::type&amp;&amp;</tt>, 
+otherwise as a synonym for <tt><i>V</i></tt>.</ins>
+</p></blockquote>
+</li>
+</ol>
+
+]</i></p>
+
+
+<p><i>[2012, Portland: Move to Tentatively Ready]</i></p>
+
+<p>
+AJM wonders if the implied trait might be useful elsewhere, and worth adding to type traits as a
+transformation type trait.
+</p>
+
+<p>
+Suspicion that the Range SG might find such a trait useful, but wait until there is clear additional
+use of such a trait before standardizing.
+</p>
+
+<p>
+Minor wording tweak to use <tt>add_rvalue_reference</tt> rather than manually adding the <tt>&amp;&amp;</tt>,
+then move to Tentatively Ready.
+</p>
+
+<p><i>[2013-01-09 Howard Hinnant comments]</i></p>
+
+
+<p>
+I believe the P/R for LWG 2106 is incorrect (item 3).  The way it currently reads, <tt>move_iterator&lt;I&gt;::reference</tt> 
+is <em>always</em> an lvalue reference.  I.e. if <tt>R</tt> is an lvalue reference type, then reference becomes 
+<tt>add_rvalue_reference&lt;R&gt;::type</tt> which is just <tt>R</tt>. And if <tt>R</tt> is not a reference type, 
+then reference becomes <tt>R</tt> (which is also just <tt>R</tt> ;-)).
+</p>
+
+<p>
+I believe the correct wording is what was there previously:
+</p>
+
+<p>
+-?- Let <tt>R</tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If <tt>is_reference&lt;R&gt;::value</tt> 
+is true, the template instantiation <tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named 
+<tt>reference</tt> as a synonym for <tt>remove_reference&lt;R&gt;::type&amp;&amp;</tt>, otherwise as a synonym for 
+<tt>R</tt>.
+</p>
+
+<p>
+Additionally Marc Glisse points out that <tt>move_iterator&lt;I&gt;::operator*()</tt> should return 
+<tt>static_cast&lt;reference&gt;(*current)</tt>, not <tt>std::move(*current)</tt>.
+</p>
+
+<p>
+Previous resolution:
+</p>
+<blockquote class="note">
+<p>This wording is relative to the FDIS.</p>
+
+<ol>
+<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
+
+<blockquote><p>
+Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
+except that its dereference operator implicitly converts the value returned by the underlying iterator's
+dereference operator to an rvalue <del>reference</del>. Some generic algorithms 
+can be called with move iterators to replace copying with moving.
+</p></blockquote>
+</li>
+
+<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+    typedef Iterator pointer;
+    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
+    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
+24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
+
+<blockquote><p>
+<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If 
+<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt>, the template instantiation 
+<tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named <tt>reference</tt> 
+as a synonym for <tt>add_rvalue_reference&lt;<i>R</i>&gt;::type</tt>, otherwise as a synonym
+for <tt><i>R</i></tt>.</ins>
+</p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2014-05-19, Daniel comments]</i></p>
+
+<p>
+The term <em>instantiation</em> has been changed to <em>specialization</em> in the newly added paragraph as
+suggested by STL and much preferred by myself.
+</p>
+
+<p><i>[2014-05-19 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on five votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 24.5.3 [move.iterators] p1 as indicated:</p>
+
+<blockquote><p>
+Class template <tt>move_iterator</tt> is an iterator adaptor with the same behavior as the underlying iterator
+except that its indirection operator implicitly converts the value returned by the underlying iterator's
+indirection operator to an rvalue <del>reference</del>. Some generic algorithms 
+can be called with move iterators to replace copying with moving.
+</p></blockquote>
+</li>
+
+<li><p>Change 24.5.3.1 [move.iterator], class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    typedef Iterator iterator_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+    typedef Iterator pointer;
+    typedef typename iterator_traits&lt;Iterator&gt;::value_type value_type;
+    typedef typename iterator_traits&lt;Iterator&gt;::iterator_category iterator_category;
+    typedef <del>value_type&amp;&amp;</del><ins><i>see below</i></ins> reference;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Immediately following the class template <tt>move_iterator</tt> synopsis in 
+24.5.3.1 [move.iterator] insert a new paragraph as indicated:</p>
+
+<blockquote><p>
+<ins>-?- Let <tt><i>R</i></tt> be <tt>iterator_traits&lt;Iterator&gt;::reference</tt>. If 
+<tt>is_reference&lt;<i>R</i>&gt;::value</tt> is <tt>true</tt>, the template specialization 
+<tt>move_iterator&lt;Iterator&gt;</tt> shall define the nested type named <tt>reference</tt> 
+as a synonym for <tt>remove_reference&lt;<i>R</i>&gt;::type&amp;&amp;</tt>, otherwise as a synonym
+for <tt><i>R</i></tt>.</ins>
+</p></blockquote>
+</li>
+
+<li><p>Edit 24.5.3.3.4 [move.iter.op.star] p1 as indicated:</p>
+<blockquote><pre>
+reference operator*() const;
+</pre><blockquote>
+<p>
+-1- <i>Returns</i>: <tt><del>std::move</del><ins>static_cast&lt;reference&gt;</ins>(*current)</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2129"></a>2129. User specializations of <tt>std::initializer_list</tt></h3>
+<p><b>Section:</b> 17.6.4.2.1 [namespace.std], 18.9 [support.initlist] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2012-01-18 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#namespace.std">active issues</a> in [namespace.std].</p>
+<p><b>View all other</b> <a href="lwg-index.html#namespace.std">issues</a> in [namespace.std].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Since the implementation is intended to magically synthesize instances of <tt>std::initializer_list</tt> 
+(rather than by a constructor call, for instance), user specializations of this type can't generally be 
+made to work. I can't find any wording which makes such specializations ill-formed, though, which leads 
+me to suspect that they're technically legal under the provisions of 17.6.4.2.1 [namespace.std] p1.</p>
+
+
+<p><i>[2012, Kona]</i></p>
+
+<p>
+This sounds correct, but we need wording for a resolution.
+</p>
+<p>
+Marshall Clow volunteers to produce wording.
+</p>
+
+<p><i>[2014-02-19, Jonathan Wakely provides proposed wording]</i></p>
+
+
+<p><i>[2014-03-27, Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on six votes in favour.
+</p>
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Add new new paragraph below 18.9 [support.initlist] p2:</p>
+
+<blockquote>
+<p>
+-2- An object of type <tt>initializer_list&lt;E&gt;</tt> provides access to an array of objects of type <tt>const E</tt>. [&hellip;]
+<p/>
+<ins>-?- If an explicit specialization or partial specialization of <tt>initializer_list</tt> is declared, the program is ill-formed.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2212"></a>2212. <tt>tuple_size</tt> for <tt>const pair</tt> request <tt>&lt;tuple&gt;</tt> header</h3>
+<p><b>Section:</b> 20.2 [utility] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-11-09 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View all other</b> <a href="lwg-index.html#utility">issues</a> in [utility].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <tt>&lt;utility&gt;</tt> header declares sufficient of the tuple API to specialize
+the necessary templates for <tt>pair</tt>, notably <tt>tuple_size</tt> and
+<tt>tuple_element</tt>.  However, it does not make available the partial specializations
+that support cv-qualified template arguments, so while I can write the following after
+including only <tt>&lt;utility&gt;</tt>: 
+</p>
+<blockquote><pre>
+#include &lt;utility&gt;
+
+using TestType = std::pair&lt;int, int&gt;;
+static_assert(2 == std::tuple_size&lt;TestType&gt;(), "Pairs have two elements");
+std::tuple_element&lt;0, TestType&gt;::type var{1};
+</pre></blockquote>
+<p>
+the following may fail to compile unless I also include <tt>&lt;tuple&gt;</tt>:
+</p>
+<blockquote><pre>
+#include &lt;utility&gt;
+
+using TestType = const std::pair&lt;int, int&gt;;
+static_assert(2 == std::tuple_size&lt;TestType&gt;(), "Pairs have two elements");
+std::tuple_element&lt;0, TestType&gt;::type var{1};
+</pre></blockquote>
+<p>
+Note, however, that the latter <em>may</em> compile with some standard library implementations
+but not others, leading to subtle portability issues.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Open.
+</p>
+<p>
+Howard notes that we have the same issue with array, so any resolution should apply to that header too.
+</p>
+
+<p><i>[2013-10-18 Daniel provides wording]</i></p>
+
+
+<p>
+The suggested wording uses a similar approach as we already have in 24.7 [iterator.range] to
+ensure that the range access templates are available when at least one of an enumerated list of header files is
+included.
+<p/>
+I also think that the restricted focus on <tt>tuple_size</tt> of this issue is too narrow and should be extended to
+the similar partial template specializations of <tt>tuple_element</tt> as well. Therefore the suggested wording
+ensures this as well.
+</p>
+
+<p><i>[2014-03-27 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on eight votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.4.2.5 [tuple.helper] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class T&gt; class tuple_size&lt;const T&gt;;
+template &lt;class T&gt; class tuple_size&lt;volatile T&gt;;
+template &lt;class T&gt; class tuple_size&lt;const volatile T&gt;;
+</pre><blockquote>
+<p>
+-3- Let <tt><i>TS</i></tt> denote <tt>tuple_size&lt;T&gt;</tt> of the <i>cv</i>-unqualified type <tt>T</tt>. Then 
+each of the three templates shall meet the <tt>UnaryTypeTrait</tt> requirements (20.10.1) with a <tt>BaseCharacteristic</tt> of
+</p>
+<blockquote><pre>
+integral_constant&lt;size_t, <i>TS</i>::value&gt;
+</pre></blockquote>
+<p>
+<ins>-?- In addition to being available via inclusion of the <tt>&lt;tuple&gt;</tt> header, each of the three templates are
+available when any of the headers <tt>&lt;array&gt;</tt> or <tt>&lt;utility&gt;</tt> are included.</ins>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+template &lt;size_t I, class T&gt; class tuple_element&lt;I, const T&gt;;
+template &lt;size_t I, class T&gt; class tuple_element&lt;I, volatile T&gt;;
+template &lt;size_t I, class T&gt; class tuple_element&lt;I, const volatile T&gt;;
+</pre><blockquote>
+<p>
+<ins>-?-</ins> Let <tt><i>TE</i></tt> denote <tt>tuple_element&lt;I, T&gt;</tt> of the <i>cv</i>-unqualified type <tt>T</tt>. 
+Then each of the three templates shall meet the <tt>TransformationTrait</tt> requirements (20.10.1) with a member typedef 
+<tt>type</tt> that names the following type:
+</p>
+<ul>
+<li><p>
+for the first specialization, <tt>add_const&lt;<i>TE</i>::type&gt;::type</tt>,
+</p></li>
+<li><p>
+for the second specialization, <tt>add_volatile&lt;<i>TE</i>::type&gt;::type</tt>, and
+</p></li>
+<li><p>
+for the third specialization, <tt>add_cv&lt;<i>TE</i>::type&gt;::type</tt>.
+</p></li>
+</ul>
+<p>
+<ins>-?- In addition to being available via inclusion of the <tt>&lt;tuple&gt;</tt> header, each of the three templates are
+available when any of the headers <tt>&lt;array&gt;</tt> or <tt>&lt;utility&gt;</tt> are included.</ins>
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2217"></a>2217. <tt>operator==(sub_match, string)</tt> slices on embedded <tt>'\0'</tt>s</h3>
+<p><b>Section:</b> 28.9.2 [re.submatch.op] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-11-26 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.submatch.op">issues</a> in [re.submatch.op].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<blockquote><pre>
+template &lt;class BiIter, class ST, class SA&gt;
+  bool operator==(
+    const basic_string&lt;
+      typename iterator_traits&lt;BiIter&gt;::value_type, ST, SA&gt;&amp; lhs,
+    const sub_match&lt;BiIter&gt;&amp; rhs);
+</pre></blockquote>
+<p>
+is specified as:
+</p>
+<blockquote><p>
+<i>Returns</i>: <tt>rhs.compare(lhs.c_str()) == 0</tt>.
+</p></blockquote>
+<p>
+This is odd because <tt>sub_match::compare(basic_string)</tt> is defined to
+honor embedded <tt>'\0'</tt> characters. This could allow a <tt>sub_match</tt> to <tt>==</tt> or
+<tt>!=</tt> a <tt>std::string</tt> unexpectedly.
+</p>
+
+<p><i>[Daniel:]</i></p>
+
+<p>
+This wording change was done intentionally as of LWG <a href="lwg-defects.html#1181">1181</a>, but the here mentioned slicing
+effect was not considered at that time. It seems best to use another overload of compare to fix this problem:
+</p>
+<blockquote><p>
+<i>Returns</i>: <tt>rhs.str().compare(0, rhs.length(), lhs.data(), lhs.size()) == 0</tt>.
+</p></blockquote>
+<p>
+or
+</p>
+<blockquote><p>
+<i>Returns</i>: <tt>rhs.compare(sub_match&lt;BiIter&gt;::string_type(lhs.data(), lhs.size())) == 0</tt>.
+</p></blockquote>
+
+<p><i>[2013-10-17: Daniel provides concrete wording]</i></p>
+
+
+<p>
+The original wording was suggested to reduce the need to allocate memory during comparisons. The specification would be
+very much easier, if <tt>sub_match</tt> would provide an additional <tt>compare</tt> overload of the form:
+</p>
+<blockquote><pre>
+int compare(const value_type* s, size_t n) const;
+</pre></blockquote>
+<p>
+But given the fact that currently <em>all</em> of <tt>basic_string</tt>'s <tt>compare</tt> overloads are defined in terms
+of temporary string constructions, the following proposed wording does follow the same string-construction route as 
+<tt>basic_string</tt> does (where needed to fix the embedded zeros issue) and to hope that existing implementations
+ignore to interpret this semantics in the literal sense.
+<p/>
+I decided to use the second replacement form
+</p>
+<blockquote><pre>
+<i>Returns</i>: <tt>rhs.compare(sub_match&lt;BiIter&gt;::string_type(lhs.data(), lhs.size())) == 0</tt>.
+</pre></blockquote>
+<p>
+because it already reflects the existing style used in 28.9.2 [re.submatch.op] p31.
+</p>
+
+
+<p><i>[2014-02-15 post-Issaquah session : move to Tentatively Ready]</i></p>
+
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Change 28.9.2 [re.submatch.op] as indicated:</p>
+
+<blockquote><pre>
+template &lt;class BiIter, class ST, class SA&gt;
+  bool operator==(
+    const basic_string&lt;
+      typename iterator_traits&lt;BiIter&gt;::value_type, ST, SA&gt;&amp; lhs,
+    const sub_match&lt;BiIter&gt;&amp; rhs);
+</pre><blockquote>
+<p>
+-7- <i>Returns:</i> <tt>rhs.compare(<del>lhs.c_str()</del><ins>typename sub_match&lt;BiIter&gt;::string_type(lhs.data(), lhs.size())</ins>) == 0</tt>.
+</p>
+</blockquote></blockquote>
+<p>
+[&hellip;]
+</p>
+<blockquote><pre>
+template &lt;class BiIter, class ST, class SA&gt;
+  bool operator&lt;(
+    const basic_string&lt;
+      typename iterator_traits&lt;BiIter&gt;::value_type, ST, SA&gt;&amp; lhs,
+    const sub_match&lt;BiIter&gt;&amp; rhs);
+</pre><blockquote>
+<p>
+-9- <i>Returns:</i> <tt>rhs.compare(<del>lhs.c_str()</del><ins>typename sub_match&lt;BiIter&gt;::string_type(lhs.data(), lhs.size())</ins>) &gt; 0</tt>.
+</p>
+</blockquote></blockquote>
+<p>
+[&hellip;]
+</p>
+<blockquote><pre>
+template &lt;class BiIter, class ST, class SA&gt;
+  bool operator==(const sub_match&lt;BiIter&gt;&amp; lhs,
+                  const basic_string&lt;
+                    typename iterator_traits&lt;BiIter&gt;::value_type, ST, SA>&amp; rhs);
+</pre><blockquote>
+<p>
+-13- <i>Returns:</i> <tt>lhs.compare(<del>rhs.c_str()</del><ins>typename sub_match&lt;BiIter&gt;::string_type(rhs.data(), rhs.size())</ins>) == 0</tt>.
+</p>
+</blockquote></blockquote>
+<p>
+[&hellip;]
+</p>
+<blockquote><pre>
+template &lt;class BiIter, class ST, class SA&gt;
+  bool operator&lt;(const sub_match&lt;BiIter&gt;&amp; lhs,
+                 const basic_string&lt;
+                   typename iterator_traits&lt;BiIter&gt;::value_type, ST, SA>&amp; rhs);
+</pre><blockquote>
+<p>
+-15- <i>Returns:</i> <tt>lhs.compare(<del>rhs.c_str()</del><ins>typename sub_match&lt;BiIter&gt;::string_type(rhs.data(), rhs.size())</ins>) &lt; 0</tt>.
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+</pre><blockquote>
+<p>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+</pre><blockquote>
+<p>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+</pre><blockquote>
+<p>
+</p>
+</blockquote></blockquote>
+
+<blockquote><pre>
+</pre><blockquote>
+<p>
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2230"></a>2230. &quot;<em>see below</em>&quot; for initializer-list constructors of unordered containers</h3>
+<p><b>Section:</b> 23.5 [unord] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-01-06 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord">issues</a> in [unord].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <tt>unordered_map</tt> class definition in 23.5.4.1 [unord.map.overview] declares an
+initializer-list constructor that says "see below":
+</p>
+
+<blockquote><pre>
+unordered_map(initializer_list&lt;value_type&gt;,
+    size_type = <em>see below</em>,
+    const hasher&amp; hf = hasher(),
+    const key_equal&amp; eql = key_equal(),
+    const allocator_type&amp; a = allocator_type());
+</pre></blockquote>
+
+<p>
+But that constructor isn't defined below. The same problem exists for the other unordered associative containers.
+</p>
+
+<p><i>[2013-09 Chicago]</i></p>
+
+<p>
+STL: ordered are also missing declarations, but issue is forthcoming
+<p/>
+Walter: how does adding a signature address issue? &mdash; nevermind 
+<p/>
+Jayson: in his wording, isn't he just dropping the <tt>size_type</tt>?
+<p/> 
+Walter: partial fix is to introduce the name
+<p/>
+Stefanus: explanation of requiring name because of n buckets 
+<p/>
+STL: solution for his issue satisfies both ordered and unordered and is simplier than provided wording 
+<p/>
+STL: patches general table instead 
+<p/>
+STL: proposes adding extra rows instead of extra declarations 
+<p/>
+Stefanus: clarify <tt>n</tt> in the synopsis 
+<p/>
+Walter: general rule, name is optional in declaration 
+<p/>
+Stefanus: how to proceed 
+<p/>
+Walter: significant overlap with forthcoming issue, suggestion to defer
+</p>
+
+<p><i>[2014-02-20 Re-open Deferred issues as Priority 4]</i></p>
+
+
+<p><i>[2014-03-27 Jonathan improves proposed wording]</i></p>
+
+
+<p><i>[2014-05-20 STL and Jonathan communicate]</i></p>
+
+
+<p>
+STL: With <a href="lwg-defects.html#2322">2322</a> resolved, is there anything left for this issue to fix?
+<p/>
+Jonathan: The synopsis still says "<em>see below</em>" and it's not immediately clear
+that "<em>see below</em>" means "see the definition of a different constructor,
+which defines the behaviour of this one due to a table defined much earlier".
+</p>
+
+<p><i>[2014-05-23 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on five votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Edit 23.5.4.1 [unord.map.overview], class template <tt>unordered_map</tt> synopsis, as follows:</p>
+
+<blockquote><pre>
+[&hellip;]
+unordered_map(initializer_list&lt;value_type&gt; <ins>il</ins>,
+  size_type <ins>n</ins> = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>Edit 23.5.4.2 [unord.map.cnstr] as follows:</p>
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+unordered_map(InputIterator f, InputIterator l,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+<ins>unordered_map(initializer_list&lt;value_type&gt; il,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());</ins>
+</pre><blockquote>
+<p>
+-3- <i>Effects</i>: Constructs an empty <tt>unordered_map</tt> using the specified hash function, key equality function,
+and allocator, and using at least <tt>n</tt> buckets. If <tt>n</tt> is not provided, the number of buckets is
+implementation-defined. Then inserts elements from the range <tt>[f, l)</tt> <ins>for the first form, or from the range 
+<tt>[il.begin(), il.end())</tt> for the second form</ins>. <tt>max_load_factor()</tt> returns <tt>1.0</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Edit 23.5.5.1 [unord.multimap.overview], class template <tt>unordered_multimap</tt> synopsis, as follows:</p>
+
+<blockquote><pre>
+[&hellip;]
+unordered_multimap(initializer_list&lt;value_type&gt; <ins>il</ins>,
+  size_type <ins>n</ins> = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>Edit 23.5.5.2 [unord.multimap.cnstr] as follows:</p>
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+unordered_multimap(InputIterator f, InputIterator l,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+<ins>unordered_multimap(initializer_list&lt;value_type&gt; il,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());</ins>
+</pre><blockquote>
+<p>
+-3- <i>Effects</i>: Constructs an empty <tt>unordered_multimap</tt> using the specified hash function, key equality function,
+and allocator, and using at least <tt>n</tt> buckets. If <tt>n</tt> is not provided, the number of buckets is
+implementation-defined. Then inserts elements from the range <tt>[f, l)</tt> <ins>for the first form, or from the range 
+<tt>[il.begin(), il.end())</tt> for the second form</ins>. <tt>max_load_factor()</tt> returns <tt>1.0</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Edit 23.5.6.1 [unord.set.overview], class template <tt>unordered_set</tt> synopsis, as follows:</p>
+
+<blockquote><pre>
+[&hellip;]
+unordered_set(initializer_list&lt;value_type&gt; <ins>il</ins>,
+  size_type <ins>n</ins> = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>Edit 23.5.6.2 [unord.set.cnstr] as follows:</p>
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+unordered_set(InputIterator f, InputIterator l,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+<ins>unordered_set(initializer_list&lt;value_type&gt; il,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());</ins>
+</pre><blockquote>
+<p>
+-3- <i>Effects</i>: Constructs an empty <tt>unordered_set</tt> using the specified hash function, key equality function,
+and allocator, and using at least <tt>n</tt> buckets. If <tt>n</tt> is not provided, the number of buckets is
+implementation-defined. Then inserts elements from the range <tt>[f, l)</tt> <ins>for the first form, or from the range 
+<tt>[il.begin(), il.end())</tt> for the second form</ins>. <tt>max_load_factor()</tt> returns <tt>1.0</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+
+<li><p>Edit 23.5.7.1 [unord.multiset.overview], class template <tt>unordered_multiset</tt> synopsis, as follows:</p>
+
+<blockquote><pre>
+[&hellip;]
+unordered_multiset(initializer_list&lt;value_type&gt; <ins>il</ins>,
+  size_type <ins>n</ins> = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>Edit 23.5.7.2 [unord.multiset.cnstr] as follows:</p>
+<blockquote><pre>
+template &lt;class InputIterator&gt;
+unordered_multiset(InputIterator f, InputIterator l,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());
+<ins>unordered_multiset(initializer_list&lt;value_type&gt; il,
+  size_type n = <em>see below</em>,
+  const hasher&amp; hf = hasher(),
+  const key_equal&amp; eql = key_equal(),
+  const allocator_type&amp; a = allocator_type());</ins>
+</pre><blockquote>
+<p>
+-3- <i>Effects</i>: Constructs an empty <tt>unordered_multiset</tt> using the specified hash function, key equality function,
+and allocator, and using at least <tt>n</tt> buckets. If <tt>n</tt> is not provided, the number of buckets is
+implementation-defined. Then inserts elements from the range <tt>[f, l)</tt> <ins>for the first form, or from the range 
+<tt>[il.begin(), il.end())</tt> for the second form</ins>. <tt>max_load_factor()</tt> returns <tt>1.0</tt>.
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2233"></a>2233. <tt>bad_function_call::what()</tt> unhelpful</h3>
+<p><b>Section:</b> 20.9.11.1 [func.wrap.badcall] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-01-05 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+A strict reading of the standard implies <tt>std::bad_function_call{}.what()</tt> returns the same string as
+<tt>std::exception{}.what()</tt> which doesn't help to know what happened if you catch an exception by reference 
+to <tt>std::exception</tt>.
+</p>
+
+<p>
+For consistency with <tt>bad_weak_ptr::what()</tt> it should return <tt>"bad_function_call"</tt>.
+</p>
+
+<p>
+See <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=33515">c++std-lib-33515</a> for other details.
+</p>
+
+<p>
+There was a considerable support on the reflector to instead change the specification of both <tt>bad_weak_ptr::what()</tt> 
+and <tt>bad_function_call::what()</tt> to return an implementation-defined string instead.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Open.
+</p>
+<p>
+Consensus that we want consistency in how this is treated.  Less consensus on what the common
+direction should be.
+</p>
+<p>
+Alisdair to provide wording proposing that all string literals held by standard exception objects are
+either unspecified, or implmentation defined.
+</p>
+
+<p><i>[2014-02-15 Issauqah]</i></p>
+
+<p>
+STL: I think it should be an implementation-defined NTBS, same on <tt>bad_weak_ptr</tt>. I will write a PR.
+</p>
+
+<p><i>[2014-03-27, STL provides improved wording]</i></p>
+
+
+<p>
+The new wording reflects better the general agreement of the committee, see also issue <a href="lwg-active.html#2376">2376</a> for similar wording.
+</p>
+
+<p><i>[2014-03-28 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on five votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Edit 20.9.11.1.1 [func.wrap.badcall.const]:</p>
+<blockquote><pre>
+bad_function_call() noexcept;
+</pre><blockquote>
+<p>
+-1- <i>Effects</i>: constructs a <tt>bad_function_call object</tt>.
+<p/>
+<ins>-?- <i>Postconditions</i>: <tt>what()</tt> returns an implementation-defined NTBS.</ins>
+</p>
+</blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2266"></a>2266. <tt>vector</tt> and <tt>deque</tt> have incorrect <tt>insert</tt> requirements</h3>
+<p><b>Section:</b> 23.2.3 [sequence.reqmts] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Ahmed Charles <b>Opened:</b> 2013-05-17 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#sequence.reqmts">active issues</a> in [sequence.reqmts].</p>
+<p><b>View all other</b> <a href="lwg-index.html#sequence.reqmts">issues</a> in [sequence.reqmts].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+According to Table 100 in n3485 23.2.3 [sequence.reqmts]/4 the notes for the expression <tt>a.insert(p,i,j)</tt>
+say:
+</p>
+
+<blockquote><p>
+<i>Requires:</i> <tt>T</tt> shall be <tt>EmplaceConstructible</tt>
+into <tt>X</tt> from <tt>*i</tt>. For <tt>vector</tt>, if the iterator
+does not meet the forward iterator requirements (24.2.5), <tt>T</tt> shall also be
+<tt>MoveInsertable</tt> into <tt>X</tt> and <tt>MoveAssignable</tt>.
+<p/>
+Each iterator in the range <tt>[i,j)</tt> shall be dereferenced exactly once.
+<p/>
+<i>pre:</i> <tt>i</tt> and <tt>j</tt> are not iterators into <tt>a</tt>.
+<p/>
+Inserts copies of elements in <tt>[i, j)</tt> before <tt>p</tt>
+</p></blockquote>
+
+<p>
+There are two problems with that wording: First, the special constraints for <tt>vector</tt>, that are expressed to be valid for
+forward iterators only, are necessary for all iterator categories. Second, the same special constraints are needed for <tt>deque</tt>, too. 
+</p>
+
+<p><i>[2013-10-05, Stephan T. Lavavej comments and provides alternative wording]</i></p>
+
+<p>
+In Chicago, we determined that the original proposed resolution was correct, except that it needed additional requirements.  
+When <tt>vector</tt> <tt>insert(p, i, j)</tt> is called with input-only iterators, it can't know how many elements will be inserted, 
+which is obviously problematic for insertion anywhere other than at the end. Therefore, implementations typically append elements 
+(geometrically reallocating), followed by <tt>rotate()</tt>. Given forward+ iterators, some implementations append and 
+<tt>rotate()</tt> when they determine that there is sufficient capacity. Additionally, <tt>deque</tt> <tt>insert(p, i, j)</tt> is 
+typically implemented with prepending/appending, with a possible call to <tt>reverse()</tt>, followed by a call to <tt>rotate()</tt>.  
+Note that <tt>rotate()</tt>'s requirements are strictly stronger than <tt>reverse()</tt>'s.
+<p/>
+Therefore, when patching Table 100, we need to add <tt>rotate()</tt>'s requirements. Note that this does not physically affect code 
+(implementations were already calling <tt>rotate()</tt> here), and even in Standardese terms it is barely noticeable &mdash; if an 
+element is <tt>MoveInsertable</tt> and <tt>MoveAssignable</tt> then it is almost certainly <tt>MoveConstructible</tt> and swappable.  
+However, this patch is necessary to be strictly correct.
+</p>
+
+<p>
+Previous resolution from Ahmed Charles:
+</p>
+<blockquote class="note">
+<ol>
+<li><p>Change Table 100 as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 100 &mdash; Sequence container requirements (in addition to container) (continued)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.insert(p,i,j)</tt>
+</td>
+<td>
+<tt>iterator</tt>
+</td>
+<td>
+<i>Requires:</i> <tt>T</tt> shall be <tt>EmplaceConstructible</tt>
+into <tt>X</tt> from <tt>*i</tt>. For <tt>vector</tt> <ins>and <tt>deque</tt></ins>, <del>if the iterator
+does not meet the forward iterator requirements (24.2.5),</del> <tt>T</tt> shall also be
+<tt>MoveInsertable</tt> into <tt>X</tt> and <tt>MoveAssignable</tt>.<br/>
+Each iterator in the range <tt>[i,j)</tt> shall be dereferenced exactly once.<br/>
+<i>pre:</i> <tt>i</tt> and <tt>j</tt> are not iterators into <tt>a</tt>.<br/>
+Inserts copies of elements in <tt>[i, j)</tt> before <tt>p</tt>
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2014-02-15 post-Issaquah session : move to Tentatively Ready]</i></p>
+
+<p>
+Pablo: We might have gone too far with the fine-grained requirements. Typically these things come in groups.
+</p>
+<p>
+Alisdair: I think the concepts folks assumed we would take their guidance.
+</p>
+<p>
+Move to Tentatively Ready.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+<ol>
+<li><p>Change Table 100 as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 100 &mdash; Sequence container requirements (in addition to container) (continued)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.insert(p,i,j)</tt>
+</td>
+<td>
+<tt>iterator</tt>
+</td>
+<td>
+<i>Requires:</i> <tt>T</tt> shall be <tt>EmplaceConstructible</tt> into <tt>X</tt><br/> 
+from <tt>*i</tt>. For <tt>vector</tt> <ins>and <tt>deque</tt></ins>, <del>if the iterator</del><br/>
+<del>does not meet the forward iterator requirements (24.2.5),</del> <tt>T</tt> shall also be<br/>
+<tt>MoveInsertable</tt> into <tt>X</tt><ins>, <tt>MoveConstructible</tt>,</ins><br/> 
+<del>and</del> <tt>MoveAssignable</tt><ins>, and swappable (17.6.3.2 [swappable.requirements])</ins>.<br/>
+Each iterator in the range <tt>[i,j)</tt> shall be dereferenced exactly once.<br/>
+<i>pre:</i> <tt>i</tt> and <tt>j</tt> are not iterators into <tt>a</tt>.<br/>
+Inserts copies of elements in <tt>[i, j)</tt> before <tt>p</tt>
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2325"></a>2325. <tt>minmax_element()</tt>'s behavior differing from <tt>max_element()</tt>'s should be noted</h3>
+<p><b>Section:</b> 25.4.7 [alg.min.max] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#alg.min.max">active issues</a> in [alg.min.max].</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.min.max">issues</a> in [alg.min.max].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+25.4.7 [alg.min.max]/23 says that <tt>max_element()</tt> finds the <em>first</em> biggest element, while /25 says that 
+<tt>minmax_element()</tt> finds the <em>last</em> biggest element. This significant difference is unusual &mdash; it means that 
+<tt>minmax_element(args)</tt> is not equivalent to <tt>make_pair(min_element(args), max_element(args))</tt>, whereas the other 
+major "two for one" algorithm <tt>equal_range(args)</tt> is equivalent to <tt>make_pair(lower_bound(args), upper_bound(args))</tt>.  
+<tt>minmax_element()</tt>'s behavior is intentional &mdash; it is a fundamental consequence of the <tt>3N/2</tt> algorithm &mdash; 
+but the Standardese does not draw attention to this in any way. This wording came from LWG <a href="lwg-defects.html#715">715</a>'s resolution (which 
+changed the semantics but didn't mention it), citing CLRS for the algorithm &mdash; but CLRS doesn't mention the behavior for 
+equivalent elements! The wording here deeply confused me (as an STL maintainer fixing an incorrect implementation) until I walked 
+through the algorithm by hand and figured out the fundamental reason. It would be really nice for the Standard to provide a hint 
+that something magical is happening here.
+</p>
+
+<p><i>[2014-06-06 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on six votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3691.</p>
+
+<ol>
+<li><p>Add a footnote to 25.4.7 [alg.min.max]/25 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class ForwardIterator&gt;
+  pair&lt;ForwardIterator, ForwardIterator&gt;
+    minmax_element(ForwardIterator first, ForwardIterator last);
+template&lt;class ForwardIterator, class Compare&gt;
+  pair&lt;ForwardIterator, ForwardIterator&gt;
+    minmax_element(ForwardIterator first, ForwardIterator last, Compare comp);
+</pre><blockquote>
+<p>
+-25- <i>Returns:</i> <tt>make_pair(first, first)</tt> if <tt>[first,last)</tt> is empty, otherwise <tt>make_pair(m, M)</tt>, where
+<tt>m</tt> is the first iterator in <tt>[first,last)</tt> such that no iterator in the range refers to a smaller element,
+and where <tt>M</tt> is the last iterator <ins>[Footnote: This behavior intentionally differs from <tt>max_element()</tt>.]</ins> 
+in <tt>[first,last)</tt> such that no iterator in the range refers to a larger element.
+</p>
+</blockquote></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2361"></a>2361. Apply 2299 resolution throughout library</h3>
+<p><b>Section:</b> 20.8.1.2 [unique.ptr.single], 20.7.3.1 [pointer.traits.types], 20.7.7.1 [allocator.uses.trait], 20.7.8.1 [allocator.traits.types], 23.2.3 [sequence.reqmts] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-02-14 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unique.ptr.single">active issues</a> in [unique.ptr.single].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unique.ptr.single">issues</a> in [unique.ptr.single].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+LWG <a href="lwg-defects.html#2299">2299</a> addressed a N.B. comment pointing out that recently added
+wording about a type existing was not clear what happens if the type
+exists but is inaccessible. There are 16 pre-existing uses of the same
+language in the library that should use the same wording used to
+resolve 2299.
+</p>
+
+<p>
+The relevant paragraphs are:
+</p>
+
+<p>
+20.8.1.2 [unique.ptr.single]
+<p/>
+20.7.3.1 [pointer.traits.types]
+<p/>
+20.7.7.1 [allocator.uses.trait]
+<p/>
+20.7.8.1 [allocator.traits.types]
+<p/>
+23.2.3 [sequence.reqmts]
+</p>
+
+<p><i>[2014-05-16, Daniel provides wording]</i></p>
+
+
+<p><i>[2014-05-18 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on six votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.7.3.1 [pointer.traits.types] as indicated:</p>
+
+<blockquote>
+<pre>
+typedef <i>see below</i> element_type;
+</pre>
+<blockquote>
+<p>
+-1- <i>Type</i>: <tt>Ptr::element_type</tt> if <del>such a type exists</del><ins>the qualified-id <tt>Ptr::element_type</tt> is
+valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, <tt>T</tt> if <tt>Ptr</tt> is a class template instantiation
+of the form <tt>SomePointer&lt;T, Args&gt;</tt>, where <tt>Args</tt> is zero or more type arguments; otherwise, the
+specialization is ill-formed.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> difference_type;
+</pre>
+<blockquote>
+<p>
+-2- <i>Type</i>: <tt>Ptr::difference_type</tt> if <del>such a type exists</del><ins>the qualified-id <tt>Ptr::difference_type</tt> is
+valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, <tt>std::ptrdiff_t</tt>.
+</p>
+</blockquote>
+
+<pre>
+template &lt;class U&gt; using rebind = <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-3- <i>Alias template</i>: <tt>Ptr::rebind&lt;U&gt;</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Ptr::rebind&lt;U&gt;</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>SomePointer&lt;U, Args&gt;</tt> if <tt>Ptr</tt> is a class template instantiation of the form <tt>SomePointer&lt;T, Args&gt;</tt>, 
+where <tt>Args</tt> is zero or more type arguments; otherwise, the instantiation of <tt>rebind</tt> is ill-formed.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.7.7.1 [allocator.uses.trait] p1 as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, class Alloc&gt; struct uses_allocator;
+</pre>
+<blockquote>
+<p>
+-1- <i>Remark<ins>s</ins></i>: automatically detects whether <tt>T</tt> has a nested <tt>allocator_type</tt> that is 
+convertible from <tt>Alloc</tt>. Meets the <tt>BinaryTypeTrait</tt> requirements (20.10.1). The implementation shall provide a definition
+that is derived from <tt>true_type</tt> if <del>a type</del><ins>the qualified-id</ins> <tt>T::allocator_type</tt> <del>exists</del><ins>is
+valid and denotes a type (14.8.2 [temp.deduct])</ins> and <tt>is_convertible&lt;Alloc, T::allocator_type&gt;::value != false</tt>, 
+otherwise it shall be derived from <tt>false_type</tt>. [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.7.8.1 [allocator.traits.types] as indicated:</p>
+
+<blockquote>
+<pre>
+typedef <i>see below</i> pointer;
+</pre>
+<blockquote>
+<p>
+-1- <i>Type</i>: <tt>Alloc::pointer</tt> if <del>such a type exists</del><ins>the qualified-id <tt>Alloc::pointer</tt> is
+valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, <tt>value_type*</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> const_pointer;
+</pre>
+<blockquote>
+<p>
+-2- <i>Type</i>: <tt>Alloc::const_pointer</tt> if <del>such a type exists</del><ins>the qualified-id <tt>Alloc::const_pointer</tt> is
+valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>pointer_traits&lt;pointer&gt;::rebind&lt;const value_type&gt;</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> void_pointer;
+</pre>
+<blockquote>
+<p>
+-3- <i>Type</i>: <tt>Alloc::void_pointer</tt> if <del>such a type exists</del><ins>the qualified-id <tt>Alloc::void_pointer</tt> is
+valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>pointer_traits&lt;pointer&gt;::rebind&lt;void&gt;</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> const_void_pointer;
+</pre>
+<blockquote>
+<p>
+-4- <i>Type</i>: <tt>Alloc::const_void_pointer</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::const_void_pointer</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>pointer_traits&lt;pointer&gt;::rebind&lt;const void&gt;</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> difference_type;
+</pre>
+<blockquote>
+<p>
+-5- <i>Type</i>: <tt>Alloc::difference_type</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::difference_type</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>pointer_traits&lt;pointer&gt;::difference_type</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> size_type;
+</pre>
+<blockquote>
+<p>
+-6- <i>Type</i>: <tt>Alloc::size_type</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::size_type</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>make_unsigned_t&lt;difference_type&gt;</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> propagate_on_container_copy_assignment;
+</pre>
+<blockquote>
+<p>
+-7- <i>Type</i>: <tt>Alloc::propagate_on_container_copy_assignment</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::propagate_on_container_copy_assignment</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>false_type</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> propagate_on_container_move_assignment;
+</pre>
+<blockquote>
+<p>
+-8- <i>Type</i>: <tt>Alloc::propagate_on_container_move_assignment</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::propagate_on_container_move_assignment</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>false_type</tt>.
+</p>
+</blockquote>
+
+<pre>
+typedef <i>see below</i> propagate_on_container_swap;
+</pre>
+<blockquote>
+<p>
+-9- <i>Type</i>: <tt>Alloc::propagate_on_container_swap</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::propagate_on_container_swap</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>false_type</tt>.
+</p>
+</blockquote>
+
+<pre>
+template &lt;class T&gt; using rebind_alloc = <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-10- <i>Alias template</i>: <tt>Alloc::rebind&lt;T&gt;::other</tt> if <del>such a type exists</del><ins>the qualified-id 
+<tt>Alloc::rebind&lt;T&gt;::other</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins>; otherwise, 
+<tt>Alloc&lt;T, Args&gt;</tt> if <tt>Alloc</tt> is a class template instantiation of the form <tt>Alloc&lt;U, Args&gt;</tt>, 
+where <tt>Args</tt> is zero or more type arguments; otherwise, the instantiation of <tt>rebind_alloc</tt> is ill-formed.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.1.2 [unique.ptr.single] p3 as indicated:</p>
+
+<blockquote><p>
+-3- If the <del>type</del><ins>qualified-id</ins> <tt>remove_reference_t&lt;D&gt;::pointer</tt> <del>exists</del><ins>is 
+valid and denotes a type (14.8.2 [temp.deduct])</ins>, then <tt>unique_ptr&lt;T, D&gt;::pointer</tt> shall be a synonym
+for <tt>remove_reference_t&lt;D&gt;::pointer</tt>. [&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Change 23.2.3 [sequence.reqmts] p3 as indicated:</p>
+
+<blockquote><p>
+-3- In Tables 100 and 101, <tt>X</tt> denotes a sequence container class, <tt>a</tt> denotes a value of <tt>X</tt> containing elements
+of type <tt>T</tt>, <tt>A</tt> denotes <tt>X::allocator_type</tt> if <del>it exists</del><ins>the qualified-id 
+<tt>X::allocator_type</tt> is valid and denotes a type (14.8.2 [temp.deduct])</ins> and <tt>std::allocator&lt;T&gt;</tt> 
+if it doesn't, [&hellip;]
+</p></blockquote>
+</li>
+
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2365"></a>2365. Missing <tt>noexcept</tt> in <tt>shared_ptr::shared_ptr(nullptr_t)</tt></h3>
+<p><b>Section:</b> 20.8.2.2 [util.smartptr.shared] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Cassio Neri <b>Opened:</b> 2014-02-13 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared">active issues</a> in [util.smartptr.shared].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared">issues</a> in [util.smartptr.shared].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The declaration and definition of <tt>shared_ptr::shared_ptr(nullptr_t)</tt>, given in 20.8.2.2 [util.smartptr.shared], is 
+</p>
+<blockquote><pre>
+constexpr shared_ptr(nullptr_t) : shared_ptr() { }
+</pre></blockquote>
+<p>
+The intention seems clear: this constructor should have the same semantics of the default constructor. However, contrarily to the 
+default constructor, this one is not <tt>noexcept</tt>. In contrast, <tt>unique_ptr::unique_ptr(nullptr_t)</tt> is <tt>noexcept</tt>, 
+as per 20.8.1.2 [unique.ptr.single]: 
+</p>
+<blockquote><pre>
+constexpr unique_ptr(nullptr_t) noexcept : unique_ptr() { }
+</pre></blockquote>
+<p>
+Both libstdc++ and libc++ have added <tt>noexcept</tt> to <tt>shared_ptr::shared_ptr(nullptr_t)</tt>. Microsoft's STL has not.
+</p>
+
+<p><i>[2014-03-26 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on six votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change class template <tt>shared_ptr</tt> synopsis, 20.8.2.2 [util.smartptr.shared], as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr shared_ptr(nullptr_t) <ins>noexcept</ins> : shared_ptr() { }
+</pre>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2376"></a>2376. <tt>bad_weak_ptr::what()</tt> overspecified</h3>
+<p><b>Section:</b> 20.8.2.1 [util.smartptr.weakptr] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-03-27 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.8.2.1 [util.smartptr.weakptr] p2 requires <tt>bad_weak_ptr</tt> to return precisely
+the string <tt>"bad_weak_ptr"</tt>.
+<p/>
+There was general agreement on the reflector and at the Issaquah
+meeting that this is over-constrained and implementation should be
+free to return something more descriptive if desired.
+<p/>
+The proposed resolution makes <tt>bad_weak_ptr</tt> consistent with other
+exception types such as <tt>bad_alloc</tt> and <tt>bad_cast</tt>.
+<p/>
+If accepted, the P/R for issue <a href="lwg-active.html#2233">2233</a>, which currently uses similar
+wording to <tt>bad_weak_ptr</tt>, could be updated appropriately.
+</p>
+
+<p><i>[2014-03-27 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on six votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Edit 20.8.2.1 [util.smartptr.weakptr]:</p>
+
+<blockquote>
+<pre>
+bad_weak_ptr() noexcept;
+</pre><blockquote>
+<p>
+-2- <i>Postconditions</i>: <tt>what()</tt> returns <del><tt>"bad_weak_ptr"</tt></del><ins>an implementation-defined NTBS</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2387"></a>2387. More nested types that must be accessible and unambiguous</h3>
+<p><b>Section:</b> 20.9.2 [func.require], 20.9.3 [refwrap] <b>Status:</b> <a href="lwg-active.html#Voting">Tentatively Voting</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-05-23 <b>Last modified:</b> 2014-11-04</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.require">active issues</a> in [func.require].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.require">issues</a> in [func.require].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Voting">Tentatively Voting</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Further to <a href="lwg-defects.html#2299">2299</a> and <a href="lwg-active.html#2361">2361</a>, 20.9.2 [func.require] p3 and 20.9.3 [refwrap] p3 and p4
+talk about member types without any mention of being accessible and unambiguous.
+</p>
+
+<p><i>[2014-06-05 Daniel provides wording]</i></p>
+
+
+<p><i>[2014-06-06 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on six votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.9.2 [func.require] p3 as indicated:</p>
+
+<blockquote><p>
+-3- If a call wrapper (20.9.1) has a <i>weak result type</i> the type of its member type <tt>result_type</tt> is based on the
+type <tt>T</tt> of the wrapper's target object (20.9.1):
+</p>
+<ul>
+<li><p>if <tt>T</tt> is a pointer to function type, <tt>result_type</tt> shall be a synonym for the return type of <tt>T</tt>;</p></li>
+<li><p>if <tt>T</tt> is a pointer to member function, <tt>result_type</tt> shall be a synonym for the return type of <tt>T</tt>;</p></li>
+<li><p>if <tt>T</tt> is a class type <ins>and the qualified-id <tt>T::result_type</tt> is valid and denotes a type 
+(14.8.2 [temp.deduct])</ins><del>with a member type <tt>result_type</tt></del>, then <tt>result_type</tt> shall be a synonym for
+<tt>T::result_type</tt>;</p></li> 
+<li><p>otherwise <tt>result_type</tt> shall not be defined.</p></li>
+</ul>
+</blockquote>
+</li>
+
+<li><p>Change 20.9.3 [refwrap] p3+p4 as indicated:</p>
+
+<blockquote>
+<p>
+-3- The template instantiation <tt>reference_wrapper&lt;T&gt;</tt> shall define a nested type named <tt>argument_type</tt> as a
+synonym for <tt>T1</tt> only if the type <tt>T</tt> is any of the following:
+</p>
+<ul>
+<li><p>a function type or a pointer to function type taking one argument of type <tt>T1</tt></p></li>
+<li><p>a pointer to member function <tt>R T0::f</tt> <i>cv</i> (where  <i>cv</i> represents the member function_s cv-qualifiers);
+the type <tt>T1</tt> is <i>cv</i> <tt>T0*</tt></p></li> 
+<li><p>a class type <ins>where the qualified-id <tt>T::argument_type</tt> is valid and denotes a type 
+(14.8.2 [temp.deduct])</ins><del>with a member type <tt>argument_type</tt></del>; the type <tt>T1</tt> is 
+<tt>T::argument_type</tt>.</p></li>
+</ul>
+<p>
+-4- The template instantiation <tt>reference_wrapper&lt;T&gt;</tt> shall define two nested types named <tt>first_argument_type</tt> 
+and <tt>second_argument_type</tt> as synonyms for <tt>T1</tt> and <tt>T2</tt>, respectively, only if the type <tt>T</tt> is any of the
+following:
+</p>
+<ul>
+<li><p>a function type or a pointer to function type taking two arguments of types <tt>T1</tt> and <tt>T2</tt></p></li>
+<li><p>a pointer to member function <tt>R T0::f(T2)</tt> <i>cv</i> (where <i>cv</i> represents the member function's cv-qualifiers);
+the type <tt>T1</tt> is <i>cv</i> <tt>T0*</tt></p></li> 
+<li><p>a class type <ins>where the qualified-ids <tt>T::first_argument_type</tt> and <tt>T::second_argument_type</tt> are both valid 
+and both denote types (14.8.2 [temp.deduct])</ins><del>with member types <tt>first_argument_type</tt> and 
+<tt>second_argument_type</tt></del>; the type <tt>T1</tt> is <tt>T::first_argument_type</tt><del>.</del> and the type <tt>T2</tt> is 
+<tt>T::second_argument_type</tt>.</p></li>
+</ul>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
 </body>
 </html>
