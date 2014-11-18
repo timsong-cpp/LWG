@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-11-18 at 20:11:27 UTC</p>
+<p><p>Revised 2014-11-18 at 22:11:20 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -20885,24 +20885,38 @@ int main()
 does not compile. 
 <p/>
 A possible way to remedy this would be to add the following overloads of
-<tt>begin</tt> and <tt>end</tt> to 24.7 [iterator.range], relying on recursive
-application:
+<tt>begin</tt>, <tt>end</tt>, <tt>rbegin</tt>, and <tt>rend</tt> to 24.7 [iterator.range], 
+relying on recursive evaluation:
 </p>
 <blockquote><pre>
 namespace std {
 
-  template &lt;typename T, std::size_t M, std::size_t N&gt;
-  constexpr typename ::std::remove_all_extents&lt;T&gt;::type*
+  template &lt;typename T, size_t M, size_t N&gt;
+  constexpr typename remove_all_extents&lt;T&gt;::type*
   begin(T (&amp;array)[M][N])
   {
     return begin(array[0]);
   }
   
-  template &lt;typename T, std::size_t M, std::size_t N&gt;
-  constexpr typename ::std::remove_all_extents&lt;T&gt;::type*
+  template &lt;typename T, size_t M, size_t N&gt;
+  constexpr typename remove_all_extents&lt;T&gt;::type*
   end(T (&amp;array)[M][N])
   {
     return end(array[M - 1]);
+  }
+
+  template &lt;typename T, size_t M, size_t N&gt;
+  reverse_iterator&lt;typename remove_all_extents&lt;T&gt;::type*&gt;
+  rbegin(T (&amp;array)[M][N])
+  {
+    return decltype(rbegin(array))(end(array[M - 1]));
+  }
+  
+  template &lt;typename T, size_t M, size_t N&gt;
+  reverse_iterator&lt;typename remove_all_extents&lt;T&gt;::type*&gt;
+  rend(T (&amp;array)[M][N])
+  {
+    return decltype(rend(array))(begin(array[0]));
   }
 
 }
