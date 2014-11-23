@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2014-11-19 at 18:11:43 UTC</p>
+<p><p>Revised 2014-11-23 at 13:11:31 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -20924,6 +20924,146 @@ namespace std {
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2458"></a>2458. N3778 and new library deallocation signatures</h3>
+<p><b>Section:</b> 18.6 [support.dynamic], 18.6.1.1 [new.delete.single], 18.6.1.2 [new.delete.array] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-23 <b>Last modified:</b> 2014-11-23</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3778.html">N3778</a> 
+added the following sized deallocation signatures to the library:
+</p>
+<blockquote><pre>
+void operator delete(void* ptr, std::size_t size) noexcept;
+void operator delete[](void* ptr, std::size_t size) noexcept;
+
+void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;
+void operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;
+</pre></blockquote>
+<p>
+The former two are an essential part of the proposal. The latter two seem
+spurious &mdash; they are not called when <tt>new (std::nothrow) X</tt> fails due to
+<tt>X::X()</tt> throwing, because the core language rules for selecting a placement
+deallocation function do not consider passing a <tt>size</tt> argument. Instead, the
+above would be the matching deallocation functions for:
+</p>
+<blockquote><pre>
+void *operator new(std::size_t size, std::size_t size_again, const std::nothrow_t&amp;) noexcept;
+void *operator new[](std::size_t size, std::size_t size_again, const std::nothrow_t&amp;) noexcept;
+</pre></blockquote>
+<p>
+... which don't exist.
+<p/>
+Since they're not implicitly called, the only other possible use for those
+functions would be to perform an explicitly non-throwing deallocation.
+But... the first two overloads are already explicitly non-throwing and are
+required to be semantically identical to the second two. So there's no
+point in making an explicit call to the second pair of functions either.
+<p/>
+It seems to me that we should remove the <tt>(void*, size_t, nothrow_t)</tt> overloads, because
+the core working group decided during the Urbana 2014 meeting, that no change to the core 
+language was warranted.
+</p>
+
+<p><i>[2014-11-23, Daniel suggests concrete wording changes]</i></p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4140.</p>
+
+<ol>
+<li><p>Change 18.6 [support.dynamic], header <tt>&lt;new&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+[&hellip;]
+void operator delete(void* ptr, std::size_t size) noexcept;
+<del>void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+[&hellip;]
+void operator delete[](void* ptr, std::size_t size) noexcept;
+<del>void operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+[&hellip;]
+</pre></blockquote>
+
+</li>
+
+<li><p>Change 18.6.1.1 [new.delete.single], starting before p19, as indicated:</p>
+<blockquote><pre>
+void operator delete(void* ptr, const std::nothrow_t&amp;) noexcept;
+<del>void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Replaceable</i>: a C++ program may define a function with signature <tt>void operator delete(void*
+ptr, const std::nothrow_t&amp;) noexcept</tt> that displaces the default version defined by the C++ standard
+library. <del>If this function (without <tt>size</tt> parameter) is defined, the program should also define
+<tt>void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept</tt>. If
+this function with <tt>size</tt> parameter is defined, the program shall also define the version without the
+<tt>size</tt> parameter. [<i>Note</i>: The default behavior below may change in the future, which will require
+replacing both deallocation functions when replacing the allocation function. &mdash; <i>end note</i>]</del>
+<p/>
+[&hellip;]
+<p/>
+<del>-22- <i>Requires</i>: If present, the <tt>std::size_t size</tt> argument must equal the <tt>size</tt> 
+argument passed to the allocation function that returned <tt>ptr</tt>.</del>
+<p/>
+<del>-23- <i>Required behavior</i>: Calls to <tt>operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+may be changed to calls to <tt>operator delete(void* ptr, const std::nothrow_t&amp;)</tt> without affecting
+memory allocation. [<i>Note</i>: A conforming implementation is for <tt>operator delete(void* ptr, std::size_t size, 
+const std::nothrow_t&amp;)</tt> to simply call <tt>operator delete(void* ptr, const std::nothrow_t&amp;)</tt>. &mdash; 
+<i>end note</i>]</del>
+<p/>
+-24- <i>Default behavior</i>: <del><tt>operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+calls <tt>operator delete(ptr, std::nothrow)</tt>, and</del> <tt>operator delete(void* ptr, const std::nothrow_t&amp;)</tt> 
+calls <tt>operator delete(ptr)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 18.6.1.2 [new.delete.array], starting before p16, as indicated:</p>
+<blockquote><pre>
+void operator delete[](void* ptr, const std::nothrow_t&amp;) noexcept;
+<del>void operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Replaceable</i>: a C++ program may define a function with signature <tt>void operator delete[](void*
+ptr, const std::nothrow_t&amp;) noexcept</tt> that displaces the default version defined by the C++ standard
+library. <del>If this function (without <tt>size</tt> parameter) is defined, the program should also define <tt>void
+operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept</tt>. If this
+function with <tt>size</tt> parameter is defined, the program shall also define the version without the <tt>size</tt>
+parameter. [<i>Note</i>: The default behavior below may change in the future, which will require replacing
+both deallocation functions when replacing the allocation function. &mdash; <i>end note</i>]</del>
+<p/>
+[&hellip;]
+<p/>
+<del>-19- <i>Requires</i>: If present, the <tt>std::size_t size</tt> argument must equal the <tt>size</tt> argument 
+passed to the allocation function that returned <tt>ptr</tt>.</del> 
+<p/>
+<del>-20- <i>Required behavior</i>: Calls to <tt>operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+may be changed to calls to <tt>operator delete[](void* ptr, const std::nothrow_t&amp;)</tt> without affecting memory allocation. 
+[<i>Note</i>: A conforming implementation is for <tt>operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+to simply call <tt>operator delete[](void* ptr, const std::nothrow_t&amp;)</tt>. &mdash; <i>end note</i>]</del>
+<p/>
+-21- <i>Default behavior</i>: <del><tt>operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt>
+calls <tt>operator delete[](ptr, std::nothrow)</tt>, and</del> <tt>operator delete[](void* ptr, const std::nothrow_t&amp;)</tt> 
+calls <tt>operator delete[](ptr)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 

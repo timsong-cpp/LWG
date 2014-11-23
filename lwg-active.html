@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2014-11-19</td>
+  <td align="left">2014-11-23</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D91)</h1>
-<p><p>Revised 2014-11-19 at 18:11:43 UTC</p>
+<p><p>Revised 2014-11-23 at 13:11:31 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D91: 2014-10-13 Urbana meeting<ul>
 <li><b>Summary:</b><ul>
-<li>232 open issues, up by 5.</li>
+<li>233 open issues, up by 6.</li>
 <li>1748 closed issues, up by 6.</li>
-<li>1980 issues total, up by 11.</li>
+<li>1981 issues total, up by 12.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 11 New issues: <a href="lwg-active.html#2447">2447</a>, <a href="lwg-active.html#2448">2448</a>, <a href="lwg-active.html#2449">2449</a>, <a href="lwg-active.html#2450">2450</a>, <a href="lwg-active.html#2451">2451</a>, <a href="lwg-active.html#2452">2452</a>, <a href="lwg-active.html#2453">2453</a>, <a href="lwg-active.html#2454">2454</a>, <a href="lwg-active.html#2455">2455</a>, <a href="lwg-active.html#2456">2456</a>, <a href="lwg-active.html#2457">2457</a>.</li>
+<li>Added the following 12 New issues: <a href="lwg-active.html#2447">2447</a>, <a href="lwg-active.html#2448">2448</a>, <a href="lwg-active.html#2449">2449</a>, <a href="lwg-active.html#2450">2450</a>, <a href="lwg-active.html#2451">2451</a>, <a href="lwg-active.html#2452">2452</a>, <a href="lwg-active.html#2453">2453</a>, <a href="lwg-active.html#2454">2454</a>, <a href="lwg-active.html#2455">2455</a>, <a href="lwg-active.html#2456">2456</a>, <a href="lwg-active.html#2457">2457</a>, <a href="lwg-active.html#2458">2458</a>.</li>
 <li>Changed the following 12 issues to Voting (from Ready): <a href="lwg-active.html#2016">2016</a>, <a href="lwg-active.html#2170">2170</a>, <a href="lwg-active.html#2253">2253</a>, <a href="lwg-active.html#2340">2340</a>, <a href="lwg-active.html#2354">2354</a>, <a href="lwg-active.html#2377">2377</a>, <a href="lwg-active.html#2396">2396</a>, <a href="lwg-active.html#2399">2399</a>, <a href="lwg-active.html#2400">2400</a>, <a href="lwg-active.html#2401">2401</a>, <a href="lwg-active.html#2404">2404</a>, <a href="lwg-active.html#2408">2408</a>.</li>
 <li>Changed the following 12 issues to Tentatively Voting (from Tentatively Ready): <a href="lwg-active.html#2106">2106</a>, <a href="lwg-active.html#2129">2129</a>, <a href="lwg-active.html#2212">2212</a>, <a href="lwg-active.html#2217">2217</a>, <a href="lwg-active.html#2230">2230</a>, <a href="lwg-active.html#2233">2233</a>, <a href="lwg-active.html#2266">2266</a>, <a href="lwg-active.html#2325">2325</a>, <a href="lwg-active.html#2361">2361</a>, <a href="lwg-active.html#2365">2365</a>, <a href="lwg-active.html#2376">2376</a>, <a href="lwg-active.html#2387">2387</a>.</li>
 <li>Changed the following 2 issues to Ready (from Review): <a href="lwg-active.html#2160">2160</a>, <a href="lwg-active.html#2364">2364</a>.</li>
@@ -27222,6 +27222,146 @@ namespace std {
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2458"></a>2458. N3778 and new library deallocation signatures</h3>
+<p><b>Section:</b> 18.6 [support.dynamic], 18.6.1.1 [new.delete.single], 18.6.1.2 [new.delete.array] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-23 <b>Last modified:</b> 2014-11-23</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3778.html">N3778</a> 
+added the following sized deallocation signatures to the library:
+</p>
+<blockquote><pre>
+void operator delete(void* ptr, std::size_t size) noexcept;
+void operator delete[](void* ptr, std::size_t size) noexcept;
+
+void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;
+void operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;
+</pre></blockquote>
+<p>
+The former two are an essential part of the proposal. The latter two seem
+spurious &mdash; they are not called when <tt>new (std::nothrow) X</tt> fails due to
+<tt>X::X()</tt> throwing, because the core language rules for selecting a placement
+deallocation function do not consider passing a <tt>size</tt> argument. Instead, the
+above would be the matching deallocation functions for:
+</p>
+<blockquote><pre>
+void *operator new(std::size_t size, std::size_t size_again, const std::nothrow_t&amp;) noexcept;
+void *operator new[](std::size_t size, std::size_t size_again, const std::nothrow_t&amp;) noexcept;
+</pre></blockquote>
+<p>
+... which don't exist.
+<p/>
+Since they're not implicitly called, the only other possible use for those
+functions would be to perform an explicitly non-throwing deallocation.
+But... the first two overloads are already explicitly non-throwing and are
+required to be semantically identical to the second two. So there's no
+point in making an explicit call to the second pair of functions either.
+<p/>
+It seems to me that we should remove the <tt>(void*, size_t, nothrow_t)</tt> overloads, because
+the core working group decided during the Urbana 2014 meeting, that no change to the core 
+language was warranted.
+</p>
+
+<p><i>[2014-11-23, Daniel suggests concrete wording changes]</i></p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4140.</p>
+
+<ol>
+<li><p>Change 18.6 [support.dynamic], header <tt>&lt;new&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+[&hellip;]
+void operator delete(void* ptr, std::size_t size) noexcept;
+<del>void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+[&hellip;]
+void operator delete[](void* ptr, std::size_t size) noexcept;
+<del>void operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+[&hellip;]
+</pre></blockquote>
+
+</li>
+
+<li><p>Change 18.6.1.1 [new.delete.single], starting before p19, as indicated:</p>
+<blockquote><pre>
+void operator delete(void* ptr, const std::nothrow_t&amp;) noexcept;
+<del>void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Replaceable</i>: a C++ program may define a function with signature <tt>void operator delete(void*
+ptr, const std::nothrow_t&amp;) noexcept</tt> that displaces the default version defined by the C++ standard
+library. <del>If this function (without <tt>size</tt> parameter) is defined, the program should also define
+<tt>void operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept</tt>. If
+this function with <tt>size</tt> parameter is defined, the program shall also define the version without the
+<tt>size</tt> parameter. [<i>Note</i>: The default behavior below may change in the future, which will require
+replacing both deallocation functions when replacing the allocation function. &mdash; <i>end note</i>]</del>
+<p/>
+[&hellip;]
+<p/>
+<del>-22- <i>Requires</i>: If present, the <tt>std::size_t size</tt> argument must equal the <tt>size</tt> 
+argument passed to the allocation function that returned <tt>ptr</tt>.</del>
+<p/>
+<del>-23- <i>Required behavior</i>: Calls to <tt>operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+may be changed to calls to <tt>operator delete(void* ptr, const std::nothrow_t&amp;)</tt> without affecting
+memory allocation. [<i>Note</i>: A conforming implementation is for <tt>operator delete(void* ptr, std::size_t size, 
+const std::nothrow_t&amp;)</tt> to simply call <tt>operator delete(void* ptr, const std::nothrow_t&amp;)</tt>. &mdash; 
+<i>end note</i>]</del>
+<p/>
+-24- <i>Default behavior</i>: <del><tt>operator delete(void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+calls <tt>operator delete(ptr, std::nothrow)</tt>, and</del> <tt>operator delete(void* ptr, const std::nothrow_t&amp;)</tt> 
+calls <tt>operator delete(ptr)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 18.6.1.2 [new.delete.array], starting before p16, as indicated:</p>
+<blockquote><pre>
+void operator delete[](void* ptr, const std::nothrow_t&amp;) noexcept;
+<del>void operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Replaceable</i>: a C++ program may define a function with signature <tt>void operator delete[](void*
+ptr, const std::nothrow_t&amp;) noexcept</tt> that displaces the default version defined by the C++ standard
+library. <del>If this function (without <tt>size</tt> parameter) is defined, the program should also define <tt>void
+operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;) noexcept</tt>. If this
+function with <tt>size</tt> parameter is defined, the program shall also define the version without the <tt>size</tt>
+parameter. [<i>Note</i>: The default behavior below may change in the future, which will require replacing
+both deallocation functions when replacing the allocation function. &mdash; <i>end note</i>]</del>
+<p/>
+[&hellip;]
+<p/>
+<del>-19- <i>Requires</i>: If present, the <tt>std::size_t size</tt> argument must equal the <tt>size</tt> argument 
+passed to the allocation function that returned <tt>ptr</tt>.</del> 
+<p/>
+<del>-20- <i>Required behavior</i>: Calls to <tt>operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+may be changed to calls to <tt>operator delete[](void* ptr, const std::nothrow_t&amp;)</tt> without affecting memory allocation. 
+[<i>Note</i>: A conforming implementation is for <tt>operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt> 
+to simply call <tt>operator delete[](void* ptr, const std::nothrow_t&amp;)</tt>. &mdash; <i>end note</i>]</del>
+<p/>
+-21- <i>Default behavior</i>: <del><tt>operator delete[](void* ptr, std::size_t size, const std::nothrow_t&amp;)</tt>
+calls <tt>operator delete[](ptr, std::nothrow)</tt>, and</del> <tt>operator delete[](void* ptr, const std::nothrow_t&amp;)</tt> 
+calls <tt>operator delete[](ptr)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
