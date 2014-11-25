@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2459" status="New">
+<title><tt>std::polar</tt> should require a non-negative rho</title>
+<section><sref ref="[complex.value.ops]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>22 Oct 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Different implementations give different answers for the following code:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;complex&gt;
+
+int main ()
+{
+  std::cout &lt;&lt; std::polar(-1.0, -1.0) &lt;&lt; '\n';
+  return 0;
+}
+</pre></blockquote>
+<p>
+One implementation prints:
+</p>
+<blockquote><pre>
+(nan, nan)
+</pre></blockquote>
+<p>
+Another:
+</p>
+<blockquote><pre>
+(-0.243068, 0.243068)
+</pre></blockquote>
+<p>
+Which is correct? Or neither?
+<p/>
+In <a href="http://lists.cs.uiuc.edu/pipermail/cfe-dev/2013-November/033591.html">this list</a>, 
+Howard Hinnant wrote:
+</p>
+<blockquote class="note">
+<p>
+I've read this over several times.  I've consulted C++11, C11, and IEC 10967-3.  [snip]
+<p/>
+I'm finding:
+</p>
+<ol>
+<li><p>The magnitude of a complex number <tt>== abs(c) == hypot(c.real(), c.imag())</tt> and is always non-negative 
+(by all three of the above standards).</p></li>
+<li><p>Therefore no complex number exists for which <tt>abs(c) &lt; 0</tt>.</p></li>
+<li><p>Therefore when the first argument to <tt>std::polar</tt> (which is called <tt>rho</tt>) is negative, no complex number 
+can be formed which meets the post-conidtion that <tt>abs(c) == rho</tt>.</p>
+</li>
+</ol>
+<p>
+One could argue that this is already covered in <sref ref="[complex.numbers]"/>/3, but I think it's worth making explicit.
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4140.</p>
+
+<ol>
+<li><p>Change <sref ref="[complex.value.ops]"/> around p9 as indicated</p>
+
+<blockquote><pre>
+template&lt;class T&gt; complex&lt;T&gt; polar(const T&amp; rho, const T&amp; theta = 0);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: <tt>rho</tt> shall be non-negative.</ins>
+<p/>
+-9- <i>Returns</i>: The complex value corresponding to a complex number whose magnitude is <tt>rho</tt> and whose
+phase angle is <tt>theta</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
