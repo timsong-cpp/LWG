@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2462" status="New">
+<title><tt>std::ios_base::failure</tt> is overspecified</title>
+<section><sref ref="[ios.base]"/><sref ref="[ios::failure]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>15 Dec 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[ios.base]"/> defines <tt>ios_base::failure</tt> as a nested class:
+</p>
+<blockquote>
+<pre>
+namespace std {
+  class ios_base {
+  public:
+    class failure;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<p>
+This means it is valid to use an elaborated-type-specifier to
+refer to <tt>ios_base::failure</tt>:
+</p>
+<blockquote>
+<pre>
+using F = class std::ios_base::failure;
+throw F();
+</pre>
+</blockquote>
+<p>
+Therefore implementations are not permitted to define
+<tt>ios_base::failure</tt> as a typedef e.g.
+</p>
+<blockquote>
+<pre>
+ class ios_base {
+ public:
+#if __cplusplus &lt; 201103L
+   class failure_cxx03 : public exception {...};
+   typedef failure_cxx03 failure;
+#else
+   class failure_cxx11 : public system_error {...};
+   typedef failure_cxx11 failure;
+#endif
+   [&hellip;]
+ };
+</pre>
+</blockquote>
+<p>
+This constrains implementations, making it harder to manage the ABI
+change to <tt>ios_base::failure</tt> between C++03 and C++11.
+</p>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change the synopsis in <sref ref="[ios.base]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  class ios_base {
+  public:
+    class failure; <ins><i>// see below</i></ins>
+    [&hellip;]
+  };
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[ios.base]"/> paragraph 1:</p>
+
+<blockquote>
+<p>
+<tt>ios_base</tt> defines several member types:
+</p>
+<ul>
+<li><p>a <del>class <tt>failure</tt></del><ins>type <tt>failure</tt>, defined as either
+a class derived from <tt>system_error</tt> or a synonym for a class</ins> derived from 
+<tt>system_error</tt>;</p></li>
+</ul>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[ios::failure]"/> paragraph 1:</p>
+<blockquote>
+<p>
+-1- <ins>An implementation is permitted to define <tt>ios_base::failure</tt> as
+a synonym for a class with equivalent functionality to class <tt>ios_base::failure</tt> shown 
+in this subclause. [<i>Note</i>: When <tt>ios_base::failure</tt> is a synonym for another type 
+it shall have the same access to other members of <tt>ios_base</tt> as if defined as a member of
+<tt>ios_base</tt> and shall provide a nested type <tt>failure</tt>, to emulate the
+injected class name. &mdash; <i>end note</i>]</ins> The class <tt>failure</tt> defines the base 
+class for the types of all objects thrown as exceptions, by functions in the iostreams library, 
+to report errors detected during stream buffer operations.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
