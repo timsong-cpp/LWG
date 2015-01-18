@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2460" status="New">
+<title>LWG issue 2408 and value categories</title>
+<section><sref ref="[meta.trans.other]"/><sref ref="[iterator.traits]"/></section>
+<submitter>Richard Smith</submitter>
+<date>19 Nov 2014</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG issue <iref ref="2408"/> changes the meat of the specification of <tt>common_type</tt> to compute:
+</p>
+<blockquote><p>
+[..] the type, if any, of an unevaluated conditional expression (5.16) whose first operand is an 
+arbitrary value of type <tt>bool</tt>, whose second operand is an <tt>xvalue</tt> of type <tt>T1</tt>, 
+and whose third operand is an xvalue of type <tt>T2</tt>.
+</p></blockquote>
+<p>
+This has an effect on the specification that I think was unintended. It used to be the case that 
+<tt>common_type&lt;T&amp;, U&amp;&amp;&gt;</tt> would consider the type of a conditional between an 
+lvalue of type <tt>T</tt> and an xvalue of type <tt>U</tt>. It's now either invalid (because there is 
+no such thing as an xvalue of reference type) or considers the type of a conditional between an xvalue 
+of type <tt>T</tt> and an xvalue of type <tt>U</tt>, depending on how you choose to read it.
+<p/>
+Put another way, this has the effect of changing the usual definition from:
+</p>
+<blockquote><pre>
+typedef decay_t&lt;decltype(true ? declval&lt;T&gt;() : declval&lt;U&gt;())&gt; type;
+</pre></blockquote>
+<p>
+to:
+</p>
+<blockquote><pre>
+typedef decay_t&lt;decltype(true ? declval&lt;remove_reference_t&lt;T&gt;&gt;() : declval&lt;remove_reference_t&lt;U&gt;&gt;())&gt; type;
+</pre></blockquote>
+<p>
+It also makes <tt>common_type</tt> underspecified in the case where one of the operands is of type <tt>void</tt>; 
+in that case, the resulting type depends on whether the expression is a throw-expression, which is not 
+specified (but used to be).
+<p/>
+Also on the subject of this wording: the changes to <sref ref="[iterator.traits]"/> say that 
+<tt>iterator_traits&lt;T&gt;</tt> "shall have no members" in some cases. That's wrong. It's a class type; 
+it always has at least a copy constructor, a copy assignment operator, and a destructor. Plus this 
+removes the usual library liberty to add additional members with names that don't collide with normal 
+usage (for instance, if a later version of the standard adds members, they can't be present here as a 
+conforming extension). Perhaps this should instead require that the class doesn't have members with any 
+of those five names? That's what <iref ref="2408"/> does for <tt>common_type</tt>'s type member.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
