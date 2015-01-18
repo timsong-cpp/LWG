@@ -19,14 +19,78 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-01-18 at 17:01:16 UTC</p>
+<p><p>Revised 2015-01-18 at 18:01:22 UTC</p>
 </p><h2>Tentative Issues</h2>
+<hr>
+<h3><a name="2415"></a>2415. Inconsistency between <tt>unique_ptr</tt> and <tt>shared_ptr</tt></h3>
+<p><b>Section:</b> 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-07-03 <b>Last modified:</b> 2015-01-18</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.const">issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>unique_ptr</tt> guarantees that it will not invoke its deleter if it stores
+a null pointer, which is useful for deleters that must not be called
+with a null pointer e.g.
+</p>
+<blockquote><pre>
+unique_ptr&lt;FILE, int(*)(FILE*)&gt; fptr(file, &amp;::fclose);
+</pre></blockquote>
+<p>
+However, <tt>shared_ptr</tt> does invoke the deleter if it owns a null pointer,
+which is a silent change in behaviour when transferring
+ownership from <tt>unique_ptr</tt> to <tt>shared_ptr</tt>. That means the following
+leads to undefined behaviour:
+</p>
+<blockquote><pre>
+std:shared_ptr&lt;FILE&gt; fp = std::move(fptr);
+</pre></blockquote>
+<p>
+Peter Dimov's suggested fix is to construct an empty <tt>shared_ptr</tt> from a
+<tt>unique_ptr</tt> that contains a null pointer.
+</p>
+
+<p><i>[2015-01-18 Library reflector vote]</i></p>
+
+<p>
+The issue has been identified as Tentatively Ready based on eight votes in favour.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change 20.8.2.2.1 [util.smartptr.shared.const] p29 as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-29- <i>Effects</i>: Equivalent to <ins><tt>shared_ptr()</tt> if <tt>r.get() == nullptr</tt>,
+otherwise equivalent to</ins> <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
+otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
 <hr>
 <h3><a name="2455"></a>2455. Allocator default construction should be allowed to throw</h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2014-11-11 <b>Last modified:</b> 2015-01-18</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 17.6.3.5 [allocator.requirements]/4 in the 2014-10 WP (N4140), says:
