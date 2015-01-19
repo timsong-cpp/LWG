@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2466" status="New">
+<title><tt>allocator_traits::max_size()</tt> default behavior is incorrect</title>
+<section><sref ref="[allocator.requirements]"/><sref ref="[allocator.traits.members]"/></section>
+<submitter>Howard Hinnant</submitter>
+<date>17 Jan 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Table 28 &mdash; "Allocator requirements" says that default behavior for <tt>a.max_size()</tt> is 
+<tt>numeric_limits&lt;size_type&gt;::max()</tt>. And this is consistent with the matching statement 
+for <tt>allocator_traits</tt> in <sref ref="[allocator.traits.members]"/>/p7:
+</p>
+<blockquote>
+<pre>
+static size_type max_size(const Alloc&amp; a) noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Returns</i>: <tt>a.max_size()</tt> if that expression is well-formed; otherwise, 
+<tt>numeric_limits&lt;size_type&gt;::max()</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+However, when allocating memory, an allocator must allocate <tt>n*sizeof(value_type)</tt> bytes, for example:
+</p>
+<blockquote>
+<pre>
+value_type*
+allocate(std::size_t n)
+{
+  return static_cast&lt;value_type*&gt;(::operator new (n * sizeof(value_type)));
+}
+</pre>
+</blockquote>
+<p>
+When <tt>n == numeric_limits&lt;size_type&gt;::max(), n * sizeof(value_type)</tt> is <em>guaranteed</em> 
+to overflow except when <tt>sizeof(value_type) == 1</tt>.
+<p/>
+A more useful default would be <tt>numeric_limits&lt;size_type&gt;::max() / sizeof(value_type)</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change <sref ref="[allocator.requirements]"/>, Table 28 &mdash; "Allocator requirements", as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 28 &mdash; Allocator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.max_size()</tt>
+</td>
+<td>
+<tt>X::size_type</tt>
+</td>
+<td>
+the largest value that can<br/>
+meaningfully be passed to<br/>
+<tt>X::allocate()</tt>
+</td>
+<td>
+<tt>numeric_limits&lt;size_type&gt;::max()<ins>/sizeof(value_type)</ins></tt>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+
+<li><p>Change <sref ref="[allocator.traits.members]"/>/p7 as indicated:</p>
+
+<blockquote>
+<pre>
+static size_type max_size(const Alloc&amp; a) noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Returns</i>: <tt>a.max_size()</tt> if that expression is well-formed; otherwise, 
+<tt>numeric_limits&lt;size_type&gt;::max()<ins>/sizeof(value_type)</ins></tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
