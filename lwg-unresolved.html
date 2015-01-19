@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-01-19 at 20:01:34 UTC</p>
+<p><p>Revised 2015-01-19 at 21:01:17 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="760"></a>760. The emplace issue</h3>
@@ -21591,6 +21591,179 @@ was inserted or updated.
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2465"></a>2465. SFINAE-friendly <tt>common_type</tt> is nearly impossible to specialize
+correctly and regresses key functionality</h3>
+<p><b>Section:</b> 20.10.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Eric Niebler <b>Opened:</b> 2015-01-12 <b>Last modified:</b> 2015-01-19</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+I think there's a defect regarding <tt>common_type</tt> and its specializations.
+Unless I've missed it, there is nothing preventing folks from
+instantiating <tt>common_type</tt> with <i>cv</i>-qualified types or reference types. In
+fact, the wording in N3797 explicitly mentions <i>cv</i> <tt>void</tt>, so presumably at
+least <i>cv</i> qualifications are allowed.
+<p/>
+Users are given license to specialize <tt>common_type</tt> when at least of of
+the types is user-defined. (A separate issue is the meaning of
+user-defined. In core, I believe this is any class/struct/union/enum,
+but in lib, I think it means any type not defined in std, right?) There
+is at least one place in the standard that specializes <tt>common_type</tt>
+(time.traits.specializations) on time_point and duration. But the
+specializations are only for non-<i>cv</i>-qualified and non-reference
+specializations of <tt>time_point</tt> and <tt>duration</tt>.
+<p/>
+If the user uses, say, <tt>common_type&lt;duration&lt;X,Y&gt; const, duration&lt;A,B&gt;
+const&gt;</tt>, they're not going to get the behavior they expect.
+<p/>
+Suggest we clarify the requirements of <tt>common_type</tt>'s template
+parameters. Also, perhaps we can add blanket wording that <tt>common_type&lt;A
+[<i>cv</i>][&amp;], B [<i>cv</i>][&amp;]&gt;</tt> is required to be equivalent to 
+<tt>common_type&lt;A,B&gt;</tt> (if that is in fact the way we intent this to work).
+<p/>
+Also, the change to make <tt>common_type</tt> SFINAE-friendly regressed key
+functionality, as noted by Agust&iacute;n K-ballo Berg&eacute; in 
+<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=37178">c++std-lib-37178</a>.
+Since <tt>decay_t</tt> is not applied until the very end of the type computation,
+user specializations are very likely to to be found.
+<p/>
+Agust&iacute;n says:
+</p>
+<blockquote class="note">
+<p>
+Consider the following snippet:
+</p>
+<blockquote>
+<pre>
+struct X {};
+struct Y { explicit Y(X){} };
+
+namespace std {
+  template&lt;> struct common_type&lt;X, Y> { typedef Y type; };
+  template&lt;> struct common_type&lt;Y, X> { typedef Y type; };
+}
+
+static_assert(is_same&lt;common_type_t&lt;X, Y>, Y>()); // (A)
+static_assert(is_same&lt;common_type_t&lt;X, Y, Y>, Y>()); // (B)
+static_assert(is_same&lt;common_type_t&lt;X, X, Y>, Y>()); // (C)
+</pre>
+</blockquote>
+<p>
+Under the original wording, all three assertion holds. Under the current wording,
+</p>
+<ul>
+<li><p>(A) picks the user-defined specialization, so the assertion holds.</p></li>
+
+<li><p>(B) goes to the third bullet and, ignoring the user-defined specialization, looks for 
+<tt>decltype(true ? declval&lt;X&gt;() : declval&lt;Y&gt;())</tt>; since it is ill-formed 
+there is no common type.</p></li>
+
+<li><p>(C) goes to the third bullet and yields <tt>common_type_t&lt;X&amp;&amp;, Y&gt;</tt>, which again misses 
+the user-defined specialization.</p></li>
+</ul>
+</blockquote>
+<p>
+The discussion following <a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=35636">c++std-lib-35636</a> 
+seemed to cohere around the idea that the primary <tt>common_type</tt> specialization should have the effect
+of stripping top-level ref and <i>cv</i> qualifiers by applying <tt>std::decay_t</tt> to its arguments and, 
+if any of them change as a result of that transformation, re-dispatching to <tt>common_type</tt> on those transformed
+arguments, thereby picking up any user-defined specializations. This change to <tt>common_type</tt> would make 
+the specializations in time.traits.specializations sufficient.
+<p/>
+<b>Suggested wording</b>:
+<p/>
+I'm afraid I don't know enough to suggest wording. But for exposition,
+the following is my best shot at implementing the suggested resolution.
+I believe it also fixes the regression noted by Agust&iacute;n K-ballo Berg&eacute; in
+<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=37178">c++std-lib-37178</a>.
+</p>
+<blockquote>
+<pre>
+namespace detail
+{
+    template&lt;typename T, typename U&gt;
+    using default_common_t =
+        decltype(true? std::declval&lt;T&gt;() : std::declval&lt;U&gt;());
+
+    template&lt;typename T, typename U, typename Enable = void&gt;
+    struct common_type_if
+    {};
+
+    template&lt;typename T, typename U&gt;
+    struct common_type_if&lt;T, U,
+      void_t&lt;default_common_t&lt;T, U&gt;&gt;&gt;
+    {
+      using type = decay_t&lt;default_common_t&lt;T, U&gt;&gt;;
+    };
+
+    template&lt;typename T, typename U,
+       typename TT = decay_t&lt;T&gt;, typename UU = decay_t&lt;U&gt;&gt;
+    struct common_type2
+      : common_type&lt;TT, UU&gt; // Recurse to catch user specializations
+    {};
+
+    template&lt;typename T, typename U&gt;
+    struct common_type2&lt;T, U, T, U&gt;
+      : common_type_if&lt;T, U&gt;
+    {};
+
+    template&lt;typename Meta, typename Enable = void&gt;
+    struct has_type
+      : std::false_type
+    {};
+
+    template&lt;typename Meta&gt;
+    struct has_type&lt;Meta, void_t&lt;typename Meta::type&gt;&gt;
+      : std::true_type
+    {};
+
+    template&lt;typename Meta, typename...Ts&gt;
+    struct common_type_recurse
+      : common_type&lt;typename Meta::type, Ts...&gt;
+    {};
+
+    template&lt;typename Meta, typename...Ts&gt;
+    struct common_type_recurse_if
+      : std::conditional&lt;
+          has_type&lt;Meta>::value,
+          common_type_recurse&lt;Meta, Ts...&gt;,
+          empty
+        >::type
+    {};
+}
+
+template&lt;typename ...Ts&gt;
+struct common_type
+{};
+
+template&lt;typename T>
+struct common_type&lt;T>
+{
+  using type = std::decay_t&lt;T&gt;;
+};
+
+template&lt;typename T, typename U&gt;
+struct common_type&lt;T, U&gt;
+  : detail::common_type2&lt;T, U&gt;
+{};
+
+template&lt;typename T, typename U, typename... Vs&gt;
+struct common_type&lt;T, U, Vs...&gt;
+  : detail::common_type_recurse_if&lt;common_type&lt;T, U&gt;, Vs...&gt;
+{};
+</pre>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
