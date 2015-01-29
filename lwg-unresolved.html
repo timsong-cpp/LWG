@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-01-29 at 15:01:58 UTC</p>
+<p><p>Revised 2015-01-29 at 18:01:46 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="760"></a>760. The emplace issue</h3>
@@ -6973,131 +6973,6 @@ We would like to hear from our C liaison before moving on this issue though.
 
 
 <hr>
-<h3><a name="2156"></a>2156. Unordered containers' <tt>reserve(n)</tt> reserves for <tt>n-1</tt> elements</h3>
-<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel James <b>Opened:</b> 2012-05-07 <b>Last modified:</b> 2014-03-03</p>
-<p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
-<p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-I think that unordered containers' <tt>reserve</tt> doesn't quite do what it should. I'd expect after calling 
-<tt>x.reserve(n)</tt> to be able to insert <tt>n</tt> elements without invalidating iterators. But as 
-the standard is written (I'm looking at n3376), I think the guarantee only holds for <tt>n-1</tt> elements.
-<p/>
-For a container with <tt>max_load_factor</tt> of <tt>1</tt>, <tt>reserve(n)</tt> is equivalent to
-<tt>rehash(ceil(n/1))</tt>, ie. <tt>rehash(n)</tt>. <tt>rehash(n)</tt> requires that the bucket
-count is <tt>&gt;= n</tt>, so it can be <tt>n</tt> (Table 103). The rule is that <tt>insert</tt>
-shall not affect the validity of iterators if <tt>(N + n) &lt; z * B</tt> (23.2.5 [unord.req] p15). 
-But for this case the two sides of the equation are equal, so <tt>insert</tt> can affect the validity of iterators.
-</p>
-
-<p><i>[2013-03-16 Howard comments and provides wording]</i></p>
-
-
-<p>
-Given the following:
-</p>
-
-<blockquote><pre>
-LF := load_factor()
-MLF := max_load_factor()
-S := size()
-B := bucket_count()
-
-LF == S/B
-</pre></blockquote>
-
-<p>
-The container has an invariant:
-</p>
-
-<blockquote><pre>
-LF &lt;= MLF
-</pre></blockquote>
-
-<p>
-Therefore:
-</p>
-
-<blockquote><pre>
-MLF &gt;= S/B
-S &lt;= MLF * B
-B &gt;= S/MLF
-</pre></blockquote>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
-<p>
-Moved to Open.
-</p>
-<p>
-Howard to provide rationale and potentally revised wording.
-</p>
-
-
-<p><i>[2012-02-12 Issaquah : recategorize as P3]</i></p>
-
-<p>
-Jonathon Wakely: submitter is Boost.Hash maintainer. Think it's right.
-</p>
-
-<p>
-Marshall Clow: even if wrong it's more right than what we have now
-</p>
-
-<p>
-Geoffrey Romer: issue is saying rehash should not leave container in such a state that a notional insertion of zero elements should not trigger a rehash
-</p>
-
-<p>
-AJM: e.g. if you do a range insert from an empty range
-</p>
-
-<p>
-AJM: we don't have enough brainpower to do this now, so not priority zero
-</p>
-
-<p>
-Recategorised as P3
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3485.</p>
-
-<ol>
-<li>
-<p>
-In 23.2.5 [unord.req] Table 103 &mdash; Unordered associative container requirements, change the post-condition 
-in the row for <code>a.rehash(n)</code> to:
-</p>
-<blockquote>
-Post: <code>a.bucket_count() &gt;<ins>=</ins> a.size() / a.max_load_factor()</code> and <code>a.bucket_count() &gt;= n</code>.
-</blockquote>
-</li>
-
-<li>
-<p>
-In 23.2.5 [unord.req]/p15 change
-</p>
-<blockquote>
-The <code>insert</code> and <code>emplace</code> members shall not affect the validity of iterators if 
-<code>(N+n) &lt;<ins>=</ins> z * B</code>, where <code>N</code> is the number of elements in the container 
-prior to the insert operation, <code>n</code> is the number of elements inserted, <code>B</code> is the container's 
-bucket count, and <code>z</code> is the container's maximum load factor.
-</blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2157"></a>2157. How does <tt>std::array&lt;T,0&gt;</tt> initialization work when <tt>T</tt> is not default-constructible?</h3>
 <p><b>Section:</b> 23.3.2.8 [array.zero] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2014-02-11</p>
@@ -9173,113 +9048,6 @@ allocator of the result.
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2218"></a>2218. Unclear how containers use <tt>allocator_traits::construct()</tt></h3>
-<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-11-27 <b>Last modified:</b> 2014-12-18</p>
-<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
-<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-Firstly, 23.2.1 [container.requirements.general]/7 says a container's
-allocator is used to obtain memory, but it isn't stated explicitly that the same 
-allocator is used to construct and destroy elements, as opposed to a value-initialized 
-allocator of the same type.
-</p>
-<p>
-Secondly, 23.2.1 [container.requirements.general]/3 says elements "shall be
-constructed using the <tt>allocator_traits&lt;allocator_type&gt;::construct</tt>
-function and destroyed using the <tt>allocator_traits&lt;allocator_type&gt;::destroy</tt> function" and
-23.2.1 [container.requirements.general]/13 defines <tt>CopyInsertable</tt> etc. in
-terms of an allocator <tt>A</tt> which is identical to the container's <tt>allocator_type</tt>.
-</p>
-<p>
-The intent of making <tt>construct()</tt> and <tt>destroy()</tt> function templates was
-that containers would be permitted to use <tt>allocator_traits&lt;A&gt;::construct()</tt> instead of
-<tt>allocator_traits&lt;allocator_type&gt;::construct()</tt>, where <tt>A</tt> is
-<tt>allocator_traits&lt;allocator_type&gt;::rebind_alloc&lt;U&gt;</tt> for some other type
-<tt>U</tt>.  This allows node-based containers to store an allocator of the right type for 
-allocating nodes and to use the same object to construct elements in aligned storage within 
-those nodes, avoiding rebinding and copying the stored allocator every time an element needs
-to be constructed.
-<p/>
-It should be made clear that a possibly-rebound copy of the container's allocator is used for object 
-construction.
-</p>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
-<p>
-Moved to Open.
-</p>
-<p>
-Jonathan: point 2 in the proposed resolution is definitely needed.
-</p>
-
-<p><i>[2014-11-28, Jonathan improves wording]</i></p>
-
-<p>
-In the first set of edits to paragraph 3 both pieces inserting "<tt>rebind_alloc&lt;U&gt;::</tt>"
-should be replaced by "<tt>rebind_traits&lt;U&gt;::</tt>"
-<p/>
-Otherwise it implies using the allocator's functions directly, but they might not exist and 
-it should be through the rebound traits type.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3485.</p>
-
-<ol>
-<li><p>Edit 23.2.1 [container.requirements.general] paragraph 3:</p>
-<blockquote><p>
-For the components affected by this subclause that declare an <tt>allocator_type</tt>, objects stored in these
-components shall be constructed using the <tt>allocator_traits&lt;allocator_type&gt;::<ins>rebind_traits&lt;U&gt;::</ins>construct</tt> 
-function and destroyed using the <tt>allocator_traits&lt;allocator_type&gt;::<ins>rebind_traits&lt;U&gt;::</ins>destroy</tt> 
-function (20.7.8.2 [allocator.traits.members])<ins>, where <tt>U</tt> is either <tt>allocator_type::value_type</tt> 
-or an internal type used by the container</ins>. These functions are called only for the container's element type, 
-not for internal types used by the container. [ <i>Note</i>: This means, for example, that a node-based container 
-might need to construct nodes containing aligned buffers and call construct to place the element into the buffer. 
-&mdash; <i>end note</i> ]
-</p></blockquote>
-</li>
-
-<li><p>Edit 23.2.1 [container.requirements.general] paragraph 7:</p>
-<blockquote><p>
-[&hellip;] A copy of this allocator is used for any memory allocation <ins>and element construction</ins> performed, 
-by these constructors and by all member functions, during the lifetime of each container object or until the allocator 
-is replaced. [&hellip;]
-</p></blockquote>
-</li>
-
-<li><p>Edit 23.2.1 [container.requirements.general] paragraph 13:</p>
-<blockquote><p>
-[&hellip;] Given <ins>an allocator type <tt>A</tt> and given</ins> a container type <tt>X</tt> having <del>an 
-<tt>allocator_type</tt> identical to <tt>A</tt> and</del> a <tt>value_type</tt> identical to <tt>T</tt> 
-<ins>and an <tt>allocator_type</tt> identical to <tt>allocator_traits&lt;A&gt;::rebind_alloc&lt;T&gt;</tt></ins> 
-and given an lvalue <tt>m</tt> of type <tt>A</tt>, a pointer <tt>p</tt> 
-of type <tt>T*</tt>, an expression <tt>v</tt> of type (possibly <tt>const</tt>) <tt>T</tt>, and an rvalue <tt>rv</tt> 
-of type <tt>T</tt>, the following terms are defined.
-<p/>
-[&hellip;]
-<p/>
-[ <i>Note</i>: A container calls <tt>allocator_traits&lt;A&gt;::construct(m, p, args)</tt> to construct an element 
-at <tt>p</tt> using <tt>args</tt><ins>, with <tt>m == get_allocator()</tt></ins>. The default <tt>construct</tt> in 
-<tt>std::allocator</tt> will call <tt>::new((void*)p) T(args)</tt>, but specialized allocators may choose a 
-different definition. &mdash; <i>end note</i> ]
-</p></blockquote>
-</li>
-
-</ol>
-
 
 
 
@@ -17446,11 +17214,10 @@ return old_val;
 
 <hr>
 <h3><a name="2391"></a>2391. <tt>basic_string</tt> is missing non-<tt>const</tt> <tt>data()</tt></h3>
-<p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2014-06-17</p>
+<p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
+ <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2015-01-29</p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
 <p><b>View all other</b> <a href="lwg-index.html#basic.string">issues</a> in [basic.string].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 Regarding 21.4 [basic.string], <tt>std::basic_string&lt;charT&gt;::data()</tt> returns a <tt>const charT*</tt> 
@@ -17470,6 +17237,19 @@ and in the <a href="https://groups.google.com/a/isocpp.org/forum/#!topic/std-dis
 This requires a small change to <tt>std::basic_string</tt>'s definition in 21.4 [basic.string] to add the method to 
 <tt>std::basic_string</tt>, and another small change in 21.4.7.1 [string.accessors] to define the new method.
 </p>
+
+<p><i>[Teleconference, Jan 2015]</i></p>
+
+<p>
+Broad but not unanimous support.  The objection was a concern that this is changing the
+interface of a class through the issues process.
+</p>
+
+<p>
+AJM to ask LEWG chair if they want to take this issue before we revisit, otherwise it
+may move to Ready on next review.
+</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -17805,85 +17585,6 @@ would be accepted, it would solve the problem mentioned here.
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2402"></a>2402. <tt>basic_string(const basic_string&amp; str, size_type pos, size_type n = npos)</tt> shouldn't use <tt>Allocator()</tt></h3>
-<p><b>Section:</b> 21.4.2 [string.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2014-06-17</p>
-<p><b>View all other</b> <a href="lwg-index.html#string.cons">issues</a> in [string.cons].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-21.4.2 [string.cons] p3 specifies:
-</p>
-<blockquote>
-<pre>
-basic_string(const basic_string&amp; str, size_type pos, size_type n = npos, const Allocator&amp; a = Allocator());
-</pre>
-<p>
-But this implies that <tt>basic_string(str, pos)</tt> and <tt>basic_string(str, pos, n)</tt> use <tt>Allocator()</tt> 
-instead of getting an allocator from <tt>str</tt>.
-<p/>
-21.4.1 [string.require] p3 says "The <tt>Allocator</tt> object used shall be obtained as described in 23.2.1."  
-23.2.1 [container.requirements.general] p8 says "Copy constructors for these container types obtain an allocator 
-by calling <tt>allocator_traits&lt;allocator_type&gt;::select_on_container_copy_construction</tt> on the allocator 
-belonging to the container being copied.", but this isn't exactly a copy constructor. Then it talks about move constructors 
-(which this definitely isn't), and finally says that "All other constructors for these container types take a 
-<tt>const allocator_type&amp;</tt> argument. [&hellip;] A copy of this allocator is used for any memory allocation performed".
-</p>
-</blockquote>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>Change 21.4 [basic.string] p5, class template <tt>basic_string</tt> synopsis, as indicated:</p>
-
-<blockquote>
-<pre>
-[&hellip;]
-<i>// 21.4.2, construct/copy/destroy:</i>
-[&hellip;]
-basic_string(basic_string&amp;&amp; str) noexcept;
-<ins>basic_string(const basic_string&amp; str, size_type pos, size_type n = npos);</ins>
-basic_string(const basic_string&amp; str, size_type pos, size_type n<del> = npos</del>,
-            const Allocator&amp; a<del> = Allocator()</del>);
-[&hellip;]
-</pre>
-</blockquote>
-</li>
-
-<li><p>Change 21.4.2 [string.cons] around p3 as indicated:</p>
-
-<blockquote>
-<pre>
-<ins>basic_string(const basic_string&amp; str, 
-             size_type pos, size_type n = npos);</ins>
-basic_string(const basic_string&amp; str, 
-             size_type pos, size_type n<del> = npos</del>,
-             const Allocator&amp; a<del> = Allocator()</del>);
-</pre>
-<blockquote>
-<p>
-[&hellip;]
-<p/>
--5- <i>Effects</i>: Constructs an object of class <tt>basic_string</tt> and determines the effective length <tt>rlen</tt> of the
-initial string value as the smaller of <tt>n</tt> and <tt>str.size() - pos</tt>, as indicated in Table 65. <ins>The first constructor 
-obtains an allocator by calling <tt>allocator_traits&lt;allocator_type&gt;::select_on_container_copy_construction</tt> on the 
-allocator belonging to <tt>str</tt>.</ins>
-<p/>
-Table 65 &mdash; <ins><tt>basic_string(const basic_string&amp;, size_type, size_type)</tt> and</ins>
-<tt>basic_string(const basic_string&amp;, size_type, size_type, const Allocator&amp;)</tt> effects
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
 
 
 
