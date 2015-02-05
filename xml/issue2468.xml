@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY nbsp "&#160;">
+] >
+
+<issue num="2468" status="New">
+<title>Self-move-assignment of library types</title>
+<section><sref ref="[res.on.arguments]"/><sref ref="[utility.arg.requirements]"/>
+<sref ref="[lib.types.movedfrom]"/><sref ref="[container.requirements.general]"/></section>
+<submitter>Matt Austern</submitter>
+<date>22 Jan 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Suppose we write
+</p>
+<blockquote>
+<pre>
+vector&lt;string&gt; v{"a", "b", "c", "d"};
+v = move(v);
+</pre>
+</blockquote>
+<p>
+What should be the state of <tt>v</tt> be? The standard doesn't say anything specific about self-move-assignment. 
+There's relevant text in several parts of the standard, and it's not clear how to reconcile them.
+<p/>
+<sref ref="[res.on.arguments]"/> writes that, for all functions in the standard library, unless explicitly stated 
+otherwise, "If a function argument binds to an rvalue reference parameter, the implementation may assume that this 
+parameter is a unique reference to this argument." The <tt>MoveAssignable</tt> requirements table in 
+<sref ref="[utility.arg.requirements]"/> writes that, given <tt>t = rv</tt>, <tt>t</tt>'s state is equivalent to 
+<tt>rv</tt>'s from before the assignment and <tt>rv</tt>'s state is unspecified (but valid). For containers 
+specifically, the requirements table in <sref ref="[container.requirements.general]"/> says that, given <tt>a = rv</tt>, 
+<tt>a</tt> becomes equal to what <tt>rv</tt> was before the assignment (and doesn't say anything about <tt>rv</tt>'s 
+state post-assignment).
+<p/>
+Taking each of these pieces in isolation, without reference to the other two:
+</p>
+<ul>
+<li><p><sref ref="[res.on.arguments]"/> would clearly imply that the effect of <tt>v = move(v)</tt> is undefined.</p></li>
+<li><p><sref ref="[utility.arg.requirements]"/> would clearly imply that <tt>v = move(v)</tt> has defined behavior. 
+It might be read to imply that this is a no-op, or might be read to imply that it leaves <tt>v</tt> in a valid but 
+unspecified state; I'm not sure which reading is more natural.</p></li>
+<li><p><sref ref="[container.requirements.general]"/> would clearly imply that <tt>v = move(v)</tt> is a no-op.</p></li>
+</ul>
+<p>
+It's not clear from the text how to put these pieces together, because it's not clear which one takes precedence.  
+Maybe <sref ref="[res.on.arguments]"/> wins (it imposes an implicit precondition that isn't mentioned in the 
+<tt>MoveAssignable</tt> requirements, so <tt>v = move(v)</tt> is undefined), or maybe 
+<sref ref="[container.requirements.general]"/> wins (it explicitly gives additional guarantees for 
+<tt>Container::operator=</tt> beyond what's guaranteed for library functions in general, so <tt>v = move(v)</tt> 
+is a no-op), or maybe something else.
+<p/>
+On the existing implementations that I checked, for what it's worth, <tt>v = move(v)</tt> appeared to clear the vector; 
+it didn't leave the vector unchanged and it didn't cause a crash.
+<p/>
+<em>Proposed wording</em>:
+<p/>
+Informally: change the <tt>MoveAssignable</tt> and Container requirements tables (and any other requirements tables 
+that mention move assignment, if any) to make it explicit that <tt>x = move(x)</tt> is defined behavior and it leaves 
+<tt>x</tt> in a valid but unspecified state. That's probably not what the standard says today, but it's probably what 
+we intended and it's consistent with what we've told users and with what implementations actually do.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
