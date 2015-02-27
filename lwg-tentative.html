@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-02-27 at 09:02:06 UTC</p>
+<p><p>Revised 2015-02-27 at 12:02:00 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="2111"></a>2111. Which <tt>unexpected</tt>&#47;<tt>terminate</tt> handler is called from the exception handling runtime?</h3>
@@ -708,6 +708,48 @@ Table 65 &mdash; <ins><tt>basic_string(const basic_string&amp;, size_type, size_
 
 
 <hr>
+<h3><a name="2410"></a>2410. [fund.ts] <tt>shared_ptr&lt;array&gt;</tt>'s constructor from <tt>unique_ptr</tt> should be constrained</h3>
+<p><b>Section:</b> X [mods.util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2014-06-16 <b>Last modified:</b> 2015-02-27</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts</b></p>
+<p>
+The proposed resolution for LWG <a href="lwg-defects.html#2399">2399</a> doesn't apply cleanly to the Fundamentals TS, but the issue is still present.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4023 in regard to fundamental-ts changes.</p>
+
+<ol>
+<li><p>In fundamental-ts, change [mods.util.smartptr.shared.const] p34 as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+-34- <i><del>Requires</del><ins>Remarks</ins></i>: <ins>This constructor shall not participate in overload resolution
+unless</ins> <tt>Y*</tt> <del>shall be</del><ins>is</ins> <i>compatible with</i> <tt>T*</tt>. 
+<p/>
+-35- <i>Effects</i>: Equivalent to <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type, 
+otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
+<p/>
+-36- <i>Exception safety</i>: If an exception is thrown, the constructor has no effect. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2415"></a>2415. Inconsistency between <tt>unique_ptr</tt> and <tt>shared_ptr</tt></h3>
 <p><b>Section:</b> 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-07-03 <b>Last modified:</b> 2015-01-27</p>
@@ -773,6 +815,68 @@ ref(r.get_deleter()))</tt></del>.
 
 
 <hr>
+<h3><a name="2418"></a>2418. [fund.ts] <tt>apply</tt> does not work with member pointers</h3>
+<p><b>Section:</b> X [tuple.apply] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2014-07-08 <b>Last modified:</b> 2015-02-27</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts</b></p>
+<p>
+The definition of <tt>apply</tt> present in &sect;3.2.2 [tuple.apply] prevents this
+function template to be used with pointer to members type passed as the first argument.
+</p>
+<blockquote>
+<i>Effects:</i> 
+<p/>
+[&hellip;]
+<p/>
+<tt>return std::forward&lt;F&gt;(f)(std::get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);</tt>
+</blockquote>
+<p>
+This makes this utility inconsistent with other standard library components and limits its usability.
+<p/>
+We propose to define its functionally in terms of <tt><i>INVOKE</i></tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4081.html">N4081</a> 
+in regard to fundamental-ts changes.</p>
+
+<ol>
+<li><p>Edit &sect;3.2.2 [tuple.apply] paragraph 2:</p>
+
+<blockquote>
+<pre>
+template &lt;class F, class Tuple&gt;
+constexpr decltype(auto) apply(F&amp;&amp; f, Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Given the exposition only function
+</p>
+<blockquote>
+<pre>
+template &lt;class F, class Tuple, size_t... I&gt;
+constexpr decltype(auto) apply_impl(  // <i>exposition only</i>
+    F&amp;&amp; f, Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) {
+  return <ins><i>INVOKE</i>(</ins>std::forward&lt;F&gt;(f)<del>(</del><ins>, </ins>std::get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);
+}
+</pre>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2420"></a>2420. <tt>function&lt;void(ArgTypes...)&gt;</tt> does not discard the return value of the target object</h3>
 <p><b>Section:</b> 20.9.11.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Agust&iacute;n Berg&eacute; <b>Opened:</b> 2014-07-12 <b>Last modified:</b> 2015-02-27</p>
@@ -806,6 +910,152 @@ convertible to <tt>R</tt></ins>.
 </p>
 </blockquote>
 </li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2448"></a>2448. Non-normative Container destructor specification</h3>
+<p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-10-18 <b>Last modified:</b> 2015-02-27</p>
+<p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+According to Table 96 &mdash; "Container requirements" the specification:
+</p>
+<blockquote><p>
+note: the destructor is applied to every element of <tt>a</tt>; any
+memory obtained is deallocated.
+</p></blockquote>
+<p>
+The initial "note:" can be read as if that part of the specification would not be normative (This note form
+differs from footnotes in tables, which have normative meaning).
+<p/>
+It seems that this initial part of the specification exists since C++98. But comparing with
+the similar <a href="https://www.sgi.com/tech/stl/Container.html">SGI Container specification</a> there is no evidence
+for that being intended to be non-normative.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4140.
+</p>
+
+<ol>
+<li><p>Change 23.2.1 [container.requirements.general], Table 96 &mdash; "Container requirements", as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 96 &mdash; Container requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational<br/>semantics</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="5" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>(&amp;a)-&gt;~X()</tt>
+</td>
+<td>
+<tt>void</tt>
+</td>
+<td>
+</td>
+<td>
+<del>note:</del> the destructor<br/>
+is applied to every<br/>
+element of <tt>a</tt>; any<br/>
+memory obtained is
+deallocated.
+</td>
+<td>
+linear
+</td>
+</tr>
+
+<tr>
+<td colspan="5" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2454"></a>2454. Add <tt>raw_storage_iterator::base()</tt> member</h3>
+<p><b>Section:</b> 20.7.10 [storage.iterator] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-11-11 <b>Last modified:</b> 2015-02-27</p>
+<p><b>View other</b> <a href="lwg-index-open.html#storage.iterator">active issues</a> in [storage.iterator].</p>
+<p><b>View all other</b> <a href="lwg-index.html#storage.iterator">issues</a> in [storage.iterator].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Eric Niebler pointed out that <tt>raw_storage_iterator</tt> should give access
+to the <tt>OutputIterator</tt> it wraps.
+<p/>
+This helps alleviate the exception-safety issue pointed out in the
+discussion of LWG <a href="lwg-active.html#2127">2127</a>, as an exception can be caught and then
+destructors can be run for the constructed elements in the range
+<tt>[begin, raw.base())</tt>
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/prot/14882fdis/n4140.pdf">N4140</a>.</p>
+
+<ol>
+<li><p>Add a new function to the synopsis in 20.7.10 [storage.iterator] p1:</p>
+
+<blockquote><pre>
+namespace std {
+  template &lt;class OutputIterator, class T&gt;
+  class raw_storage_iterator
+    : public iterator&lt;output_iterator_tag,void,void,void,void&gt; {
+  public:
+    explicit raw_storage_iterator(OutputIterator x);
+
+    raw_storage_iterator&lt;OutputIterator,T&gt;&amp; operator*();
+    raw_storage_iterator&lt;OutputIterator,T&gt;&amp; operator=(const T&amp; element);
+    raw_storage_iterator&lt;OutputIterator,T&gt;&amp; operator++();
+    raw_storage_iterator&lt;OutputIterator,T&gt; operator++(int);
+    <ins>OutputIterator base() const;</ins>
+};
+}
+</pre></blockquote>
+</li>
+
+<li><p>Insert the new function and a new paragraph series after p7:</p>
+
+<blockquote><pre>
+<ins>OutputIterator base() const;</ins>
+</pre><blockquote>
+<p>
+<ins>-?- <i>Returns</i>: An iterator of type <tt>OutputIterator</tt> that points to the
+same value as <tt>*this</tt> points to.</ins>
+</p>
+</blockquote></blockquote>
+</li>
+
 </ol>
 
 
@@ -909,6 +1159,111 @@ vector() noexcept<ins>(is_nothrow_default_constructible&lt;Allocator&gt;{})</ins
 </li>
 
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2463"></a>2463. [fund.ts] Incorrect complexity for <tt>sample()</tt> algorithm</h3>
+<p><b>Section:</b> X [alg.random.sample] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Joe Gottman <b>Opened:</b> 2014-12-17 <b>Last modified:</b> 2015-02-27</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts</b></p>
+<p>
+According to paragraph 10.1 of the Library Fundamentals 1 draft, the complexity of the new 
+<tt>std::experimental::sample</tt> template function is O(<tt>n</tt>). Note that <tt>n</tt> is actually 
+a parameter of this function, corresponding to the sample size. But both common algorithms for 
+sampling, the selection algorithm and the reservoir algorithm, are linear with respect to the 
+population size, which is often many orders of magnitude bigger than the sample size.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4335 in regard to fundamental-ts changes.</p>
+
+<ol>
+<li><p>Change X [alg.random.sample] p5 to read:</p>
+
+<blockquote>
+<p>
+-5- <i>Complexity</i>: O(<tt><del>n</del><ins>last - first</ins></tt>). 
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2467"></a>2467. <tt>is_always_equal</tt> has slightly inconsistent default</h3>
+<p><b>Section:</b> 17.6.3.5 [allocator.requirements], 20.7.8.1 [allocator.traits.types] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2015-01-18 <b>Last modified:</b> 2015-02-27</p>
+<p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
+<p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Table 28 &mdash; "Allocator requirements" says that <tt>X::is_always_equal</tt> has a default value 
+of <tt>is_empty&lt;X&gt;</tt>, and this is consistent with the return type description:
+</p>
+<blockquote>
+<p>
+Identical to or derived from <tt>true_type</tt> or <tt>false_type</tt>
+</p>
+</blockquote>
+<p>
+<tt>is_empty&lt;X&gt;</tt> is guaranteed to be derived from either <tt>true_type</tt> or <tt>false_type</tt>.  
+So far so good.
+<p/>
+20.7.8.1 [allocator.traits.types]/p10 says:
+</p>
+<blockquote>
+<pre>
+typedef <i>see below</i> is_always_equal;
+</pre>
+<blockquote>
+<p>
+<i>Type</i>: <tt>Alloc::is_always_equal</tt> if the qualified-id <tt>Alloc::is_always_equal</tt> is valid and denotes a
+type (14.8.2); otherwise <tt>is_empty&lt;Alloc&gt;::type</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+This is subtly different than what Table 28 says is the default: <tt>is_empty&lt;Alloc&gt;::type</tt> is 
+not <tt>is_empty&lt;Alloc&gt;</tt>, but is rather one of <tt>true_type</tt> or <tt>false_type</tt>.
+<p/>
+There are two ways to fix this:
+</p>
+<ol>
+<li>
+<p>
+Change Table 28 to say: <tt>is_empty&lt;X&gt;<ins>::type</ins></tt>.
+<p/>
+or
+</p></li>
+
+<li><p>Change 20.7.8.1 [allocator.traits.types]/p10:</p></li>
+<blockquote>
+<p>
+<i>Type</i>: <tt>Alloc::is_always_equal</tt> if the qualified-id <tt>Alloc::is_always_equal</tt> is valid and denotes a
+type (14.8.2); otherwise <tt>is_empty&lt;Alloc&gt;<del>::type</del></tt>.
+</p>
+</blockquote>
+</ol>
+<p>
+Both options are correct, and I see no reason to prefer one fix over the other. But Table 28 and 
+20.7.8.1 [allocator.traits.types]/p10 should be consistent with one another.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+Change Table 28 to say: <tt>is_empty&lt;X&gt;<ins>::type</ins></tt>.
+</p>
 
 
 
