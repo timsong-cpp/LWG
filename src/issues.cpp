@@ -98,6 +98,7 @@ auto lwg::filename_for_status(std::string stat) -> std::string {
         : (stat == "EWG")           ? LWG_ACTIVE
         : (stat == "LEWG")          ? LWG_ACTIVE
         : (stat == "Core")          ? LWG_ACTIVE
+        : (stat == "SG1")           ? LWG_ACTIVE
         : (stat == "Deferred")      ? LWG_ACTIVE
         : throw std::runtime_error("unknown status " + stat);
 }
@@ -317,6 +318,7 @@ auto lwg::get_status_priority(std::string const & stat) noexcept -> std::ptrdiff
       "LEWG",
       "EWG",
       "Core",
+      "SG1",
       "Deferred",
       "Tentatively Resolved",
       "Pending DR",
