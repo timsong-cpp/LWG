@@ -41,8 +41,8 @@
 // .  Lots of tidy and cleanup after merging the revision-generating tool
 // .  Refactor more common text
 // .  Split 'format' function and usage to that the issues vector can pass by const-ref in the common cases
-// .  Document the purpose amd contract on each function
-// Waiting on external fix for preserving file-dates
+// .  Document the purpose and contract on each function
+// .  Waiting on external fix for preserving file-dates
 // .  sort-by-last-modified-date should offer some filter or separation to see only the issues modified since the last meeting
 
 // Missing standard facilities that we work around

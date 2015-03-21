@@ -157,7 +157,7 @@ auto mailing_info::get_revisions(std::vector<issue> const & issues, std::string 
    auto s = m_data.substr(i, j-i);
    j = 0;
 
-   // bulding a potentially large string, would a stringstream be a better solution?
+   // building a potentially large string, would a stringstream be a better solution?
    // Probably not - string will not be *that* big, and stringstream pays the cost of locales
    std::string r = "<ul>\n";
 

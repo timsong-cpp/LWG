@@ -26,7 +26,7 @@ using std::exchange;
 #endif
 
 auto lwg::operator < (section_num const & x, section_num const & y) noexcept -> bool {
-   // prefices are unique, so there should be no need for a tiebreak.
+   // prefixes are unique, so there should be no need for a tiebreak.
    return (x.prefix < y.prefix) ?  true
         : (y.prefix < x.prefix) ? false
         : x.num < y.num;
