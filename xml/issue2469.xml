@@ -3,7 +3,7 @@
   <!ENTITY nbsp "&#160;">
 ] >
 
-<issue num="2469" status="New">
+<issue num="2469" status="Open">
 <title>Wrong specification of Requires clause of <tt>operator[]</tt> for <tt>map</tt> and <tt>unordered_map</tt></title>
 <section><sref ref="[map.access]"/><sref ref="[unord.map.elem]"/></section>
 <submitter>Tomasz Kami&nacute;ski</submitter>
@@ -66,13 +66,46 @@ That means that the <tt>MoveInsertable</tt> and similar requirements may only be
 not its members types.
 </p>
 
-<note>2015-02, Cologne</note>
+<note>2015-02 Cologne</note>
 <p>
 This issue is related to <iref ref="2464"/>.
+<p/>
+GR: Effects should say "returns ...". DK: Or just have a Returns clause? MC: A Returns clause is a directive to implementers.
+<p/>
+TK/DK: This PR fails to address the requirements about which it complained in the first place. DK: I can reword this. TK can help. 
 </p> 
-</discussion>
 
-<resolution>
+<note>2015-03-29, Daniel provides improved wording</note>
+<p>
+The revised wording fixes the proper usage of the magic "Equivalent to" wording, which automatically induces <i>Requires:</i>, 
+<i>Returns:</i>, and <i>Complexity:</i> elements (and possibly more). This allows us to strike all the remaining
+elements, because they fall out from the semantics of the wording defined by <iref ref="2464"/>. In particular it is important
+to realize that the wording form
+</p>
+<blockquote>
+<p>
+<tt>value_type</tt> shall be <tt>EmplaceConstructible</tt> into <tt>map</tt> from <tt>piecewise_construct</tt>, 
+<tt>forward_as_tuple(k)</tt>, <tt>forward_as_tuple(forward&lt;Args&gt;(args)...)</tt>
+</p>
+</blockquote>
+<p>
+degenerates for the empty pack expansion <tt>args</tt> to:
+</p>
+<blockquote>
+<p>
+<tt>value_type</tt> shall be <tt>EmplaceConstructible</tt> into <tt>map</tt> from <tt>piecewise_construct</tt>, 
+<tt>forward_as_tuple(k)</tt>, <tt>forward_as_tuple()</tt>
+</p>
+</blockquote>
+<p>
+which again means that such a <tt>pair</tt> construction (assuming <tt>std::allocator</tt>) would copy <tt>k</tt>
+into member <tt>first</tt> and would value-initialize member <tt>second</tt>.
+</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N4296.</p>
 
 <p>Accept resolution of the issue issue <iref ref="2464"/> and define <tt>operator[]</tt> as follows 
@@ -120,6 +153,92 @@ the first operator inserts the value <tt>value_type(k, mapped_type())</tt> and t
 value <tt>value_type(std::move(k), mapped_type())</tt></del><ins>For the first operator, equivalent to: 
 <tt>try_emplace(k).first-&gt;second</tt>; for the second operator, equivalent to: 
 <tt>try_emplace(move(k)).first-&gt;second</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4296.</p>
+
+<p>Accept resolution of the issue issue <iref ref="2464"/> and define <tt>operator[]</tt> as follows 
+(This would also address issue <iref ref="2274"/>):</p>
+
+<ol>
+<li><p>Change <sref ref="[map.access]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+T&amp; operator[](const key_type&amp; x);
+</pre>
+<blockquote><p>
+-1- <i>Effects</i>: <del>If there is no key equivalent to <tt>x</tt> in the map, inserts <tt>value_type(x, T())</tt> 
+into the map</del><ins>Equivalent to: <tt>return try_emplace(x).first-&gt;second</tt></ins>.
+<p/>
+<del>-2- <i>Requires</i>: <tt>key_type</tt> shall be <tt>CopyInsertable</tt> and <tt>mapped_type</tt> shall be 
+<tt>DefaultInsertable</tt> into <tt>*this</tt>.</del>
+<p/>
+<del>-3- <i>Returns</i>: A reference to the <tt>mapped_type</tt> corresponding to <tt>x</tt> in <tt>*this</tt>.</del>
+<p/>
+<del>-4- <i>Complexity</i>: Logarithmic.</del>
+</p>
+</blockquote>
+<pre>
+T&amp; operator[](key_type&amp;&amp; x);
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: <del>If there is no key equivalent to <tt>x</tt> in the map, inserts <tt>value_type(std::move(x), T())</tt> 
+into the map</del><ins>Equivalent to: <tt>return try_emplace(move(x)).first-&gt;second</tt></ins>.
+<p/>
+<del>-6- <i>Requires</i>: <tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>.</del>
+<p/>
+<del>-7- <i>Returns</i>: A reference to the <tt>mapped_type</tt> corresponding to <tt>x</tt> in <tt>*this</tt>.</del>
+<p/>
+<del>-8- <i>Complexity</i>: Logarithmic.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[unord.map.elem]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+mapped_type&amp; operator[](const key_type&amp; k);
+mapped_type&amp; operator[](key_type&amp;&amp; k);
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Requires</i>: <tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>. For the first operator, 
+<tt>key_type</tt> shall be <tt>CopyInsertable</tt> into <tt>*this</tt>. For the second operator, <tt>key_type</tt> shall 
+be <tt>MoveConstructible</tt>.</del>
+<p/>
+-2- <i>Effects</i>: <del>If the <tt>unordered_map</tt> does not already contain an element whose key is equivalent to <tt>k</tt>, 
+the first operator inserts the value <tt>value_type(k, mapped_type())</tt> and the second operator inserts the
+value <tt>value_type(std::move(k), mapped_type())</tt></del><ins>For the first operator, equivalent to:</ins>
+</p>
+<blockquote>
+<pre> 
+<ins>return try_emplace(k).first-&gt;second;</ins>
+</pre>
+</blockquote>
+<p>
+<ins>for the second operator, equivalent to:</ins>
+</p>
+<blockquote>
+<pre>
+<ins>return try_emplace(move(k)).first-&gt;second;</ins>
+</pre>
+</blockquote>
+<p>
+<del>-3- <i>Returns</i>: A reference to <tt>x.second</tt>, where <tt>x</tt> is the (unique) element whose key is equivalent to 
+<tt>k</tt>.</del>
+<p/>
+<del>-4- <i>Complexity</i>: Average case &#x1d4aa;(<tt>1</tt>), worst case &#x1d4aa;(<tt>size()</tt>).</del>
 </p>
 </blockquote>
 </blockquote>
