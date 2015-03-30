@@ -1,9 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY nbsp "&#160;">
-] >
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2388" status="New">
+<issue num="2388" status="Open">
 <title>Handling self-assignment in the proposed library function <tt>std::exchange</tt></title>
 <section><sref ref="[utility.exchange]"/></section>
 <submitter>Nick Calus</submitter>
@@ -81,9 +79,32 @@ is not in an empty (to my business logic, invalid) state.
 <p/>
 So to me, the current reference implementation of <tt>std::exchange</tt> does not have the behavior it is expected to have.
 </p>
-</discussion>
 
-<resolution>
+<note>2014-12-18 Telecon</note>
+<p>
+MC: does this resolution solve the problem?
+<p/>
+JW: and is the cost of the extra construction and move acceptable?
+<p/>
+AM: not all moves are cheap
+<p/>
+VV: seems like a design change
+<p/>
+JW: maybe this should be rolled into my unwritten paper on self-swap, so we deal with them consistently
+<p/>
+VV: we should update the issue saying something like that and maybe NAD Future
+<p/>
+MC: instead, add Requires clause saying the arguments are not the same.
+<p/>
+JW: interesting, that can even be checked in a debug mode assertion
+<p/>
+MC: ACTION: send alternative P/R that we can consider
+</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N3936.</p>
 
 <ol>
@@ -99,6 +120,36 @@ template &lt;class T, class U=T&gt; T exchange(T&amp; obj, U&amp;&amp; new_val);
 <ins>T tmp = std::forward&lt;U&gt;(new_val);</ins>
 T old_val = std::move(obj);
 obj = <del>std::forward&lt;U&gt;(new_val)</del><ins>std::move(tmp)</ins>;
+return old_val;
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2015-03-30, Marshall provides alternative wording</note>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change <sref ref="[utility.exchange]"/> as indicated:</p>
+<blockquote><pre>
+template &lt;class T, class U=T&gt; T exchange(T&amp; obj, U&amp;&amp; new_val);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: <tt>obj</tt> and <tt>new_val</tt> shall not refer to the same object.</ins>
+<p/>
+-1- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+T old_val = std::move(obj);
+obj = std::forward&lt;U&gt;(new_val);
 return old_val;
 </pre>
 </blockquote>
