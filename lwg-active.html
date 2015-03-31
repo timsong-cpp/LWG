@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D92)</h1>
-<p><p>Revised 2015-03-31 at 19:03:49 UTC</p>
+<p><p>Revised 2015-03-31 at 20:03:47 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D92: 2014-02-05 2015 mid-term mailing<ul>
 <li><b>Summary:</b><ul>
-<li>273 open issues, up by 14.</li>
+<li>274 open issues, up by 15.</li>
 <li>1722 closed issues, up by 0.</li>
-<li>1995 issues total, up by 14.</li>
+<li>1996 issues total, up by 15.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following 3 Tentatively Ready issues: <a href="lwg-active.html#2459">2459</a>, <a href="lwg-active.html#2463">2463</a>, <a href="lwg-active.html#2467">2467</a>.</li>
-<li>Added the following 10 New issues: <a href="lwg-active.html#2460">2460</a>, <a href="lwg-active.html#2461">2461</a>, <a href="lwg-active.html#2462">2462</a>, <a href="lwg-active.html#2464">2464</a>, <a href="lwg-active.html#2465">2465</a>, <a href="lwg-active.html#2466">2466</a>, <a href="lwg-active.html#2468">2468</a>, <a href="lwg-active.html#2470">2470</a>, <a href="lwg-active.html#2471">2471</a>, <a href="lwg-active.html#2472">2472</a>.</li>
+<li>Added the following 11 New issues: <a href="lwg-active.html#2460">2460</a>, <a href="lwg-active.html#2461">2461</a>, <a href="lwg-active.html#2462">2462</a>, <a href="lwg-active.html#2464">2464</a>, <a href="lwg-active.html#2465">2465</a>, <a href="lwg-active.html#2466">2466</a>, <a href="lwg-active.html#2468">2468</a>, <a href="lwg-active.html#2470">2470</a>, <a href="lwg-active.html#2471">2471</a>, <a href="lwg-active.html#2472">2472</a>, <a href="lwg-active.html#2473">2473</a>.</li>
 <li>Added the following Open issue: <a href="lwg-active.html#2469">2469</a>.</li>
 <li>Changed the following issue to Tentatively Ready (from Review): <a href="lwg-active.html#2378">2378</a>.</li>
 <li>Changed the following 9 issues to Tentatively Ready (from New): <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2369">2369</a>, <a href="lwg-active.html#2410">2410</a>, <a href="lwg-active.html#2415">2415</a>, <a href="lwg-active.html#2418">2418</a>, <a href="lwg-active.html#2437">2437</a>, <a href="lwg-active.html#2448">2448</a>, <a href="lwg-active.html#2455">2455</a>, <a href="lwg-active.html#2458">2458</a>.</li>
@@ -32229,6 +32229,70 @@ This is then unambiguously chosen over the other options in the preceding case. 
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2473"></a>2473. <tt>basic_filebuf</tt>'s relation to C <tt>FILE</tt> semantics</h3>
+<p><b>Section:</b> 27.9.1.5 [filebuf.virtuals] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Aaron Ballman <b>Opened:</b> 2015-02-09 <b>Last modified:</b> 2015-03-31</p>
+<p><b>View all other</b> <a href="lwg-index.html#filebuf.virtuals">issues</a> in [filebuf.virtuals].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The restrictions on reading and writing a sequence controlled by an object of class 
+<tt>basic_filebuf&lt;charT, traits&gt;</tt> are the same as for reading and writing with 
+the Standard C library <tt>FILE</tt>s. One of the restrictions placed by C is on the behavior of 
+a stream that is opened for input and output. See the C99 standard, 7.19.5.3p6 for more 
+details, but the gist is that when opened in update mode, reads and writes must have an 
+intervening file positioning or flushing call to not trigger UB.
+</p>
+
+<p>
+27.9.1.5 [filebuf.virtuals] p13 specifies that <tt>basic_filebuf::seekoff()</tt> calls 
+<tt>std::fseek()</tt>. However, there is no mention of <tt>std::fseek()</tt> in 
+<tt>basic_filebuf::seekpos()</tt>, and no mention of <tt>std::fflush()</tt> in
+<tt>basic_filebuf::sync()</tt>, which seem like an oversight.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li>
+<p>Change 27.9.1.5 [filebuf.virtuals] p16 as follows:</p>
+<blockquote>
+<p>
+-16- Alters the file position, if possible, to correspond to the position stored in <tt>sp</tt> (as described below).
+Altering the file position performs as follows:
+</p>
+<ol>
+<li><p>if <tt>(om &amp; ios_base::out) != 0</tt>, then update the output sequence and write any unshift sequence;</p></li>
+<li><p>set the file position to <tt>sp</tt> <ins>as if by calling <tt>std::fseek(file, sp, SEEK_SET)</tt></ins>;</p></li>
+<li><p>if <tt>(om &amp; ios_base::in) != 0</tt>, then update the input sequence;</p></li>
+</ol>
+<p>
+where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. The operation fails if 
+<tt>is_open()</tt> returns false.
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>Change 27.9.1.5 [filebuf.virtuals] p19 as follows and add a new footnote that mimics comparable footnotes in
+27.9.1.4 [filebuf.members] and 27.9.1.5 [filebuf.virtuals]:</p>
+<blockquote>
+<p>
+-19- <i>Effects</i>: If a put area exists, calls <tt>filebuf::overflow</tt> to write the characters to the file<ins>, then
+flushes the file as if by calling <tt>std::fflush(file)</tt> [Footnote: The function signature <tt>fflush(FILE*)</tt> 
+is declared in <tt>&lt;cstdio&gt;</tt> (27.9.2).]</ins>. If a get area exists, the effect is implementation-defined.
+</p>
+</blockquote>
+</li>
+</ol>
 
 
 
