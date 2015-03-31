@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-03-31 at 20:03:18 UTC</p>
+<p><p>Revised 2015-03-31 at 20:03:36 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -21070,6 +21070,57 @@ where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. T
 flushes the file as if by calling <tt>std::fflush(file)</tt> [Footnote: The function signature <tt>fflush(FILE*)</tt> 
 is declared in <tt>&lt;cstdio&gt;</tt> (27.9.2).]</ins>. If a get area exists, the effect is implementation-defined.
 </p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2474"></a>2474. <tt>&lt;cmath&gt;</tt> functions unfriendly to <tt>integral_constant</tt> arguments</h3>
+<p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Matheus Izvekov <b>Opened:</b> 2015-02-13 <b>Last modified:</b> 2015-03-31</p>
+<p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
+<p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Using numeric wrappers with <tt>&lt;cmath&gt;</tt> functions is currently troublesome.
+Code such as: "<tt>std::exp2(std::integral_constant&lt;int, 5&gt;{})</tt>" will fail to 
+compile because of ambiguity.
+<p/>
+Arguments which are implicitly convertible to an arithmetic type should be accepted whenever
+the latter would be accepted.
+<p/>
+David Krauss pointed out that some issue may present itself with numeric libraries which provide <tt>&lt;cmath&gt;</tt> 
+equivalents in their own namespace which are not more specialized than the ones provided in <tt>&lt;cmath&gt;</tt>. 
+If the changes proposed are implemented, then cases where the user brings those into scope through ADL might become ambiguous.
+<p/>
+It's hard to assess how much breakage this would cause in the wild, and how much work it would take to fix. 
+Should this be determined to be a problem, it's possible to make the new behaviour optional, and disabled by 
+default for all user-defined types.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li>
+<p>Change 26.8 [c.math] p11 b2 as indicated:</p>
+<blockquote>
+<p>
+-11- Moreover, there shall be additional overloads sufficient to ensure:
+</p>
+<ol>
+<li><p>[&hellip;]</p></li>
+<li><p>Otherwise, if any arithmetic argument corresponding to a <tt>double</tt> parameter has type <tt>double</tt> or 
+<del>an integer type</del><ins>a type which is not floating-point, but which is implicitly convertible to <tt>double</tt></ins>, 
+then all arithmetic arguments corresponding to <tt>double</tt> parameters are effectively cast to <tt>double</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
 </blockquote>
 </li>
 </ol>

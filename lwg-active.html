@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D92)</h1>
-<p><p>Revised 2015-03-31 at 20:03:18 UTC</p>
+<p><p>Revised 2015-03-31 at 20:03:36 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,13 +156,13 @@ ownership of it.
 <ul>
 <li>D92: 2014-02-05 2015 mid-term mailing<ul>
 <li><b>Summary:</b><ul>
-<li>274 open issues, up by 15.</li>
+<li>275 open issues, up by 16.</li>
 <li>1722 closed issues, up by 0.</li>
-<li>1996 issues total, up by 15.</li>
+<li>1997 issues total, up by 16.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following 3 Tentatively Ready issues: <a href="lwg-active.html#2459">2459</a>, <a href="lwg-active.html#2463">2463</a>, <a href="lwg-active.html#2467">2467</a>.</li>
-<li>Added the following 11 New issues: <a href="lwg-active.html#2460">2460</a>, <a href="lwg-active.html#2461">2461</a>, <a href="lwg-active.html#2462">2462</a>, <a href="lwg-active.html#2464">2464</a>, <a href="lwg-active.html#2465">2465</a>, <a href="lwg-active.html#2466">2466</a>, <a href="lwg-active.html#2468">2468</a>, <a href="lwg-active.html#2470">2470</a>, <a href="lwg-active.html#2471">2471</a>, <a href="lwg-active.html#2472">2472</a>, <a href="lwg-active.html#2473">2473</a>.</li>
+<li>Added the following 12 New issues: <a href="lwg-active.html#2460">2460</a>, <a href="lwg-active.html#2461">2461</a>, <a href="lwg-active.html#2462">2462</a>, <a href="lwg-active.html#2464">2464</a>, <a href="lwg-active.html#2465">2465</a>, <a href="lwg-active.html#2466">2466</a>, <a href="lwg-active.html#2468">2468</a>, <a href="lwg-active.html#2470">2470</a>, <a href="lwg-active.html#2471">2471</a>, <a href="lwg-active.html#2472">2472</a>, <a href="lwg-active.html#2473">2473</a>, <a href="lwg-active.html#2474">2474</a>.</li>
 <li>Added the following Open issue: <a href="lwg-active.html#2469">2469</a>.</li>
 <li>Changed the following issue to Tentatively Ready (from Review): <a href="lwg-active.html#2378">2378</a>.</li>
 <li>Changed the following 9 issues to Tentatively Ready (from New): <a href="lwg-active.html#2076">2076</a>, <a href="lwg-active.html#2369">2369</a>, <a href="lwg-active.html#2410">2410</a>, <a href="lwg-active.html#2415">2415</a>, <a href="lwg-active.html#2418">2418</a>, <a href="lwg-active.html#2437">2437</a>, <a href="lwg-active.html#2448">2448</a>, <a href="lwg-active.html#2455">2455</a>, <a href="lwg-active.html#2458">2458</a>.</li>
@@ -32291,6 +32291,57 @@ where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. T
 flushes the file as if by calling <tt>std::fflush(file)</tt> [Footnote: The function signature <tt>fflush(FILE*)</tt> 
 is declared in <tt>&lt;cstdio&gt;</tt> (27.9.2).]</ins>. If a get area exists, the effect is implementation-defined.
 </p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2474"></a>2474. <tt>&lt;cmath&gt;</tt> functions unfriendly to <tt>integral_constant</tt> arguments</h3>
+<p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Matheus Izvekov <b>Opened:</b> 2015-02-13 <b>Last modified:</b> 2015-03-31</p>
+<p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
+<p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Using numeric wrappers with <tt>&lt;cmath&gt;</tt> functions is currently troublesome.
+Code such as: "<tt>std::exp2(std::integral_constant&lt;int, 5&gt;{})</tt>" will fail to 
+compile because of ambiguity.
+<p/>
+Arguments which are implicitly convertible to an arithmetic type should be accepted whenever
+the latter would be accepted.
+<p/>
+David Krauss pointed out that some issue may present itself with numeric libraries which provide <tt>&lt;cmath&gt;</tt> 
+equivalents in their own namespace which are not more specialized than the ones provided in <tt>&lt;cmath&gt;</tt>. 
+If the changes proposed are implemented, then cases where the user brings those into scope through ADL might become ambiguous.
+<p/>
+It's hard to assess how much breakage this would cause in the wild, and how much work it would take to fix. 
+Should this be determined to be a problem, it's possible to make the new behaviour optional, and disabled by 
+default for all user-defined types.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li>
+<p>Change 26.8 [c.math] p11 b2 as indicated:</p>
+<blockquote>
+<p>
+-11- Moreover, there shall be additional overloads sufficient to ensure:
+</p>
+<ol>
+<li><p>[&hellip;]</p></li>
+<li><p>Otherwise, if any arithmetic argument corresponding to a <tt>double</tt> parameter has type <tt>double</tt> or 
+<del>an integer type</del><ins>a type which is not floating-point, but which is implicitly convertible to <tt>double</tt></ins>, 
+then all arithmetic arguments corresponding to <tt>double</tt> parameters are effectively cast to <tt>double</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
 </blockquote>
 </li>
 </ol>
