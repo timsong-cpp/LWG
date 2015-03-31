@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2015-03-30</td>
+  <td align="left">2015-03-31</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D92)</h1>
-<p><p>Revised 2015-03-30 at 19:03:13 UTC</p>
+<p><p>Revised 2015-03-31 at 18:03:12 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -30476,8 +30476,8 @@ of those five names? That's what <a href="lwg-defects.html#2408">2408</a> does f
 
 <hr>
 <h3><a name="2461"></a>2461. Interaction between allocators and container exception safety guarantees</h3>
-<p><b>Section:</b> 17.6.3.5 [allocator.requirements], 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> dyp <b>Opened:</b> 2014-12-06 <b>Last modified:</b> 2015-02-28</p>
+<p><b>Section:</b> 17.6.3.5 [allocator.requirements], 23.3.6.3 [vector.capacity], 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> dyp <b>Opened:</b> 2014-12-06 <b>Last modified:</b> 2015-03-31</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -30540,23 +30540,27 @@ An allocator may constrain the types on which it can be instantiated and the arg
 or the call to <tt>construct</tt> may fail to instantiate.
 </p></blockquote>
 <p>
-These wordings leads to the following problems:
+I conclude the following from the wording:
 </p>
 <ol>
 <li><p>The allocator is not required to call the copy constructor if the
 arguments (args) is a single (potentially const) lvalue of the value
 type. Similarly for a non-const rvalue + move constructor. See also
-23.2.1 [container.requirements.general]/13 which seems to try to require
-this, but is not sufficient (see code example below).</p></li>
+23.2.1 [container.requirements.general] p15 which seems to try to require
+this, but is not sufficient:
+That paragraph specifies the semantics of the allocator's operations,
+but not which constructors of the value type are used, if any.
+</p></li>
 <li>
-<p>The allocator may throw exceptions in addition to constructors of
-the value type; it can also throw exceptions from other constructors
-as a copy/move constructor.
+<p>The allocator may throw exceptions in addition to the exceptions propagated by
+the constructors of the value type; it can also propagate exceptions from constructors
+other than a copy/move constructor.
 </p>
 </li>
 </ol>
 <p>
-Another concern is related to 23.3.6.5 [vector.modifiers] p1:
+This leads to an issue with the wording of the exception safety guarantees for vector modifiers in
+23.3.6.5 [vector.modifiers] p1:
 </p>
 <blockquote>
 <p>
@@ -30572,29 +30576,38 @@ void push_back(T&amp;&amp; x);
 reallocation happens, all the iterators and references before the insertion point remain valid. 
 If an exception is thrown other than by the copy constructor, move constructor, assignment 
 operator, or move assignment operator of <tt>T</tt> or by any InputIterator operation there are 
-no effects. If an exception is thrown while inserting a single element at the end and <tt>T</tt> 
+no effects.
+<span  style="color:#C80000;font-weight:bold">
+If an exception is thrown while inserting a single element at the end and <tt>T</tt> 
 is <tt>CopyInsertable</tt> or <tt>is_nothrow_move_constructible&lt;T&gt;::value</tt>
-is true, there are no effects. <span  style="color:#C80000;font-weight:bold">[*] Otherwise, if an exception is thrown by the move constructor of a
-non-<tt>CopyInsertable</tt> <tt>T</tt>, the effects are unspecified.</span>
+is true, there are no effects. Otherwise, if an exception is thrown by the move constructor of a
+non-<tt>CopyInsertable</tt> <tt>T</tt>, the effects are unspecified.
+</span>
 </p>
 </blockquote>
 </blockquote>
 <p>
-These wordings leads to the following problems:
+The wording leads to the following problem:
+Copy and move assignment are invoked directly from <tt>vector</tt>.
+For intermediary objects (see <a href="lwg-active.html#2164">2164</a>),
+<tt>vector</tt> also directly invokes the copy and move constructor of the value type.
+However, construction of the actual element within the buffer is invoked via the allocator abstraction.
+As discussed above, the allocator currently is not required to call a copy/move constructor.
+If <tt>is_nothrow_move_constructible&lt;T&gt;::value</tt> is <tt>true</tt> for some value type <tt>T</tt>,
+but the allocator uses modifying operations for <tt>MoveInsertion</tt> that do throw,
+the implementation is required to ensure that "there are no effects",
+even if the source buffer has been modified.
+<p/>
+Similarly, the <tt>vector</tt> capacity functions specify exception safety guarantees
+referring to the move constructor of the value type. For example, <tt>vector::resize</tt> in 23.3.6.3 [vector.capacity] p14:
 </p>
-<ol>
-<li><p>Copy and move assignment are invoked directly from <tt>vector</tt>. However,
-construction is invoked via the allocator abstraction. As discussed above, the allocator 
-currently is not required to call the copy/move constructor.</p></li>
-<li><p>The sentence [*] is the same as the remarks for the <tt>resize</tt> member
-function. In the <tt>resize</tt> member function, where we do not deal with
-inserting in the middle of the vector (which leads to the requirements
-on the assignment operators in 23.3.6.5 [vector.modifiers]), it might be
-clearer that an allocator calling the copy constructor for an rvalue
-argument of a nothrow-<tt>MoveConstructible</tt> value type invalidates the
-usefulness of <tt>move_if_noexcept</tt> in this context. </p></li>
-</ol>
+<blockquote>
+<i>Remarks</i>: If an exception is thrown other than by the move constructor of a
+non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.
+</blockquote>
 <p>
+The wording leads to the same issue as described above.
+<p/>
 Code example:
 </p>
 <blockquote>
@@ -30675,88 +30688,97 @@ Even though the value type has an accessible and <tt>noexcept(true)</tt> move
 constructor, this allocator won't call that constructor for rvalue arguments.
 In any case, it does not call a constructor for which vector has formulated its 
 requirements. An exception thrown by a constructor called by this allocator is not
-covered by the exceptions in 23.3.6.5 [vector.modifiers] and therefore is
+covered by the specification in 23.3.6.5 [vector.modifiers] and therefore is
 guaranteed not to have any effect on the vector object when resizing.
 <p/>
 For an example how this might invalidate the exception safety
-guarantees, see <a href="https://groups.google.com/a/isocpp.org/d/topic/std-discussion/BcM7ya8JeqY/discussion">here</a>.
+guarantees, see <a href="https://groups.google.com/a/isocpp.org/d/topic/std-discussion/BcM7ya8JeqY/discussion">this post on the std-discussion mailing list</a>.
 <p/>
 Another problem arises for value types whose constructors are private,
-but may be called by the allocator. Those value types are not <tt>MoveConstructible</tt> 
-(<tt>is_move_constructible</tt> is false), yet they can be <tt>MoveInsertable</tt>. 
+but may be called by the allocator e.g. via friendship.
+Those value types are not <tt>MoveConstructible</tt> 
+(<tt>is_move_constructible</tt> is false), yet they can be <tt>MoveInsertable</tt>.
+It is not possible for <tt>vector</tt> to create intermediary objects (see <a href="lwg-active.html#2164">2164</a>) of such a type
+by directly using the move constructor.
+Current implementations of the single-element forms of <tt>vector::insert</tt> and <tt>vector::emplace</tt>
+do create intermediary objects by directly calling one of the value type's constructors,
+probably to allow inserting objects from references that alias other elements of the container.
+As far as I can see, Table 100 &mdash; "Sequence container requirements" in 23.2.3 [sequence.reqmts]
+does not require that the creation of such intermediare objects can be performed
+by containers using the value type's constructor directly.
+It is unclear to me if the allocator's construct function could be used to create those
+intermediary objects, given that they have not been allocated by the allocator.
 <p/>
-Possible solutions:
+Two possible solutions:
 </p>
 <ol>
-<li><p>Suggested by Howard Hinnant in a comment on 
-<a href="http://stackoverflow.com/questions/23859112/cost-of-stdvectorpush-back-either-succeeding-or-having-no-effect/23859368?noredirect=1#comment36723190_23859368">StackOverflow</a>: 
+<li><p>
+Add the following requirement to the <tt>allocator_traits::construct</tt> function:
+If the parameter pack <tt>args</tt> consists of a single parameter of the type
+<tt>value_type&amp;&amp;</tt>,
+the function may only propagate exceptions if <tt>is_nothrow_move_constructible&lt;value_type&gt;::value</tt>
+is <tt>false</tt>.
 <p/>
-Add the following requirements to the allocator's <tt>construct</tt> member function: 
-</p>
-<ol style="list-style-type:lower-alpha">
-<li><p>For a <tt>CopyInsertable</tt> value type, if the argument is a single
-lvalue of the (potentially const) value type, it must call the copy
-constructor.</p></li>
-
-<li><p>For a <tt>MoveInsertable</tt> and nothrow-<tt>MoveConstructible</tt> value type, if
-the argument is a single non-const rvalue of the value type, it must
-call the move constructor.</p></li>
-
-<li><p>If the argument is a single value type (rvalue or lvalue), it may
-only propagate the exceptions of the value type's constructor.</p></li>
-</ol>
-<p>
-This could also be formulated only via c), by demanding that the
-allocator only propagates exceptions that could have been thrown by
-the copy ctor (for lvalues) or move ctor (for non-const rvalues).
-</p>
-</li>
-
-<li><p>Slightly change the guarantees of vector's modifiers etc:
-</p>
-<ol style="list-style-type:lower-alpha">
-<li><p>Formulate vector's exception safety guarantees in terms of
-calling the <tt>construct</tt> member function of the allocator.</p></li>
-
-<li><p>Make it UB when the allocator's <tt>construct</tt> throws for a
-nothrow-<tt>MoveConstructible</tt> type. (This allows keeping
-<tt>is_move_constructible</tt> as the criterion whether or not to move when
-resizing.) 
+Requiring <tt>alloctor_traits::construct</tt> to call a true copy/move constructor
+of the value type breaks <tt>std::scoped_allocator_adapter</tt>,
+as pointed out by <a href="https://groups.google.com/a/isocpp.org/d/msg/std-discussion/0yxikZInp-E/Lxj-msFT22cJ">Casey Carter in a post on the std-discussion mailing list</a>.
 </p></li>
-</ol>
-</li>
-
 <li>
 <p>
-Change vector's criterion whether or not to move when resizing:
+Change vector's criterion whether to move or copy when resizing:
 <p/>
 Instead of testing the value type's constructors via
-<tt>is_move_constructible</tt>, check if the allocator's <tt>construct</tt> member
-function is <tt>noexcept</tt> when passing a single non-const rvalue of the
-value type (<tt>noexcept</tt>-operator). 
+<tt>is_move_constructible</tt>, check the value of
+<tt>noexcept( allocator_traits&lt;Allocator&gt;::construct(alloc, ptr, rval) )</tt>
+where
+<tt>alloc</tt> is an lvalue of type <tt>Allocator</tt>,
+<tt>ptr</tt> is an expression of type <tt>allocator_traits&lt;Allocator&gt;::pointer</tt>
+and
+<tt>rval</tt> is a non-const rvalue of type <tt>value_type</tt>.
 </p>
 </li>
 </ol>
 <p>
-A short discussion of the three solutions:
+A short discussion of the two solutions:
 <p/>
-Solution 1 seems to me to express most clearly the current intent of the Standard.
-It does (probably) not require changes in current library implementations. However, 
-it restricts what can be done inside the <tt>construct</tt> member function.
-Essentially, the <tt>construct</tt> member function now may only use the
-default placement-new plus functions that either don't throw or whose
-error can be handled or ignored (for copy/move, not in the other emplace cases). 
+Solution 1 allows keeping <tt>is_nothrow_move_constructible&lt;value_type&gt;</tt>
+as the criterion for <tt>vector</tt> to decide between copying and moving when resizing.
+It restricts what can be done inside the <tt>construct</tt> member function of allocators,
+and requires implementers of allocators to pay attention to the value types used.
+One could conceive allocators checking the following with a <tt>static_assert</tt>:
+If the value type <tt>is_nothrow_move_constructible</tt>,
+then the constructor actually called for <tt>MoveInsertion</tt> within the <tt>construct</tt>
+member function is also declared as noexcept.
 <p/>
-Solution 2 does not restrict the allocator as heavily. It does (probably) not require 
-changes to current library implementations either, however it does introduce UB.
-<p/>
-Solution 3 requires changing both the implementation of the default
+Solution 2 requires changing both the implementation of the default
 allocator (add a conditional <tt>noexcept</tt>) and <tt>vector</tt> (replace
 <tt>is_move_constructible</tt> with an allocator-targeted check).
-It does not impose restrictions on the allocator (other than
-23.2.1 [container.requirements.general]/13). This is the only solution (of these three) 
-that works nicely with private move constructors combined with befriended allocators. 
+It does not impose additional restrictions on the allocator (other than
+23.2.1 [container.requirements.general] p15),
+and works nicely even if the move constructor of a <tt>MoveInsertable</tt> type is private or deleted
+(the allocator might be a friend of the value type).
+<p/>
+In both cases, an addition might be required to provide the basic exception safety guarantee.
+A short discussion on this topic can be found
+<a href="https://groups.google.com/a/isocpp.org/d/topic/std-discussion/yZLnYy_y2z0/discussion">
+in the std-discussion mailing list</a>.
+Essentially, if <tt>allocator_traits&lt;Allocator&gt;::construct</tt> throws an exception,
+the object may or may not have been constructed.
+Two solutions are mentioned in that discussion:
 </p>
+<ol>
+<li><p>
+<tt>allocator_traits&lt;Allocator&gt;::construct</tt> needs to tell its caller
+whether or not the construction was successful, in case of an exception.
+</p></li>
+<li><p>
+If <tt>allocator_traits&lt;Allocator&gt;::construct</tt> propagates an exception,
+it shall either not have constructed an object at the specified location,
+or that object shall have been destroyed
+(or it shall ensure otherwise that no resources are leaked).
+</p></li>
+</ol>
+
 
 
 <p><b>Proposed resolution:</b></p>
