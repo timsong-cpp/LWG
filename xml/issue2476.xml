@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2476" status="New">
+<title><tt>scoped_allocator_adaptor</tt> is not assignable</title>
+<section><sref ref="[allocator.adaptor.syn]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>2 Mar 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The class definition in <sref ref="[allocator.adaptor.syn]"/> declares a move
+constructor, which means that the copy assignment operator is defined
+as deleted, and no move constructor is declared.
+<p/>
+This means a <tt>scoped_allocator_adaptor</tt> is not assignable, and a
+container using <tt>scoped_allocator_adaptor&lt;A...&gt;</tt> may not be
+<tt>CopyAssignable</tt> or <tt>MoveAssignable</tt> (depending on the
+<tt>propagate_on_container_xxxx_assignment</tt> traits of the outer and inner
+allocator types).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li>
+<p>Add to the synopsis in <sref ref="[allocator.adaptor.syn]"/>/1:</p>
+<blockquote>
+<pre>
+[&hellip;]
+template &lt;class OuterA2&gt;
+  scoped_allocator_adaptor(
+    scoped_allocator_adaptor&lt;OuterA2, InnerAllocs...&gt;&amp;&amp; other) noexcept;
+<ins>
+scoped_allocator_adaptor&amp; operator=(const scoped_allocator_adaptor&amp;) = default;
+scoped_allocator_adaptor&amp; operator=(scoped_allocator_adaptor&amp;&amp;) = default;
+</ins>
+~scoped_allocator_adaptor();
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
