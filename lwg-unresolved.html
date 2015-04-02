@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-04-02 at 21:04:20 UTC</p>
+<p><p>Revised 2015-04-02 at 21:04:21 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -21284,6 +21284,58 @@ All the same issues apply to the <tt>wide_err_string</tt> member.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2483"></a>2483. <tt>throw_with_nested()</tt> should use <tt>is_final</tt></h3>
+<p><b>Section:</b> 18.8.6 [except.nested] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2015-03-27 <b>Last modified:</b> 2015-04-02</p>
+<p><b>View all other</b> <a href="lwg-index.html#except.nested">issues</a> in [except.nested].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+When <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2559.htm">N2559</a> was voted into the Working Paper, 
+it said "This function template must take special case to handle non-class types, unions and <tt>[[final]]</tt> classes that cannot 
+be derived from, and [...]".  However, its Standardese didn't handle <tt>final</tt> classes, and this was never revisited. Now that 
+we have <tt>is_final</tt>, we can achieve this proposal's original intention.
+<p/>
+About the wording: 20.10.4.3 [meta.unary.prop] defines <tt>is_final</tt> with "<tt>T</tt> is a class type marked with the 
+<i>class-virt-specifier</i> <tt>final</tt> (Clause 9)." because Core doesn't have a "<tt>final</tt> class type" Phrase Of Power. 
+But given <tt>is_final</tt>'s very clear definition, I believe that <tt>throw_with_nested()</tt> can simply say 
+"non-<tt>final</tt> class type", without saying "<i>class-virt-specifier</i>" or "<tt>is_final&lt;U&gt;::value</tt>".  The meaning 
+will be perfectly clear to both implementers and users &mdash; we don't need to over-engineer this.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change 18.8.6 [except.nested] as depicted:</p>
+
+<blockquote>
+<pre>
+template &lt;class T&gt; [[noreturn]] void throw_with_nested(T&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>U</tt> be <tt>remove_reference_t&lt;T&gt;</tt>.
+<p/>
+-7- Requires: <tt>U</tt> shall be <tt>CopyConstructible</tt>.
+<p/>
+-8- Throws: if <tt>U</tt> is a non-union <ins>non-<tt>final</tt></ins> class type not derived from 
+<tt>nested_exception</tt>, an exception of unspecified type that is publicly derived from both <tt>U</tt> 
+and <tt>nested_exception</tt> and constructed from <tt>std::forward&lt;T&gt;(t)</tt>, otherwise 
+<tt>std::forward&lt;T&gt;(t)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 
 
 
