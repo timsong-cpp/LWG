@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-04-02 at 21:04:21 UTC</p>
+<p><p>Revised 2015-04-02 at 22:04:35 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -21293,6 +21293,7 @@ All the same issues apply to the <tt>wide_err_string</tt> member.
 <h3><a name="2483"></a>2483. <tt>throw_with_nested()</tt> should use <tt>is_final</tt></h3>
 <p><b>Section:</b> 18.8.6 [except.nested] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2015-03-27 <b>Last modified:</b> 2015-04-02</p>
+<p><b>View other</b> <a href="lwg-index-open.html#except.nested">active issues</a> in [except.nested].</p>
 <p><b>View all other</b> <a href="lwg-index.html#except.nested">issues</a> in [except.nested].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -21302,11 +21303,8 @@ it said "This function template must take special case to handle non-class types
 be derived from, and [...]".  However, its Standardese didn't handle <tt>final</tt> classes, and this was never revisited. Now that 
 we have <tt>is_final</tt>, we can achieve this proposal's original intention.
 <p/>
-About the wording: 20.10.4.3 [meta.unary.prop] defines <tt>is_final</tt> with "<tt>T</tt> is a class type marked with the 
-<i>class-virt-specifier</i> <tt>final</tt> (Clause 9)." because Core doesn't have a "<tt>final</tt> class type" Phrase Of Power. 
-But given <tt>is_final</tt>'s very clear definition, I believe that <tt>throw_with_nested()</tt> can simply say 
-"non-<tt>final</tt> class type", without saying "<i>class-virt-specifier</i>" or "<tt>is_final&lt;U&gt;::value</tt>".  The meaning 
-will be perfectly clear to both implementers and users &mdash; we don't need to over-engineer this.
+Additionally, we need to handle the case where <tt>U</tt> is <tt>nested_exception</tt> itself. <tt>is_base_of</tt>'s wording 
+handles this and ignores <i>cv</i>-qualifiers. (Note that <tt>is_class</tt> detects "non-union class type".)
 </p>
 
 
@@ -21326,10 +21324,102 @@ template &lt;class T&gt; [[noreturn]] void throw_with_nested(T&amp;&amp; t);
 <p/>
 -7- Requires: <tt>U</tt> shall be <tt>CopyConstructible</tt>.
 <p/>
--8- Throws: if <tt>U</tt> is a non-union <ins>non-<tt>final</tt></ins> class type not derived from 
-<tt>nested_exception</tt>, an exception of unspecified type that is publicly derived from both <tt>U</tt> 
-and <tt>nested_exception</tt> and constructed from <tt>std::forward&lt;T&gt;(t)</tt>, otherwise 
-<tt>std::forward&lt;T&gt;(t)</tt>.
+-8- Throws: if <del><tt>U</tt> is a non-union class type not derived from 
+<tt>nested_exception</tt></del><ins><tt>is_class&lt;U&gt;::value &amp;&amp; !is_final&lt;U&gt;::value &amp;&amp; 
+!is_base_of&lt;nested_exception, U&gt;::value</tt> is <tt>true</tt></ins>, an exception of unspecified type that 
+is publicly derived from both <tt>U</tt> and <tt>nested_exception</tt> and constructed from 
+<tt>std::forward&lt;T&gt;(t)</tt>, otherwise <tt>std::forward&lt;T&gt;(t)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2484"></a>2484. <tt>rethrow_if_nested()</tt> is doubly unimplementable</h3>
+<p><b>Section:</b> 18.8.6 [except.nested] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2015-03-27 <b>Last modified:</b> 2015-04-03</p>
+<p><b>View other</b> <a href="lwg-index-open.html#except.nested">active issues</a> in [except.nested].</p>
+<p><b>View all other</b> <a href="lwg-index.html#except.nested">issues</a> in [except.nested].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>rethrow_if_nested()</tt> wants to determine "If the dynamic type of <tt>e</tt> is publicly and unambiguously derived 
+from <tt>nested_exception</tt>", but 5.2.7 [expr.dynamic.cast] specifies that <tt>dynamic_cast</tt> has a couple 
+of limitations.
+<p/>
+First, nonpolymorphic inputs. These could be non-classes, or nonpolymorphic classes. The Standardese handles non-classes, 
+although implementers need special logic. (If <tt>E</tt> is <tt>int</tt>, the dynamic type can't possibly derive from 
+<tt>nested_exception</tt>. Implementers need to detect this and avoid <tt>dynamic_cast</tt>, which would be ill-formed 
+due to 5.2.7 [expr.dynamic.cast]/2.) The Standardese is defective when <tt>E</tt> is a nonpolymorphic class.  
+Consider the following example:
+</p>
+<blockquote>
+<pre>
+struct Nonpolymorphic { };
+struct MostDerived : Nonpolymorphic, nested_exception { };
+MostDerived md;
+const Nonpolymorphic&amp; np = md;
+rethrow_if_nested(np);
+</pre>
+</blockquote>
+<p>
+According to 1.3.7 [defns.dynamic.type], the dynamic type of <tt>np</tt> is <tt>MostDerived</tt>. However, it's 
+physically impossible to discover this, and attempting to do so will lead to an ill-formed <tt>dynamic_cast</tt> 
+(5.2.7 [expr.dynamic.cast]/6). The Standardese must be changed to say that if <tt>E</tt> is nonpolymorphic, nothing happens.
+<p/>
+Second, statically good but dynamically bad inputs. Consider the following example:
+</p>
+<blockquote>
+<pre>
+struct Nested1 : nested_exception { };
+struct Nested2 : nested_exception { };
+struct Ambiguous : Nested1, Nested2 { };
+Ambiguous amb;
+const Nested1&amp; n1 = amb;
+rethrow_if_nested(n1);
+</pre>
+</blockquote>
+<p>
+Here, the static type <tt>Nested1</tt> is good (i.e. publicly and unambiguously derived from <tt>nested_exception</tt>), but 
+the dynamic type <tt>Ambiguous</tt> is bad. The Standardese currently says that we have to detect the dynamic badness, but 
+<tt>dynamic_cast</tt> won't let us. 5.2.7 [expr.dynamic.cast]/3 and /5 are special cases (identity-casting and upcasting, 
+respectively) that activate before the "run-time check" behavior that we want (/6 and below). Statically good inputs succeed 
+(regardless of the dynamic type) and statically bad inputs are ill-formed (implementers must use type traits to avoid this).
+<p/>
+It might be possible to implement this with clever trickery involving virtual base classes, but implementers shouldn't be asked 
+to do that.  It would definitely be possible to implement this with a compiler hook (a special version of <tt>dynamic_cast</tt>), 
+but implementers shouldn't be asked to do so much work for such an unimportant case. (This case is pathological because the 
+usual way of adding <tt>nested_exception</tt> inheritance is <tt>throw_with_nested()</tt>, which avoids creating bad inheritance.)  
+The Standardese should be changed to say that statically good inputs are considered good.
+<p/>
+Finally, we want <tt>is_base_of</tt>'s "base class or same class" semantics. If the static type is <tt>nested_exception</tt>, 
+we have to consider it good due to <tt>dynamic_cast</tt>'s identity-casting behavior. And if the dynamic type is 
+<tt>nested_exception</tt>, it is definitely good.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change 18.8.6 [except.nested] as depicted:</p>
+
+<blockquote>
+<pre>
+template &lt;class E&gt; void rethrow_if_nested(const E&amp; e);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects</i>: If <ins><tt>E</tt> is not a polymorphic class type, there is no effect. Otherwise, if the static 
+type or</ins> the dynamic type of <tt>e</tt> <ins>is <tt>nested_exception</tt> or</ins> is publicly and unambiguously 
+derived from <tt>nested_exception</tt>, calls <tt>dynamic_cast&lt;const nested_exception&amp;&gt;(e).rethrow_nested()</tt>.
 </p>
 </blockquote>
 </blockquote>
