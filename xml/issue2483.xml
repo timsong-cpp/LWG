@@ -15,11 +15,8 @@ it said "This function template must take special case to handle non-class types
 be derived from, and [...]".  However, its Standardese didn't handle <tt>final</tt> classes, and this was never revisited. Now that 
 we have <tt>is_final</tt>, we can achieve this proposal's original intention.
 <p/>
-About the wording: <sref ref="[meta.unary.prop]"/> defines <tt>is_final</tt> with "<tt>T</tt> is a class type marked with the 
-<i>class-virt-specifier</i> <tt>final</tt> (Clause 9)." because Core doesn't have a "<tt>final</tt> class type" Phrase Of Power. 
-But given <tt>is_final</tt>'s very clear definition, I believe that <tt>throw_with_nested()</tt> can simply say 
-"non-<tt>final</tt> class type", without saying "<i>class-virt-specifier</i>" or "<tt>is_final&lt;U&gt;::value</tt>".  The meaning 
-will be perfectly clear to both implementers and users &mdash; we don't need to over-engineer this.
+Additionally, we need to handle the case where <tt>U</tt> is <tt>nested_exception</tt> itself. <tt>is_base_of</tt>'s wording 
+handles this and ignores <i>cv</i>-qualifiers. (Note that <tt>is_class</tt> detects "non-union class type".)
 </p>
 </discussion>
 
@@ -39,10 +36,11 @@ template &lt;class T&gt; [[noreturn]] void throw_with_nested(T&amp;&amp; t);
 <p/>
 -7- Requires: <tt>U</tt> shall be <tt>CopyConstructible</tt>.
 <p/>
--8- Throws: if <tt>U</tt> is a non-union <ins>non-<tt>final</tt></ins> class type not derived from 
-<tt>nested_exception</tt>, an exception of unspecified type that is publicly derived from both <tt>U</tt> 
-and <tt>nested_exception</tt> and constructed from <tt>std::forward&lt;T&gt;(t)</tt>, otherwise 
-<tt>std::forward&lt;T&gt;(t)</tt>.
+-8- Throws: if <del><tt>U</tt> is a non-union class type not derived from 
+<tt>nested_exception</tt></del><ins><tt>is_class&lt;U&gt;::value &amp;&amp; !is_final&lt;U&gt;::value &amp;&amp; 
+!is_base_of&lt;nested_exception, U&gt;::value</tt> is <tt>true</tt></ins>, an exception of unspecified type that 
+is publicly derived from both <tt>U</tt> and <tt>nested_exception</tt> and constructed from 
+<tt>std::forward&lt;T&gt;(t)</tt>, otherwise <tt>std::forward&lt;T&gt;(t)</tt>.
 </p>
 </blockquote>
 </blockquote>
