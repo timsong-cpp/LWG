@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2476" status="Tentatively Ready">
+<issue num="2476" status="New">
 <title><tt>scoped_allocator_adaptor</tt> is not assignable</title>
 <section><sref ref="[allocator.adaptor.syn]"/></section>
 <submitter>Jonathan Wakely</submitter>
@@ -21,13 +21,24 @@ container using <tt>scoped_allocator_adaptor&lt;A...&gt;</tt> may not be
 allocator types).
 </p>
 
-<note>2015-04-02 Library reflector vote</note>
+<note>2015-04-03 Howard comments</note>
 <p>
-The issue has been identified as Tentatively Ready based on six votes in favour.
+If the contained allocators are not assignable, I think we need the ability of <tt>= default</tt> to automagically become 
+<tt>= delete</tt>. My concern is that <tt>is_copy_assignable&lt;scoped_allocator_adaptor&lt;CustomAllocator&gt;&gt;::value</tt> 
+get the right answer for both cases:
 </p>
-</discussion>
+<ol>
+<li><p><tt>is_copy_assignable&lt;CustomAllocator&gt;::value</tt> is <tt>true</tt>.</p></li>
+<li><p><tt>is_copy_assignable&lt;CustomAllocator&gt;::value</tt> is <tt>false</tt>.</p></li>
+</ol>
+<p>
+If we allow the vendor to declare and provide the copy assignment operator, the chance of getting #2 correct goes to zero.
+</p>
 
-<resolution>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N4296.</p>
 
 <ol>
@@ -51,6 +62,32 @@ template &lt;class OuterA2&gt;
 <ins>
 scoped_allocator_adaptor&amp; operator=(const scoped_allocator_adaptor&amp;);
 scoped_allocator_adaptor&amp; operator=(scoped_allocator_adaptor&amp;&amp;);
+</ins>
+~scoped_allocator_adaptor();
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li>
+<p>Add to the synopsis in <sref ref="[allocator.adaptor.syn]"/>/1:
+</p>
+<blockquote>
+<pre>
+[&hellip;]
+template &lt;class OuterA2&gt;
+  scoped_allocator_adaptor(
+    scoped_allocator_adaptor&lt;OuterA2, InnerAllocs...&gt;&amp;&amp; other) noexcept;
+<ins>
+scoped_allocator_adaptor&amp; operator=(const scoped_allocator_adaptor&amp;) = default;
+scoped_allocator_adaptor&amp; operator=(scoped_allocator_adaptor&amp;&amp;) = default;
 </ins>
 ~scoped_allocator_adaptor();
 [&hellip;]
