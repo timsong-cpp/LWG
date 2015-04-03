@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-04-03 at 16:04:15 UTC</p>
+<p><p>Revised 2015-04-03 at 16:04:42 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -21897,7 +21897,7 @@ operator takes <tt>Arg</tt> by value, an extra copy/move will be observable. We 
 is a <ins>forwarding</ins> call wrapper", then moves the sentence. &mdash; <i>end of remark</i>]:</p>
 
 <blockquote>
-<pre>
+<p>
 -4- Every call wrapper (20.9.1) shall be <tt>MoveConstructible</tt>. <del>A simple call wrapper is a call wrapper that is
 <tt>CopyConstructible</tt> and <tt>CopyAssignable</tt> and whose copy constructor, move constructor, and assignment
 operator do not throw exceptions.</del> A forwarding call wrapper is a call wrapper that can be called with
@@ -21906,7 +21906,76 @@ forwarding step shall ensure that rvalue arguments are delivered as rvalue-refer
 are delivered as lvalue-references. <ins>A simple call wrapper is a forwarding call wrapper that is <tt>CopyConstructible</tt> 
 and <tt>CopyAssignable</tt> and whose copy constructor, move constructor, and assignment operator do not throw exceptions.</ins> 
 [<i>Note</i>: In a typical implementation [&hellip;] &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2487"></a>2487. <tt>bind()</tt> should be <tt>const</tt>-overloaded, not <i>cv</i>-overloaded</h3>
+<p><b>Section:</b> 20.9.9.1.3 [func.bind.bind] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2015-03-27 <b>Last modified:</b> 2015-04-03</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.bind.bind">issues</a> in [func.bind.bind].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The Standard currently requires <tt>bind()</tt> to return something with a <i>cv</i>-overloaded function call operator.  
+<tt>const</tt> is great, but <tt>volatile</tt> is not. First, the Library almost always ignores <tt>volatile</tt>'s 
+existence (with <tt>&lt;type_traits&gt;</tt> and <tt>&lt;atomic&gt;</tt> being rare exceptions). Second, implementations 
+typically store bound arguments in a <tt>tuple</tt>, but <tt>get()</tt> isn't overloaded for <tt>volatile tuple</tt>. Third, 
+when a bound argument is a <tt>reference_wrapper</tt>, we have to call <tt>tid.get()</tt>, but that won't compile for a 
+<tt>volatile reference_wrapper</tt>. Finally, <tt>const</tt> and <tt>volatile</tt> don't always have to be handled symmetrically 
+&mdash; for example, lambda function call operators are <tt>const</tt> by default, but they can't ever be <tt>volatile</tt>.
+<p/>
+Implementers shouldn't be required to provide <i>cv</i>-overloading here. (They can provide it as a conforming extension if 
+they want.)
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4296.</p>
+
+<ol>
+<li><p>Change 20.9.9.1.3 [func.bind.bind] as depicted:</p>
+
+<blockquote>
+<pre>
+template&lt;class F, class... BoundArgs&gt;
+  <i>unspecified</i> bind(F&amp;&amp; f, BoundArgs&amp;&amp;... bound_args);
 </pre>
+<blockquote>
+<p>
+-2- <i>Requires</i>: <tt>is_constructible&lt;FD, F&gt;::value</tt> shall be <tt>true</tt>. For each <tt>Ti</tt> 
+in <tt>BoundArgs</tt>, <tt>is_constructible&lt;TiD, Ti&gt;::value</tt> shall be <tt>true</tt>. 
+<tt><i>INVOKE</i>(fd, w1, w2, ..., wN)</tt> (20.9.2) shall be a valid expression for some values <tt>w1</tt>, <tt>w2</tt>, 
+..., <tt>wN</tt>, where <tt>N == sizeof...(bound_args)</tt>. <ins>The <i>cv</i>-qualifiers <i>cv</i> of the call 
+wrapper <tt>g</tt>, as specified below, shall be neither <tt>volatile</tt> nor <tt>const volatile</tt>.</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class R, class F, class... BoundArgs&gt;
+  <i>unspecified</i> bind(F&amp;&amp; f, BoundArgs&amp;&amp;... bound_args);
+</pre>
+<blockquote>
+<p>
+-6- <i>Requires</i>: <tt>is_constructible&lt;FD, F&gt;::value</tt> shall be <tt>true</tt>. For each <tt>Ti</tt> 
+in <tt>BoundArgs</tt>, <tt>is_constructible&lt;TiD, Ti&gt;::value</tt> shall be <tt>true</tt>. 
+<tt><i>INVOKE</i>(fd, w1, w2, ..., wN)</tt> shall be a valid expression for some values <tt>w1</tt>, <tt>w2</tt>, 
+..., <tt>wN</tt>, where <tt>N == sizeof...(bound_args)</tt>. <ins>The <i>cv</i>-qualifiers <i>cv</i> of the call 
+wrapper <tt>g</tt>, as specified below, shall be neither <tt>volatile</tt> nor <tt>const volatile</tt>.</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
 </blockquote>
 </li>
 
