@@ -75,6 +75,98 @@ is not correct.
 <p>
 LWG agrees with the analysis including the assessment of LWG <iref ref="760"/> and would appreciate a concrete wording proposal.
 </p>
+
+<note>2015-04-07 dyp comments</note>
+<p>
+The Standard currently does not require that creation of such
+intermediate objects is legal. <sref ref="[sequence.reqmts]"/> Table 100
+&mdash; "Sequence container requirements" currently specifies:
+</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 100 &mdash; Sequence container requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.emplace(p, args);</tt>
+</td>
+<td>
+<tt>iterator</tt>
+</td>
+<td>
+<i>Requires</i>: <tt>T</tt> is <tt>EmplaceConstructible</tt> into
+<tt>X</tt> from <tt>args</tt>. For <tt>vector</tt> and <tt>deque</tt>,
+<tt>T</tt> is also <tt>MoveInsertable</tt> into <tt>X</tt> and
+<tt>MoveAssignable</tt>. [&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+<p>
+The <tt>EmplaceConstructible</tt> concept is defined via
+<tt>allocator_traits&lt;A&gt;::construct</tt> in <sref
+ref="[container.requirements.general]"/> p15.5 That's surprising to me
+since the related concepts use the suffix <tt>Insertable</tt> if they
+refer to the allocator. An additional requirement such as
+<tt>std::is_constructible&lt;T, Args...&gt;</tt> is necessary to allow
+creation of intermediate objects.
+</p>
+
+<p>
+The creation of intermediate objects also affects other functions, such
+as <tt>vector.insert</tt>. Since aliasing the vector is only allowed for
+the single-element forms of <tt>insert</tt> and <tt>emplace</tt> (see
+<iref ref="526"/>), the range-forms are not affected. Similarly,
+aliasing is not allowed for the rvalue-reference overload. See also LWG
+<iref ref="2266"/>.
+</p>
+
+<p>
+There might be a problem with a requirement of
+<tt>std::is_constructible&lt;T, Args...&gt;</tt> related to the issues
+described in LWG <iref ref="2461"/>. For example, a scoped allocator
+adapter passes additional arguments to the constructor of the value
+type. This is currently not done in recent implementations of libstdc++
+and libc++ when creating the intermediate objects, they simply create
+the intermediate object by perfectly forwarding the arguments. If such
+an intermediate object is then moved to its final destination in the
+vector, a change of the allocator instance might be required &mdash;
+potentially leading to an expensive copy. One can also imagine worse
+problems, such as run-time errors (allocators not comparing equal at
+run-time) or compile-time errors (if the value type cannot be created
+without the additional arguments). I have not looked in detail into this
+issue, but I'd be reluctant adding a requirement such as
+<tt>std::is_constructible&lt;T, Args...&gt;</tt> without further
+investigation.
+</p>
+
+<p>
+It should be noted that the creation of intermediate objects currently
+is inconsistent in libstdc++ vs libc++. For example, libstdc++ creates
+an intermediate object for <tt>vector.insert</tt>, but not
+<tt>vector.emplace</tt>, whereas libc++ does the exact opposite in this
+respect.
+</p>
 </discussion>
 
 <resolution>
