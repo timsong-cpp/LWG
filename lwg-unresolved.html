@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-05-05 at 18:05:01 UTC</p>
+<p><p>Revised 2015-05-05 at 19:05:55 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -10108,125 +10108,6 @@ all the iterators and references before the insertion point remain valid. [&hell
 
 
 <hr>
-<h3><a name="2224"></a>2224. Ambiguous status of access to non-live objects</h3>
-<p><b>Section:</b> 17.6.4.10 [res.on.objects] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View all other</b> <a href="lwg-index.html#res.on.objects">issues</a> in [res.on.objects].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-The standard currently does not discuss when library objects may be accessed, except in a non-normative 
-note pertaining to synchronization in [res.on.objects], leaving it ambiguous whether single-threaded 
-code can access a library object during its construction or destruction. For example, there is a 
-reasonable question as to what happens if the deleter supplied to a <tt>unique_ptr</tt> transitively 
-accesses the <tt>unique_ptr</tt> itself during <tt>unique_ptr</tt>'s destruction; a straightforward 
-reading suggests that this is permitted, and that the deleter will see the <tt>unique_ptr</tt> still 
-holding the originally stored pointer, but consensus on the LWG reflector indicates this was not the 
-intent (see discussion beginning with 
-<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=33362">c++std-lib-33362</a>).
-</p>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
-<p>
-Moved to Open.
-</p>
-<p>
-Geoffrey will provide an example that clearly highlights the issue.
-</p>
-
-<p><i>[2013-03-19 Geoffrey provides revised resolution and an example]</i></p>
-
-
-<p>
-I contend that the most straightforward reading of the current standard requires the following example code to print 
-"good" (because <tt>~unique_ptr</tt> is not specified to modify the state of the internal pointer), but the consensus 
-on the reflector was that its behavior should be undefined.
-<p/>
-This example also shows that, contrary to a comment in the telecon, the PR is not tautological. 12.7 [class.cdtor]/p4 
-explicitly permits member function calls during destruction, so the behavior of this code is well-defined as far as 
-the core language is concerned, despite the fact that it accesses a library object after the end of the object's 
-lifetime. If we want this code to have undefined behavior, we need to specify that at the library level.
-</p>
-
-<blockquote><pre>
-#include &lt;memory&gt;
-#include &lt;iostream&gt;
-
-class A;
-
-struct B {
- std::unique_ptr&lt;A&gt; a;
-};
-
-struct A {
- B* b;
- ~A() {
-   if (b-&gt;a.get() == this) {
-     std::cout &lt;&lt; "good" &lt;&lt; std::endl;
-   }
- }
-};
-
-int main() {
- B b;
- b.a.reset(new A);
- b.a-&gt;b = &amp;b;
-}
-</pre></blockquote>
-
-<p>
-Previous resolution:
-</p>
-<blockquote class="note">
-<ol>
-<li><p>Change the title of sub-clause 17.6.4.10 [res.on.objects] as indicated:</p>
-<p><del>Shared objects and the library</del><ins>Library object access</ins> [res.on.objects]</p>
-</li>
-
-<li><p>Edit 17.6.4.10 [res.on.objects] p2 as indicated:</p>
-<p>-2- <del>[<i>Note</i>: In particular, the program is required to ensure that completion of the constructor 
-of any object of a class type defined in the standard library happens before any other member function 
-invocation on that object and, unless otherwise specified, to ensure that completion of any member function 
-invocation other than destruction on such an object happens before destruction of that object. This applies 
-even to objects such as mutexes intended for thread synchronization. &mdash; <i>end note</i>]</del>
-<ins>If an object of a standard library type is accessed outside of the object's lifetime (3.8 [basic.life]), 
-the behavior is undefined unless otherwise specified.</ins></p>
-</li>
-</ol>
-</blockquote>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3485.</p>
-
-<ol>
-<li><p>Change the title of sub-clause 17.6.4.10 [res.on.objects] as indicated:</p>
-<p><del>Shared objects and the library</del><ins>Library object access</ins> [res.on.objects]</p>
-</li>
-
-<li><p>Edit 17.6.4.10 [res.on.objects] p2 as indicated: <em>[<i>Editorial remark:</i> The motivation, is to 
-be more precise about the meaning of "outside the object's lifetime" in the presence of threads &mdash; <i>end editorial 
-remark</i>]</em></p>
-<p>-2- <del>[<i>Note</i>: In particular, the program is required to ensure that completion of the constructor 
-of any object of a class type defined in the standard library happens before any other member function 
-invocation on that object and, unless otherwise specified, to ensure that completion of any member function 
-invocation other than destruction on such an object happens before destruction of that object. This applies 
-even to objects such as mutexes intended for thread synchronization. &mdash; <i>end note</i>]</del>
-<ins>If an object of a standard library type is accessed, and the beginning of the object's lifetime 
-(3.8 [basic.life]) does not happen before the access, or the access does not happen before the end 
-of the object's lifetime, the behavior is undefined unless otherwise specified.</ins></p>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2227"></a>2227. Stateful comparison objects in associative containers</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-03-29</p>
@@ -16766,7 +16647,7 @@ The corresponding resolution should take care not to conflict with the intention
 <hr>
 <h3><a name="2414"></a>2414. Member function reentrancy should be implementation-defined</h3>
 <p><b>Section:</b> 17.6.5.8 [reentrancy] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-07-01 <b>Last modified:</b> 2014-11-09</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-07-01 <b>Last modified:</b> 2015-05-05</p>
 <p><b>View all other</b> <a href="lwg-index.html#reentrancy">issues</a> in [reentrancy].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -16781,10 +16662,16 @@ very specific scenarios.
 (For clarity, this issue has been split off from LWG <a href="lwg-closed.html#2382">2382</a>.)
 </p>
 
-<p><i>[2014/11/03 Urbana]</i></p>
+<p><i>[2014-11-03 Urbana]</i></p>
 
 <p>
 AJM confirmed with SG1 that they had no special concerns with this issue, and LWG should retain ownership.
+<p/>
+AM: this is too overly broad as it also covers calling the exact same member function on a different object<br/>
+STL: so you insert into a map, and copying the value triggers another insertion into a different map of the same type<br/>
+GR: reentrancy seems to imply the single-threaded case, but needs to consider the multi-threaded case
+<p/>
+Needs more wording.
 </p>
 <p>
 Move to Open
