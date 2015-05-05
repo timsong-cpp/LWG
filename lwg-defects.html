@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Defect Report List (Revision D93)</h1>
-<p><p>Revised 2015-05-05 at 18:05:06 UTC</p>
+<p><p>Revised 2015-05-05 at 18:05:11 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -62,13 +62,14 @@
 <ul>
 <li>D93: 2014-05-20 2015 post-Lenexa mailing<ul>
 <li><b>Summary:</b><ul>
-<li>294 open issues, up by 2.</li>
-<li>1723 closed issues, up by 1.</li>
+<li>293 open issues, up by 1.</li>
+<li>1724 closed issues, up by 2.</li>
 <li>2017 issues total, up by 3.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following 3 New issues: <a href="lwg-active.html#2492">2492</a>, <a href="lwg-active.html#2493">2493</a>, <a href="lwg-active.html#2494">2494</a>.</li>
 <li>Changed the following 2 issues to Open (from New): <a href="lwg-active.html#2370">2370</a>, <a href="lwg-active.html#2456">2456</a>.</li>
+<li>Changed the following issue to Pending Resolved (from Open): <a href="lwg-defects.html#2397">2397</a>.</li>
 <li>Changed the following issue to Pending NAD (from New): <a href="lwg-closed.html#2386">2386</a>.</li>
 </ul></li>
 </ul>
@@ -153,7 +154,7 @@
 <li><b>Details:</b><ul>
 <li>Added the following 6 Ready issues: <a href="lwg-defects.html#2396">2396</a>, <a href="lwg-defects.html#2399">2399</a>, <a href="lwg-defects.html#2400">2400</a>, <a href="lwg-defects.html#2401">2401</a>, <a href="lwg-defects.html#2404">2404</a>, <a href="lwg-defects.html#2408">2408</a>.</li>
 <li>Added the following 15 New issues: <a href="lwg-active.html#2391">2391</a>, <a href="lwg-active.html#2392">2392</a>, <a href="lwg-active.html#2393">2393</a>, <a href="lwg-active.html#2394">2394</a>, <a href="lwg-active.html#2398">2398</a>, <a href="lwg-active.html#2402">2402</a>, <a href="lwg-active.html#2403">2403</a>, <a href="lwg-active.html#2406">2406</a>, <a href="lwg-active.html#2407">2407</a>, <a href="lwg-active.html#2410">2410</a>, <a href="lwg-active.html#2411">2411</a>, <a href="lwg-active.html#2412">2412</a>, <a href="lwg-active.html#2413">2413</a>, <a href="lwg-active.html#2414">2414</a>, <a href="lwg-active.html#2415">2415</a>.</li>
-<li>Added the following Open issue: <a href="lwg-active.html#2397">2397</a>.</li>
+<li>Added the following Open issue: <a href="lwg-defects.html#2397">2397</a>.</li>
 <li>Added the following 3 WP issues: <a href="lwg-defects.html#2390">2390</a>, <a href="lwg-defects.html#2395">2395</a>, <a href="lwg-defects.html#2409">2409</a>.</li>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2405">2405</a>.</li>
 <li>Changed the following issue to Ready (from New): <a href="lwg-defects.html#2377">2377</a>.</li>
@@ -123907,6 +123908,82 @@ T shall be <ins>a complete</ins> <del>an</del> enumeration type (7.2)
 </blockquote>
 
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2397"></a>2397. <tt>map&lt;K, V&gt;::emplace</tt> and explicit <tt>V</tt> constructors</h3>
+<p><b>Section:</b> 20.10.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#Resolved">Pending Resolved</a>
+ <b>Submitter:</b> Peter Dimov <b>Opened:</b> 2014-06-12 <b>Last modified:</b> 2015-05-05</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
+<p><b>Discussion:</b></p>
+<p>
+Please consider the following example:
+</p>
+<blockquote><pre>
+#include &lt;map&gt;
+#include &lt;atomic&gt;
+
+int main()
+{
+   std::map&lt;int, std::atomic&lt;int&gt;&gt; map_;
+
+   map_.emplace(1, 0);  // <span style="color:#C80000;font-weight:bold">fail</span>
+   map_.emplace(1);     // <span style="color:#C80000;font-weight:bold">fail</span>
+   map_.emplace(1, {}); // <span style="color:#C80000;font-weight:bold">fail</span>
+
+   map_.emplace(std::piecewise_construct,
+       std::tuple&lt;int&gt;(1), std::tuple&lt;>()); // <span style="color:#006600;font-weight:bold">OK</span>
+}
+</pre></blockquote>
+<p>
+The first three calls represent attempts by an ordinary programmer (in which role I appear today) to construct 
+a map element. Since <tt>std::atomic&lt;int&gt;</tt> is non-copyable and immovable, I was naturally drawn to 
+<tt>emplace()</tt> because it constructs in-place and hence doesn't need to copy or move. The logic behind the 
+attempts was that <tt>K=int</tt> would be constructed from '<tt>1</tt>', and <tt>V=std::atomic&lt;int&gt;</tt> would be 
+(directly) constructed by '<tt>0</tt>', default constructed, or constructed by '<tt>{}</tt>'.
+<p/>
+Yet none of the obvious attempts worked.
+<p/>
+I submit that at least two of the three ought to have worked, and that we have therefore a defect in either 
+<tt>map::emplace</tt> or <tt>pair</tt>.
+<p/>
+Ville:
+<p/>
+There exists a related <a href="http://cplusplus.github.io/EWG/ewg-toc.html#114">EWG issue</a> for this.
+<p/>
+Daniel:
+<p/>
+If the proposal N4387 would be accepted, it would solve the first problem mentioned above.
+</p>
+
+<p><i>[2015-02, Cologne]</i></p>
+
+<p>
+AM: I think Peter's expectation is misguided that the second and third "//fail" cases should work.<br/> 
+DK: Howard's paper [note: which hasn't been written yet] will make the second case work... AM: ...but 
+the third one will never work without core changes.
+<p/>
+Case 1 is solved by DK's paper, cases 2 and 3 are not defects; at best they are extensions. 
+</p>
+
+<p><i>[2015-05, Lenexa]</i></p>
+
+<p>
+STL: think this is covered with N4387<br/>
+MC: this was accepted in Cologne<br/>
+STL: only want to fix the first emplace<br/>
+MC: leave alone and mark as closed by N4387<br/>
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+Resolved by acceptance of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4387.html">N4387</a>.
+</p>
 
 
 
