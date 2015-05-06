@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2473" status="New">
+<issue num="2473" status="Open">
 <title><tt>basic_filebuf</tt>'s relation to C <tt>FILE</tt> semantics</title>
 <section><sref ref="[filebuf.virtuals]"/></section>
 <submitter>Aaron Ballman</submitter>
@@ -24,9 +24,11 @@ intervening file positioning or flushing call to not trigger UB.
 <tt>basic_filebuf::seekpos()</tt>, and no mention of <tt>std::fflush()</tt> in
 <tt>basic_filebuf::sync()</tt>, which seem like an oversight.
 </p>
-</discussion>
 
-<resolution>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N4296.</p>
 
 <ol>
@@ -41,6 +43,51 @@ Altering the file position performs as follows:
 <ol>
 <li><p>if <tt>(om &amp; ios_base::out) != 0</tt>, then update the output sequence and write any unshift sequence;</p></li>
 <li><p>set the file position to <tt>sp</tt> <ins>as if by calling <tt>std::fseek(file, sp, SEEK_SET)</tt></ins>;</p></li>
+<li><p>if <tt>(om &amp; ios_base::in) != 0</tt>, then update the input sequence;</p></li>
+</ol>
+<p>
+where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. The operation fails if 
+<tt>is_open()</tt> returns false.
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>Change <sref ref="[filebuf.virtuals]"/> p19 as follows and add a new footnote that mimics comparable footnotes in
+<sref ref="[filebuf.members]"/> and <sref ref="[filebuf.virtuals]"/>:</p>
+<blockquote>
+<p>
+-19- <i>Effects</i>: If a put area exists, calls <tt>filebuf::overflow</tt> to write the characters to the file<ins>, then
+flushes the file as if by calling <tt>std::fflush(file)</tt> [Footnote: The function signature <tt>fflush(FILE*)</tt> 
+is declared in <tt>&lt;cstdio&gt;</tt> (27.9.2).]</ins>. If a get area exists, the effect is implementation-defined.
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2015-05, Lenexa</note>
+<p>
+Aaron provides improved wording by removing the params from <tt>std::fseek()</tt> due to the concerns
+regarding the parameters on systems where <tt>fseek</tt> uses 32-bit parameters.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4431.</p>
+
+<ol>
+<li>
+<p>Change <sref ref="[filebuf.virtuals]"/> p16 as follows [Editorial note: A footnote referring to <tt>fseek</tt> is not needed,
+because this is already covered by the existing footnote 334]:</p>
+<blockquote>
+<p>
+-16- Alters the file position, if possible, to correspond to the position stored in <tt>sp</tt> (as described below).
+Altering the file position performs as follows:
+</p>
+<ol>
+<li><p>if <tt>(om &amp; ios_base::out) != 0</tt>, then update the output sequence and write any unshift sequence;</p></li>
+<li><p>set the file position to <tt>sp</tt> <ins>as if by a call to <tt>std::fseek</tt></ins>;</p></li>
 <li><p>if <tt>(om &amp; ios_base::in) != 0</tt>, then update the input sequence;</p></li>
 </ol>
 <p>
