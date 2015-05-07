@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D93)</h1>
-<p><p>Revised 2015-05-07 at 21:05:32 UTC</p>
+<p><p>Revised 2015-05-07 at 21:05:02 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -32533,7 +32533,7 @@ we intended and it's consistent with what we've told users and with what impleme
 <hr>
 <h3><a name="2469"></a>2469. Wrong specification of Requires clause of <tt>operator[]</tt> for <tt>map</tt> and <tt>unordered_map</tt></h3>
 <p><b>Section:</b> 23.4.4.3 [map.access], 23.5.4.3 [unord.map.elem] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2015-01-21 <b>Last modified:</b> 2015-04-04</p>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2015-01-21 <b>Last modified:</b> 2015-05-07</p>
 <p><b>View other</b> <a href="lwg-index-open.html#map.access">active issues</a> in [map.access].</p>
 <p><b>View all other</b> <a href="lwg-index.html#map.access">issues</a> in [map.access].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -32689,8 +32689,10 @@ value <tt>value_type(std::move(k), mapped_type())</tt></del><ins>For the first o
 </ol>
 </blockquote>
 
-
-<p><b>Proposed resolution:</b></p>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N4296.</p>
 
 <p>Accept resolution of the issue issue <a href="lwg-active.html#2464">2464</a> and define <tt>operator[]</tt> as follows 
@@ -32770,6 +32772,90 @@ value <tt>value_type(std::move(k), mapped_type())</tt></del><ins>For the first o
 <del>-4- <i>Complexity</i>: Average case &#x1d4aa;(<tt>1</tt>), worst case &#x1d4aa;(<tt>size()</tt>).</del>
 </p>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4431.</p>
+
+<p>Accept resolution of the issue issue <a href="lwg-active.html#2464">2464</a> and define <tt>operator[]</tt> as follows 
+(This would also address issue <a href="lwg-active.html#2274">2274</a>):</p>
+
+<ol>
+<li><p>Change 23.4.4.3 [map.access] as indicated:</p>
+
+<blockquote>
+<pre>
+T&amp; operator[](const key_type&amp; x);
+</pre>
+<blockquote><p>
+-1- <i>Effects</i>: <del>If there is no key equivalent to <tt>x</tt> in the map, inserts <tt>value_type(x, T())</tt> 
+into the map.</del><ins>Equivalent to: <tt>return try_emplace(x).first-&gt;second;</tt></ins>
+<p/>
+<del>-2- <i>Requires</i>: <tt>key_type</tt> shall be <tt>CopyInsertable</tt> and <tt>mapped_type</tt> shall be 
+<tt>DefaultInsertable</tt> into <tt>*this</tt>.</del>
+<p/>
+<del>-3- <i>Returns</i>: A reference to the <tt>mapped_type</tt> corresponding to <tt>x</tt> in <tt>*this</tt>.</del>
+<p/>
+<del>-4- <i>Complexity</i>: Logarithmic.</del>
+</p>
+</blockquote>
+<pre>
+T&amp; operator[](key_type&amp;&amp; x);
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: <del>If there is no key equivalent to <tt>x</tt> in the map, inserts <tt>value_type(std::move(x), T())</tt> 
+into the map.</del><ins>Equivalent to: <tt>return try_emplace(move(x)).first-&gt;second;</tt></ins>
+<p/>
+<del>-6- <i>Requires</i>: <tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>.</del>
+<p/>
+<del>-7- <i>Returns</i>: A reference to the <tt>mapped_type</tt> corresponding to <tt>x</tt> in <tt>*this</tt>.</del>
+<p/>
+<del>-8- <i>Complexity</i>: Logarithmic.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 23.5.4.3 [unord.map.elem] as indicated:</p>
+
+<blockquote>
+<pre>
+mapped_type&amp; operator[](const key_type&amp; k);
+<del>mapped_type&amp; operator[](key_type&amp;&amp; k);</del>
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Requires</i>: <tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>. For the first operator, 
+<tt>key_type</tt> shall be <tt>CopyInsertable</tt> into <tt>*this</tt>. For the second operator, <tt>key_type</tt> shall 
+be <tt>MoveConstructible</tt>.</del>
+<p/>
+-2- <i>Effects</i>: <ins>Equivalent to <tt>return try_emplace(k).first-&gt;second;</tt></ins><del>If the <tt>unordered_map</tt> 
+does not already contain an element whose key is equivalent to <tt>k</tt>, 
+the first operator inserts the value <tt>value_type(k, mapped_type())</tt> and the second operator inserts the
+value <tt>value_type(std::move(k), mapped_type())</tt></del>
+</p>
+<p>
+<del>-3- <i>Returns</i>: A reference to <tt>x.second</tt>, where <tt>x</tt> is the (unique) element whose key is equivalent to 
+<tt>k</tt>.</del>
+<p/>
+<del>-4- <i>Complexity</i>: Average case &#x1d4aa;(<tt>1</tt>), worst case &#x1d4aa;(<tt>size()</tt>).</del>
+</p>
+</blockquote>
+
+<pre>
+<ins>mapped_type&amp; operator[](key_type&amp;&amp; k);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Equivalent to <tt>return try_emplace(move(k)).first-&gt;second;</tt></ins>
+</p>
+</blockquote>
+
 </blockquote>
 </li>
 </ol>
