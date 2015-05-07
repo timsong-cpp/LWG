@@ -55,10 +55,10 @@ named "assign".
 </note>
 
 <p>
-Alisdair: Can this be conditional noexcept?
+Alisdair: Can this be conditional <tt>noexcept</tt>?
 </p>
 <p>
-Pablo: We said we were not going to put in many conditional noexcepts. Problem is not allocator, but non-normative definition. It says swap is a valid operation which it is not.
+Pablo: We said we were not going to put in many conditional <tt>noexcept</tt>s. Problem is not allocator, but non-normative definition. It says swap is a valid operation which it is not.
 </p>
 <p>
 Dave: Move assignment is not a critical method.
@@ -70,13 +70,13 @@ Alisdair: Was confusing assignment and construction.
 Dave: Move construction is critical for efficiency.
 </p>
 <p>
-Kyle: Is it possible to test for noexcept.
+Kyle: Is it possible to test for <tt>noexcept</tt>.
 </p>
 <p>
-Alisdair: Yes, query the noexcept operator.
+Alisdair: Yes, query the <tt>noexcept</tt> operator.
 </p>
 <p>
-Alisdair: Agreed there is a problem that we cannot unconditionally mark these operations as noexcept.
+Alisdair: Agreed there is a problem that we cannot unconditionally mark these operations as <tt>noexcept</tt>.
 </p>
 <p>
 Pablo: How come swap is not defined in alloc
@@ -85,7 +85,7 @@ Pablo: How come swap is not defined in alloc
 Alisdair: It is in utility.
 </p>
 <p>
-Pablo: Swap has a conditional noexcept. Is no throw move constructable, is no throw move assignable.
+Pablo: Swap has a conditional <tt>noexcept</tt>. Is no throw move constructable, is no throw move assignable.
 </p>
 <p>
 Pablo: Not critical for strings or containers.
@@ -136,7 +136,7 @@ Dave: That is not just a forward reference, it is a semantic change.
 PJ: We intended to make it look like a container, but it did not satisfy all the requirements.
 </p>
 <p>
-Pablo: Clause 1 is correct. Clause 2 is removing note and noexcept (do not remove the rest). Clause 3 is correct.
+Pablo: Clause 1 is correct. Clause 2 is removing note and <tt>noexcept</tt> (do not remove the rest). Clause 3 is correct.
 </p>
 <p>
 Alisdair: Not sure data() is correct (in clause 2).
@@ -297,10 +297,94 @@ Change Table 71 to read:
 </blockquote>
 </blockquote>
 
+<note>2015-05-07, Lenexa</note>
+<p>
+Howard suggests improved wording
+</p>
 
 </discussion>
 
 <resolution>
+<p>This wording is relative to N4431.</p>
+
+<ol>
+<li><p>Modify the class template <tt>basic_string</tt> synopsis in <sref ref="[basic.string]"/>:</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class charT, class traits = char_traits&lt;charT&gt;,
+    class Allocator = allocator&lt;charT&gt; &gt;
+  class basic_string {
+  public:
+    [&hellip;]
+    basic_string&amp; assign(basic_string&amp;&amp; str) noexcept<ins>(
+         allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value)</ins>;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+</li>
+
+<li><p>Change <sref ref="[string.cons]"/>/p21-23:</p>
+<blockquote><pre>
+basic_string&amp;
+operator=(basic_string&amp;&amp; str) noexcept(
+         allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</pre><blockquote><p>
+-21- <i>Effects</i>: <del>If <tt>*this</tt> and <tt>str</tt> are not the same object, modifies <tt>*this</tt> as shown
+in Table 71. [ <i>Note</i>: A valid implementation is <tt>swap(str)</tt>. &mdash; <i>end note</i> ]</del>
+<ins>Move assigns as a sequence container ([container.requirements]), except that iterators, pointers and references may be invalidated.</ins>
+<p/>
+<del>-22- If <tt>*this</tt> and <tt>str</tt> are the same object, the member has no effect.</del>
+<p/>
+-23- <i>Returns</i>: <tt>*this</tt>
+</p></blockquote></blockquote>
+<blockquote>
+<table border="1">
+<caption><del>Table 71 &mdash; <tt>operator=(basic_string&amp;&amp;)</tt> effects</del></caption>
+
+<tr>
+<th><del>Element</del></th>
+<th><del>Value</del></th>
+</tr>
+
+<tr>
+<td><del><tt>data()</tt></del></td>
+<td><del>points at the array whose first element was pointed
+at by <tt>str.data()</tt></del></td>
+</tr>
+
+<tr>
+<td><del><tt>size()</tt></del></td>
+<td><del>previous value of <tt>str.size()</tt></del></td>
+</tr>
+
+<tr>
+<td><del><tt>capacity()</tt></del></td>
+<td><del>a value at least as large as <tt>size()</tt></del></td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Modify the paragraphs prior to <sref ref="[string::assign]"/> p.3 as indicated</p>
+<blockquote><pre>
+basic_string&amp; assign(basic_string&amp;&amp; str) noexcept<ins>(
+         allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value)</ins>;
+</pre><blockquote><p>
+-3- <i>Effects</i>: <ins>Equivalent to <tt>*this = std::move(str)</tt>.</ins>
+<del>The function replaces the string controlled by <tt>*this</tt> with a string of length
+<tt>str.size()</tt> whose elements are a copy of the string controlled by <tt>str</tt>.
+[ <i>Note</i>: A valid implementation is <tt>swap(str)</tt>. &mdash; <i>end note</i> ]</del>
+<p/>
+-4- <i>Returns</i>: <tt>*this</tt>
+</p></blockquote></blockquote>
+
+</li>
+</ol>
 </resolution>
 
 </issue>
