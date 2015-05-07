@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-05-06 at 18:05:50 UTC</p>
+<p><p>Revised 2015-05-07 at 18:05:50 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -1926,7 +1926,7 @@ It is not clear what other implementation restrictions might be
 <hr>
 <h3><a name="2063"></a>2063. Contradictory requirements for string move assignment</h3>
 <p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2011-05-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2011-05-29 <b>Last modified:</b> 2015-05-07</p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
 <p><b>View all other</b> <a href="lwg-index.html#basic.string">issues</a> in [basic.string].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -1976,10 +1976,10 @@ named "assign".
 
 
 <p>
-Alisdair: Can this be conditional noexcept?
+Alisdair: Can this be conditional <tt>noexcept</tt>?
 </p>
 <p>
-Pablo: We said we were not going to put in many conditional noexcepts. Problem is not allocator, but non-normative definition. It says swap is a valid operation which it is not.
+Pablo: We said we were not going to put in many conditional <tt>noexcept</tt>s. Problem is not allocator, but non-normative definition. It says swap is a valid operation which it is not.
 </p>
 <p>
 Dave: Move assignment is not a critical method.
@@ -1991,13 +1991,13 @@ Alisdair: Was confusing assignment and construction.
 Dave: Move construction is critical for efficiency.
 </p>
 <p>
-Kyle: Is it possible to test for noexcept.
+Kyle: Is it possible to test for <tt>noexcept</tt>.
 </p>
 <p>
-Alisdair: Yes, query the noexcept operator.
+Alisdair: Yes, query the <tt>noexcept</tt> operator.
 </p>
 <p>
-Alisdair: Agreed there is a problem that we cannot unconditionally mark these operations as noexcept.
+Alisdair: Agreed there is a problem that we cannot unconditionally mark these operations as <tt>noexcept</tt>.
 </p>
 <p>
 Pablo: How come swap is not defined in alloc
@@ -2006,7 +2006,7 @@ Pablo: How come swap is not defined in alloc
 Alisdair: It is in utility.
 </p>
 <p>
-Pablo: Swap has a conditional noexcept. Is no throw move constructable, is no throw move assignable.
+Pablo: Swap has a conditional <tt>noexcept</tt>. Is no throw move constructable, is no throw move assignable.
 </p>
 <p>
 Pablo: Not critical for strings or containers.
@@ -2057,7 +2057,7 @@ Dave: That is not just a forward reference, it is a semantic change.
 PJ: We intended to make it look like a container, but it did not satisfy all the requirements.
 </p>
 <p>
-Pablo: Clause 1 is correct. Clause 2 is removing note and noexcept (do not remove the rest). Clause 3 is correct.
+Pablo: Clause 1 is correct. Clause 2 is removing note and <tt>noexcept</tt> (do not remove the rest). Clause 3 is correct.
 </p>
 <p>
 Alisdair: Not sure data() is correct (in clause 2).
@@ -2220,10 +2220,95 @@ Change Table 71 to read:
 </blockquote>
 </blockquote>
 
+<p><i>[2015-05-07, Lenexa]</i></p>
+
+<p>
+Howard suggests improved wording
+</p>
 
 
 
 <p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4431.</p>
+
+<ol>
+<li><p>Modify the class template <tt>basic_string</tt> synopsis in 21.4 [basic.string]:</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class charT, class traits = char_traits&lt;charT&gt;,
+    class Allocator = allocator&lt;charT&gt; &gt;
+  class basic_string {
+  public:
+    [&hellip;]
+    basic_string&amp; assign(basic_string&amp;&amp; str) noexcept<ins>(
+         allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value)</ins>;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+</li>
+
+<li><p>Change 21.4.2 [string.cons]/p21-23:</p>
+<blockquote><pre>
+basic_string&amp;
+operator=(basic_string&amp;&amp; str) noexcept(
+         allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</pre><blockquote><p>
+-21- <i>Effects</i>: <del>If <tt>*this</tt> and <tt>str</tt> are not the same object, modifies <tt>*this</tt> as shown
+in Table 71. [ <i>Note</i>: A valid implementation is <tt>swap(str)</tt>. &mdash; <i>end note</i> ]</del>
+<ins>Move assigns as a sequence container ([container.requirements]), except that iterators, pointers and references may be invalidated.</ins>
+<p/>
+<del>-22- If <tt>*this</tt> and <tt>str</tt> are the same object, the member has no effect.</del>
+<p/>
+-23- <i>Returns</i>: <tt>*this</tt>
+</p></blockquote></blockquote>
+<blockquote>
+<table border="1">
+<caption><del>Table 71 &mdash; <tt>operator=(basic_string&amp;&amp;)</tt> effects</del></caption>
+
+<tr>
+<th><del>Element</del></th>
+<th><del>Value</del></th>
+</tr>
+
+<tr>
+<td><del><tt>data()</tt></del></td>
+<td><del>points at the array whose first element was pointed
+at by <tt>str.data()</tt></del></td>
+</tr>
+
+<tr>
+<td><del><tt>size()</tt></del></td>
+<td><del>previous value of <tt>str.size()</tt></del></td>
+</tr>
+
+<tr>
+<td><del><tt>capacity()</tt></del></td>
+<td><del>a value at least as large as <tt>size()</tt></del></td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Modify the paragraphs prior to 21.4.6.3 [string::assign] p.3 as indicated</p>
+<blockquote><pre>
+basic_string&amp; assign(basic_string&amp;&amp; str) noexcept<ins>(
+         allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value)</ins>;
+</pre><blockquote><p>
+-3- <i>Effects</i>: <ins>Equivalent to <tt>*this = std::move(str)</tt>.</ins>
+<del>The function replaces the string controlled by <tt>*this</tt> with a string of length
+<tt>str.size()</tt> whose elements are a copy of the string controlled by <tt>str</tt>.
+[ <i>Note</i>: A valid implementation is <tt>swap(str)</tt>. &mdash; <i>end note</i> ]</del>
+<p/>
+-4- <i>Returns</i>: <tt>*this</tt>
+</p></blockquote></blockquote>
+
+</li>
+</ol>
 
 
 
@@ -10106,7 +10191,7 @@ constant
 <hr>
 <h3><a name="2234"></a>2234. <tt>assert()</tt> should allow usage in constant expressions</h3>
 <p><b>Section:</b> 19.3 [assertions] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-01-12 <b>Last modified:</b> 2014-06-13</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-01-12 <b>Last modified:</b> 2015-05-07</p>
 <p><b>View other</b> <a href="lwg-index-open.html#assertions">active issues</a> in [assertions].</p>
 <p><b>View all other</b> <a href="lwg-index.html#assertions">issues</a> in [assertions].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
