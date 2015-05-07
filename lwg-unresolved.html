@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-05-07 at 21:05:02 UTC</p>
+<p><p>Revised 2015-05-07 at 22:05:13 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -10753,10 +10753,10 @@ to clarify this special case.
 
 <hr>
 <h3><a name="2296"></a>2296. <tt>std::addressof</tt> should be <tt>constexpr</tt></h3>
-<p><b>Section:</b> 20.7.12.1 [specialized.addressof] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2013-09-08 <b>Last modified:</b> 2014-06-13</p>
+<p><b>Section:</b> 20.7.12.1 [specialized.addressof] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
+ <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2013-09-08 <b>Last modified:</b> 2015-05-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#specialized.addressof">issues</a> in [specialized.addressof].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 I'm writing a function that needs to be <tt>constexpr</tt> and I wanted to take the address of its input. I was 
@@ -10852,6 +10852,20 @@ overloaded <tt>operator&amp;</tt>.
 <p>
 A new wording form is now used similar to the approach used by LWG <a href="lwg-active.html#2234">2234</a>, which
 is a stricter way to impose the necessary implementation requirements.
+</p>
+
+<p><i>[2015-05, Lenexa]</i></p>
+
+<p>
+ STL: the intent of this change is good; I think the wording is good<br/>
+- I'm a bit worried about asking for a compiler hook<br/>
+- if every implementer says: yes they can do it we should be good<br/>
+EB: there is missing the word "a" before "subexpression" (in multiple places)<br/>
+MC: the editor should do - we rely on our editors<br/>
+MC: move to Review with a note stating that we wait for implementation experience first<br/>
+- in favor: 13, opposed: 0, abstain: 2
+HB: N4430 will bring something which is addressing this issue<br/>
+MC: good we didn't go to ready then 
 </p>
 
 
@@ -14172,6 +14186,7 @@ the argument slice refers.</ins>
  <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2014-08-14 <b>Last modified:</b> 2015-03-28</p>
 <p><b>View other</b> <a href="lwg-index-open.html#atomics.types.generic">active issues</a> in [atomics.types.generic].</p>
 <p><b>View all other</b> <a href="lwg-index.html#atomics.types.generic">issues</a> in [atomics.types.generic].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 Otherwise, one could use <tt>memcpy</tt> to save and restore the value according to 3.9p2.
@@ -16228,166 +16243,6 @@ This is then unambiguously chosen over the other options in the preceding case. 
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2473"></a>2473. <tt>basic_filebuf</tt>'s relation to C <tt>FILE</tt> semantics</h3>
-<p><b>Section:</b> 27.9.1.5 [filebuf.virtuals] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Aaron Ballman <b>Opened:</b> 2015-02-09 <b>Last modified:</b> 2015-05-07</p>
-<p><b>View all other</b> <a href="lwg-index.html#filebuf.virtuals">issues</a> in [filebuf.virtuals].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-The restrictions on reading and writing a sequence controlled by an object of class 
-<tt>basic_filebuf&lt;charT, traits&gt;</tt> are the same as for reading and writing with 
-the Standard C library <tt>FILE</tt>s. One of the restrictions placed by C is on the behavior of 
-a stream that is opened for input and output. See the C99 standard, 7.19.5.3p6 for more 
-details, but the gist is that when opened in update mode, reads and writes must have an 
-intervening file positioning or flushing call to not trigger UB.
-</p>
-
-<p>
-27.9.1.5 [filebuf.virtuals] p13 specifies that <tt>basic_filebuf::seekoff()</tt> calls 
-<tt>std::fseek()</tt>. However, there is no mention of <tt>std::fseek()</tt> in 
-<tt>basic_filebuf::seekpos()</tt>, and no mention of <tt>std::fflush()</tt> in
-<tt>basic_filebuf::sync()</tt>, which seem like an oversight.
-</p>
-
-<p>
-<strong>Previous resolution [SUPERSEDED]:</strong>
-</p>
-<blockquote class="note">
-<p>This wording is relative to N4296.</p>
-
-<ol>
-<li>
-<p>Change 27.9.1.5 [filebuf.virtuals] p16 as follows [Editorial note: A footnote referring to <tt>fseek</tt> is not needed,
-because this is already covered by the existing footnote 334]:</p>
-<blockquote>
-<p>
--16- Alters the file position, if possible, to correspond to the position stored in <tt>sp</tt> (as described below).
-Altering the file position performs as follows:
-</p>
-<ol>
-<li><p>if <tt>(om &amp; ios_base::out) != 0</tt>, then update the output sequence and write any unshift sequence;</p></li>
-<li><p>set the file position to <tt>sp</tt> <ins>as if by calling <tt>std::fseek(file, sp, SEEK_SET)</tt></ins>;</p></li>
-<li><p>if <tt>(om &amp; ios_base::in) != 0</tt>, then update the input sequence;</p></li>
-</ol>
-<p>
-where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. The operation fails if 
-<tt>is_open()</tt> returns false.
-</p>
-</blockquote>
-</li>
-
-<li>
-<p>Change 27.9.1.5 [filebuf.virtuals] p19 as follows and add a new footnote that mimics comparable footnotes in
-27.9.1.4 [filebuf.members] and 27.9.1.5 [filebuf.virtuals]:</p>
-<blockquote>
-<p>
--19- <i>Effects</i>: If a put area exists, calls <tt>filebuf::overflow</tt> to write the characters to the file<ins>, then
-flushes the file as if by calling <tt>std::fflush(file)</tt> [Footnote: The function signature <tt>fflush(FILE*)</tt> 
-is declared in <tt>&lt;cstdio&gt;</tt> (27.9.2).]</ins>. If a get area exists, the effect is implementation-defined.
-</p>
-</blockquote>
-</li>
-</ol>
-</blockquote>
-
-<p><i>[2015-05, Lenexa]</i></p>
-
-<p>
-Aaron provides improved wording by removing the params from <tt>std::fseek()</tt> due to the concerns
-regarding the parameters on systems where <tt>fseek</tt> uses 32-bit parameters.
-<p/>
-Second wording improvement, replacing the new one see below. It
-</p>
-<ol>
-<li><p>drops the <tt>std::</tt></p></li>
-<li><p>drops the footnote for <tt>fflush</tt></p></li>
-<li><p>replaces <tt>fseek</tt> with <tt>fsetpos</tt></p></li>
-</ol>
-
-<p>
-<strong>Previous resolution [SUPERSEDED]:</strong>
-</p>
-<blockquote class="note">
-<p>This wording is relative to N4431.</p>
-
-<ol>
-<li>
-<p>Change 27.9.1.5 [filebuf.virtuals] p16 as follows [Editorial note: A footnote referring to <tt>fseek</tt> is not needed,
-because this is already covered by the existing footnote 334]:</p>
-<blockquote>
-<p>
--16- Alters the file position, if possible, to correspond to the position stored in <tt>sp</tt> (as described below).
-Altering the file position performs as follows:
-</p>
-<ol>
-<li><p>if <tt>(om &amp; ios_base::out) != 0</tt>, then update the output sequence and write any unshift sequence;</p></li>
-<li><p>set the file position to <tt>sp</tt> <ins>as if by a call to <tt>std::fseek</tt></ins>;</p></li>
-<li><p>if <tt>(om &amp; ios_base::in) != 0</tt>, then update the input sequence;</p></li>
-</ol>
-<p>
-where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. The operation fails if 
-<tt>is_open()</tt> returns false.
-</p>
-</blockquote>
-</li>
-
-<li>
-<p>Change 27.9.1.5 [filebuf.virtuals] p19 as follows and add a new footnote that mimics comparable footnotes in
-27.9.1.4 [filebuf.members] and 27.9.1.5 [filebuf.virtuals]:</p>
-<blockquote>
-<p>
--19- <i>Effects</i>: If a put area exists, calls <tt>filebuf::overflow</tt> to write the characters to the file<ins>, then
-flushes the file as if by calling <tt>std::fflush(file)</tt> [Footnote: The function signature <tt>fflush(FILE*)</tt> 
-is declared in <tt>&lt;cstdio&gt;</tt> (27.9.2).]</ins>. If a get area exists, the effect is implementation-defined.
-</p>
-</blockquote>
-</li>
-</ol>
-</blockquote>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N4431.</p>
-
-<ol>
-<li>
-<p>Change 27.9.1.5 [filebuf.virtuals] p16 as follows [Editorial note: A footnote referring to <tt>fseek</tt> is not needed,
-because this is already covered by the existing footnote 334]:</p>
-<blockquote>
-<p>
--16- Alters the file position, if possible, to correspond to the position stored in <tt>sp</tt> (as described below).
-Altering the file position performs as follows:
-</p>
-<ol>
-<li><p>if <tt>(om &amp; ios_base::out) != 0</tt>, then update the output sequence and write any unshift sequence;</p></li>
-<li><p>set the file position to <tt>sp</tt> <ins>as if by a call to <tt>fsetpos</tt></ins>;</p></li>
-<li><p>if <tt>(om &amp; ios_base::in) != 0</tt>, then update the input sequence;</p></li>
-</ol>
-<p>
-where <tt>om</tt> is the open mode passed to the last call to <tt>open()</tt>. The operation fails if 
-<tt>is_open()</tt> returns false.
-</p>
-</blockquote>
-</li>
-
-<li>
-<p>Change 27.9.1.5 [filebuf.virtuals] p19 as follows and add a new footnote that mimics comparable footnotes in
-27.9.1.4 [filebuf.members] and 27.9.1.5 [filebuf.virtuals]:</p>
-<blockquote>
-<p>
--19- <i>Effects</i>: If a put area exists, calls <tt>filebuf::overflow</tt> to write the characters to the file<ins>, then
-flushes the file as if by calling <tt>fflush(file)</tt></ins>. If a get area exists, the effect is implementation-defined.
-</p>
-</blockquote>
-</li>
-</ol>
 
 
 
