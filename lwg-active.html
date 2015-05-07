@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D93)</h1>
-<p><p>Revised 2015-05-07 at 20:05:21 UTC</p>
+<p><p>Revised 2015-05-07 at 20:05:01 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -169,7 +169,7 @@ ownership of it.
 <li>Changed the following issue to Ready (from New): <a href="lwg-active.html#2385">2385</a>.</li>
 <li>Changed the following 7 issues to Ready (from Open): <a href="lwg-active.html#2072">2072</a>, <a href="lwg-active.html#2101">2101</a>, <a href="lwg-active.html#2119">2119</a>, <a href="lwg-active.html#2127">2127</a>, <a href="lwg-active.html#2133">2133</a>, <a href="lwg-active.html#2218">2218</a>, <a href="lwg-active.html#2219">2219</a>.</li>
 <li>Changed the following issue to Tentatively Ready (from Open): <a href="lwg-active.html#2224">2224</a>.</li>
-<li>Changed the following 5 issues to Open (from New): <a href="lwg-active.html#2370">2370</a>, <a href="lwg-active.html#2422">2422</a>, <a href="lwg-active.html#2450">2450</a>, <a href="lwg-active.html#2456">2456</a>, <a href="lwg-active.html#2473">2473</a>.</li>
+<li>Changed the following 6 issues to Open (from New): <a href="lwg-active.html#2262">2262</a>, <a href="lwg-active.html#2370">2370</a>, <a href="lwg-active.html#2422">2422</a>, <a href="lwg-active.html#2450">2450</a>, <a href="lwg-active.html#2456">2456</a>, <a href="lwg-active.html#2473">2473</a>.</li>
 <li>Changed the following issue to Resolved (from Review): <a href="lwg-defects.html#2228">2228</a>.</li>
 <li>Changed the following issue to Resolved (from Open): <a href="lwg-defects.html#2397">2397</a>.</li>
 <li>Changed the following issue to NAD (from New): <a href="lwg-closed.html#2386">2386</a>.</li>
@@ -20007,10 +20007,10 @@ unless we reopen <a href="lwg-active.html#1521">1521</a>.
 
 <hr>
 <h3><a name="2262"></a>2262. Requirement for <tt>unique_ptr&lt;T&gt;::get_deleter()(p)</tt> to be able to destroy the <tt>unique_ptr</tt></h3>
-<p><b>Section:</b> 20.8.1.2 [unique.ptr.single] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Rob Desbois <b>Opened:</b> 2013-05-15 <b>Last modified:</b> 2014-02-12</p>
+<p><b>Section:</b> 20.8.1.2 [unique.ptr.single] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Rob Desbois <b>Opened:</b> 2013-05-15 <b>Last modified:</b> 2015-05-07</p>
 <p><b>View all other</b> <a href="lwg-index.html#unique.ptr.single">issues</a> in [unique.ptr.single].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 N3337 20.8.1.2.5 [unique.ptr.single.modifiers] contains 2 non-normative notes stating:
@@ -20123,10 +20123,10 @@ destroys <tt>*this</tt> since <tt>this->get()</tt> is no longer a valid expressi
 
 </blockquote>
 
-
-
-<p><b>Proposed resolution:</b></p>
-
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N3691.</p>
 
 <ol>
@@ -20141,6 +20141,165 @@ lvalue-reference to function object type for which, given a value <tt>d</tt> of 
 <tt>unique_ptr&lt;T, D&gt;::pointer</tt>, the expression <tt>d(ptr)</tt> is valid and has the effect of disposing of the pointer 
 as appropriate for that deleter. <ins><tt>d(ptr)</tt> shall be valid even if it triggers the destruction of <tt>d</tt> or (if 
 <tt>D</tt> is an lvalue reference to function object type) the function object that <tt>d</tt> refers to.</ins>
+</p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2015-05, Lenexa]</i></p>
+
+<p>
+After some discussion in Lenexa there was some wavering on if the added sentence is necessary. Here is example code that 
+demonstrates why the extra sentence is necessary. In this example the call to <tt>d(ptr)</tt> is valid, however the deleter 
+references <tt>*this</tt> after destructing its element:
+</p>
+<blockquote><pre>
+#include &lt;cassert&gt;
+#include &lt;memory&gt;
+#include &lt;iostream&gt;
+
+class Deleter
+{
+    int state_ = 0;
+
+    enum
+    {
+        destructed            = -4,
+        self_move_assigned    = -3,
+        move_assigned_from    = -2,
+        move_constructed_from = -1
+    };
+public:
+    ~Deleter() {state_ = destructed;}
+
+    Deleter() = default;
+    Deleter(Deleter const&amp;) = default;
+    Deleter&amp; operator=(Deleter const&amp;) = default;
+
+    Deleter(Deleter&amp;&amp; a) noexcept
+        : state_(a.state_)
+    {a.state_ = move_constructed_from;}
+
+    Deleter&amp; operator=(Deleter&amp;&amp; a) noexcept
+    {
+        if (this == &amp;a)
+            state_ = self_move_assigned;
+        else
+        {
+            state_ = a.state_;
+            a.state_ = move_assigned_from;
+        }
+        return *this;
+    }
+
+    Deleter(int state)
+        : state_(state)
+    {
+        assert(state &gt;= 0);
+    }
+
+    template &lt;class T&gt;
+    void
+    operator()(T* t) const
+    {
+        std::cout &lt;&lt; "Deleter beginning operator()(T*)\n";
+        std::cout &lt;&lt; "The deleter = " &lt;&lt; *this &lt;&lt; '\n';
+        std::cout &lt;&lt; "Deleter about to destruct the X.\n";
+        delete t;
+        std::cout &lt;&lt; "Deleter has destructed the X.\n";
+        std::cout &lt;&lt; "The deleter = " &lt;&lt; *this &lt;&lt; '\n';
+        std::cout &lt;&lt; "Deleter ending operator()(T*)\n";
+    }
+
+    friend
+    std::ostream&amp;
+    operator&lt;&lt;(std::ostream&amp; os, const Deleter&amp; a)
+    {
+        switch (a.state_)
+        {
+        case destructed:
+            os &lt;&lt; "**destructed**";
+            break;
+        case self_move_assigned:
+            os &lt;&lt; "self_move_assigned";
+            break;
+        case move_assigned_from:
+            os &lt;&lt; "move_assigned_from";
+            break;
+        case move_constructed_from:
+            os &lt;&lt; "move_constructed_from";
+            break;
+        default:
+            os &lt;&lt; a.state_;
+            break;
+        }
+        return os;
+    }
+};
+
+struct X
+{
+    Deleter deleter_{1};
+};
+
+int main()
+{
+    auto xp = new X;
+    {
+        std::unique_ptr&lt;X, Deleter&amp;&gt; p(xp, xp-&gt;deleter_);
+        std::cout &lt;&lt; "unique_ptr is constructed.\n";
+        std::cout &lt;&lt; "The deleter = " &lt;&lt; p.get_deleter() &lt;&lt; '\n';
+        std::cout &lt;&lt; "Destructing unique_ptr...\n";
+    }
+    std::cout &lt;&lt; "unique_ptr is destructed.\n";
+}
+</pre></blockquote>
+<p>
+Which outputs:
+</p>
+<blockquote>
+<pre>
+unique_ptr is constructed.
+The deleter = 1
+Destructing unique_ptr...
+Deleter beginning operator()(T*)
+The deleter = 1
+Deleter about to destruct the X.
+Deleter has destructed the X.
+The deleter = **destructed**
+Deleter ending operator()(T*)
+unique_ptr is destructed.
+</pre>
+</blockquote>
+<p>
+The line "<tt>The deleter = **destructed**</tt>" represents the deleter referencing itself after it has been destructed by the 
+<tt>d(ptr)</tt> expression, but prior to that call returning.
+<p/>
+Suggested alternative to the current proposed wording:
+</p>
+<blockquote>
+<p>
+The expression <tt>d(ptr)</tt> shall not refer to the object <tt>d</tt> after it executes <tt>ptr-&gt;~T()</tt>.
+</p>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4431.</p>
+
+<ol>
+<li>
+<p>
+Edit 20.8.1.2 [unique.ptr.single] p1 as indicated:
+</p>
+<blockquote><p>
+The default type for the template parameter <tt>D</tt> is <tt>default_delete</tt>. 
+A client-supplied template argument <tt>D</tt> shall be a function object type (20.9), lvalue-reference to function, or 
+lvalue-reference to function object type for which, given a value <tt>d</tt> of type <tt>D</tt> and a value <tt>ptr</tt> of type 
+<tt>unique_ptr&lt;T, D&gt;::pointer</tt>, the expression <tt>d(ptr)</tt> is valid and has the effect of disposing of the pointer 
+as appropriate for that deleter. <ins>The expression <tt>d(ptr)</tt> shall not refer to the object <tt>d</tt> after it executes 
+<tt>ptr-&gt;~T()</tt>.</ins>
 </p></blockquote>
 </li>
 </ol>
