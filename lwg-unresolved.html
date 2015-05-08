@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-05-08 at 18:05:52 UTC</p>
+<p><p>Revised 2015-05-08 at 19:05:03 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
@@ -11988,7 +11988,7 @@ template &lt;class charT, class traits, class T&gt;
 <hr>
 <h3><a name="2331"></a>2331. <tt>regex_constants::collate</tt>'s effects are inaccurately summarized</h3>
 <p><b>Section:</b> 28.5.1 [re.synopt] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-05-17</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-05-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.synopt">issues</a> in [re.synopt].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12015,6 +12015,47 @@ Jonathan Wakely: we should ask John Maddock
 
 <p>
 Move to P3
+</p>
+
+<p><i>[2014-5-14, John Maddock response]</i></p>
+
+<p>
+The original intention was the original wording: namely that <tt>collate</tt> only made character ranges locale sensitive.  
+To be frank it's a feature that's probably hardly ever used (though I have no real hard data on that), and is a leftover 
+from early POSIX standards which <em>required</em> locale sensitive collation for character ranges, and then later changed 
+to implementation defined if I remember correctly (basically nobody implemented locale-dependent collation).
+<p/>
+So I guess the question is do we gain anything by requiring all character-comparisons to go through the locale when this bit 
+is set? Certainly it adds a great deal to the implementation effort (it's not what Boost.Regex has ever done). I guess the 
+question is are differing code-points that collate identically an important use case? I guess there might be a few Unicode 
+code points that do that, but I don't know how to go about verifying that.
+<p/>
+STL:
+<p/>
+If this was unintentional, then 28.5.1 [re.synopt]/1's table should be left alone, while 28.13 [re.grammar]/14 
+should be changed instead.
+<p/>
+Jeffrey Yasskin:
+<p/>
+<a href="http://www.unicode.org/reports/tr18/tr18-13.html#Tailored_Loose_Matches">This page</a>
+mentions that [V] in Swedish should match "W" in a perfect world.
+<p/>
+However, the most recent version of <a href="http://www.unicode.org/reports/tr18/#Tailored_Loose_Matches">TR18</a> retracts
+both language-specific loose matches <em>and</em> language-specific ranges
+because "for most full-featured regular expression engines, it is
+quite difficult to match under code point equivalences that are not
+1:1" and "tailored ranges can be quite difficult to implement
+properly, and can have very unexpected results in practice. For
+example, languages may also vary whether they consider lowercase below
+uppercase or the reverse. This can have some surprising results: [a-Z]
+may not match anything if <tt>Z &lt; a</tt> in that locale."
+<p/>
+<a href="http://www.ecma-international.org/ecma-262/5.1/#sec-15.10.2.15">ECMAScript</a> doesn't include collation at all.
+<p/>
+IMO, +1 to changing 28.13 instead of 28.5.1. It seems like we'd be on
+fairly solid ground if we wanted to remove <tt>regex_constants::collate</tt>
+entirely, in favor of named character classes, but of course that's
+not for this issue.
 </p>
 
 
