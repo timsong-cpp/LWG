@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+] >
+
+<issue num="2495" status="New">
+<title>There is no such thing as an <i>Exception Safety</i> element</title>
+<section><sref ref="[util.smartptr.shared.const]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>5 May 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[util.smartptr.shared.const]"/> includes several "Exception safety"
+elements, but that is not one of the elements defined in 17.5.1.4
+<sref ref="[structure.specifications]"/>. We should either define what it means, or
+just move those sentences into the <i>Effects:</i> clause.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4431.</p>
+
+<ol>
+<li><p>Change <sref ref="[util.smartptr.shared.const]"/> as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class Y&gt; explicit shared_ptr(Y* p);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-4- <i>Effects</i>: Constructs a <tt>shared_ptr</tt> object that <i>owns</i> the pointer <tt>p</tt>. <ins>If an exception 
+is thrown, <tt>delete p</tt> is called.</ins>
+<p/>
+[&hellip;]
+<p/>
+<del>-7- <i>Exception safety</i>: If an exception is thrown, <tt>delete p</tt> is called.</del>
+</p>
+</blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(Y* p, D d);
+template &lt;class Y, class D, class A&gt; shared_ptr(Y* p, D d, A a);
+template &lt;class D&gt; shared_ptr(nullptr_t p, D d);
+template &lt;class D, class A&gt; shared_ptr(nullptr_t p, D d, A a);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-9- <i>Effects</i>: Constructs a <tt>shared_ptr</tt> object that owns the object <tt>p</tt> and the deleter <tt>d</tt>. 
+The second and fourth constructors shall use a copy of <tt>a</tt> to allocate memory for internal use. <ins>If an exception 
+is thrown, <tt>d(p)</tt> is called.</ins>
+<p/>
+[&hellip;]
+<p/>
+<del>-12- <i>Exception safety</i>: If an exception is thrown, <tt>d(p)</tt> is called.</del>
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template &lt;class Y&gt; explicit shared_ptr(const weak_ptr&lt;Y&gt;&amp; r);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-24- <i>Effects</i>: Constructs a <tt>shared_ptr</tt> object that shares ownership with <tt>r</tt> and stores a copy of the pointer
+stored in <tt>r</tt>. <ins>If an exception is thrown, the constructor has no effect.</ins>
+<p/>
+[&hellip;]
+<p/>
+<del>-27- <i>Exception safety</i>: If an exception is thrown, the constructor has no effect.</del>
+</p>
+</blockquote>
+<pre>
+template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-29- <i>Effects</i>: Equivalent to <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
+otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>. <ins>If an exception is thrown, the constructor has no effect.</ins>
+<p/>
+<del>-30- <i>Exception safety</i>: If an exception is thrown, the constructor has no effect.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
