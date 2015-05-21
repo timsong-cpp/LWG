@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+] >
+
+<issue num="2501" status="New">
+<title><tt>std::function</tt> requires POCMA/POCCA</title>
+<section><sref ref="[func.wrap.func]"/></section>
+<submitter>David Krauss</submitter>
+<date>20 May 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The idea behind <tt>propagate_on_container_move_assignment</tt> is that you can keep an allocator attached to a container. 
+But it's not really designed to work with polymorphism, which introduces the condition where the current allocator is non-POCMA 
+and the RHS of assignment, being POCMA, wants to replace it. If function were to respect the literal meaning, any would-be 
+attached allocator is at the mercy of every assignment operation. So, <tt>std::function</tt> is inherently POCMA, and passing 
+a non-POCMA allocator should be ill-formed.
+<p/>
+The other alternative, and the status quo, is to ignore POCMA and assume it is true. This seems just dangerous enough to outlaw. 
+It is, in theory, possible to properly support POCMA as far as I can see, albeit with difficulty and brittle results. It would 
+require function to keep a throwing move constructor, which otherwise can be <tt>noexcept</tt>.
+<p/>
+The same applies to <tt>propagate_on_container_copy_assignment</tt>. This presents more difficulty because <tt>std::allocator</tt> 
+does not set this to true. Perhaps it should. For function to respect this would require inspecting the POCCA of the source allocator, 
+slicing the target from the erasure of the source, slicing the allocation from the erasure of the destination, and performing a 
+copy with the destination's allocator with the source's target. This comes out of the blue for the destination allocator, which 
+might not support the new type anyway. Theoretically possible, but brittle and not very practical. Again, current implementations 
+quietly ignore the issue but this isn't very clean.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
