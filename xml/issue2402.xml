@@ -30,6 +30,19 @@ belonging to the container being copied.", but this isn't exactly a copy constru
 <tt>const allocator_type&amp;</tt> argument. [&hellip;] A copy of this allocator is used for any memory allocation performed".
 </p>
 </blockquote>
+
+<note>2015-05-06 Lenexa: move to Open</note>
+<p>STL: there an allocator right there in str, why default-construct one</p>
+<p>STL: my fix, which may not be right, splits out functions with and without allocators</p>
+<p>JW: there are other ways to propagate the allocator from str to the new object</p>
+<p>PJP: hard to get motivated about this one</p>
+<p>JW: I think this is not a copy operation, this is init'ing a string from a range of characters which happens to originate in a string. It makes it inconsistent with the similar ctor taking a const char pointer, and if we had a std::string_view we wouldn't even have this ctor, and it wouldn't be possible to propagate the allocator.</p>
+<p>STL: but people with stateful allocators want it to propagate</p>
+<p>JW: I think the people using stateful allocators will alter the default behaviour of select_on_container_copy_construction so that it doesn't propagate, but will return a default-constructed one (to ensure a stateful allocator referring to a stack buffer doesn't leak to a region where the stack buffer has gone). So for those people, your proposed change does nothing, it changes one default-constructed allocator to a call to select_on_container_copy_construction which returns a default-constructed allocator. For other people who have different stateful allocators they can still provide the right allocator (whatever that may be) by passing it in.</p>
+<p>STL: OK, that's convincing.</p>
+<p>PJP: I agree with Jonathan</p>
+<p>JW: would like to run both our arguments by Pablo in case I'm totally misrepresenting the expected users of allocator-traits stuff</p>
+
 </discussion>
 
 <resolution>
