@@ -29,7 +29,76 @@ slicing the target from the erasure of the source, slicing the allocation from t
 copy with the destination's allocator with the source's target. This comes out of the blue for the destination allocator, which 
 might not support the new type anyway. Theoretically possible, but brittle and not very practical. Again, current implementations 
 quietly ignore the issue but this isn't very clean.
+<p/>
+The following code example is intended to demonstrate the issue here:
 </p>
+<blockquote><pre>
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+template &lt;typename T&gt;
+struct diag_alloc 
+{
+  std::string name;
+
+  T* allocate(std::size_t n) const 
+  {
+    std::cout &lt;&lt; '+' &lt;&lt; name &lt;&lt; '\n';
+    return static_cast&lt;T*&gt;(::operator new(n * sizeof(T)));
+  }
+  
+  void deallocate(T* p, std::size_t) const 
+  {
+    std::cout &lt;&lt; '-' &lt;&lt; name &lt;&lt; '\n';
+    return ::operator delete(p);
+  }
+
+  template &lt;typename U&gt;
+  operator diag_alloc&lt;U&gt;() const { return {name}; }
+
+  friend bool operator==(const diag_alloc&amp; a, const diag_alloc&amp; b)
+  { return a.name == b.name; }
+  
+  friend bool operator!=(const diag_alloc&amp; a, const diag_alloc&amp; b)
+  { return a.name != b.name; }
+
+  typedef T value_type;
+  
+  template &lt;typename U&gt;
+  struct rebind { typedef diag_alloc&lt;U&gt; other; };
+};
+
+int main() {
+  std::cout &lt;&lt; "VECTOR\n";
+  std::vector&lt;int, diag_alloc&lt;int&gt;&gt; foo({1, 2}, {"foo"}); // +foo
+  std::vector&lt;int, diag_alloc&lt;int&gt;&gt; bar({3, 4}, {"bar"}); // +bar
+
+  std::cout &lt;&lt; "move\n";
+  foo = std::move(bar); // no message
+
+  std::cout &lt;&lt; "more foo\n";
+  foo.reserve(40); // +foo -foo
+  std::cout &lt;&lt; "more bar\n";
+  bar.reserve(40); // +bar -bar
+
+  std::cout &lt;&lt; "\nFUNCTION\n";
+  int bigdata[100];
+  auto bigfun = [bigdata]{};
+  typedef decltype(bigfun) ft;
+  std::cout &lt;&lt; "make fizz\n";
+  std::function&lt;void()&gt; fizz(std::allocator_arg, diag_alloc&lt;ft&gt;{"fizz"}, bigfun); // +fizz
+  std::cout &lt;&lt; "another fizz\n";
+  std::function&lt;void()&gt; fizz2;
+  fizz2 = fizz; // +fizz as if POCCA
+  std::cout &lt;&lt; "make buzz\n";
+  std::function&lt;void()&gt; buzz(std::allocator_arg, diag_alloc&lt;ft&gt;{"buzz"}, bigfun); // +buzz
+  std::cout &lt;&lt; "move\n";
+  buzz = std::move(fizz); // -buzz as if POCMA
+
+  std::cout &lt;&lt; "\nCLEANUP\n";
+}
+</pre></blockquote>
 </discussion>
 
 <resolution>
