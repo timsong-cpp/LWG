@@ -19,203 +19,12 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-05-22 at 17:05:59 UTC</p>
+<p><p>Revised 2015-05-23 at 15:05:12 UTC</p>
 </p><h2>Unresolved Issues</h2>
-<hr>
-<h3><a name="1169"></a>1169. <tt>num_get</tt> not fully compatible with <tt>strto*</tt></h3>
-<p><b>Section:</b> 22.4.2.1.2 [facet.num.get.virtuals] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Cosmin Truta <b>Opened:</b> 2009-07-04 <b>Last modified:</b> 2015-03-21</p>
-<p><b>View other</b> <a href="lwg-index-open.html#facet.num.get.virtuals">active issues</a> in [facet.num.get.virtuals].</p>
-<p><b>View all other</b> <a href="lwg-index.html#facet.num.get.virtuals">issues</a> in [facet.num.get.virtuals].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-As specified in the latest draft,
-<a 
-href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/n2914.pdf">N2914</a>,
-<code>num_get</code> is still not fully compatible with the following C
-functions: <code>strtoul</code>, <code>strtoull</code>, 
-<code>strtof</code> and
-<code>strtod</code>.
-</p>
-<p>
-In C, when conversion of a string to an unsigned integer type falls 
-outside the
-representable range, <code>strtoul</code> and <code>strtoull</code> return
-<code>ULONG_MAX</code> and <code>ULLONG_MAX</code>, respectively, 
-regardless
-whether the input field represents a positive or a negative value.
-On the other hand, the result of <code>num_get</code> conversion of 
-negative
-values to unsigned integer types is zero. This raises a compatibility 
-issue.
-</p>
-<p>
-Moreover, in C, when conversion of a string to a floating-point type falls
-outside the representable range, <code>strtof</code>, <code>strtod</code> 
-and
-<code>strtold</code> return <code>&plusmn;HUGE_VALF</code>,
-<code>&plusmn;HUGE_VAL</code> and <code>&plusmn;HUGE_VALL</code>, respectively.
-On the other hand, the result of <code>num_get</code> conversion of such
-out-of-range floating-point values results in the most positive/negative
-representable value.
-Although many C library implementations do implement <code>HUGE_VAL</code>
-(etc.) as the highest representable (which is, usually, the infinity), 
-this isn't required by the C standard. The C library specification makes no
-statement regarding the value of <code>HUGE_VAL</code> and friends, which
-potentially raises the same compatibility issue as in the above case of
-unsigned integers.
-In addition, neither C nor C++ define symbolic constants for the maximum
-representable floating-point values (they only do so only for the maximum
-representable <i>finite</i> floating-point values), which raises a 
-usability
-issue (it would be hard for the programmer to check the result of
-<code>num_get</code> against overflow).
-</p>
-<p>
-As such, we propose to adjust the specification of <code>num_get</code> to
-closely follow the behavior of all of its underlying C functions.
-</p>
-
-
-
-<p><i>[
-2010 Rapperswil:
-]</i></p>
-
-
-<blockquote><p>
-Some concern that this is changing the specification for an existing C++03 function, but it was 
-pointed out that this was underspecified as resolved by issue 23.  This is clean-up for that 
-issue in turn. Some concern that we are trying to solve the same problem in both clause 22 and 27.
-</p>
-<p>
-Bill: There's a change here as to whether val is stored to in an error case.
-</p>
-<p>
-Pablo: Don't think this changes whether val is stored to or not, but changes the value that is stored.
-</p>
-<p>
-Bill: Remembers having skirmishes with customers and testers as to whether val is stored to, and the resolution was not to store in error cases.
-</p>
-<p>
-Howard: Believes since C++03 we made a change to always store in overflow.
-</p>
-<p>
-Everyone took some time to review the issue.
-</p>
-<p>
-Pablo: C++98 definitely did not store any value during an error condition.
-</p>
-<p>
-Dietmar: Depends on the question of what is considered an error, and whether overflow is an error or not, which was the crux of LWG 23.
-</p>
-<p>
-Pablo: Yes, but given the "zero, if the conversion function fails to convert the entire field", we are requiring every error condition to store.
-</p>
-<p>
-Bill: When did this happen?
-</p>
-<p>
-Alisdair: One of the last two or three meetings.
-</p>
-<p>
-Dietmar: To store a value in case of failure is a very bad idea.
-</p>
-<p>
-Move to Open, needs more study.
-</p>
-</blockquote>
-
-<p><i>[2011-03-24 Madrid meeting]</i></p>
-
-
-<p>Move to deferred</p>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-
-<p>
-The proposed wording looks good, no-one sure why this was held back before.  Move to Review.
-</p>
-
-
-<p><i>[2012,Kona]</i></p>
-
-<p>
-Move to Open.
-</p>
-<p>
-THe issues is what to do with <tt>-1</tt>.  Should it match 'C' or do the "sane" thing.
-A fix here changes behavior, but is probably what we want.
-</p>
-<p>
-Pablo to provide wording, with help from Howard.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-
-<p>
-Change 22.4.2.1.2 [facet.num.get.virtuals] as follows:
-</p>
-<blockquote>
-<p>
-<b>Stage 3:</b>
-The sequence of <code>char</code>s accumulated in stage 2 (the field) is
-converted to a numeric value by the rules of one of the functions declared in
-the header <code>&lt;cstdlib&gt;</code>:
-</p>
-<ul>
-<li>For a signed integer value, the function <code>strtoll</code>.</li>
-<li>For an unsigned integer value, the function <code>strtoull</code>.</li>
-<li><ins>For a <code>float</code> value, the function
-    <code>strtof</code>.</ins></li>
-<li><ins>For a <code>double</code> value, the function
-    <code>strtod</code>.</ins></li>
-<li>For a <del>floating-point</del> <ins><code>long double</code></ins>
-    value, the function <code>strtold</code>.</li>
-</ul>
-<p>
-The numeric value to be stored can be one of:
-</p>
-<ul>
-<li>zero, if the conversion function fails to convert the entire field.
-    <del><code>ios_base::failbit</code> is assigned to <code>err</code>.</del></li>
-<li>the most positive <ins>(or negative)</ins> representable value, if
-    the field <ins>to be converted to a signed integer type</ins> represents a
-    value too large positive <ins>(or negative)</ins> to be represented in
-    <code>val</code>.
-    <del><code>ios_base::failbit</code> is assigned to <code>err</code>.</del></li>
-<li><del>the most negative representable value or zero for an unsigned integer
-    type, if the field represents a value too large negative to be represented
-    in <code>val</code>.
-    <code>ios_base::failbit</code> is assigned to <code>err</code>.</del></li>
-<li><ins>the most positive representable value, if the field to be converted to
-    an unsigned integer type represents a value that cannot be represented in
-    <code>val</code>.</ins></li>
-<li>the converted value, otherwise.</li>
-</ul>
-<p>
-The resultant numeric value is stored in <code>val</code>.
-<ins>If the conversion function fails to convert the entire field, or if the
-field represents a value outside the range of representable values,
-<code>ios_base::failbit</code> is assigned to <code>err</code>.</ins>
-</p>
-</blockquote>
-
-
-
-
-
-
 <hr>
 <h3><a name="1173"></a>1173. "Equivalence" wishy-washiness</h3>
 <p><b>Section:</b> 17 [library] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> David Abrahams <b>Opened:</b> 2009-07-14 <b>Last modified:</b> 2015-02-28</p>
+ <b>Submitter:</b> David Abrahams <b>Opened:</b> 2009-07-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#library">active issues</a> in [library].</p>
 <p><b>View all other</b> <a href="lwg-index.html#library">issues</a> in [library].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -284,7 +93,7 @@ Moved to NAD Future at 2010-11 Batavia
 <hr>
 <h3><a name="1175"></a>1175. <tt>unordered</tt> complexity</h3>
 <p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2009-07-17 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2009-07-17 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
 <p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -863,134 +672,9 @@ Consider to await the paper.
 
 
 <hr>
-<h3><a name="1526"></a>1526. C++ should not impose thread safety requirements on C99 library implementations</h3>
-<p><b>Section:</b> 17.6.5.9 [res.on.data.races] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> BSI <b>Opened:</b> 2011-03-24 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p><b>Addresses GB-111</b></p>
-
-<p>Section 17.6.5.9 [res.on.data.races], Data Race Avoidance, requires the C++ Standard Library to avoid data races 
-that might otherwise result from two threads making calls to C++ Standard Library functions on 
-distinct objects. The C standard library is part of the C++ Standard Library and some C++ Standary library 
-functions (parts of the Localization library, as well as Numeric Conversions in 21.5), are specified 
-to make use of the C standard library. Therefore, the C++ standard indirectly imposes a requirement 
-on the thread safety of the C standard library. However, since the C standard does not address the 
-concept of thread safety conforming C implementations exist that do no provide such guarantees. 
-This conflict needs to be reconciled.</p>
-
-<p>Suggested resolution by national body comment:</p>
-
-<blockquote><p>
-remove the requirement to make use of <tt>strtol()</tt> and <tt>sprintf()</tt> since these functions depend on the 
-global C locale and thus cannot be made thread safe.
-</p></blockquote>
-
-<p><i>[2011-03-24 Madrid meeting]</i></p>
-
-
-<p>Deferred</p>
-
-<p><i>[
-2011 Bloomington
-]</i></p>
-
-<p>
-Alisdair: PJ, does this cause a problem in C?
-</p>
-<p>
-PJ: Every implementation know of is thread safe.
-</p>
-<p>
-Pete: There a couple of effects that are specified on strtol() and sprintf() which is a problem.
-</p>
-<p>
-PJ: When C++ talks about C calls it should be "as if" calling the function.
-</p>
-<p>
-Pete: Culprit is to string stuff. My fault.
-</p>
-<p>
-PJ: Not your fault. You did what you were told. Distinct resolution to change wording.
-</p>
-<p>
-Dietmar: What would we break if we change it back?
-</p>
-<p>
-Pete: Nothing. If implemented on top of thread safe C library you are just fine.
-</p>
-<p>
-Alisdair: Anyone want to clean up wording and put it back to what Pete gave us?
-</p>
-<p>
-Alisdair: No volunteers. Do we want to mark as NAD? We could leave it as deferred.
-</p>
-<p>
-Stefanus: Did original submitter care about this?
-</p>
-<p>
-Lawrence: There is some work to make local calls thread safe. The resolution would be to call those thread safe version.
-</p>
-<p>
-Pete: "As if called under single threaded C program"
-</p>
-<p>
-<b>Action Item</b> (Alisdair): Write wording for this issue.
-</p>
-
-<p><i>[2012, Kona]</i></p>
-
-<p>
-Re-opened at the request of the concurrency subgroup, who feel there is an issue that needs
-clarifying for the (planned) 2017 standard.
-</p>
-
-<p><b>Rationale:</b></p><p>No consensus to make a change at this time</p>
-
-<p><i>[2012, Portland]</i></p>
-
-<p>
-The concurrency subgroup decided to encourage the LWG to consider a change to 17.2 [library.c] or thereabouts 
-to clarify that we are requiring C++-like thread-safety for <tt>setlocale</tt>, so that races are not introduced 
-by C locale accesses, even when the C library allows it. This would require e.g. adding "and data race avoidance" 
-at the end of 17.2 [library.c] p1:
-</p>
-<p>
-"The C++ standard library also makes available the facilities of the C standard library, suitably adjusted to 
-ensure static type safety <ins>and data race avoidance</ins>.",
-</p>
-<p>
-with some further clarifications in the sections mentioned in <a href="lwg-active.html#1526">1526</a>.
-</p>
-<p>
-This seems to be consistent with existing implementations. This would technically not be constraining C implementation, 
-but it would be further constraining C libraries used for both C and C++.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3376.</p>
-
-<ol>
-<li><p>Change 17.2 [library.c] p1 as indicated:</p>
-
-<blockquote><p>
--1- The C++ standard library also makes available the facilities of the C standard library, suitably adjusted to
-ensure static type safety <ins>and data race avoidance</ins>.
-</p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
 <h3><a name="2035"></a>2035. Output iterator requirements are broken</h3>
 <p><b>Section:</b> 24.2.4 [output.iterators] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-02-27 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-02-27 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#output.iterators">active issues</a> in [output.iterators].</p>
 <p><b>View all other</b> <a href="lwg-index.html#output.iterators">issues</a> in [output.iterators].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -1530,7 +1214,7 @@ post: <tt>r</tt> is <del>dereferenceable</del><ins>incrementable</ins>.<br/>
 <hr>
 <h3><a name="2038"></a>2038. Missing definition for <tt>incrementable</tt> iterator</h3>
 <p><b>Section:</b> 24.2.4 [output.iterators] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2011-02-27 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2011-02-27 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#output.iterators">active issues</a> in [output.iterators].</p>
 <p><b>View all other</b> <a href="lwg-index.html#output.iterators">issues</a> in [output.iterators].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -1590,7 +1274,7 @@ Agree with Daniel, this will be handled by the resolution of <a href="lwg-active
 <hr>
 <h3><a name="2051"></a>2051. Explicit <tt>tuple</tt> constructors for more than one parameter</h3>
 <p><b>Section:</b> 20.4.2 [tuple.tuple], 20.4.2.1 [tuple.cnstr] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2011-05-01 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2011-05-01 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.tuple">issues</a> in [tuple.tuple].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -1666,7 +1350,7 @@ Move to Open at the request of the Evolution Working Group.
 <hr>
 <h3><a name="2062"></a>2062. Effect contradictions w&#47;o no-throw guarantee of <tt>std::function</tt> swaps</h3>
 <p><b>Section:</b> 20.9.12.2 [func.wrap.func], 20.9.12.2.2 [func.wrap.func.mod] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2014-03-25</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -1926,7 +1610,7 @@ It is not clear what other implementation restrictions might be
 <hr>
 <h3><a name="2070"></a>2070. <tt>allocate_shared</tt> should use <tt>allocator_traits&lt;A&gt;::construct</tt></h3>
 <p><b>Section:</b> 20.8.2.2.6 [util.smartptr.shared.create] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-07-11 <b>Last modified:</b> 2014-03-27</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-07-11 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -2214,7 +1898,7 @@ bookkeeping structures such as the reference counts. &mdash; <i>end note</i>]
 <hr>
 <h3><a name="2077"></a>2077. Further incomplete constraints for type traits</h3>
 <p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-08-20 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-08-20 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -2274,107 +1958,9 @@ Move to open. We believe there is no issue for <tt>is_constructible</tt> or
 
 
 <hr>
-<h3><a name="2079"></a>2079. Required <tt>pow()</tt> overloads</h3>
-<p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Steve Clamage <b>Opened:</b> 2011-08-29 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
-<p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-LWG issue <a href="lwg-defects.html#550">550</a> removed the functions:
-</p>
-<blockquote><pre>
-float       pow(float, int);
-double      pow(double, int);
-long double pow(long double, int);
-</pre></blockquote>
-<p>
-from header <tt>&lt;cmath&gt;</tt>. This change does not seem to be mentioned in Annex C, C.2.14.
-<p/>
-Howard:
-</p>
-<blockquote><p>
-N3290 26.8 [c.math]&#47;p11 says:
-</p><blockquote>
-<p>
-Moreover, there shall be additional overloads sufficient to ensure:
-</p>
-<ol>
-<li>If any argument corresponding to a <tt>double</tt> parameter has type <tt>long double</tt>, 
-then all arguments corresponding to <tt>double</tt> parameters are effectively cast to 
-<tt>long double</tt>.
-</li>
-<li>Otherwise, if any argument corresponding to a <tt>double</tt> parameter has type <tt>double</tt> 
-or an integer type, then all arguments corresponding to <tt>double</tt> parameters are effectively 
-cast to <tt>double</tt>.
-</li>
-<li>Otherwise, all arguments corresponding to <tt>double</tt> parameters are effectively cast to 
-<tt>float</tt>.
-</li>
-</ol>
-</blockquote>
-<p>
-From C99 7.12.7.4 we have:
-</p>
-<blockquote><pre>
-double pow(double, double);
-</pre></blockquote>
-<p>
-26.8 [c.math]&#47;p11&#47;b2 says that if the client calls <tt>pow(2.0f, 2)</tt>, then the 
-<tt>int</tt> for second argument causes the following effective call to be made:
-</p>
-<blockquote><pre>
-pow(static_cast&lt;double&gt;(2.0f), static_cast&lt;double&gt;(2)) -&gt; double
-</pre></blockquote>
-<p>
-The first sentence of p11 implies that this is done by supplying the following additional overload:
-</p>
-<blockquote><pre>
-double pow(float, int);
-</pre></blockquote>
-<p>
-If the client calls <tt>pow(2.0, 2)</tt>, then the same reasoning (b2 again) implies the following 
-additional overload:
-</p>
-<blockquote><pre>
-double pow(double, int);
-</pre></blockquote>
-<p>
-If the client calls <tt>pow(2.0l, 2)</tt>, then b1 implies the following additional overload:
-</p>
-<blockquote><pre>
-long double pow(long double, int);
-</pre></blockquote>
-<p>
-In all, p11 implies hundreds (perhaps thousands?) of extra overloads.  All but one of which is a superset 
-of the overloads required by C++98&#47;03 (that one being <tt>pow(float, int)</tt> which had its return 
-type changed from <tt>float</tt> to <tt>double</tt>).
-<p/>
-In practice, at least some vendors implement p11 by using templated overloads as opposed to ordinary overloads.
-</p></blockquote>
-
-<p>
-Steve Clamage:
-</p>
-<blockquote><p>
-Thanks. I didn't see that those extra overloads were actually implied by p11, despite the first sentence. 
-Without examples, the point is a bit subtle (at least for me).
-</p></blockquote>
-
-
-
-<p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
 <h3><a name="2088"></a>2088. <tt>std::terminate</tt> problem</h3>
 <p><b>Section:</b> 18.8.3 [exception.terminate] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-09-25 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-09-25 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -2524,8 +2110,9 @@ Jens wording into this issue.
 <hr>
 <h3><a name="2089"></a>2089. <tt>std::allocator::construct</tt> should use uniform initialization</h3>
 <p><b>Section:</b> 20.7.9.1 [allocator.members] <b>Status:</b> <a href="lwg-active.html#EWG">EWG</a>
- <b>Submitter:</b> David Krauss <b>Opened:</b> 2011-10-07 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2011-10-07 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.members">issues</a> in [allocator.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#EWG">EWG</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
@@ -2620,7 +2207,7 @@ is <tt>true</tt>, else <tt>::new((void *)p) U{std::forward&lt;Args&gt;(args)...}
 <hr>
 <h3><a name="2095"></a>2095. <tt>promise</tt> and <tt>packaged_task</tt> missing constructors needed for uses-allocator construction</h3>
 <p><b>Section:</b> 30.6.5 [futures.promise], 30.6.9 [futures.task] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-01 <b>Last modified:</b> 2014-06-04</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2011-11-01 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#futures.promise">active issues</a> in [futures.promise].</p>
 <p><b>View all other</b> <a href="lwg-index.html#futures.promise">issues</a> in [futures.promise].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -2807,7 +2394,7 @@ to <tt>*this</tt>.
 <hr>
 <h3><a name="2114"></a>2114. Incorrect "<em>contextually</em> convertible to <tt>bool</tt>" requirements</h3>
 <p><b>Section:</b> 17.6.3.3 [nullablepointer.requirements], 24.2.3 [input.iterators], 24.2.7 [random.access.iterators], 25.1 [algorithms.general], 25.4 [alg.sorting], 30.2.1 [thread.req.paramname] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2014-06-11</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -3370,6 +2957,9 @@ In the current wording I would like to see changed the suggested changes describ
 <li><p>Then change the 7 occurrences of "convertible to <tt>bool</tt>" in the denoted tables to "<tt>bool</tt>".</p></li>
 </ol>
 
+<p><i>[2015-05-05 Lenexa]</i></p>
+
+<p>STL: Alisdair wanted to do something here, but Daniel gave us updated wording.</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -4040,7 +3630,7 @@ converted to <tt>bool</tt>, yields <tt>true</tt> if the corresponding test condi
 <hr>
 <h3><a name="2115"></a>2115. Undefined behaviour for <tt>valarray</tt> assignments with <tt>mask_array</tt> index?</h3>
 <p><b>Section:</b> 26.6.8 [template.mask.array] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Thomas Plum <b>Opened:</b> 2011-12-10 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Thomas Plum <b>Opened:</b> 2011-12-10 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -4217,7 +3807,7 @@ discussion is likely to be fruitful.
 <hr>
 <h3><a name="2116"></a>2116. <tt>std::swap noexcept(what?)</tt></h3>
 <p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Dave Abrahams <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -4313,7 +3903,7 @@ pass those values to <tt>swap</tt>.
 <hr>
 <h3><a name="2117"></a>2117. <tt>ios_base</tt> manipulators should have <tt>showgrouping&#47;noshowgrouping</tt></h3>
 <p><b>Section:</b> 22.4.2.2.2 [facet.num.put.virtuals], 27.5.3.1.2 [ios::fmtflags], 27.5.6.1 [fmtflags.manip] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Benjamin Kosnik <b>Opened:</b> 2011-12-15 <b>Last modified:</b> 2014-02-21</p>
+ <b>Submitter:</b> Benjamin Kosnik <b>Opened:</b> 2011-12-15 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#facet.num.put.virtuals">issues</a> in [facet.num.put.virtuals].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -4537,7 +4127,7 @@ generates a decimal-point character unconditionally in generated floatingpoint o
 <hr>
 <h3><a name="2121"></a>2121. <tt>app</tt> for string streams</h3>
 <p><b>Section:</b> 27.8.5.1 [stringstream.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2012-01-15 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Nicolai Josuttis <b>Opened:</b> 2012-01-15 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -4594,7 +4184,7 @@ Note that the flag <tt>ate</tt> on both platforms appends "hello" to <tt>s</tt>.
 <hr>
 <h3><a name="2136"></a>2136. Postconditions vs. exceptions</h3>
 <p><b>Section:</b> 17.5.1 [structure] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2014-02-11</p>
+ <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -4623,6 +4213,10 @@ Also, see <a href="lwg-active.html#2137">2137</a> for a suggestion that we want 
 both issues together.
 </p>
 
+<p><i>[2015-05-06 Lenexa: EirkWF to write paper addressing 2136 and 2137]</i></p>
+
+<p>MC: Idea is to replace all such "If no exception" postconditions with "Exception safety" sections.</p>
+
 
 <p><b>Proposed resolution:</b></p>
 
@@ -4633,7 +4227,7 @@ both issues together.
 <hr>
 <h3><a name="2137"></a>2137. Misleadingly constrained post-condition in the presence of exceptions</h3>
 <p><b>Section:</b> 28.8.3 [re.regex.assign] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.regex.assign">issues</a> in [re.regex.assign].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -4666,6 +4260,8 @@ guarantee consistently.  We do not want to pick up these issues piecemeal, as we
 openning many issues in an ongoing process.
 </p>
 
+<p><i>[2015-05-06 Lenexa: EirkWF to write paper addressing 2136 and 2137]</i></p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -4696,7 +4292,7 @@ the flags specified in <tt>f</tt>. If an exception is thrown, <tt>*this</tt> is 
 <hr>
 <h3><a name="2139"></a>2139. What is a <em>user-defined</em> type?</h3>
 <p><b>Section:</b> 17.6.4.2.1 [namespace.std], 19.5 [syserr], 20.7.7.1 [allocator.uses.trait], 20.9.10.1 [func.bind.isbind], 20.9.10.2 [func.bind.isplace], 20.9.13 [unord.hash], 20.10.7.6 [meta.trans.other], 22.3.1 [locale], 22.4.1.4 [locale.codecvt], 28.12.1.4 [re.regiter.incr] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Lo&iuml;c Joly <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2015-04-01</p>
+ <b>Submitter:</b> Lo&iuml;c Joly <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#namespace.std">issues</a> in [namespace.std].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -4760,6 +4356,22 @@ I propose "program-defined type" (and "program-defined specialization"), defined
 The P/R below demonstrates the scope of the changes required, even if this name isn't adopted. 
 I haven't proposed a change for "User-defined facets" in [locale].
 </p>
+
+<p><i>[Lenexa 2015-05-06]</i></p>
+
+<p>RS, HT: The core language uses "user-defined" in a specific way, including library things but excluding core language things, let's use a different term.</p>
+<p>MC: Agree.</p>
+<p>RS: "which" should be "that", x2</p>
+<p>RS: Is std::vector&lt;MyType&gt; a "program-defined type"?</p>
+<p>MC: I think it should be.</p>
+<p>TK: std::vector&lt;int&gt; seems to take the same path.</p>
+<p>JW: std::vector&lt;MyType&gt; isn't program-defined, we don't need it to be, anything that depends on that also depends on =MyType.</p>
+<p>TK: The type defined by an "explicit template specialization" should be a program-defined type.</p>
+<p>RS: An implicit instantiation of a "program-defined partial specialization" should also be a program-defined type.</p>
+<p>JY: This definition formatting is horrible and ugly, can we do better?</p>
+<p>RS: Checking ISO directives.</p>
+<p>RS: Define "program-defined type" and "program-defined specialization" instead, to get rid of the angle brackets.</p>
+<p>JW redrafting.</p>
 
 
 
@@ -4935,7 +4547,7 @@ a <del>user</del><ins>program</ins>-defined specialization of <tt>regex_search</
 <hr>
 <h3><a name="2146"></a>2146. Are reference types <tt>Copy</tt>&#47;<tt>Move-Constructible</tt>&#47;<tt>Assignable</tt> or <tt>Destructible</tt>?</h3>
 <p><b>Section:</b> 17.6.3.1 [utility.arg.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-03-23 <b>Last modified:</b> 2014-06-05</p>
+ <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-03-23 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#utility.arg.requirements">issues</a> in [utility.arg.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -5043,7 +4655,7 @@ The questions raised by the issue are real, and should have a clear answer.
 <hr>
 <h3><a name="2151"></a>2151. <tt>basic_string&lt;&gt;::swap</tt> semantics ignore allocators</h3>
 <p><b>Section:</b> 21.4.1 [string.require] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#string.require">issues</a> in [string.require].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -5092,7 +4704,7 @@ allocator-aware container.
 <hr>
 <h3><a name="2152"></a>2152. Instances of standard container types are not swappable</h3>
 <p><b>Section:</b> 17.6.3.2 [swappable.requirements], 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2014-02-11</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#swappable.requirements">issues</a> in [swappable.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -5205,7 +4817,7 @@ stateful allocators.
 <hr>
 <h3><a name="2153"></a>2153. Narrowing of the non-member <tt>swap</tt> contract</h3>
 <p><b>Section:</b> 20.2.2 [utility.swap], 17.6.3.2 [swappable.requirements], 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Robert Shearer <b>Opened:</b> 2012-04-13 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -5268,7 +4880,7 @@ This topic deserves more attention than can be given in the telocon, and there i
 <hr>
 <h3><a name="2154"></a>2154. What exactly does compile-time complexity imply?</h3>
 <p><b>Section:</b> 26.5.1.3 [rand.req.urng] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> John Salmon <b>Opened:</b> 2012-04-26 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> John Salmon <b>Opened:</b> 2012-04-26 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#rand.req.urng">issues</a> in [rand.req.urng].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -5430,134 +5042,9 @@ LWG agrees. Jonathan provides wording.
 
 
 <hr>
-<h3><a name="2156"></a>2156. Unordered containers' <tt>reserve(n)</tt> reserves for <tt>n-1</tt> elements</h3>
-<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel James <b>Opened:</b> 2012-05-07 <b>Last modified:</b> 2014-03-03</p>
-<p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
-<p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-I think that unordered containers' <tt>reserve</tt> doesn't quite do what it should. I'd expect after calling 
-<tt>x.reserve(n)</tt> to be able to insert <tt>n</tt> elements without invalidating iterators. But as 
-the standard is written (I'm looking at n3376), I think the guarantee only holds for <tt>n-1</tt> elements.
-<p/>
-For a container with <tt>max_load_factor</tt> of <tt>1</tt>, <tt>reserve(n)</tt> is equivalent to
-<tt>rehash(ceil(n/1))</tt>, ie. <tt>rehash(n)</tt>. <tt>rehash(n)</tt> requires that the bucket
-count is <tt>&gt;= n</tt>, so it can be <tt>n</tt> (Table 103). The rule is that <tt>insert</tt>
-shall not affect the validity of iterators if <tt>(N + n) &lt; z * B</tt> (23.2.5 [unord.req] p15). 
-But for this case the two sides of the equation are equal, so <tt>insert</tt> can affect the validity of iterators.
-</p>
-
-<p><i>[2013-03-16 Howard comments and provides wording]</i></p>
-
-
-<p>
-Given the following:
-</p>
-
-<blockquote><pre>
-LF := load_factor()
-MLF := max_load_factor()
-S := size()
-B := bucket_count()
-
-LF == S/B
-</pre></blockquote>
-
-<p>
-The container has an invariant:
-</p>
-
-<blockquote><pre>
-LF &lt;= MLF
-</pre></blockquote>
-
-<p>
-Therefore:
-</p>
-
-<blockquote><pre>
-MLF &gt;= S/B
-S &lt;= MLF * B
-B &gt;= S/MLF
-</pre></blockquote>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
-<p>
-Moved to Open.
-</p>
-<p>
-Howard to provide rationale and potentally revised wording.
-</p>
-
-
-<p><i>[2012-02-12 Issaquah : recategorize as P3]</i></p>
-
-<p>
-Jonathon Wakely: submitter is Boost.Hash maintainer. Think it's right.
-</p>
-
-<p>
-Marshall Clow: even if wrong it's more right than what we have now
-</p>
-
-<p>
-Geoffrey Romer: issue is saying rehash should not leave container in such a state that a notional insertion of zero elements should not trigger a rehash
-</p>
-
-<p>
-AJM: e.g. if you do a range insert from an empty range
-</p>
-
-<p>
-AJM: we don't have enough brainpower to do this now, so not priority zero
-</p>
-
-<p>
-Recategorised as P3
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3485.</p>
-
-<ol>
-<li>
-<p>
-In 23.2.5 [unord.req] Table 103 &mdash; Unordered associative container requirements, change the post-condition 
-in the row for <code>a.rehash(n)</code> to:
-</p>
-<blockquote>
-Post: <code>a.bucket_count() &gt;<ins>=</ins> a.size() / a.max_load_factor()</code> and <code>a.bucket_count() &gt;= n</code>.
-</blockquote>
-</li>
-
-<li>
-<p>
-In 23.2.5 [unord.req]/p15 change
-</p>
-<blockquote>
-The <code>insert</code> and <code>emplace</code> members shall not affect the validity of iterators if 
-<code>(N+n) &lt;<ins>=</ins> z * B</code>, where <code>N</code> is the number of elements in the container 
-prior to the insert operation, <code>n</code> is the number of elements inserted, <code>B</code> is the container's 
-bucket count, and <code>z</code> is the container's maximum load factor.
-</blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2157"></a>2157. How does <tt>std::array&lt;T,0&gt;</tt> initialization work when <tt>T</tt> is not default-constructible?</h3>
 <p><b>Section:</b> 23.3.2.8 [array.zero] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Daryle Walker <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#array.zero">issues</a> in [array.zero].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -5652,7 +5139,7 @@ Conclusion: Update wording, revisit later.
 <hr>
 <h3><a name="2158"></a>2158. Conditional copy&#47;move in <tt>std::vector</tt></h3>
 <p><b>Section:</b> 23.3.6.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -5704,7 +5191,7 @@ Maybe it would be useful to introduce a new name for such conditional requiremen
 <hr>
 <h3><a name="2161"></a>2161. <tt>const</tt> equivalence of <tt>std::map</tt></h3>
 <p><b>Section:</b> 23.4 [associative], 23.5 [unord] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Bjarne Stroustrup <b>Opened:</b> 2012-06-18 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Bjarne Stroustrup <b>Opened:</b> 2012-06-18 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative">active issues</a> in [associative].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative">issues</a> in [associative].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -5995,7 +5482,7 @@ been created in behalf of this LWG issue, has been resolved as a defect.
 <hr>
 <h3><a name="2166"></a>2166. Heap property underspecified?</h3>
 <p><b>Section:</b> 25.4.6 [alg.heap.operations] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Peter Sommerlad <b>Opened:</b> 2012-07-09 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Peter Sommerlad <b>Opened:</b> 2012-07-09 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.heap.operations">issues</a> in [alg.heap.operations].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -6048,7 +5535,7 @@ See also follow-up discussion of c++std-lib-32780.
 <hr>
 <h3><a name="2173"></a>2173. The meaning of operator + in the description of the algorithms</h3>
 <p><b>Section:</b> 25 [algorithms] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-08-01 <b>Last modified:</b> 2014-06-07</p>
+ <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-08-01 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#algorithms">active issues</a> in [algorithms].</p>
 <p><b>View all other</b> <a href="lwg-index.html#algorithms">issues</a> in [algorithms].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -6152,7 +5639,7 @@ return distance(a, b);
 <hr>
 <h3><a name="2178"></a>2178. <tt>Allocator</tt> requirement changes not mentioned Annex C</h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements], C.5 [diff.library] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-08-14 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2012-08-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -6193,7 +5680,7 @@ the best we can do is move the issue to Open.
 <hr>
 <h3><a name="2179"></a>2179. <tt>enable_shared_from_this</tt> and construction from raw pointers</h3>
 <p><b>Section:</b> 20.8.2.5 [util.smartptr.enab], 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -6279,371 +5766,9 @@ share ownership with some other pre-existing <tt>shared_ptr</tt>.
 
 
 <hr>
-<h3><a name="2181"></a>2181. Exceptions from <em>seed sequence</em> operations</h3>
-<p><b>Section:</b> 26.5.1.2 [rand.req.seedseq], 26.5.3 [rand.eng], 26.5.4 [rand.adapt] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-18 <b>Last modified:</b> 2014-05-22</p>
-<p><b>View all other</b> <a href="lwg-index.html#rand.req.seedseq">issues</a> in [rand.req.seedseq].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-LWG issue <a href="lwg-defects.html#2180">2180</a> points out some deficiences in regard to the specification of the library-provided
-type <tt>std::seed_seq</tt> regarding exceptions, but there is another specification problem 
-in regard to general types satisfying the <em>seed sequence</em> constraints (named <tt>SSeq</tt>) as described in 
-26.5.1.2 [rand.req.seedseq].
-<p/>
-26.5.3 [rand.eng] p3 and 26.5.4.1 [rand.adapt.general] p3 say upfront:
-</p>
-<blockquote><p>
-Except where specified otherwise, no function described in this section 
-26.5.3 [rand.eng]/26.5.4 [rand.adapt] throws an exception.
-</p></blockquote>
-<p>
-This constraint causes problems, because the described templates in these sub-clauses depend on operations of 
-<tt>SSeq::generate()</tt> which is a function template, that depends both on operations provided by the 
-implementor of <tt>SSeq</tt> (e.g. of <tt>std::seed_seq</tt>), and those of the random access iterator type 
-provided by the caller. With class template <tt>linear_congruential_engine</tt> we have just one example for a user 
-of <tt>SSeq::generate()</tt> via:
-</p>
-<blockquote><pre>
-template&lt;class Sseq&gt; 
-linear_congruential_engine&lt;&gt;::linear_congruential_engine(Sseq&amp; q);
-
-template&lt;class Sseq&gt; 
-void linear_congruential_engine&lt;&gt;::seed(Sseq&amp; q);
-</pre></blockquote>
-<p>
-None of these operations has an exclusion rule for exceptions.
-<p/>
-As described in <a href="lwg-defects.html#2180">2180</a> the wording for <tt>std::seed_seq</tt> should and can be fixed to ensure that 
-operations of <tt>seed_seq::generate()</tt> won't throw except from operations of the provided iterator range, 
-but there is no corresponding "safety belt" for user-provided <tt>SSeq</tt> types, since 26.5.1.2 [rand.req.seedseq]
-does not impose no-throw requirements onto operations of <em>seed sequences</em>.
-</p>
-
-<ol style="list-style-type:upper-roman">
-
-<li><p>
-A quite radical step to fix this problem would be to impose general no-throw requirements on the expression
-<tt>q.generate(rb,re)</tt> from Table 115, but this is not as simple as it looks initially, because this
-function again depends on general types that are mutable random access iterators. Typically, we do not
-impose no-throw requirements on iterator operations and this would restrict general seed sequences where
-exceptions are not a problem. Furthermore, we do not impose comparable constraints for other expressions,
-like that of the expression <tt>g()</tt> in Table 116 for good reasons, e.g. <tt>random_device::operator()</tt>
-explicitly states when it throws exceptions.
-</p></li>
-
-<li><p>
-A less radical variant of the previous suggestion would be to add a normative requirement on the expression
-<tt>q.generate(rb,re)</tt> from Table 115 that says: "Throws nothing if operations of <tt>rb</tt> and <tt>re</tt> 
-do not throw exceptions". Nevertheless we typically do not describe <em>conditional</em> Throws elements in proper
-requirement sets elsewhere (Container requirements excluded, they just describe the containers from Clause 23)
-and this may exclude resonable implementations of seed sequences that could throw exceptions under rare
-situations. 
-</p></li>
-
-<li><p>
-The iterator arguments provided to <tt>SSeq::generate()</tt> for operations in templates of 26.5.3 [rand.eng] and 
-26.5.4 [rand.adapt] are under control of implementations, so we could impose stricter exceptions requirements
-on <tt>SSeq::generate()</tt> for <tt>SSeq</tt> types that are used to instantiate member templates in 26.5.3 [rand.eng] 
-and 26.5.4 [rand.adapt] solely.
-</p></li>
-
-<li><p>
-We simply add extra wording to the introductive parts of 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]
-that specify that operations of the engine (adaptor) templates that depend on a template parameter <tt>SSeq</tt>
-throw no exception unless <tt>SSeq::generate()</tt> throws an exception.
-</p></li>
-</ol>
-
-<p>
-Given these options I would suggest to apply the variant described in the fourth bullet.
-<p/>
-The proposed resolution attempts to reduce a lot of the redundancies of requirements in the introductory paragraphs of 
-26.5.3 [rand.eng] and 26.5.4 [rand.adapt] by introducing a new intermediate sub-clause 
-"Engine and engine adaptor class templates" following sub-clause 26.5.2 [rand.synopsis]. This approach also
-solves the problem that currently 26.5.3 [rand.eng] also describes requirements that apply for
-26.5.4 [rand.adapt] (Constrained templates involving the <tt>Sseq</tt> parameters).
-</p>
-
-<p><i>[2013-04-20, Bristol]</i></p>
-
-
-<p>
-Remove the first bullet point:
-</p>
-<blockquote><p>
-?- Throughout this sub-clause general requirements and conventions are described that apply to every class 
-template specified in sub-clause 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]. Phrases of the form "in those 
-sub-clauses" shall be interpreted as equivalent to "in sub-clauses 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]". 
-</p></blockquote>
-<p>
-Replace "in those sub-clauses" with "in sub-clauses 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]".
-<p/>
-Find another place for the wording. 
-<p/>
-Daniel: These are requirements on the implementation not on the types. I'm not comfortable in moving it to another place 
-without double checking. 
-<p/>
-Improve the text (there are 4 "for"s): <em>for</em> copy constructors, <em>for</em> copy assignment operators, 
-<em>for</em> streaming operators, and <em>for</em> equality and inequality operators are not shown in the synopses. 
-<p/>
-Move the information of this paragraph to the paragraphs it refers to: 
-</p>
-<blockquote><p>
-"-?- Descriptions are provided in those sub-clauses only for engine operations that are not described in 
-26.5.1.4 [rand.req.eng], for adaptor operations that are not described in 26.5.1.5 [rand.req.adapt], or for 
-operations where there is additional semantic information. In particular, declarations for copy constructors, for 
-copy assignment operators, for streaming operators, and for equality and inequality operators are not shown in the synopses." 
-</p></blockquote>
-<p>
-Alisdair: I prefer duplication here than consolidation/reference to these paragraphs. 
-<p/>
-The room showed weakly favjust or for duplication. 
-</p>
-
-<p>
-<strong>Previous resolution from Daniel [SUPERSEDED]:</strong>
-</p>
-<blockquote class="note">
-<ol>
-<li><p>Add a new sub-clause titled "Engine and engine adaptor class templates" following sub-clause 
-26.5.2 [rand.synopsis] (but at the same level) and add one further sub-clause "General" as
-child of the new sub-clause as follows:
-<p/>
-<ins>Engine and engine adaptor class templates [rand.engadapt]</ins>
-<p/>
-<ins>General [rand.engadapt.general]</ins>
-</p>
-<blockquote><p>
-<ins>-?- Throughout this sub-clause general requirements and conventions are described that apply to every class 
-template specified in sub-clause 26.5.3 [rand.eng] and 26.5.4 [rand.adapt]. Phrases of the 
-form "in those sub-clauses" shall be interpreted as equivalent to "in sub-clauses 26.5.3 [rand.eng] and 
-26.5.4 [rand.adapt]".
-</ins>
-<p/>
-<ins>-?- Except where specified otherwise, the complexity of each function specified in those sub-clauses is constant.</ins>
-<p/>
-<ins>-?- Except where specified otherwise, no function described in those sub-clauses throws an exception.</ins>
-<p/>
-<ins>-?- Every function described in those sub-clauses that has a function parameter <tt>q</tt> of type
-<tt>SSeq&amp;</tt> for a template type parameter named <tt>SSeq</tt> that is different from type <tt>std::seed_seq</tt> 
-throws what and when the invocation of <tt>q.generate</tt> throws.</ins>
-<p/>
-<ins>-?- Descriptions are provided in those sub-clauses only for engine operations that are not described in 
-26.5.1.4 [rand.req.eng], for adaptor operations that are not described in 26.5.1.5 [rand.req.adapt],
-or for operations where there is additional semantic information. In particular, declarations for copy constructors,
-for copy assignment operators, for streaming operators, and for equality and inequality operators
-are not shown in the synopses.</ins>
-<p/>
-<ins>-?- Each template specified in those sub-clauses requires one or more relationships, involving the value(s) of
-its non-type template parameter(s), to hold. A program instantiating any of these templates is ill-formed if
-any such required relationship fails to hold.</ins>
-<p/>
-<ins>-?- For every random number engine and for every random number engine adaptor <tt>X</tt> defined in those 
-sub-clauses:</ins>
-</p>
-<ul>
-<li><p>
-<ins>if the constructor</ins>
-</p>
-<blockquote><pre>
-<ins>template &lt;class Sseq&gt; explicit X(Sseq&amp; q);</ins>
-</pre></blockquote>
-<p>
-<ins>is called with a type <tt>Sseq</tt> that does not qualify as a seed sequence, then this constructor shall not
-participate in overload resolution;</ins>
-</p>
-</li>
-
-<li><p>
-<ins>if the member function</ins>
-</p>
-<blockquote><pre>
-<ins>template &lt;class Sseq&gt; void seed(Sseq&amp; q);</ins>
-</pre></blockquote>
-<p>
-<ins>is called with a type <tt>Sseq</tt> that does not qualify as a seed sequence, then this function shall not
-participate in overload resolution;</ins>
-</p>
-</li>
-</ul>
-<p>
-<ins>The extent to which an implementation determines that a type cannot be a seed sequence is unspecified,
-except that as a minimum a type shall not qualify as a seed sequence if it is implicitly convertible to
-<tt>X::result_type</tt>.</ins>
-</p>
-</blockquote>
-
-</li>
-
-<li><p>Edit the contents of sub-clause 26.5.3 [rand.eng] as indicated:</p>
-
-<blockquote><p>
--1- Each type instantiated from a class template specified in this section 26.5.3 [rand.eng] satisfies the 
-requirements of a random number engine (26.5.1.4 [rand.req.eng]) type <ins>and the general implementation 
-requirements specified in sub-clause [rand.engadapt.general]</ins>.
-<p/>
-<del>-2- Except where specified otherwise, the complexity of each function specified in this section 26.5.3 [rand.eng] 
-is constant.</del>
-<p/>
-<del>-3- Except where specified otherwise, no function described in this section 26.5.3 [rand.eng] throws an exception.</del>
-<p/>
-<del>-4- Descriptions are provided in this section 26.5.3 [rand.eng] only for engine operations that are not 
-described in 26.5.1.4 [rand.req.eng] [&hellip;]</del>
-<p/>
-<del>-5- Each template specified in this section 26.5.3 [rand.eng] requires one or more relationships, 
-involving the value(s) of its non-type template parameter(s), to hold. [&hellip;]</del>
-<p/>
-<del>-6- For every random number engine and for every random number engine adaptor <tt>X</tt> defined in this subclause
-(26.5.3 [rand.eng]) and in sub-clause 26.5.3 [rand.eng]: [&hellip;]</del>
-</p></blockquote>
-
-</li>
-
-<li><p>Edit the contents of sub-clause 26.5.4.1 [rand.adapt.general] as indicated:</p>
-
-<blockquote><p>
--1- Each type instantiated from a class template specified in this section <del>26.5.3 [rand.eng]</del><ins>26.5.4 [rand.adapt]</ins> satisfies the 
-requirements of a random number engine adaptor (26.5.1.5 [rand.req.adapt]) type <ins>and the general 
-implementation requirements specified in sub-clause [rand.engadapt.general]</ins>.
-<p/>
-<del>-2- Except where specified otherwise, the complexity of each function specified in this section 26.5.4 [rand.adapt] 
-is constant.</del>
-<p/>
-<del>-3- Except where specified otherwise, no function described in this section 26.5.4 [rand.adapt] throws an exception.</del>
-<p/>
-<del>-4- Descriptions are provided in this section 26.5.4 [rand.adapt] only for engine operations that are not 
-described in 26.5.1.5 [rand.req.adapt] [&hellip;]</del>
-<p/>
-<del>-5- Each template specified in this section 26.5.4 [rand.adapt] requires one or more relationships, involving 
-the value(s) of its non-type template parameter(s), to hold. [&hellip;]</del>
-</p></blockquote>
-
-</li>
-
-</ol>
-</blockquote>
-
-<p><i>[2014-02-09, Daniel provides alternative resolution]</i></p>
-
-
-<p><i>[2014-05-22, Daniel syncs with recent WP]</i></p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>Edit the contents of sub-clause 26.5.3 [rand.eng] as indicated:</p>
-
-<blockquote><p>
--1- Each type instantiated from a class template specified in this section 26.5.3 [rand.eng] satisfies the 
-requirements of a random number engine (26.5.1.4 [rand.req.eng]) type.
-<p/>
--2- Except where specified otherwise, the complexity of each function specified in this section 26.5.3 [rand.eng] 
-is constant.
-<p/>
--3- Except where specified otherwise, no function described in this section 26.5.3 [rand.eng] throws an exception.
-<p/>
-<ins>-?- Every function described in this section 26.5.3 [rand.eng] that has a function parameter <tt>q</tt> of 
-type <tt>Sseq&amp;</tt> for a template type parameter named <tt>Sseq</tt> that is different from type <tt>std::seed_seq</tt> 
-throws what and when the invocation of <tt>q.generate</tt> throws.</ins>
-<p/>
--4- Descriptions are provided in this section 26.5.3 [rand.eng] only for engine operations that are not 
-described in 26.5.1.4 [rand.req.eng] or for operations where there is additional semantic information. In particular, 
-declarations for copy constructors, <del>for</del> copy assignment operators, <del>for</del> streaming operators, <del>and 
-for</del> equality <ins>operators,</ins> and inequality operators are not shown in the synopses.
-<p/>
--5- Each template specified in this section 26.5.3 [rand.eng] requires one or more relationships, 
-involving the value(s) of its non-type template parameter(s), to hold. A program instantiating any of these templates is 
-ill-formed if any such required relationship fails to hold.
-<p/>
--6- For every random number engine and for every random number engine adaptor <tt>X</tt> defined in this subclause
-(26.5.3 [rand.eng]) and in sub-clause 26.5.4 [rand.adapt]: 
-</p>
-<ul>
-<li><p>
-if the constructor
-</p>
-<blockquote><pre>
-template &lt;class Sseq&gt; explicit X(Sseq&amp; q);
-</pre></blockquote>
-<p>
-is called with a type <tt>Sseq</tt> that does not qualify as a seed sequence, then this constructor shall not
-participate in overload resolution;
-</p>
-</li>
-<li><p>
-if the member function
-</p>
-<blockquote><pre>
-template &lt;class Sseq&gt; void seed(Sseq&amp; q);
-</pre></blockquote>
-<p>
-is called with a type <tt>Sseq</tt> that does not qualify as a seed sequence, then this function shall not
-participate in overload resolution;
-</p>
-</li>
-</ul>
-<p>
-The extent to which an implementation determines that a type cannot be a seed sequence is unspecified,
-except that as a minimum a type shall not qualify as a seed sequence if it is implicitly convertible to
-<tt>X::result_type</tt>.
-</p>
-</blockquote>
-</li>
-
-<li><p>Edit the contents of sub-clause 26.5.4.1 [rand.adapt.general] as indicated:</p>
-
-<blockquote><p>
--1- Each type instantiated from a class template specified in this section 
-<del>26.5.3 [rand.eng]</del><ins>26.5.4 [rand.adapt]</ins> satisfies the requirements of a 
-random number engine adaptor (26.5.1.5 [rand.req.adapt]) type.
-<p/>
--2- Except where specified otherwise, the complexity of each function specified in this section 26.5.4 [rand.adapt] 
-is constant.
-<p/>
--3- Except where specified otherwise, no function described in this section 26.5.4 [rand.adapt] throws an exception.
-<p/>
-<ins>-?- Every function described in this section 26.5.4 [rand.adapt] that has a function parameter <tt>q</tt> of 
-type <tt>Sseq&amp;</tt> for a template type parameter named <tt>Sseq</tt> that is different from type <tt>std::seed_seq</tt> 
-throws what and when the invocation of <tt>q.generate</tt> throws.</ins>
-<p/>
--4- Descriptions are provided in this section 26.5.4 [rand.adapt] only for adaptor operations that are not 
-described in section 26.5.1.5 [rand.req.adapt] or for operations where there is additional semantic information. In particular, 
-declarations for copy constructors, <del>for</del> copy assignment operators, <del>for</del> streaming operators, <del>and for</del> 
-equality <ins>operators,</ins> and inequality operators are not shown in the synopses.
-<p/>
--5- Each template specified in this section 26.5.4 [rand.adapt] requires one or more relationships, involving 
-the value(s) of its non-type template parameter(s), to hold. A program instantiating any of these templates is ill-formed if
-any such required relationship fails to hold.
-</p></blockquote>
-</li>
-
-<li><p>Edit the contents of sub-clause 26.5.8.1 [rand.dist.general] p2 as indicated: [<i>Drafting note</i>: These
-editorial changes are just for consistency with those applied to 26.5.3 [rand.eng] and 
-26.5.4.1 [rand.adapt.general] &mdash; <i>end drafting note</i>]</p>
-
-<blockquote><p>
--2- Descriptions are provided in this section 26.5.8 [rand.dist] only for distribution operations that are not 
-described in 26.5.1.6 [rand.req.dist] or for operations where there is additional semantic information. In particular, 
-declarations for copy constructors, <del>for</del> copy assignment operators, <del>for</del> streaming operators, <del>and for</del> 
-equality <ins>operators,</ins> and inequality operators are not shown in the synopses.
-</p></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2183"></a>2183. Muddled allocator requirements for <tt>match_results</tt> constructors</h3>
 <p><b>Section:</b> 28.10.1 [re.results.const], 28.10.6 [re.results.all] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-08-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-08-29 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.results.const">active issues</a> in [re.results.const].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results.const">issues</a> in [re.results.const].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -6695,7 +5820,7 @@ requirement when those constructors are used.
 <hr>
 <h3><a name="2184"></a>2184. Muddled allocator requirements for <tt>match_results</tt> assignments</h3>
 <p><b>Section:</b> 28.10.1 [re.results.const], 28.10.6 [re.results.all] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-08-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-08-29 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.results.const">active issues</a> in [re.results.const].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results.const">issues</a> in [re.results.const].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -6720,7 +5845,7 @@ doesn't replace the allocator, how can the allocator be replaced?
 <hr>
 <h3><a name="2189"></a>2189. Throwing <tt>swap</tt> breaks unordered containers' state</h3>
 <p><b>Section:</b> 23.2.5.1 [unord.req.except] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-09-23 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-09-23 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -6814,7 +5939,7 @@ Moved to Open.
 <hr>
 <h3><a name="2191"></a>2191. Incorrect specification of <tt>match_results(match_results&amp;&amp;)</tt></h3>
 <p><b>Section:</b> 28.10.1 [re.results.const] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re.results.const">active issues</a> in [re.results.const].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results.const">issues</a> in [re.results.const].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -6850,7 +5975,7 @@ Also, the requirements for move-assignment should refer to Table 141. Further it
 <hr>
 <h3><a name="2192"></a>2192. Validity and return type of <tt>std::abs(0u)</tt> is unclear</h3>
 <p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2015-03-28</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7042,6 +6167,9 @@ In the following I've drafted combined wording to resolve LWG <a href="lwg-activ
 two paragraphs are taken verbatim from the P/R of LWG <a href="lwg-active.html#2294">2294</a>, but the third is newly drafted:
 </p>
 
+<p><i>[2015-05-05 Lenexa: Howard to draft updated wording]</i></p>
+
+
 
 <p><b>Proposed resolution:</b></p>
 <p>This wording is relative to N4296.</p>
@@ -7101,7 +6229,7 @@ to <tt>int</tt> are permitted for compatibility with C. &mdash; <i>end note</i>]
 <hr>
 <h3><a name="2195"></a>2195. Missing constructors for <tt>match_results</tt></h3>
 <p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2014-06-07</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7174,6 +6302,23 @@ const-qualified sequence containers <ins>that are not constructors</ins> are sup
 </ol>
 </blockquote>
 
+<p><i>[2015-05-06 Lenexa]</i></p>
+
+<p>MC passes important knowledge to EF.</p>
+<p>VV, RP: Looks good.</p>
+<p>TK: Second form should be conditionally noexcept</p>
+<p>JY: Sequence constructors are not here, but mentioned in the issue writeup. Why?</p>
+<p>TK: That would have been fixed by the superseded wording.</p>
+<p>JW: How does this interact with Mike Spertus' allocator-aware regexes? [...] Perhaps it doesn't.</p>
+<p>JW: Can't create match_results, want both old and new resolution.</p>
+<p>JY: It's problematic that users can't create these, but not this issue.</p>
+<p>VV: Why conditional noexcept?</p>
+<p>MC: Allocator move might throw.</p>
+<p>JW: Update superseded wording to "only non-constructor operations that are"?</p>
+<p>MC: Only keep superseded, but append "and the means of constructing match_results are limited to [...]"?</p>
+<p>JY: Bullet 4 paragraph 2 needs to address the allocator constructor.</p>
+<p>Assigned to JW for drafting.</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -7234,7 +6379,7 @@ from <tt>m.get_allocator()</tt>.
 <hr>
 <h3><a name="2198"></a>2198. <tt>max_load_factor(z)</tt> makes no strong guarantees, but bans useful behavior</h3>
 <p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-10-09 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-10-09 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
 <p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7289,7 +6434,7 @@ Alisdair to provide wording.
 <hr>
 <h3><a name="2199"></a>2199. unordered containers are required to have an initial max load factor of 1.0</h3>
 <p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-10-09 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-10-09 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
 <p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7339,7 +6484,7 @@ Alisdair agrees in principle, but concerned with adding yet more constructors to
 <hr>
 <h3><a name="2201"></a>2201. Missing macro entries from C standard library</h3>
 <p><b>Section:</b> C.5 [diff.library] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Kevin McCarty <b>Opened:</b> 2012-02-03 <b>Last modified:</b> 2014-03-01</p>
+ <b>Submitter:</b> Kevin McCarty <b>Opened:</b> 2012-02-03 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#diff.library">issues</a> in [diff.library].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7428,7 +6573,7 @@ We want whatever status approximates: "will not fix; we're working on a replacem
 <hr>
 <h3><a name="2206"></a>2206. Inaccuracy in <tt>initializer_list</tt> constructor requirements</h3>
 <p><b>Section:</b> 23.2.3 [sequence.reqmts], 23.2.4 [associative.reqmts], 23.2.5 [unord.req], 26.5.1.2 [rand.req.seedseq] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-21 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-21 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#sequence.reqmts">issues</a> in [sequence.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7476,7 +6621,7 @@ Should copy the suggested wording as the proposed resolution.
 <hr>
 <h3><a name="2208"></a>2208. <tt>std::reverse_iterator</tt> should be a literal type</h3>
 <p><b>Section:</b> 24.5.1 [reverse.iterators] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#reverse.iterators">issues</a> in [reverse.iterators].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7505,7 +6650,7 @@ despite this restriction on its use at compile time.
 <hr>
 <h3><a name="2214"></a>2214. Clarify <tt>basic_ios::init</tt> call restrictions</h3>
 <p><b>Section:</b> 27.5.5.2 [basic.ios.cons] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Andrey Semashev <b>Opened:</b> 2012-11-09 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Andrey Semashev <b>Opened:</b> 2012-11-09 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#basic.ios.cons">issues</a> in [basic.ios.cons].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7648,7 +6793,7 @@ call reinitializes the object to the described in postconditions initial state.<
 <hr>
 <h3><a name="2215"></a>2215. (unordered) associative container functors should be <tt>CopyConstructible</tt></h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-11-14 <b>Last modified:</b> 2014-06-08</p>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-11-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7797,7 +6942,7 @@ The area of this issue partially overlaps what LWG <a href="lwg-active.html#2227
 <hr>
 <h3><a name="2216"></a>2216. <tt>regex_replace(basic_string)</tt> allocator handling</h3>
 <p><b>Section:</b> 28.11.4 [re.alg.replace] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-11-26 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-11-26 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.alg.replace">issues</a> in [re.alg.replace].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -7837,7 +6982,7 @@ allocator of the result.
 <hr>
 <h3><a name="2220"></a>2220. Under-specification of <tt>operator==</tt> for <tt>regex_token_iterator</tt></h3>
 <p><b>Section:</b> 28.12.2.2 [re.tokiter.comp] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-21 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2012-11-21 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -7877,7 +7022,7 @@ for the suffix iterator, equality means that the matched sequences compare equal
 <hr>
 <h3><a name="2221"></a>2221. No formatted output operator for <tt>nullptr</tt></h3>
 <p><b>Section:</b> 27.7.3 [output.streams] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matt Austern <b>Opened:</b> 2012-12-07 <b>Last modified:</b> 2014-06-10</p>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2012-12-07 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -7921,7 +7066,7 @@ a tiebreaker saying that <tt>void*</tt> is preferred in such cases.)
 <hr>
 <h3><a name="2223"></a>2223. <tt>shrink_to_fit</tt> effect on iterator validity</h3>
 <p><b>Section:</b> 23.3.6.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -8272,7 +7417,7 @@ all the iterators and references before the insertion point remain valid. [&hell
 <hr>
 <h3><a name="2227"></a>2227. Stateful comparison objects in associative containers</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -8419,6 +7564,8 @@ LHS with the exact state of the RHS, including all predicates and hash function 
 Conclusion: Update wording, revisit later. 
 </p>
 
+<p><i>[2015-05-06 Lenexa: Waiting for updated wording]</i></p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -8531,7 +7678,7 @@ constant
 <hr>
 <h3><a name="2234"></a>2234. <tt>assert()</tt> should allow usage in constant expressions</h3>
 <p><b>Section:</b> 19.3 [assertions] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-01-12 <b>Last modified:</b> 2015-05-07</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-01-12 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#assertions">active issues</a> in [assertions].</p>
 <p><b>View all other</b> <a href="lwg-index.html#assertions">issues</a> in [assertions].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -8639,6 +7786,28 @@ because <tt>b</tt> is not a core constant expression in this context.
 He suggested improvements that lead to the wording form presented below (any defects mine). 
 </p>
 
+<p><i>[Lenexa 2015-05-05]</i></p>
+
+<p>MC : ran into this</p>
+<p>Z : Is it guaranteed to be an expression?</p>
+<p>MC : clarifies that assert runs at runtime, not sure what it does at compile time</p>
+<p>STL : c standard guarantees its an expression and not a whole statement, so comma chaining it is ok</p>
+<p>HH : Some implementations work as author wants it to</p>
+<p>STL : also doing this as constexpr</p>
+<p>DK/STL : discussing how this can actually work</p>
+<p>HH : GCC 5 also implements it. We have implementor convergence</p>
+<p>MC : Wants to do this without giving assert a special meaning</p>
+<p>STL : NDEBUG being defined where assert appears is not how assert works. This is bug in wording. Should be "when assert is defined" or something like that. ... is a constant subexpression if NDEBUG is defined at the point where assert is last defined or redefined."</p>
+<p>Would like to strike the "either" because ok if both debug or assertion is true. We want inclusive-or here</p>
+<p>MC : is redefined needed?</p>
+<p>STL : my mental model is its defined once and then redefined</p>
+<p>HH : wants to up to P2</p>
+<p>Z/STL : discussing how wording takes care of how/when assert is defined/redefefined</p>
+<p>STL/WB : discussing whether to move to ready or review. -> Want to move it to ready.</p>
+<p>ask for updated wording</p>
+<p>p3 -> p2</p>
+<p>plan to go to ready after checking wording</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -8683,7 +7852,7 @@ that evaluates to the value <tt>true</tt>.</ins></p></li>
 <hr>
 <h3><a name="2237"></a>2237. <tt>&lt;cuchar&gt;</tt> macros</h3>
 <p><b>Section:</b> 21.8 [c.strings] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jason Merrill <b>Opened:</b> 2013-01-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jason Merrill <b>Opened:</b> 2013-01-29 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.strings">active issues</a> in [c.strings].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.strings">issues</a> in [c.strings].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -8705,7 +7874,7 @@ Do we want to do the same?
 <hr>
 <h3><a name="2238"></a>2238. Problematic iterator-pair constructor of containers</h3>
 <p><b>Section:</b> 21.8 [c.strings] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Johannes Schaub <b>Opened:</b> 2013-02-02 <b>Last modified:</b> 2014-06-28</p>
+ <b>Submitter:</b> Johannes Schaub <b>Opened:</b> 2013-02-02 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.strings">active issues</a> in [c.strings].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.strings">issues</a> in [c.strings].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -8774,7 +7943,7 @@ Leave as Open.
 <hr>
 <h3><a name="2241"></a>2241. <tt>&lt;cstdalign&gt;</tt> and <tt>#define</tt> of <tt>alignof</tt></h3>
 <p><b>Section:</b> 18.10 [support.runtime] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2013-02-14 <b>Last modified:</b> 2014-03-03</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2013-02-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#support.runtime">active issues</a> in [support.runtime].</p>
 <p><b>View all other</b> <a href="lwg-index.html#support.runtime">issues</a> in [support.runtime].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -8840,7 +8009,7 @@ AM: any objections to downscale to P2  (no objections)
 <hr>
 <h3><a name="2242"></a>2242. <tt>[uninitialized_]copy_n()</tt> defect</h3>
 <p><b>Section:</b> 25.3.1 [alg.copy], 20.7.12.2 [uninitialized.copy] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Sean Parent <b>Opened:</b> 2013-02-14 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Sean Parent <b>Opened:</b> 2013-02-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#alg.copy">active issues</a> in [alg.copy].</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.copy">issues</a> in [alg.copy].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -8865,7 +8034,7 @@ iterator &mdash; and if it is really a forward iterator, it will cost <tt>n</tt>
 <hr>
 <h3><a name="2243"></a>2243. <tt>istream::putback</tt> problem</h3>
 <p><b>Section:</b> 27.7.2.3 [istream.unformatted] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-03-01 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-03-01 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#istream.unformatted">active issues</a> in [istream.unformatted].</p>
 <p><b>View all other</b> <a href="lwg-index.html#istream.unformatted">issues</a> in [istream.unformatted].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -8888,57 +8057,9 @@ just anything would be as conforming (or non-confoming) as the first guess.
 
 
 <hr>
-<h3><a name="2244"></a>2244. Issue on <tt>basic_istream::seekg</tt></h3>
-<p><b>Section:</b> 27.7.2.3 [istream.unformatted] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-03-04 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View other</b> <a href="lwg-index-open.html#istream.unformatted">active issues</a> in [istream.unformatted].</p>
-<p><b>View all other</b> <a href="lwg-index.html#istream.unformatted">issues</a> in [istream.unformatted].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-When issue <a href="lwg-defects.html#1445">1445</a> was resolved by adopting 
-<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3168.htm">N3168</a>, it exposed the need to 
-modify both overloads of <tt>basic_istream::seekg</tt> (by inserting "the function clears eofbit," after "except that"), 
-but the fix applied to the text apparently forgets the second overload at 27.7.2.3 [istream.unformatted] p43.
-</p>
-
-<p><i>[2013-10-17: Daniel provides concrete wording]</i></p>
-
-
-<p>
-It seems that the tiny sentence "SIMILARLY for 27.7.1.3/43 (<tt>seekg</tt>)." had been overlooked. I agree that the wording needs to be
-applied here as well.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3691.</p>
-
-<ol>
-<li><p>Change 27.7.2.3 [istream.unformatted] p43 as indicated:</p>
-
-<blockquote><pre>
-basic_istream&lt;charT,traits&gt;&amp; seekg(off_type off, ios_base::seekdir dir);
-</pre><blockquote>
-<p>
--43- <i>Effects:</i> Behaves as an unformatted input function (as described in 27.7.2.3, paragraph 1), except
-that <ins>the function first clears <tt>eofbit</tt>,</ins> it does not count the number of characters extracted<ins>,</ins> 
-and does not affect the value returned by subsequent calls to <tt>gcount()</tt>. [&hellip;]
-</p>
-</blockquote></blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2245"></a>2245. <tt>packaged_task::reset()</tt> memory allocation</h3>
 <p><b>Section:</b> 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-03-05 <b>Last modified:</b> 2015-05-08</p>
-<p><b>View other</b> <a href="lwg-index-open.html#futures.task.members">active issues</a> in [futures.task.members].</p>
 <p><b>View all other</b> <a href="lwg-index.html#futures.task.members">issues</a> in [futures.task.members].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -8987,7 +8108,7 @@ No strong opinions in SG1, and this is really an LWG issue.  Back to you.
 <hr>
 <h3><a name="2248"></a>2248. <tt>numeric_limits::is_iec559</tt> misnamed</h3>
 <p><b>Section:</b> 18.3.2 [limits] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2013-03-08 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2013-03-08 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#limits">issues</a> in [limits].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -9006,91 +8127,9 @@ and that it's been superseded by IEEE-754.
 
 
 <hr>
-<h3><a name="2251"></a>2251. C++ library should define <tt>ssize_t</tt></h3>
-<p><b>Section:</b> 18.2 [support.types] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-04-19 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View all other</b> <a href="lwg-index.html#support.types">issues</a> in [support.types].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-
-<p>
-The C++ standard library defines <tt>size_t</tt>, a typedef for an implementation defined unsigned integer type 
-that can represent the sizes of objects. The POSIX standard augments this with <tt>ssize_t</tt>, a typedef for a 
-signed integer type that corresponds to <tt>size_t</tt>.
-<p/>
-The <tt>ssize_t</tt> typedef is useful &mdash; useful enough that the C++ standard even refers to it. (In a 
-non-normative footnote in 27.5.2 [stream.types].)  Also, lots of OS vendors add it to their headers anyway, 
-even though it isn't part of the C or C++ standards, because those vendors are trying to define headers that 
-conform to multiple standards at once. We should make users' and implementers' lives easier by adding 
-<tt>ssize_t</tt> to 18.2 [support.types].
-</p>
-
-<p><i>[2013-09-29, Suggested wording from Jayson Oldfather]</i></p>
-
-<p> 
-I decided to use the phrase to describe <tt>ssize_t</tt> below because of the text describing it in the 
-<a href="http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/sys_types.h.html#tag_13_67">POSIX</a> standard. 
-In it, it describes <tt>ssize_t</tt> with the value range of <tt>[-1,{SSIZE_MAX}]</tt>.
-<tt>SSIZE_MAX</tt> is specified in the <a href="http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/limits.h.html#tag_13_24">POSIX</a> 
-standard as a minimum value of <tt>_POSIX_SSIZE_MAX</tt>. This macro is referenced in the wording below.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<ol>
-<li>
-<p>
-Ammend 18.2 [support.types], Table 30 as indicated:
-</p>
-
-<blockquote>
-<table border="1">
-<caption>Table 30 &mdash; Header <tt>&lt;cstddef&gt;</tt> synopsis</caption>
-<tr>
-<th>Type</th>
-<th>Name(s)</th>
-</tr>
-
-<tr>
-<td>
-<b>Macros:</b>
-</td>
-<td>
-<tt>NULL offset_t</tt>
-</td>
-</tr>
-
-<tr>
-<td>
-<b>Types:</b>
-</td>
-<td>
-<tt>ptrdiff_t <ins>ssize_t</ins> size_t max_align_t nullptr_t</tt>
-</td>
-</tr>
-</table>
-</blockquote>
-
-<p>Add the following paragraph to describe <tt>ssize_t</tt></p>
-<blockquote><p><ins>
--?- The type <tt>ssize_t</tt> is an implementation-defined signed integer type that shall contain the minimum range 
-<tt>[-1, {SSIZE_MAX}]</tt> where <tt>SSIZE_MAX</tt> is specified at a minimum of <tt>_POSIX_SSIZE_MAX</tt>.</ins>
-</p></blockquote>
-<p>Ammend p7 as follows:</p>
-<blockquote><p>
--7- [<i>Note:</i> It is recommended that implementations choose types for <tt>ptrdiff_t<ins>, ssize_t,</ins></tt> and <tt>size_t</tt> whose integer conversion ranks &hellip;</p></blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2254"></a>2254. [arrays.ts] Is <tt>dynarray</tt> an allocator-aware container?</h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-04-23 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-04-23 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -9150,7 +8189,7 @@ meet the additional requirements of an allocator-aware container, as described i
 <hr>
 <h3><a name="2256"></a>2256. On <tt>vector</tt> iterator invalidation</h3>
 <p><b>Section:</b> 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2013-04-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2013-04-29 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -9210,7 +8249,7 @@ simply got sloppy in our specification.
 <hr>
 <h3><a name="2260"></a>2260. Missing requirement for <tt>Allocator::pointer</tt></h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-05-14 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-05-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -9324,7 +8363,7 @@ Edit Table 28 as indicated:
 <hr>
 <h3><a name="2261"></a>2261. Are containers required to use their '<tt>pointer</tt>' type internally?</h3>
 <p><b>Section:</b> 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-05-14 <b>Last modified:</b> 2014-06-12</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-05-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements">active issues</a> in [container.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements">issues</a> in [container.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -9362,7 +8401,7 @@ unless we reopen <a href="lwg-active.html#1521">1521</a>.
 <hr>
 <h3><a name="2262"></a>2262. Requirement for <tt>unique_ptr&lt;T&gt;::get_deleter()(p)</tt> to be able to destroy the <tt>unique_ptr</tt></h3>
 <p><b>Section:</b> 20.8.1.2 [unique.ptr.single] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Rob Desbois <b>Opened:</b> 2013-05-15 <b>Last modified:</b> 2015-05-07</p>
+ <b>Submitter:</b> Rob Desbois <b>Opened:</b> 2013-05-15 <b>Last modified:</b> 2015-05-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#unique.ptr.single">issues</a> in [unique.ptr.single].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -9666,7 +8705,7 @@ as appropriate for that deleter. <ins>The expression <tt>d(ptr)</tt> shall not r
 <hr>
 <h3><a name="2264"></a>2264. [arrays.ts] <tt>std::dynarray</tt> defines its initializer-list constructor in terms of a non-existent constructor</h3>
 <p><b>Section:</b> X [dynarray], 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Povilas Kanapickas <b>Opened:</b> 2013-05-22 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Povilas Kanapickas <b>Opened:</b> 2013-05-22 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p><b>Addresses: arrays.ts</b></p>
@@ -9928,7 +8967,7 @@ The remainder is an open research problem.  <a href="http://www.open-std.org/jtc
 <hr>
 <h3><a name="2267"></a>2267. <tt>partial_sort_copy</tt> underspecified for ranges of two different types</h3>
 <p><b>Section:</b> 25.4.1.4 [partial.sort.copy] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matt Austern  <b>Opened:</b> 2013-06-26 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Matt Austern  <b>Opened:</b> 2013-06-26 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -9965,7 +9004,7 @@ perform comparisons on values of the input type, or might it even perform hetero
 <hr>
 <h3><a name="2269"></a>2269. Container iterators and argument-dependent lookup</h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-06-26 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2013-06-26 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -10010,7 +9049,7 @@ that namespace is?
 <hr>
 <h3><a name="2273"></a>2273. <tt>regex_match</tt> ambiguity</h3>
 <p><b>Section:</b> 28.11.2 [re.alg.match] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2013-07-14 <b>Last modified:</b> 2014-06-28</p>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2013-07-14 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.alg.match">issues</a> in [re.alg.match].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -10088,212 +9127,6 @@ Marshall Clow and STL to draft.
 
 
 <p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
-<h3><a name="2274"></a>2274. Does <tt>map::operator[]</tt> value-initialize or default-insert a missing element?</h3>
-<p><b>Section:</b> 23.4.4.3 [map.access], 23.5.4.3 [unord.map.elem] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Andrzej Krzemie&#324;ski <b>Opened:</b> 2013-07-16 <b>Last modified:</b> 2015-03-29</p>
-<p><b>View other</b> <a href="lwg-index-open.html#map.access">active issues</a> in [map.access].</p>
-<p><b>View all other</b> <a href="lwg-index.html#map.access">issues</a> in [map.access].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-Suppose that I provide a custom allocator for type <tt>int</tt>, that renders value 1 rather than 0 in default-insertion:
-</p>
-<blockquote>
-<pre>
-struct Allocator1 : std::allocator&lt;int&gt;
-{
-  using super = std::allocator&lt;int&gt;;
-
-  template&lt;typename Up, typename... Args&gt;
-  void construct(Up* p, Args&amp;&amp;... args)
-  { super::construct(p, std::forward&lt;Args&gt;(args)...); }
-
-  template&lt;typename Up&gt;
-  void construct(Up* p)
-  { ::new((void*)p) Up(1); }
-};
-</pre>
-</blockquote>
-
-<p>
-Now, if I use this allocator with <tt>std::map</tt>, and I use <tt>operator[]</tt> to access a not-yet-existent value, 
-what value of the <tt>mapped_type</tt> should be created? 0 (value-initialization) or 1 (default-insertion):
-</p>
-
-<blockquote>
-<pre>
-map&lt;string, int, less&lt;string&gt;, Allocator1&gt; map;
-cout &lt;&lt; map["cat"];
-</pre>
-</blockquote>
-
-<p>
-N3960 is not very clear. 23.4.4.3 [map.access] in para 1 says:
-</p>
-<blockquote>
-<p>
-"If there is no key equivalent to <tt>x</tt> in the map, inserts <tt>value_type(x, T())</tt> into the map."
-</p>
-</blockquote>
-<p>
-So, it requires value-initialization.
-<p/>
-But para 2 says:
-</p>
-<blockquote>
-<p>
-"<tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>."
-</p>
-</blockquote>
-<p>
-This implies default-insertion, because if not, why the requirement. Also similar functions like 
-<tt>vector::resize</tt> already require default-insertion wherever they put <tt>DefaultInsertable</tt> requirements.
-<p/>
-Not to mention that default-insertion is more useful, because it allows custom allocators to "override" the 
-default value of <tt>mapped_type</tt>.
-</p>
-
-<p><i>[2013-09 Chicago]</i></p>
-
-<p>
-Alisdair: Matters only for POD or trivial types 
-<p/>
-Marshall: issue might show up elsewhere other than <tt>map&lt;&gt;</tt> 
-<p/>
-Alisdair: initialize elements in any containers &mdash; by calling construct on allocator traits 
-<p/>
-Marshall: existing wording is clear 
-<p/>
-Alisdair: main concern is difference in wording, discusses default initialization 
-<p/>
-Nico: different requirement needed 
-<p/>
-Alisdair: gut is issue is NAD, brings up <tt>DefaultInsertable</tt> definition &mdash; discusses definition 
-<p/>
-Nico: why do we have the requirement? 
-<p/>
-Alisdair: other containers have this requirement 
-<p/>
-Marshall: this applies to many other containers 
-<p/>
-Nico: <tt>deque&lt;&gt;</tt> in particular 
-<p/>
-Alisdair: discusses allocator construct 
-<p/>
-Alisdair: wording raises concerns that aren't said in existing standard 
-<p/>
-Nico: sees no benefit to change 
-<p/>
-Marshall: leery of change 
-<p/>
-Alisdair: can be made clearer; might need to add note to <tt>DefaultInsertable</tt>; borderline editorial, 
-comfortable without note, willing to wait until other issues arise. close issue as NAD
-</p>
-
-<p><i>[2015-01-20: Tomasz Kami&nacute;ski comments]</i></p>
-
-<p>
-With the addition of the <tt>try_emplace</tt> method the behavior of the <tt>operator[]</tt> for the maps, 
-may be defined as follows:
-</p>
-<blockquote>
-<pre>
-T&amp; operator[](const key_type&amp; x);
-</pre>
-<blockquote>
-<p>
-<i>Effects</i>: Equivalent to: <tt>try_emplace(x).first-&gt;second</tt>;
-</p>
-</blockquote>
-<pre>
-T&amp; operator[](key_type&amp;&amp; x);
-</pre>
-<blockquote>
-<p>
-<i>Effects</i>: Equivalent to <tt>try_emplace(std::move(x)).first-&gt;second</tt>;
-</p>
-</blockquote>
-</blockquote>
-<p>
-This would simplify the wording and also after resolution of the issue <a href="lwg-active.html#2464">2464</a>, this wording would 
-also address this issue.
-</p>
-
-<p><i>[2015-02 Cologne]</i></p>
-
-<p>
-Wait until <a href="lwg-active.html#2464">2464</a> and <a href="lwg-active.html#2469">2469</a> are in, which solve this.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3691.</p>
-
-<ol>
-<li><p>Change 23.4.4.3 [map.access] p1+p5 as indicated:</p>
-
-<blockquote>
-<pre>
-T&amp; operator[](const key_type&amp; x);
-</pre>
-<blockquote>
-<p>
--1- <i>Effects:</i> If there is no key equivalent to <tt>x</tt> in the map, inserts <del><tt>value_type(x, T())</tt> 
-into the map</del><ins>into the map a value with <tt>key_type</tt> initialized using expression <tt>x</tt> and <tt>mapped_type</tt> 
-initialized by default-insertion</ins>.
-<p/>
--2- <i>Requires:</i> <tt>key_type</tt> shall be <tt>CopyInsertable</tt> and <tt>mapped_type</tt> shall be 
-<tt>DefaultInsertable</tt> into <tt>*this</tt>.
-<p/>
-[&hellip;]
-</p>
-</blockquote>
-<pre>
-T&amp; operator[](key_type&amp;&amp; x);
-</pre>
-<blockquote>
-<p>
--5- <i>Effects:</i> If there is no key equivalent to <tt>x</tt> in the map, inserts 
-<del><tt>value_type(std::move(x), T())</tt> into the map</del><ins>into the map a value with <tt>key_type</tt> 
-initialized using expression <tt>std::move(x)</tt> and <tt>mapped_type</tt> initialized by default-insertion</ins>.
-<p/>
--6- <i>Requires:</i> <tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>.
-</p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Change 23.5.4.3 [unord.map.elem] p2 as indicated:</p>
-
-<blockquote>
-<pre>
-mapped_type&amp; operator[](const key_type&amp; k);
-mapped_type&amp; operator[](key_type&amp;&amp; k);
-</pre>
-<blockquote>
-<p>
--1- <i>Requires:</i> <tt>mapped_type</tt> shall be <tt>DefaultInsertable</tt> into <tt>*this</tt>. 
-For the first operator, <tt>key_type</tt> shall be <tt>CopyInsertable</tt> into <tt>*this</tt>. For the second 
-operator, <tt>key_type</tt> shall be <tt>MoveConstructible</tt>.
-<p/>
--2- <i>Effects:</i> If the <tt>unordered_map</tt> does not already contain an element whose key is equivalent to 
-<tt>k</tt>, the first operator inserts <del>the value <tt>value_type(k, mapped_type())</tt></del><ins>a value with 
-<tt>key_type</tt> initialized using expression <tt>x</tt> and <tt>mapped_type</tt> initialized by default-insertion</ins> 
-and the second operator inserts <del>the value <tt>value_type(std::move(k), mapped_type())</tt></del><ins>a value 
-with <tt>key_type</tt> initialized using expression <tt>std::move(x)</tt> and <tt>mapped_type</tt> initialized by 
-default-insertion</ins>.
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
 
 
 
@@ -10406,7 +9239,7 @@ void set_exception_at_thread_exit(exception_ptr p);
 <hr>
 <h3><a name="2277"></a>2277. [arrays.ts] <tt>&lt;dynarray&gt;</tt> is missing in 24.7/1</h3>
 <p><b>Section:</b> 24.7 [iterator.range] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Cassio Neri <b>Opened:</b> 2013-07-31 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Cassio Neri <b>Opened:</b> 2013-07-31 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#iterator.range">active issues</a> in [iterator.range].</p>
 <p><b>View all other</b> <a href="lwg-index.html#iterator.range">issues</a> in [iterator.range].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -10459,7 +9292,7 @@ and <tt>&lt;vector&gt;</tt>.
 <hr>
 <h3><a name="2286"></a>2286. <tt>stringbuf::underflow()</tt> underspecified</h3>
 <p><b>Section:</b> 27.8.2.4 [stringbuf.virtuals] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Sergey Zubkov <b>Opened:</b> 2013-08-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Sergey Zubkov <b>Opened:</b> 2013-08-29 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#stringbuf.virtuals">issues</a> in [stringbuf.virtuals].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -10506,10 +9339,10 @@ position available, the function alters the read end pointer <tt>egptr()</tt> to
 
 <hr>
 <h3><a name="2289"></a>2289. <tt>constexpr</tt> guarantees of defaulted functions still insufficient</h3>
-<p><b>Section:</b> 20.3.2 [pairs.pair], 20.4.2.1 [tuple.cnstr], 20.12.5 [time.duration] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-09 <b>Last modified:</b> 2014-02-12</p>
+<p><b>Section:</b> 20.3.2 [pairs.pair], 20.4.2.1 [tuple.cnstr], 20.12.5 [time.duration] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-09 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#pairs.pair">issues</a> in [pairs.pair].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 During the acceptance of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3471.html">N3471</a> and
@@ -10532,6 +9365,12 @@ or as a constant initializer of that object (as specified in 3.6.2 [basic.start.
 improved and should require valid uses in constant expressions and as constant initializers instead.
 </p>
 
+<p><i>[Lenexa 2015-05-05]</i></p>
+
+<p>STL : notice order of move/copy and copy/move with "respectively".</p>
+<p>General word-smithing; ask for updated wording</p>
+<p>Are we happy with this with changes we are suggesting?</p>
+<p>unanimous</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -10593,7 +9432,7 @@ for this subobject</ins>.
 <hr>
 <h3><a name="2290"></a>2290. Top-level "SFINAE"-based constraints should get a separate definition in Clause 17</h3>
 <p><b>Section:</b> 20.10 [meta] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-02 <b>Last modified:</b> 2014-06-07</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-02 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta">active issues</a> in [meta].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta">issues</a> in [meta].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -10658,6 +9497,16 @@ these are not fully described in terms of the aforementioned wording <em>yet</em
 once the committee has agreed on following the suggestion presented by this issue.
 </p>
 
+<p><i>[2015-05-05 Lenexa: Move to Open]</i></p>
+
+<p>...</p>
+<p>MC: I think we like the direction but it isn't quite right: it needs some work</p>
+<p>JW: I'm prepared to volunteer to move that further, hopefully with the help of Daniel</p>
+<p>Roger Orr: should this be Core wording because it doesn't really have anything to do with libraries - the term could then just be used here</p>
+<p>AM: Core has nothing to deal with that, though</p>
+<p>HT: it seems there is nothing to imply that allows dropping out with an error - maybe that's a separate issue</p>
+<p>MC: I'm not getting what you are getting at: could you write an issue? - any objection to move to Open?</p>
+<p>...</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -10892,7 +9741,7 @@ in the program being ill-formed. &mdash; <i>end note</i>]</del>
 <hr>
 <h3><a name="2292"></a>2292. Find a better phrasing for "shall not participate in overload resolution"</h3>
 <p><b>Section:</b> 17.5.1.4 [structure.specifications] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2013-09-03 <b>Last modified:</b> 2014-02-11</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2013-09-03 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#structure.specifications">issues</a> in [structure.specifications].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -10930,7 +9779,7 @@ constraints in the future.
 <hr>
 <h3><a name="2294"></a>2294. <tt>&lt;cstdlib&gt;</tt> should declare <tt>abs(double)</tt></h3>
 <p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Pete Becker <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2015-03-28</p>
+ <b>Submitter:</b> Pete Becker <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -11049,7 +9898,7 @@ See proposed resolution of LWG <a href="lwg-active.html#2192">2192</a>.
 <hr>
 <h3><a name="2295"></a>2295. Locale name when the provided <tt>Facet</tt> is a <tt>nullptr</tt></h3>
 <p><b>Section:</b> 22.3.1.2 [locale.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -11260,7 +10109,7 @@ if <tt><em>E</em></tt> is an lvalue constant subexpression.</ins>
 <hr>
 <h3><a name="2303"></a>2303. Explicit instantiation of <tt>std::vector&lt;UserType&gt;</tt> broken?</h3>
 <p><b>Section:</b> 18.6.1.3 [new.delete.placement] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-18 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-09-18 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#new.delete.placement">issues</a> in [new.delete.placement].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -11392,7 +10241,7 @@ as indicated in this issue here.
 <hr>
 <h3><a name="2307"></a>2307. Should the Standard Library use <tt>explicit</tt> only when necessary?</h3>
 <p><b>Section:</b> 23 [containers] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-09-26 <b>Last modified:</b> 2014-11-08</p>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-09-26 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#containers">active issues</a> in [containers].</p>
 <p><b>View all other</b> <a href="lwg-index.html#containers">issues</a> in [containers].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -11491,7 +10340,7 @@ We believe we were already done with it. Should be in SG1-OK status.
 <hr>
 <h3><a name="2310"></a>2310. Public <em>exposition only</em> member in <tt>std::array</tt></h3>
 <p><b>Section:</b> 23.3.2.1 [array.overview] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-09-30 <b>Last modified:</b> 2014-11-08</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-09-30 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -11522,7 +10371,7 @@ members too, or some other form should be used in 23.3.2.1 [array.overview].
 <hr>
 <h3><a name="2312"></a>2312. <tt>tuple</tt>'s constructor constraints need to be phrased more precisely</h3>
 <p><b>Section:</b> 20.4.2.1 [tuple.cnstr] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-05-06</p>
 <p><b>View other</b> <a href="lwg-index-open.html#tuple.cnstr">active issues</a> in [tuple.cnstr].</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.cnstr">issues</a> in [tuple.cnstr].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -11698,7 +10547,7 @@ is_convertible&lt;U1, T0&gt;::value &amp;&amp; is_convertible&lt;U2, T1&gt;::val
 <hr>
 <h3><a name="2318"></a>2318. <tt>basic_string</tt>'s wording has confusing relics from the copy-on-write era</h3>
 <p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
 <p><b>View all other</b> <a href="lwg-index.html#basic.string">issues</a> in [basic.string].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -11747,7 +10596,7 @@ reallocation during trimming.
 <hr>
 <h3><a name="2321"></a>2321. Moving containers should (usually) be required to preserve iterators</h3>
 <p><b>Section:</b> 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements.general">active issues</a> in [container.requirements.general].</p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements.general">issues</a> in [container.requirements.general].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -11832,7 +10681,7 @@ invalidated. &mdash; <i>end note</i>]
 <hr>
 <h3><a name="2326"></a>2326. <tt>uniform_int_distribution&lt;unsigned char&gt;</tt> should be permitted</h3>
 <p><b>Section:</b> 26.5.1.1 [rand.req.genl] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-04-04</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -11917,11 +10766,11 @@ of <tt>unsigned short</tt>, <tt>unsigned int</tt>, <tt>unsigned long</tt>, or <t
 
 <hr>
 <h3><a name="2328"></a>2328. Rvalue stream extraction should use perfect forwarding</h3>
-<p><b>Section:</b> 27.7.2.6 [istream.rvalue] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2014-03-27</p>
+<p><b>Section:</b> 27.7.2.6 [istream.rvalue] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#istream.rvalue">active issues</a> in [istream.rvalue].</p>
 <p><b>View all other</b> <a href="lwg-index.html#istream.rvalue">issues</a> in [istream.rvalue].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 27.7.2.6 [istream.rvalue] declares <tt>operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp;&amp; is, T&amp; x)</tt>.  
@@ -11949,6 +10798,22 @@ Jonathan Wakely: is this the security issue Jeffrey raised on lib reflector?
 Move to P3
 </p>
 
+<p><i>[2015-05-06 Lenexa: Move to Review]</i></p>
+
+
+<p>WEB, MC: Proposed wording changes one signature (in two places) to take a forwarding reference.</p>
+<p>TK: Should be consistent with an istream rvalue?</p>
+<p>MC: This is the case where you pass the stream by rvalue reference.</p>
+<p>RP: I would try it before standardizing.</p>
+<p>TK: Does it break anything?</p>
+<p>RP, TK: It will take all arguments, will be an exact match for everything.</p>
+<p>RS, TK: This adapts streaming into an rvalue stream to make it act like streaming into an lvalue stream.</p>
+<p>RS: Should this really return the stream by lvalue reference instead of by rvalue reference? => new LWG issue.</p>
+<p>RP: Security issue?</p>
+<p>MC: No. That's istream >> char*, C++ version of gets(). Remove it, as we did for gets()? => new LWG issue.</p>
+<p>RS: Proposed resolution looks correct to me.</p>
+<p>MC: Makes me (and Jonathan Wakely) feel uneasy.</p>
+<p>Move to Review, consensus.</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -12111,7 +10976,7 @@ shall be locale sensitive.
 <hr>
 <h3><a name="2335"></a>2335. <tt>array&lt;array&lt;int, 3&gt;, 4&gt;</tt> should be layout-compatible with <tt>int[4][3]</tt></h3>
 <p><b>Section:</b> 23.3.2 [array] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2013-10-04 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2013-10-04 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#array">active issues</a> in [array].</p>
 <p><b>View all other</b> <a href="lwg-index.html#array">issues</a> in [array].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -12153,10 +11018,10 @@ other standard libraries.
 
 <hr>
 <h3><a name="2338"></a>2338. [re.traits]/7 expects of locale facets something not guaranteed by [locale.facet]/4</h3>
-<p><b>Section:</b> 28.7 [re.traits], 22.3.1.1.2 [locale.facet] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Sergey Zubkov <b>Opened:</b> 2013-10-15 <b>Last modified:</b> 2014-02-12</p>
+<p><b>Section:</b> 28.7 [re.traits], 22.3.1.1.2 [locale.facet] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Sergey Zubkov <b>Opened:</b> 2013-10-15 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.traits">issues</a> in [re.traits].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 28.7 [re.traits]/7, begins with "if <tt>typeid(use_facet&lt;collate&lt;charT&gt; &gt;) == typeid(collate_byname&lt;charT&gt;)</tt>", 
@@ -12172,6 +11037,35 @@ dynamic type <tt>std::collate_byname&lt;charT&gt;</tt>, which is in fact true in
 (e.g. libstdc++). This does not follow from the description of <tt>_byname</tt> in 22.3.1.1.2 [locale.facet]/4, which is only 
 required to provide equivalent semantics, to the named locale's facet, not to actually be one.
 </p>
+
+
+<p><i>[2015-05-06 Lenexa: Move to Open]</i></p>
+
+
+<p>MC, RP: Consequence of failing to follow the rule is UB.</p>
+<p>MC: Tightening of requirements.</p>
+<p>RP: It should be this way, we just didn't impose it before.</p>
+<p>MC: Second change is a bug fix, original code didn't work.</p>
+<p>TK: Doesn't seem to make things worse.</p>
+<p>Bring up in larger group tomorrow.</p>
+<p>JW arrives.</p>
+<p>JW: libstdc++ violates this due to two std::string ABIs.</p>
+<p>JW: This prevents installing a type derived from Facet_byname, constrains the implementor from using a smarter derived class version.</p>
+<p>JW: Can't look at facet id to detect replacement, because replacements have the same id.</p>
+<p>RP: Can you give it multiple ids through multiple inheritance?</p>
+<p>JW: No, the facet mechanism wouldn't like that.</p>
+<p>JW: We should also ask Martin Sebor, he's implemented this stuff recently.</p>
+<p>MC: Sounds like this resolution doesn't work, need a better solution.</p>
+<p>JW: Write in words "if the facet has not been replaced by the user", the implementation knows how to detect that, but not like this.</p>
+<p>RP: User RE traits need to detect this too.</p>
+<p>JW: =(</p>
+<p>Move to Open, JW will invite Martin Sebor to join LWG for discussion.</p>
+<p>Later ... </p>
+<p>JW: This is not needed for user specializations after all.</p>
+<p>MC: Agree, [re.traits]/7 only applies to the stdlib traits.</p>
+<p>NM: Effects: doesn't make sense.</p>
+<p>JW, NM, Martin Sebor to come up with new wording.</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -12217,7 +11111,7 @@ can be converted into a primary sort key then returns that key, otherwise return
 <hr>
 <h3><a name="2342"></a>2342. User conversion to <tt>wchar_t const*</tt> or to <tt>wchar_t</tt> not invoked for <tt>operator&lt;&lt;</tt></h3>
 <p><b>Section:</b> 27.7.3.1 [ostream] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Alf P. Steinbach <b>Opened:</b> 2013-10-29 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Alf P. Steinbach <b>Opened:</b> 2013-10-29 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#ostream">issues</a> in [ostream].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12520,11 +11414,11 @@ This issue interacts with LWG <a href="lwg-active.html#2503">2503</a>.
 
 <hr>
 <h3><a name="2348"></a>2348. <tt>charT('1')</tt> is not the wide equivalent of <tt>'1'</tt></h3>
-<p><b>Section:</b> 20.6 [template.bitset], 27.7.6 [quoted.manip] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-12-02 <b>Last modified:</b> 2014-02-12</p>
+<p><b>Section:</b> 20.6 [template.bitset], 27.7.6 [quoted.manip] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-12-02 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#template.bitset">active issues</a> in [template.bitset].</p>
 <p><b>View all other</b> <a href="lwg-index.html#template.bitset">issues</a> in [template.bitset].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 Example: <tt>char16_t('1') != u'1'</tt> is possible.
@@ -12555,6 +11449,11 @@ with a C11 <tt>_Generic</tt> selection (works in clang):
   _G(char16_t, '1') == u'1'
 </pre></blockquote>
 
+<p><i>[Lenexa 2015-05-05: Move to Open]</i></p>
+
+<p>Ask for complete PR (need quoted, to string, et al.)</p>
+<p>Will then take it up again</p>
+<p>Expectation is that this is correct way to fix this</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -12619,10 +11518,10 @@ character literals <tt>0</tt> and <tt>1</tt> of type <tt>charT</tt>, respectivel
 
 <hr>
 <h3><a name="2349"></a>2349. Clarify input/output function rethrow behavior</h3>
-<p><b>Section:</b> 27.7.2.2.1 [istream.formatted.reqmts] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-12-06 <b>Last modified:</b> 2014-02-12</p>
+<p><b>Section:</b> 27.7.2.2.1 [istream.formatted.reqmts] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2013-12-06 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#istream.formatted.reqmts">issues</a> in [istream.formatted.reqmts].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 The formatted input function requirement says in 27.7.2.2.1 [istream.formatted.reqmts]:
@@ -12676,6 +11575,8 @@ and does fix the ambiguity. However, it only fixed the 1 of 4
 requirements, and it lost some context (the word "rethrown" is not
 seen before this sentence within this section).
 </p>
+
+<p><i>[Lenexa 2015-05-07: Marshall to research and report]</i></p>
 
 
 
@@ -12754,56 +11655,9 @@ before leaving the unformatted input function.
 
 
 <hr>
-<h3><a name="2351"></a>2351. Does <tt>.seed()</tt> completely reset state of engine?</h3>
-<p><b>Section:</b> 26.5.3 [rand.eng] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Thomas Plum <b>Opened:</b> 2013-12-02 <b>Last modified:</b> 2014-02-14</p>
-<p><b>View all other</b> <a href="lwg-index.html#rand.eng">issues</a> in [rand.eng].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-With regard to Random number engine class templates 26.5.3 [rand.eng],
-the Standard can be read in two different ways: when the member function
-</p>
-<blockquote><pre>
-.seed(result_type s = default_seed)
-</pre></blockquote>
-<p>
-is invoked, is all associated state (such as carry) reset to the same
-state that would have been created by the constructor
-</p>
-<blockquote><pre>
-explicit <em>engine-type</em>(result_type s = default_seed)
-</pre></blockquote>
-<p>
-or is the exact state unspecified?
-<p/>
-Implementations differ.
-</p>
-
-<p><i>[2014-02-13, Issaquah]</i></p>
-
-<p>
-Walter Brown says that Table 117 makes this very clear, and that the answer is "Yes"
-<p/>
-Suggested resolution: NAD
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-Suggested resolution: NAD
-</p>
-
-
-
-
-
-<hr>
 <h3><a name="2352"></a>2352. Is a default-constructed <tt>std::seed_seq</tt> intended to produce a predictable <tt>.generate()</tt>?</h3>
 <p><b>Section:</b> 26.5.7.1 [rand.util.seedseq] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Thomas Plum <b>Opened:</b> 2013-12-02 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View other</b> <a href="lwg-index-open.html#rand.util.seedseq">active issues</a> in [rand.util.seedseq].</p>
+ <b>Submitter:</b> Thomas Plum <b>Opened:</b> 2013-12-02 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#rand.util.seedseq">issues</a> in [rand.util.seedseq].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -12823,73 +11677,9 @@ Implementations differ.
 
 
 <hr>
-<h3><a name="2353"></a>2353. <tt>std::next</tt> is over-constrained</h3>
-<p><b>Section:</b> 24.4.4 [iterator.operations] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Eric Niebler <b>Opened:</b> 2013-12-24 <b>Last modified:</b> 2014-02-12</p>
-<p><b>View all other</b> <a href="lwg-index.html#iterator.operations">issues</a> in [iterator.operations].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-In LWG <a href="lwg-defects.html#1011">1011</a>, <tt>std::next</tt> and <tt>std::prev</tt> were changed 
-from accepting <tt>InputIterator</tt> to accepting
-<tt>ForwardIterator</tt>. This needlessly excludes perfectly legitimate use
-cases. Consider the following hypothetical range-based implementation of
-drop, which creates a view of a range without the first <tt>n</tt> elements:
-</p>
-<blockquote><pre>
-template&lt;typename Distance, typename InputRange&gt;
-iterator_range&lt;range_iterator_t&lt;InputRange&gt;&gt;
-drop(Distance n, InputRange&amp; rng)
-{
-  return make_iterator_range(
-    std::next(std::begin(rng), n),
-    std::end(rng)
-  );
-}
-</pre></blockquote>
-<p>
-I believe this to be a legitimate use case that is currently outlawed by
-the standard without cause. See the discussion beginning at
-<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=35313">c++std-lib-35313</a> 
-for an in-depth discussion of the issue, in which
-Howard Hinnant agreed that it was a defect.
-<p/>
-(Some discussion then ensued about whether an overload should be added
-that only accepts rvalue <tt>InputIterators</tt> to avoid the surprise that issue
-<a href="lwg-defects.html#1011">1011</a> sought to address. I make no such attempt, nor do I believe it to
-be necessary.)
-<p/>
-Suggested resolution:
-<p/>
-Back out the resolution of <a href="lwg-defects.html#1011">1011</a>.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3797.</p>
-
-<ol>
-<li><p>Change 24.3 [iterator.synopsis], header <tt>&lt;iterator&gt;</tt> synopsis, and 24.4.4 [iterator.operations]
-before p.6 as indicated:</p>
-
-<blockquote><pre>
-template &lt;class <del>Forward</del><ins>Input</ins>Iterator&gt;
-  <del>Forward</del><ins>Input</ins>Iterator next(<del>Forward</del><ins>Input</ins>Iterator x,
-    typename std::iterator_traits&lt;<del>Forward</del><ins>Input</ins>Iterator&gt;::difference_type n = 1);
-</pre></blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2358"></a>2358. Apparently-bogus definition of <tt>is_empty</tt> type trait</h3>
 <p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-02-01 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -12945,7 +11735,7 @@ length 0</del>, no virtual member functions, no virtual base classes, and no bas
 <hr>
 <h3><a name="2362"></a>2362. unique, associative <tt>emplace()</tt> should not move/copy the <tt>mapped_type</tt> constructor arguments when no insertion happens</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2014-02-15 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2014-02-15 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -13007,12 +11797,12 @@ We will need a paper that describes how to implement this before we can make mor
 
 <hr>
 <h3><a name="2363"></a>2363. Defect in 30.4.1.4.1 [thread.sharedtimedmutex.class]</h3>
-<p><b>Section:</b> 30.4.1.4.1 [thread.sharedtimedmutex.class] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+<p><b>Section:</b> 30.4.1.5.1 [thread.sharedtimedmutex.class] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
  <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-02-16 <b>Last modified:</b> 2015-05-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-30.4.1.4.1 [thread.sharedtimedmutex.class] paragraph 2: 
+30.4.1.5.1 [thread.sharedtimedmutex.class] paragraph 2: 
 </p>
 <blockquote><p> The class <tt>shared_timed_mutex</tt> shall satisfy all of the 
 <tt>SharedTimedMutex</tt> requirements (30.4.1.4). It shall be a standard layout class (Clause 9).
@@ -13023,7 +11813,7 @@ this was <tt>SharedMutex</tt>, which was equally undefined.)
 <p/>
 I assume this concept should be defined somewhere?
 <p/>
-Also, n3891 changes 30.4.1.4 [thread.sharedtimedmutex.requirements] from defining "shared mutex type" to defining 
+Also, n3891 changes 30.4.1.5 [thread.sharedtimedmutex.requirements] from defining "shared mutex type" to defining 
 "shared timed mutex type", but its paragraph 2 still talks about "shared mutex type". Is that OK? I think you could argue 
 that it's clear enough what it means, but presumably it should use the term that paragraph 1 defined.
 <p/>
@@ -13134,7 +11924,7 @@ In this description, <tt>m</tt> denotes an object of a mutex type, <tt>rel_time<
 </p></blockquote>
 </li>
 
-<li><p>Change 30.4.1.4 [thread.sharedtimedmutex.requirements] as indicated: [<i>Drafting note</i>: The reference to the
+<li><p>Change 30.4.1.5 [thread.sharedtimedmutex.requirements] as indicated: [<i>Drafting note</i>: The reference to the
 timed mutex types requirements has been moved <em>after</em> introducing the new requirement set to ensure that 
 <tt>SharedTimedMutexType</tt> <em>refine</em> <tt>TimedMutexType</tt>.]</p>
 
@@ -13152,11 +11942,11 @@ an object of an instantiation of <tt>duration</tt> (20.12.5), and <tt>abs_time</
 </blockquote>
 </li>
 
-<li><p>Change 30.4.1.4.1 [thread.sharedtimedmutex.class] as indicated:</p>
+<li><p>Change 30.4.1.5.1 [thread.sharedtimedmutex.class] as indicated:</p>
 
 <blockquote><p>
 -2- The class <tt>shared_timed_mutex</tt> shall satisfy all of the <tt>SharedTimedMutex<ins>Type</ins></tt> requirements 
-(30.4.1.4 [thread.sharedtimedmutex.requirements]). It shall be a standard-layout class (Clause 9).
+(30.4.1.5 [thread.sharedtimedmutex.requirements]). It shall be a standard-layout class (Clause 9).
 </p></blockquote>
 </li>
 
@@ -13167,7 +11957,7 @@ even better to some new <tt>SharedLockable</tt> requirements (to be defined) &md
 
 <blockquote><p>
 -1- [&hellip;] The supplied <tt>Mutex</tt> type shall meet the <del>shared mutex</del><ins><tt>SharedTimedMutexType</tt></ins> requirements 
-(30.4.1.4 [thread.sharedtimedmutex.requirements]).
+(30.4.1.5 [thread.sharedtimedmutex.requirements]).
 <p/>
 -2- [<i>Note</i>: <tt>shared_lock&lt;Mutex&gt;</tt> meets the <tt>TimedLockable</tt> requirements 
 (30.2.5.4). &mdash; <i>end note</i>]
@@ -13183,7 +11973,7 @@ even better to some new <tt>SharedLockable</tt> requirements (to be defined) &md
 <hr>
 <h3><a name="2366"></a>2366. <tt>istreambuf_iterator</tt> end-of-stream equality</h3>
 <p><b>Section:</b> 24.6.3 [istreambuf.iterator] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Hyman Rosen <b>Opened:</b> 2014-02-19 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Hyman Rosen <b>Opened:</b> 2014-02-19 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#istreambuf.iterator">issues</a> in [istreambuf.iterator].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -13224,8 +12014,7 @@ the iterators should compare equal.
 <hr>
 <h3><a name="2368"></a>2368. Replacing global <tt>operator new</tt></h3>
 <p><b>Section:</b> 18.6.1 [new.delete] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephen Clamage <b>Opened:</b> 2014-02-20 <b>Last modified:</b> 2014-06-24</p>
-<p><b>View other</b> <a href="lwg-index-open.html#new.delete">active issues</a> in [new.delete].</p>
+ <b>Submitter:</b> Stephen Clamage <b>Opened:</b> 2014-02-20 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#new.delete">issues</a> in [new.delete].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -13499,116 +12288,9 @@ move constructor<ins> or by <tt>A</tt>'s allocate function</ins>.
 
 
 <hr>
-<h3><a name="2372"></a>2372. Assignment from int to <tt>std::string</tt></h3>
-<p><b>Section:</b> 21.4 [basic.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Andrzej Krzemie&#324;ski <b>Opened:</b> 2014-03-13 <b>Last modified:</b> 2014-06-24</p>
-<p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
-<p><b>View all other</b> <a href="lwg-index.html#basic.string">issues</a> in [basic.string].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-The following code works in C++:
-</p>
-<blockquote><pre>
-int i = 300;
-std::string threeHundred;
-threeHundred = i;
-</pre></blockquote>
-<p>
-"Works" == "Compiles and doesn't have an undefined behavior". But it may not be obvious and in fact misleading what it does. 
-This assignment converts an <tt>int</tt> to <tt>char</tt> and then uses <tt>string</tt>'s assignment from <tt>char</tt>. While 
-the assignment from <tt>char</tt> can be considered a feature, being able to assign from an int looks like a safety gap. Someone 
-may believe C++ works like "dynamically typed" languages and expect a lexical conversion to take place.
-<p/>
-Ideally the assignment from <tt>char</tt> could be deprecated and later removed, but as a less intrusive alternative one could 
-consider adding a SFINAEd deleted function template:
-</p>
-<blockquote><pre>
-template &lt;typename IntT&gt; // enable if is_integral&lt;IntT&gt;::value
-basic_string&amp; operator=(IntT) = delete;
-</pre></blockquote>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<ol>
-<li><p>To 21.4 [basic.string], class template <tt>basic_string</tt> synopsis, add as indicated:</p>
-
-<blockquote><pre>
-basic_string&amp; operator=(const basic_string&amp; str);
-basic_string&amp; operator=(basic_string&amp;&amp; str) noexcept;
-basic_string&amp; operator=(const charT* s);
-basic_string&amp; operator=(charT c);
-<ins>template &lt;class IntT&gt; basic_string&amp; operator=(IntT i) = delete;</ins>
-basic_string&amp; operator=(initializer_list&lt;charT&gt;);
-</pre></blockquote>
-</li>
-
-<li><p>Add after 21.4.2 [string.cons] p26 as indicated:</p>
-
-<blockquote>
-<pre>
-basic_string&amp; operator=(charT c);
-</pre>
-<blockquote>
-<p>
--26- <i>Returns</i>: <tt>*this = basic_string(1,c)</tt>.
-</p>
-</blockquote>
-
-<pre>
-<ins>template &lt;class IntT&gt; basic_string&amp; operator=(IntT i) = delete;</ins>
-</pre>
-<blockquote>
-<p>
-<ins>-?- <i>Remarks</i>: This signature shall not participate in overload resolution unless <tt>is_integral&lt;T&gt;::value</tt> is 
-<tt>true</tt>.</ins>
-</p>
-</blockquote>
-</blockquote>
-
-</li>
-
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2373"></a>2373. Make new entities and names in namespace <tt>std</tt> conforming extensions</h3>
-<p><b>Section:</b> 17.6.5 [conforming] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Chandler Carruth <b>Opened:</b> 2014-03-22 <b>Last modified:</b> 2014-06-24</p>
-<p><b>View all other</b> <a href="lwg-index.html#conforming">issues</a> in [conforming].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-Technically, right now, it is not a conforming extension to add a new function to namespace <tt>std</tt>. Doing so could cause 
-unqualified lookup on the name of that function in the presence of a using directive to find a different function. This seems 
-an unreasonable restriction on library vendors providing conforming extensions, as such a using directive seems inherently risky 
-in unqualified name lookup.
-</p>
-<p>
-17.6.5.5 [member.functions] implies that adding overloads to a method <em>is</em> a conforming extension, and within some 
-limits the same is true for global functions due to 17.6.5.4 [global.functions].
-<p/>
-It would likely be useful to specify that other new entities are valid conforming extensions, or preclude them where they pose 
-serious compatibility problems.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-
-
-
-
-
-<hr>
 <h3><a name="2375"></a>2375. Is [iterator.requirements.general]/9 too broadly applied?</h3>
 <p><b>Section:</b> 24.2.1 [iterator.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2014-03-25 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2014-03-25 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -13755,7 +12437,7 @@ namespace std {
 <hr>
 <h3><a name="2381"></a>2381. Inconsistency in parsing floating point numbers</h3>
 <p><b>Section:</b> 22.4.2.1.2 [facet.num.get.virtuals] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2014-04-30 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2014-04-30 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#facet.num.get.virtuals">active issues</a> in [facet.num.get.virtuals].</p>
 <p><b>View all other</b> <a href="lwg-index.html#facet.num.get.virtuals">issues</a> in [facet.num.get.virtuals].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -13834,7 +12516,7 @@ If we're going to say that we're converting by the rules of <tt>strtold</tt>, th
 <hr>
 <h3><a name="2383"></a>2383. Overflow cannot be ill-formed for chrono::duration integer literals</h3>
 <p><b>Section:</b> 20.12.5.8 [time.duration.literals] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-05-16 <b>Last modified:</b> 2014-11-08</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-05-16 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -13869,7 +12551,7 @@ or a run-time error, not ill-formed.
 <hr>
 <h3><a name="2392"></a>2392. "character type" is used but not defined</h3>
 <p><b>Section:</b> 17.3 [defns.ntcts], 22.3.1.1.1 [locale.category], 27.2.2 [iostreams.limits.pos], 27.7.3.6.1 [ostream.formatted.reqmts], 27.7.3.6.4 [ostream.inserters.character] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2014-06-01 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2014-06-01 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -13892,7 +12574,7 @@ language only defines a "wide-character set" and "wide-character literal".
 <hr>
 <h3><a name="2393"></a>2393. <tt>std::function</tt>'s <em>Callable</em> definition is broken</h3>
 <p><b>Section:</b> 20.9.12.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-06-03 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-06-03 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
 <p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -14075,7 +12757,7 @@ pointer.
 <hr>
 <h3><a name="2394"></a>2394. <tt>locale::name</tt> specification unclear &mdash; what is implementation-defined?</h3>
 <p><b>Section:</b> 22.3.1.3 [locale.members] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-06-09 <b>Last modified:</b> 2014-06-24</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-06-09 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#locale.members">issues</a> in [locale.members].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -14107,10 +12789,10 @@ why it's written in this roundabout way.
 
 <hr>
 <h3><a name="2398"></a>2398. <tt>type_info</tt>'s destructor shouldn't be required to be virtual</h3>
-<p><b>Section:</b> 18.7.1 [type.info] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2014-06-24</p>
+<p><b>Section:</b> 18.7.1 [type.info] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#type.info">issues</a> in [type.info].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 <tt>type_info</tt>'s destructor is depicted as being <tt>virtual</tt>, which is nearly unobservable to users (since they can't construct 
@@ -14142,6 +12824,10 @@ typeid(f());
 <p/>
 These are probably rare things, but I can imagine at least some forms of the latter being used in SFINAE tricks.
 </p>
+
+<p><i>[Lenexa 2015-05-05: Move to Open]</i></p>
+
+<p>Marshall to poll LEWG for their opinion</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -14176,10 +12862,10 @@ and may differ between programs. <ins>Whether <tt>~type_info()</tt> is <tt>virtu
 
 <hr>
 <h3><a name="2402"></a>2402. <tt>basic_string(const basic_string&amp; str, size_type pos, size_type n = npos)</tt> shouldn't use <tt>Allocator()</tt></h3>
-<p><b>Section:</b> 21.4.2 [string.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2014-06-24</p>
+<p><b>Section:</b> 21.4.2 [string.cons] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#string.cons">issues</a> in [string.cons].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 21.4.2 [string.cons] p3 specifies:
@@ -14200,6 +12886,20 @@ belonging to the container being copied.", but this isn't exactly a copy constru
 <tt>const allocator_type&amp;</tt> argument. [&hellip;] A copy of this allocator is used for any memory allocation performed".
 </p>
 </blockquote>
+
+<p><i>[2015-05-06 Lenexa: move to Open]</i></p>
+
+<p>STL: there an allocator right there in str, why default-construct one</p>
+<p>STL: my fix, which may not be right, splits out functions with and without allocators</p>
+<p>JW: there are other ways to propagate the allocator from str to the new object</p>
+<p>PJP: hard to get motivated about this one</p>
+<p>JW: I think this is not a copy operation, this is init'ing a string from a range of characters which happens to originate in a string. It makes it inconsistent with the similar ctor taking a const char pointer, and if we had a std::string_view we wouldn't even have this ctor, and it wouldn't be possible to propagate the allocator.</p>
+<p>STL: but people with stateful allocators want it to propagate</p>
+<p>JW: I think the people using stateful allocators will alter the default behaviour of select_on_container_copy_construction so that it doesn't propagate, but will return a default-constructed one (to ensure a stateful allocator referring to a stack buffer doesn't leak to a region where the stack buffer has gone). So for those people, your proposed change does nothing, it changes one default-constructed allocator to a call to select_on_container_copy_construction which returns a default-constructed allocator. For other people who have different stateful allocators they can still provide the right allocator (whatever that may be) by passing it in.</p>
+<p>STL: OK, that's convincing.</p>
+<p>PJP: I agree with Jonathan</p>
+<p>JW: would like to run both our arguments by Pablo in case I'm totally misrepresenting the expected users of allocator-traits stuff</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -14256,7 +12956,7 @@ Table 65 &mdash; <ins><tt>basic_string(const basic_string&amp;, size_type, size_
 <hr>
 <h3><a name="2413"></a>2413. <tt>assert</tt> macro is overconstrained</h3>
 <p><b>Section:</b> 19.3 [assertions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> David Krauss <b>Opened:</b> 2014-06-25 <b>Last modified:</b> 2014-11-03</p>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2014-06-25 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#assertions">active issues</a> in [assertions].</p>
 <p><b>View all other</b> <a href="lwg-index.html#assertions">issues</a> in [assertions].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -14344,7 +13044,7 @@ member functions called on a single object)</ins> in the Standard C++ library ma
 <hr>
 <h3><a name="2421"></a>2421. Non-specification of handling zero size in <tt>std::align</tt> [ptr.align]</h3>
 <p><b>Section:</b> 20.7.5 [ptr.align] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Melissa Mears <b>Opened:</b> 2014-08-06 <b>Last modified:</b> 2014-11-03</p>
+ <b>Submitter:</b> Melissa Mears <b>Opened:</b> 2014-08-06 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#ptr.align">issues</a> in [ptr.align].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -14401,7 +13101,7 @@ The two compilers I could get working with <tt>std::align</tt>, Visual Studio 20
 <hr>
 <h3><a name="2422"></a>2422. <tt>std::numeric_limits&lt;T&gt;::is_modulo</tt> description: "most machines" errata</h3>
 <p><b>Section:</b> 18.3.2.4 [numeric.limits.members] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Melissa Mears <b>Opened:</b> 2014-08-06 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Melissa Mears <b>Opened:</b> 2014-08-06 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all other</b> <a href="lwg-index.html#numeric.limits.members">issues</a> in [numeric.limits.members].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -14451,6 +13151,10 @@ WB: in paragraph 61, would like to see "this" replaced by "is_modulo"<br/>
 AM: Move to Open 
 </p>
 
+<p><i>[2015-05-05 Lenexa]</i></p>
+
+<p>Marshall: I will contact the submitter to see if she can re-draft the Proposed Resolution</p>
+
 
 <p><b>Proposed resolution:</b></p>
 <ol>
@@ -14488,7 +13192,7 @@ and <tt>true</tt> for signed integers</del>.
 <hr>
 <h3><a name="2423"></a>2423. Missing specification <tt>slice_array</tt>, <tt>gslice_array</tt>, <tt>mask_array</tt>, <tt>indirect_array</tt> copy constructor</h3>
 <p><b>Section:</b> 26.6.5 [template.slice.array], 26.6.7 [template.gslice.array], 26.6.8 [template.mask.array], 26.6.9 [template.indirect.array] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Akira Takahashi <b>Opened:</b> 2014-08-12 <b>Last modified:</b> 2014-11-03</p>
+ <b>Submitter:</b> Akira Takahashi <b>Opened:</b> 2014-08-12 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#template.slice.array">issues</a> in [template.slice.array].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -14577,7 +13281,7 @@ the argument slice refers.</ins>
 <hr>
 <h3><a name="2424"></a>2424. 29.5 should state that atomic types are not trivially copyable</h3>
 <p><b>Section:</b> 29.5 [atomics.types.generic] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
- <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2014-08-14 <b>Last modified:</b> 2015-05-08</p>
+ <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2014-08-14 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#atomics.types.generic">active issues</a> in [atomics.types.generic].</p>
 <p><b>View all other</b> <a href="lwg-index.html#atomics.types.generic">issues</a> in [atomics.types.generic].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
@@ -14631,6 +13335,12 @@ would invoke undefined behaviour.
 SG1 is fine with P/R (and agrees it's needed), but LWG may want to
 check the details; it's not entirely an SG1 issue.
 </p>
+
+<p><i>[2015-05-05 Lenexa]</i></p>
+
+<p>Marshall: This was discussed on the telecon. Alisdair was going to write something to Mike and send it to Core.</p>
+<p>Hwrd: Core says that deleted copies are trivially copyable, which makes no sense to Library people.</p>
+<p>STL: There doesn't appear to be a Core issue about it.</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -14935,7 +13645,7 @@ do {
 <hr>
 <h3><a name="2431"></a>2431. Missing regular expression traits requirements</h3>
 <p><b>Section:</b> 28.3 [re.req] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-09-30 <b>Last modified:</b> 2014-11-04</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-09-30 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -14967,11 +13677,11 @@ assignment.
 
 <hr>
 <h3><a name="2432"></a>2432. <tt>initializer_list</tt> assignability</h3>
-<p><b>Section:</b> 18.9 [support.initlist] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> David Krauss <b>Opened:</b> 2014-09-30 <b>Last modified:</b> 2014-11-03</p>
+<p><b>Section:</b> 18.9 [support.initlist] <b>Status:</b> <a href="lwg-active.html#EWG">EWG</a>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2014-09-30 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#support.initlist">active issues</a> in [support.initlist].</p>
 <p><b>View all other</b> <a href="lwg-index.html#support.initlist">issues</a> in [support.initlist].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#EWG">EWG</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 <tt>std::initializer_list::operator=</tt> 18.9 [support.initlist] is horribly broken and it needs deprecation:
@@ -14985,6 +13695,9 @@ a = {{4}, {5}, {6}};
 Assignability of <tt>initializer_list</tt> isn't explicitly specified, but most implementations supply a default assignment 
 operator. I'm not sure what 17.5 [description] says, but it probably doesn't matter.
 </p>
+
+<p><i>[Lenexa 2015-05-05: Send to EWG as discussed in Telecon]</i></p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -15183,7 +13896,7 @@ typedefs"), as depicted:</p>
 <hr>
 <h3><a name="2444"></a>2444. Inconsistent complexity for <tt>std::sort_heap</tt></h3>
 <p><b>Section:</b> 25.4.6.4 [sort.heap] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Fran&ccedil;ois Dumont <b>Opened:</b> 2014-10-07 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Fran&ccedil;ois Dumont <b>Opened:</b> 2014-10-07 <b>Last modified:</b> 2015-05-22</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -15213,6 +13926,10 @@ This is why I would like to propose to replace paragraph 3 by:
 <p>
 Marshall will research the maths and report back in Lenexa.
 </p>
+
+<p><i>[2015-05-06 Lenexa]</i></p>
+
+<p>STL: I dislike exact complexity requirements, they prevent one or two extra checks in debug mode. Would it be better to say O(N log(N)) not at most?</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -15246,176 +13963,9 @@ template&lt;class RandomAccessIterator, class Compare&gt;
 
 
 <hr>
-<h3><a name="2447"></a>2447. Allocators and <tt>volatile</tt>-qualified value types</h3>
-<p><b>Section:</b> 17.6.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2014-10-16 <b>Last modified:</b> 2015-05-05</p>
-<p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
-<p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-According to Table 27 &mdash; "Descriptive variable definitions" which is used to define the symbols used in the
-allocator requirements table within 17.6.3.5 [allocator.requirements] we have the following constraints for
-the types <tt>T, U, C</tt>:
-</p>
-<blockquote><p>
-any non-const object type (3.9)
-</p></blockquote>
-<p>
-This wording can be read to allow instead a <tt>volatile</tt>-qualified value type such as <tt>volatile int</tt>.
-<p/>
-The nearest-by way of fixing this would be to add "non-<tt>volatile</tt>" as additional constraint to this table
-row.
-<p/>
-Another choice would be to think of requiring that allocators must be capable to handle any <tt><i>cv</i></tt>-qualified
-value types. This would make all currently existing allocators non-conforming that can't handle <tt><i>cv</i></tt>-qualified 
-value types, so I'm not suggesting to follow that route.
-<p/>
-A less radical step would be to allow <tt><ii>cv</ii></tt>-qualified types just for <tt>C</tt> (which is used to specify the
-functions <tt>construct</tt> and <tt>destroy</tt> and where does not even exist any requirement that <tt>C</tt> actually 
-is related to the value type of the allocator at all). This seemingly extension would be harmless because as of p8 of the
-same sub-clause "An allocator may constrain the types on which it can be instantiated and the arguments for which its
-<tt>construct</tt> member may be called."
-<p/>
-This differs from the requirements imposed on the types <tt>T</tt> and <tt>U</tt> which both refer to value types of allocators.
-<p/>
-The proposed wording attempts to separate the two classes of requirements.
-</p>
-
-<p>
-<strong>Previous resolution [SUPERSEDED]:</strong>
-</p>
-<blockquote class="note">
-<p>
-This wording is relative to N4140.
-</p>
-
-<ol>
-<li><p>Change 17.6.3.5 [allocator.requirements], Table 27 &mdash; "Descriptive variable definitions", as indicated:</p>
-<blockquote>
-<table border="1">
-<caption>Table 27 &mdash; Descriptive variable definitions</caption>
-<tr>
-<th>Variable</th>
-<th>Definition</th>
-</tr>
-
-<tr>
-<td>
-<tt>T, U<del>, C</del></tt>
-</td>
-<td>
-any non-<del>const</del><ins><tt>const</tt> and non-<tt>volatile</tt></ins> object type (3.9)
-</td>
-</tr>
-
-<tr>
-<td>
-<ins><tt>C</tt></ins>
-</td>
-<td>
-<ins>any object type</ins>
-</td>
-</tr>
-
-<tr>
-<td colspan="2" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-</table>
-</blockquote>
-</li>
-
-<li><p>Change 17.6.3.5 [allocator.requirements] p8 as indicated: (This wording change is intended to
-fix an obvious asymmetry between <tt>construct</tt> and <tt>destroy</tt> which I believe is not intended)</p>
-
-<blockquote><p>
--8- An allocator may constrain the types on which it can be instantiated and the arguments for which its
-<tt>construct</tt> <ins>or <tt>destroy</tt></ins> member<ins>s</ins> may be called. If a type cannot be 
-used with a particular allocator, the allocator class or the call to <tt>construct</tt> <ins>or <tt>destroy</tt></ins> 
-may fail to instantiate.
-</p></blockquote>
-</li>
-</ol>
-
-</blockquote>
-
-<p><i>[2014-11, Urbana]</i></p>
-
-<p>
-JW: say "cv-unqualified" instead?<br/>
-JW: very nervous about allowing construct on const-types, because of the cast to (non-const) <tt>void*</tt><br/>
-MA: should we just make the minimal fix?<br/>
-STL: don't break <tt>C</tt> out for special treatment<br/>
-New proposed resolution: just change "non-const" to "cv-unqualified". Keep addition of <tt>destroy</tt> later. 
-</p>
-
-<p><i>[2015-02 Cologne]</i></p>
-
-<p>
-GR: It makes me nervous that someone at some point decided to not add "non-<tt>volatile</tt>".<br/> 
-AM: That was over ten years ago. It was a deliberate, minuted choice to support <tt>volatile</tt>. We are now reversing that decision. 
-It would be good to poll our vendors, none of which are in the room. This is a bit more work than we expect of a P0 issue.<br/> 
-VV: libstdc++ and libc++ seem to support <tt>volatile</tt> template parameters for the standard allocator.<br/> 
-AM: To clarify, the proposed resolution here would remove the requirement to support <tt>volatile</tt>. Implementations could still 
-choose to support <tt>volatile</tt>.<br/>
-DK: I'm happy to drop this and open a new issue in regard to the <tt>destroy</tt> member specification.<br/>
-AM: I just think this is harder than a P0. Let's reprioritize.
-</p>
-
-<p><i>[2015-04-01 Daniel comments]</i></p>
-
-<p>
-The less controversial part of the issue related to constraints imposed on <tt>destroy</tt> has be handed over to the new 
-issue <a href="lwg-active.html#2470">2470</a>.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N4431.
-</p>
-
-<ol>
-<li><p>Change 17.6.3.5 [allocator.requirements], Table 27 &mdash; "Descriptive variable definitions", as indicated:</p>
-<blockquote>
-<table border="1">
-<caption>Table 27 &mdash; Descriptive variable definitions</caption>
-<tr>
-<th>Variable</th>
-<th>Definition</th>
-</tr>
-
-<tr>
-<td>
-<tt>T, U, C</tt>
-</td>
-<td>
-any <del>non-const</del><ins><i>cv</i>-unqualified</ins> object type (3.9)
-</td>
-</tr>
-
-<tr>
-<td colspan="2" align="center">
-<tt>&hellip;</tt>
-</td>
-</tr>
-
-</table>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2449"></a>2449. <tt>vector::insert</tt> invalidates <tt>end()</tt>?</h3>
 <p><b>Section:</b> 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2014-10-21 <b>Last modified:</b> 2014-11-03</p>
+ <b>Submitter:</b> Marc Glisse <b>Opened:</b> 2014-10-21 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.modifiers">active issues</a> in [vector.modifiers].</p>
 <p><b>View all other</b> <a href="lwg-index.html#vector.modifiers">issues</a> in [vector.modifiers].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -15458,7 +14008,7 @@ iterator points to the same position, whatever may be there now&hellip;
 <hr>
 <h3><a name="2450"></a>2450. <tt>(greater|less|greater_equal|less_equal)&lt;void&gt;</tt> do not yield a total order for pointers</h3>
 <p><b>Section:</b> 20.9.6 [comparisons] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-10-30 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-10-30 <b>Last modified:</b> 2015-05-06</p>
 <p><b>View other</b> <a href="lwg-index-open.html#comparisons">active issues</a> in [comparisons].</p>
 <p><b>View all other</b> <a href="lwg-index.html#comparisons">issues</a> in [comparisons].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -15579,7 +14129,7 @@ comparing pointers, the call operator yields a total order.</ins>
 <hr>
 <h3><a name="2452"></a>2452. <tt>is_constructible</tt>, etc. and default arguments</h3>
 <p><b>Section:</b> 20.10 [meta] <b>Status:</b> <a href="lwg-active.html#Core">Core</a>
- <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2014-11-04 <b>Last modified:</b> 2015-03-22</p>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2014-11-04 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta">active issues</a> in [meta].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta">issues</a> in [meta].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Core">Core</a> status.</p>
@@ -15635,7 +14185,7 @@ Core wording should say "this kind of thing is ill-formed, no diagnostic require
 <hr>
 <h3><a name="2453"></a>2453. [iterator.range] and now [iterator.container] aren't available via <tt>&lt;initializer_list&gt;</tt></h3>
 <p><b>Section:</b> 18.9 [support.initlist], 24.7 [iterator.range], 24.8 [iterator.container] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-11 <b>Last modified:</b> 2015-02-28</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-11 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#support.initlist">active issues</a> in [support.initlist].</p>
 <p><b>View all other</b> <a href="lwg-index.html#support.initlist">issues</a> in [support.initlist].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -15720,7 +14270,7 @@ to suggest some ways of solving this issue.
 <hr>
 <h3><a name="2457"></a>2457. <tt>std::begin()</tt> and <tt>std::end()</tt> do not support multi-dimensional arrays correctly</h3>
 <p><b>Section:</b> 24.7 [iterator.range] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Janez &#x17d;emva <b>Opened:</b> 2014-11-16 <b>Last modified:</b> 2015-02-28</p>
+ <b>Submitter:</b> Janez &#x17d;emva <b>Opened:</b> 2014-11-16 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#iterator.range">active issues</a> in [iterator.range].</p>
 <p><b>View all other</b> <a href="lwg-index.html#iterator.range">issues</a> in [iterator.range].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -15796,7 +14346,7 @@ namespace std {
 <hr>
 <h3><a name="2460"></a>2460. LWG issue 2408 and value categories</h3>
 <p><b>Section:</b> 20.10.7.6 [meta.trans.other], 24.4.1 [iterator.traits] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2015-02-28</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -15851,7 +14401,7 @@ of those five names? That's what <a href="lwg-defects.html#2408">2408</a> does f
 <hr>
 <h3><a name="2461"></a>2461. Interaction between allocators and container exception safety guarantees</h3>
 <p><b>Section:</b> 17.6.3.5 [allocator.requirements], 23.3.6.3 [vector.capacity], 23.3.6.5 [vector.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> dyp <b>Opened:</b> 2014-12-06 <b>Last modified:</b> 2015-03-31</p>
+ <b>Submitter:</b> dyp <b>Opened:</b> 2014-12-06 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
 <p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16162,121 +14712,10 @@ or that object shall have been destroyed
 
 
 <hr>
-<h3><a name="2462"></a>2462. <tt>std::ios_base::failure</tt> is overspecified</h3>
-<p><b>Section:</b> 27.5.3 [ios.base], 27.5.3.1.1 [ios::failure] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-12-15 <b>Last modified:</b> 2015-02-28</p>
-<p><b>View all other</b> <a href="lwg-index.html#ios.base">issues</a> in [ios.base].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-27.5.3 [ios.base] defines <tt>ios_base::failure</tt> as a nested class:
-</p>
-<blockquote>
-<pre>
-namespace std {
-  class ios_base {
-  public:
-    class failure;
-    [&hellip;]
-  };
-  [&hellip;]
-}
-</pre>
-</blockquote>
-<p>
-This means it is valid to use an elaborated-type-specifier to
-refer to <tt>ios_base::failure</tt>:
-</p>
-<blockquote>
-<pre>
-using F = class std::ios_base::failure;
-throw F();
-</pre>
-</blockquote>
-<p>
-Therefore implementations are not permitted to define
-<tt>ios_base::failure</tt> as a typedef e.g.
-</p>
-<blockquote>
-<pre>
- class ios_base {
- public:
-#if __cplusplus &lt; 201103L
-   class failure_cxx03 : public exception {...};
-   typedef failure_cxx03 failure;
-#else
-   class failure_cxx11 : public system_error {...};
-   typedef failure_cxx11 failure;
-#endif
-   [&hellip;]
- };
-</pre>
-</blockquote>
-<p>
-This constrains implementations, making it harder to manage the ABI
-change to <tt>ios_base::failure</tt> between C++03 and C++11.
-</p>
-
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N4296.</p>
-
-<ol>
-<li><p>Change the synopsis in 27.5.3 [ios.base] as indicated:</p>
-
-<blockquote>
-<pre>
-namespace std {
-  class ios_base {
-  public:
-    class failure; <ins><i>// see below</i></ins>
-    [&hellip;]
-  };
-  [&hellip;]
-};
-</pre>
-</blockquote>
-</li>
-
-<li><p>Change 27.5.3 [ios.base] paragraph 1:</p>
-
-<blockquote>
-<p>
-<tt>ios_base</tt> defines several member types:
-</p>
-<ul>
-<li><p>a <del>class <tt>failure</tt></del><ins>type <tt>failure</tt>, defined as either
-a class derived from <tt>system_error</tt> or a synonym for a class</ins> derived from 
-<tt>system_error</tt>;</p></li>
-</ul>
-</blockquote>
-</li>
-
-<li><p>Change 27.5.3.1.1 [ios::failure] paragraph 1:</p>
-<blockquote>
-<p>
--1- <ins>An implementation is permitted to define <tt>ios_base::failure</tt> as
-a synonym for a class with equivalent functionality to class <tt>ios_base::failure</tt> shown 
-in this subclause. [<i>Note</i>: When <tt>ios_base::failure</tt> is a synonym for another type 
-it shall provide a nested type <tt>failure</tt>, to emulate the injected class name. &mdash; 
-<i>end note</i>]</ins> The class <tt>failure</tt> defines the base class for the types of all 
-objects thrown as exceptions, by functions in the iostreams library, to report errors detected 
-during stream buffer operations.
-</p>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
 <h3><a name="2465"></a>2465. SFINAE-friendly <tt>common_type</tt> is nearly impossible to specialize
 correctly and regresses key functionality</h3>
 <p><b>Section:</b> 20.10.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Eric Niebler <b>Opened:</b> 2015-01-12 <b>Last modified:</b> 2015-02-28</p>
+ <b>Submitter:</b> Eric Niebler <b>Opened:</b> 2015-01-12 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
 <p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16448,7 +14887,7 @@ struct common_type&lt;T, U, Vs...&gt;
 <hr>
 <h3><a name="2468"></a>2468. Self-move-assignment of library types</h3>
 <p><b>Section:</b> 17.6.4.9 [res.on.arguments], 17.6.3.1 [utility.arg.requirements], 17.6.5.15 [lib.types.movedfrom], 23.2.1 [container.requirements.general] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matt Austern <b>Opened:</b> 2015-01-22 <b>Last modified:</b> 2015-02-28</p>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2015-01-22 <b>Last modified:</b> 2015-04-08</p>
 <p><b>View all other</b> <a href="lwg-index.html#res.on.arguments">issues</a> in [res.on.arguments].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -16512,7 +14951,7 @@ we intended and it's consistent with what we've told users and with what impleme
 <hr>
 <h3><a name="2471"></a>2471. <tt>copy_n</tt>'s number of <tt>InputIterator</tt> increments unspecified</h3>
 <p><b>Section:</b> 25.3.1 [alg.copy] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-01-28 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-01-28 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#alg.copy">active issues</a> in [alg.copy].</p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.copy">issues</a> in [alg.copy].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16541,7 +14980,7 @@ out))</tt> is not equivalent to <tt>copy_n(in, 4, out)</tt>
 <hr>
 <h3><a name="2472"></a>2472. Heterogeneous comparisons in the standard library can result in ambiguities</h3>
 <p><b>Section:</b> 20.4.2.7 [tuple.rel], 20.7.9.2 [allocator.globals], 20.8.1.5 [unique.ptr.special], 20.8.2.2.7 [util.smartptr.shared.cmp], 20.12.5.6 [time.duration.comparisons], 20.12.6.6 [time.point.comparisons], 20.13.5 [scoped.adaptor.operators], 24.5.1.3.13 [reverse.iter.op==], 24.5.3.3.13 [move.iter.op.comp] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2015-02-07 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2015-02-07 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#tuple.rel">active issues</a> in [tuple.rel].</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.rel">issues</a> in [tuple.rel].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16598,7 +15037,7 @@ This is then unambiguously chosen over the other options in the preceding case. 
 <hr>
 <h3><a name="2474"></a>2474. <tt>&lt;cmath&gt;</tt> functions unfriendly to <tt>integral_constant</tt> arguments</h3>
 <p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matheus Izvekov <b>Opened:</b> 2015-02-13 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Matheus Izvekov <b>Opened:</b> 2015-02-13 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
 <p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16650,7 +15089,7 @@ then all arithmetic arguments corresponding to <tt>double</tt> parameters are ef
 <h3><a name="2475"></a>2475. Allow overwriting of <tt>std::basic_string</tt> terminator with <tt>charT()</tt> to allow 
 cleaner interoperation with legacy APIs</h3>
 <p><b>Section:</b> 21.4.5 [string.access] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Matt Weber <b>Opened:</b> 2015-02-21 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Matt Weber <b>Opened:</b> 2015-02-21 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View all other</b> <a href="lwg-index.html#string.access">issues</a> in [string.access].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -16733,7 +15172,7 @@ leads to undefined behavior.
 <hr>
 <h3><a name="2478"></a>2478. Unclear how <tt>wstring_convert</tt> uses <tt>cvtstate</tt></h3>
 <p><b>Section:</b> 22.3.3.2.2 [conversions.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#conversions.string">active issues</a> in [conversions.string].</p>
 <p><b>View all other</b> <a href="lwg-index.html#conversions.string">issues</a> in [conversions.string].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16758,7 +15197,7 @@ simpler ways to say so.
 <hr>
 <h3><a name="2479"></a>2479. Unclear how <tt>wbuffer_convert</tt> uses <tt>cvtstate</tt></h3>
 <p><b>Section:</b> 22.3.3.2.3 [conversions.buffer] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#conversions.buffer">active issues</a> in [conversions.buffer].</p>
 <p><b>View all other</b> <a href="lwg-index.html#conversions.buffer">issues</a> in [conversions.buffer].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16783,7 +15222,7 @@ state of the get area is unrelated to the put area.
 <hr>
 <h3><a name="2480"></a>2480. Error handling of <tt>wbuffer_convert</tt> unclear</h3>
 <p><b>Section:</b> 22.3.3.2.3 [conversions.buffer] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#conversions.buffer">active issues</a> in [conversions.buffer].</p>
 <p><b>View all other</b> <a href="lwg-index.html#conversions.buffer">issues</a> in [conversions.buffer].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16806,7 +15245,7 @@ error lose information?
 <hr>
 <h3><a name="2481"></a>2481. <tt>wstring_convert</tt> should be more precise regarding "byte-error string" etc.</h3>
 <p><b>Section:</b> 22.3.3.2.2 [conversions.string] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-03-04 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#conversions.string">active issues</a> in [conversions.string].</p>
 <p><b>View all other</b> <a href="lwg-index.html#conversions.string">issues</a> in [conversions.string].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16845,7 +15284,7 @@ All the same issues apply to the <tt>wide_err_string</tt> member.
 <hr>
 <h3><a name="2490"></a>2490. <tt>&lt;regex&gt;</tt> needs lots of <tt>noexcept</tt></h3>
 <p><b>Section:</b> 28 [re] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2015-03-27 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2015-03-27 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#re">active issues</a> in [re].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re">issues</a> in [re].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16866,7 +15305,7 @@ Only 4 functions are marked <tt>noexcept</tt> in all of Clause 28. Many more nee
 <hr>
 <h3><a name="2491"></a>2491. <tt>std::less&lt;T*&gt;</tt> in constant expression</h3>
 <p><b>Section:</b> 20.9.6 [comparisons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2015-04-01 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2015-04-01 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#comparisons">active issues</a> in [comparisons].</p>
 <p><b>View all other</b> <a href="lwg-index.html#comparisons">issues</a> in [comparisons].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16906,7 +15345,7 @@ implementation-defined <tt>constexpr</tt>-ness.
 <hr>
 <h3><a name="2493"></a>2493. <tt>initializer_list</tt> supports incomplete classes</h3>
 <p><b>Section:</b> 18.9 [support.initlist] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> David Krauss <b>Opened:</b> 2015-04-27 <b>Last modified:</b> 2015-05-05</p>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2015-04-27 <b>Last modified:</b> 2015-05-04</p>
 <p><b>View other</b> <a href="lwg-index-open.html#support.initlist">active issues</a> in [support.initlist].</p>
 <p><b>View all other</b> <a href="lwg-index.html#support.initlist">issues</a> in [support.initlist].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -16932,7 +15371,6 @@ A resolution would be to copy-paste the relevant text from such a paragraph.
 <h3><a name="2495"></a>2495. There is no such thing as an <i>Exception Safety</i> element</h3>
 <p><b>Section:</b> 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-05-05 <b>Last modified:</b> 2015-05-20</p>
-<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.const">active issues</a> in [util.smartptr.shared.const].</p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.const">issues</a> in [util.smartptr.shared.const].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
