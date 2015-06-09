@@ -1,6 +1,9 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
   <!ENTITY nbsp "&#160;">
+  <!ENTITY mdash "&#x2014;">
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY nacute "&#x144;">
 ] >
 
 <issue num="2461" status="New">
@@ -307,6 +310,70 @@ or that object shall have been destroyed
 (or it shall ensure otherwise that no resources are leaked).
 </p></li>
 </ol>
+
+<note>2015-05-23, Tomasz Kami&nacute;ski comments</note>
+<p>
+Solution 1 discussed in this issue also breaks support for the <tt>polymorphic_allocator</tt> proposed in the part 
+of the Library Fundamentals TS v1, in addition to already mentioned <tt>std::scoped_allocator_adapter</tt>. Furthermore 
+there is unknown impact on the other user-defined state-full allocators code written in the C++11.
+<p/>
+Furthermore the library resolution proposed in the LWG issues <iref ref="2089"/> and 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4462.html">N4462</a>, 
+will break the relation between the <tt>std::allocator_trait::construct</tt> method and 
+copy and move constructor even for the standard <tt>std::allocator</tt>. As example please consider following class:
+</p>
+<blockquote><pre>
+struct NonCopyable
+{
+  NonCopyable() = default;
+  NonCopyable(NonCopyable const&amp;) = delete;
+  NonCopyable(NonCopyable&amp;&amp;) = delete;
+};
+
+struct InitListConstructor : NonCopyable
+{
+  InitListConstructor() = default;
+  InitListConstructor(std::initializer_list&lt;int&gt;);
+  operator int() const;
+};
+</pre></blockquote>
+<p>
+For the above declarations following expression are ill-formed:
+</p>
+<blockquote><pre>
+InitListConstructor copy(std::declval&lt;InitListConstructor const&amp;&gt;());
+InitListConstructor move(std::declval&lt;InitListConstructor&amp;&amp;&gt;());
+</pre></blockquote>
+<p>
+So the class is not <tt>CopyConstructible</tt> nor and <tt>MoveConstructible</tt>. However the following are well formed:
+</p>
+<blockquote><pre>
+InitListConstructor copy{std::declval&lt;InitListConstructor const&amp;&gt;()};
+InitListConstructor move{std::declval&lt;InitListConstructor&amp;&amp;&gt;()};
+</pre></blockquote>
+<p>
+And will be called by <tt>std::allocator&lt;InitListConstructor&gt;::construct</tt> in case of move-insertion 
+and copy-insertion, after appliance of the resolution proposed in mentioned papers:
+</p>
+<blockquote>
+<p>
+The gist of the proposed library fix is simple:
+</p>
+<ul>
+<li><p>if <tt>is_constructible_v&lt;TargetType, Args...&gt;</tt>, use direct-nonlist-initialization</p></li>
+<li><p>otherwise, use brace-initialization.</p></li>
+</ul>
+</blockquote>
+<p>
+As consequence the requirement proposed in the Solution 1:
+</p>
+<blockquote><p>
+If the parameter pack <tt>args</tt> consists of a single parameter of the type <tt>value_type&amp;&amp;</tt>, 
+the function may only propagate exceptions if <tt>is_nothrow_move_constructible&lt;value_type&gt;::value</tt> is false. 
+</p></blockquote>
+<p>
+Will no longer hold for the <tt>std::allocator</tt>.
+</p>
 
 </discussion>
 
