@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+] >
+
+<issue num="2509" status="New">
+<title>[fund.ts.v2] <tt>any_cast</tt> doesn't work with rvalue reference targets and cannot move with a value target</title>
+<section><sref ref="[any.nonmembers]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>13 Jun 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+In <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4529.html">Library Fundamentals v2</a>, 
+[any.nonmembers]/5 says:
+</p>
+<blockquote><p>
+For the first form, <tt>*any_cast&lt;add_const_t&lt;remove_reference_t&lt;ValueType&gt;&gt;&gt;(&amp;operand)</tt>. 
+For the second and third forms, <tt>*any_cast&lt;remove_reference_t&lt;ValueType&gt;&gt;(&amp;operand)</tt>.
+</p></blockquote>
+<ol>
+<li><p>This means that</p>
+<blockquote><pre>
+any_cast&lt;Foo&amp;&amp;&gt;(<i>whatever_kind_of_any_lvalue_or_rvalue</i>);
+</pre></blockquote>
+<p>
+is always ill-formed.  That's unfortunate, because forwarding such a cast
+result of an <tt>any</tt> is actually useful, and such uses do not want to copy/move
+the underlying value just yet.
+</p>
+</li>
+
+<li><p>Another problem is that that same specification prevents an implementation
+from moving to the target when</p>
+<blockquote><pre>
+ValueType any_cast(any&amp;&amp; operand);
+</pre></blockquote>
+<p>
+is used. The difference is observable, so an implementation can't perform
+an optimization under the as-if rule. We are pessimizing every <tt>CopyConstructible</tt>
+<em>and</em> <tt>MoveConstructible</tt> type because we are not using the move when
+we can. This unfortunately includes types such as the library containers,
+and we do not want such a pessimization!
+</p>
+</li>
+</ol>
+
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
