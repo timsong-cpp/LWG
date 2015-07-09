@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-06-16 at 19:06:01 UTC</p>
+<p><p>Revised 2015-07-09 at 19:07:33 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173"></a>1173. "Equivalence" wishy-washiness</h3>
@@ -16195,6 +16195,56 @@ with sequenced before.
 The "shall not introduce a data race" wording is probably not technically correct either. These may race with other 
 (non-allocation/deallocation) concurrent accesses to the object being allocated or deallocated.
 </p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2509"></a>2509. [fund.ts.v2] <tt>any_cast</tt> doesn't work with rvalue reference targets and cannot move with a value target</h3>
+<p><b>Section:</b> X [any.nonmembers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-06-13 <b>Last modified:</b> 2015-07-09</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+In <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4529.html">Library Fundamentals v2</a>, 
+[any.nonmembers]/5 says:
+</p>
+<blockquote><p>
+For the first form, <tt>*any_cast&lt;add_const_t&lt;remove_reference_t&lt;ValueType&gt;&gt;&gt;(&amp;operand)</tt>. 
+For the second and third forms, <tt>*any_cast&lt;remove_reference_t&lt;ValueType&gt;&gt;(&amp;operand)</tt>.
+</p></blockquote>
+<ol>
+<li><p>This means that</p>
+<blockquote><pre>
+any_cast&lt;Foo&amp;&amp;&gt;(<i>whatever_kind_of_any_lvalue_or_rvalue</i>);
+</pre></blockquote>
+<p>
+is always ill-formed.  That's unfortunate, because forwarding such a cast
+result of an <tt>any</tt> is actually useful, and such uses do not want to copy/move
+the underlying value just yet.
+</p>
+</li>
+
+<li><p>Another problem is that that same specification prevents an implementation
+from moving to the target when</p>
+<blockquote><pre>
+ValueType any_cast(any&amp;&amp; operand);
+</pre></blockquote>
+<p>
+is used. The difference is observable, so an implementation can't perform
+an optimization under the as-if rule. We are pessimizing every <tt>CopyConstructible</tt>
+<em>and</em> <tt>MoveConstructible</tt> type because we are not using the move when
+we can. This unfortunately includes types such as the library containers,
+and we do not want such a pessimization!
+</p>
+</li>
+</ol>
 
 
 
