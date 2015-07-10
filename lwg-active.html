@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D94)</h1>
-<p><p>Revised 2015-07-10 at 19:07:50 UTC</p>
+<p><p>Revised 2015-07-10 at 20:07:33 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D94: 2014-09-25 2015 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>262 open issues, up by 6.</li>
+<li>263 open issues, up by 7.</li>
 <li>1770 closed issues, up by 0.</li>
-<li>2032 issues total, up by 6.</li>
+<li>2033 issues total, up by 7.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 6 New issues: <a href="lwg-active.html#2504">2504</a>, <a href="lwg-active.html#2505">2505</a>, <a href="lwg-active.html#2506">2506</a>, <a href="lwg-active.html#2507">2507</a>, <a href="lwg-active.html#2508">2508</a>, <a href="lwg-active.html#2509">2509</a>.</li>
+<li>Added the following 7 New issues: <a href="lwg-active.html#2504">2504</a>, <a href="lwg-active.html#2505">2505</a>, <a href="lwg-active.html#2506">2506</a>, <a href="lwg-active.html#2507">2507</a>, <a href="lwg-active.html#2508">2508</a>, <a href="lwg-active.html#2509">2509</a>, <a href="lwg-active.html#2510">2510</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -30584,6 +30584,190 @@ and we do not want such a pessimization!
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2510"></a>2510. Tag types should not be <tt>DefaultConstructible</tt></h3>
+<p><b>Section:</b> 18.6 [support.dynamic], 20.2 [utility], 20.3.5 [pair.piecewise], 20.7.2 [memory.syn], 20.7.6 [allocator.tag], 30.4 [thread.mutex] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-06-13 <b>Last modified:</b> 2015-07-10</p>
+<p><b>View all other</b> <a href="lwg-index.html#support.dynamic">issues</a> in [support.dynamic].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>std::experimental::optional</tt>, for certain reasons, specifies its <tt>nullopt</tt> type
+to not be <tt>DefaultConstructible</tt>. It doesn't do so for its tag type <tt>in_place_t</tt>
+and neither does the standard proper for any of its tag types. That turns
+out to be very unfortunate, consider the following:
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+#include &lt;array&gt;
+
+void f(std::array&lt;int, 1&gt;, int) {} // #1
+void f(std::allocator_arg_t, int) {} // #2
+
+int main()
+{
+  f({}, 666); // #3
+}
+</pre></blockquote>
+<p>
+The call at #3 is ambiguous. What's even worse is that if the overload #1
+is removed, the call works just fine. The whole point of a tag type is that
+it either needs to mentioned in a call or it needs to be a forwarded argument,
+so being able to construct a tag type like that makes no sense.
+<p/>
+[optional.nullopt]/3 solves this problem for <tt>nullopt</tt>:
+</p>
+<blockquote>
+<p>
+Type <tt>nullopt_t</tt> shall not have a default constructor. It shall be a
+literal type. Constant <tt>nullopt</tt> shall be initialized with an argument
+of literal type.
+</p>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>In 18.6 [support.dynamic]/1, change the header <tt>&lt;new&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct nothrow_t <del>{}</del>; <ins><i>see below</i></ins>
+extern const nothrow_t nothrow;
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after 18.6 [support.dynamic]/1 (<em>following</em> the header <tt>&lt;new&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>nothrow_t</tt> shall not have a default constructor.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In 20.2 [utility]/2, change the header <tt>&lt;utility&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.3.5, pair piecewise construction</i>
+struct piecewise_construct_t <del>{ }</del>; <ins><i>see below</i></ins>
+constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after 20.2 [utility]/2 (<em>following</em> the header <tt>&lt;utility&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>piecewise_construct_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>piecewise_construct</tt> shall be initialized with an argument of literal type.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In 20.3.5 [pair.piecewise], apply the following edits:</p>
+
+<blockquote><pre>
+struct piecewise_construct_t <del>{ }</del>;
+constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
+</pre></blockquote>
+</li>
+<li><p>In 20.7.2 [memory.syn]/1, change the header <tt>&lt;memory&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.7.6, allocator argument tag</i>
+struct allocator_arg_t <del>{ }</del>; <ins><i>see below</i></ins>
+constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after 20.7.2 [memory.syn]/1 (<em>following</em> the header <tt>&lt;memory&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>allocator_arg_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>allocator_arg</tt> shall be initialized with an
+argument of literal type.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In 20.7.6 [allocator.tag], apply the following edits:</p>
+
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t <del>{ }</del>;
+  constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
+}
+</pre></blockquote>
+<blockquote class="note">
+<p>
+Editorial drive-by: <tt>piecewise_construct_t</tt> is written, in 20.3.5 [pair.piecewise] like
+</p>
+<blockquote><pre>
+struct piecewise_construct_t { };
+constexpr piecewise_construct_t piecewise_construct{};
+</pre></blockquote>
+<p>
+whereas other tag types such as <tt>allocator_construct_t</tt> are, in e.g.
+20.7.6 [allocator.tag], written like
+</p>
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t { };
+  constexpr allocator_arg_t allocator_arg{};
+}
+</pre></blockquote>
+<p>
+We should decide whether or not to write out the <tt>std</tt> namespace in such
+paragraphs. I would say suggest not to write it out.
+</p>
+</blockquote>
+
+</li>
+<li><p>In 30.4 [thread.mutex]/1, change the header <tt>&lt;mutex&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct defer_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+struct try_to_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+struct adopt_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+
+constexpr defer_lock_t defer_lock { <ins><i>unspecified </i></ins> };
+constexpr try_to_lock_t try_to_lock { <ins><i>unspecified </i></ins> };
+constexpr adopt_lock_t adopt_lock { <ins><i>unspecified </i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add three new paragraphs after [thread.mutex]/1 (<em>following</em> the header <tt>&lt;mutex&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>defer_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>defer_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+<p/>
+<ins>-?- Type <tt>try_to_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>try_to_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+<p/>
+<ins>-?- Type <tt>adopt_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>adopt_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+</p>
+</blockquote>
+
+</li>
+</ol>
 
 
 
