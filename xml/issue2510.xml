@@ -1,0 +1,190 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+] >
+
+<issue num="2510" status="New">
+<title>Tag types should not be <tt>DefaultConstructible</tt></title>
+<section><sref ref="[support.dynamic]"/><sref ref="[utility]"/><sref ref="[pair.piecewise]"/>
+<sref ref="[memory.syn]"/><sref ref="[allocator.tag]"/><sref ref="[thread.mutex]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>13 Jun 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::experimental::optional</tt>, for certain reasons, specifies its <tt>nullopt</tt> type
+to not be <tt>DefaultConstructible</tt>. It doesn't do so for its tag type <tt>in_place_t</tt>
+and neither does the standard proper for any of its tag types. That turns
+out to be very unfortunate, consider the following:
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+#include &lt;array&gt;
+
+void f(std::array&lt;int, 1&gt;, int) {} // #1
+void f(std::allocator_arg_t, int) {} // #2
+
+int main()
+{
+  f({}, 666); // #3
+}
+</pre></blockquote>
+<p>
+The call at #3 is ambiguous. What's even worse is that if the overload #1
+is removed, the call works just fine. The whole point of a tag type is that
+it either needs to mentioned in a call or it needs to be a forwarded argument,
+so being able to construct a tag type like that makes no sense.
+<p/>
+[optional.nullopt]/3 solves this problem for <tt>nullopt</tt>:
+</p>
+<blockquote>
+<p>
+Type <tt>nullopt_t</tt> shall not have a default constructor. It shall be a
+literal type. Constant <tt>nullopt</tt> shall be initialized with an argument
+of literal type.
+</p>
+</blockquote>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>In <sref ref="[support.dynamic]"/>/1, change the header <tt>&lt;new&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct nothrow_t <del>{}</del>; <ins><i>see below</i></ins>
+extern const nothrow_t nothrow;
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after <sref ref="[support.dynamic]"/>/1 (<em>following</em> the header <tt>&lt;new&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>nothrow_t</tt> shall not have a default constructor.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In <sref ref="[utility]"/>/2, change the header <tt>&lt;utility&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.3.5, pair piecewise construction</i>
+struct piecewise_construct_t <del>{ }</del>; <ins><i>see below</i></ins>
+constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after <sref ref="[utility]"/>/2 (<em>following</em> the header <tt>&lt;utility&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>piecewise_construct_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>piecewise_construct</tt> shall be initialized with an argument of literal type.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In <sref ref="[pair.piecewise]"/>, apply the following edits:</p>
+
+<blockquote><pre>
+struct piecewise_construct_t <del>{ }</del>;
+constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
+</pre></blockquote>
+</li>
+<li><p>In <sref ref="[memory.syn]"/>/1, change the header <tt>&lt;memory&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.7.6, allocator argument tag</i>
+struct allocator_arg_t <del>{ }</del>; <ins><i>see below</i></ins>
+constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after <sref ref="[memory.syn]"/>/1 (<em>following</em> the header <tt>&lt;memory&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>allocator_arg_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>allocator_arg</tt> shall be initialized with an
+argument of literal type.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In <sref ref="[allocator.tag]"/>, apply the following edits:</p>
+
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t <del>{ }</del>;
+  constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
+}
+</pre></blockquote>
+<blockquote class="note">
+<p>
+Editorial drive-by: <tt>piecewise_construct_t</tt> is written, in <sref ref="[pair.piecewise]"/> like
+</p>
+<blockquote><pre>
+struct piecewise_construct_t { };
+constexpr piecewise_construct_t piecewise_construct{};
+</pre></blockquote>
+<p>
+whereas other tag types such as <tt>allocator_construct_t</tt> are, in e.g.
+<sref ref="[allocator.tag]"/>, written like
+</p>
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t { };
+  constexpr allocator_arg_t allocator_arg{};
+}
+</pre></blockquote>
+<p>
+We should decide whether or not to write out the <tt>std</tt> namespace in such
+paragraphs. I would say suggest not to write it out.
+</p>
+</blockquote>
+
+</li>
+<li><p>In <sref ref="[thread.mutex]"/>/1, change the header <tt>&lt;mutex&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct defer_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+struct try_to_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+struct adopt_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+
+constexpr defer_lock_t defer_lock { <ins><i>unspecified </i></ins> };
+constexpr try_to_lock_t try_to_lock { <ins><i>unspecified </i></ins> };
+constexpr adopt_lock_t adopt_lock { <ins><i>unspecified </i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add three new paragraphs after [thread.mutex]/1 (<em>following</em> the header <tt>&lt;mutex&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>defer_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>defer_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+<p/>
+<ins>-?- Type <tt>try_to_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>try_to_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+<p/>
+<ins>-?- Type <tt>adopt_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>adopt_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+</p>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
