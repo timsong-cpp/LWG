@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+] >
+
+<issue num="2513" status="New">
+<title>Missing requirements for <tt>basic_string::value_type</tt></title>
+<section><sref ref="[strings.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>26 Jun 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The allocator-aware container requirements in Table 98 impose no
+<tt>MoveAssignable</tt> requirements on the <tt>value_type</tt> when
+<tt>propagate_on_container_move_assignment</tt> is true, because typically the
+container's storage would be moved by just exchanging some pointers.
+<p/>
+However for a <tt>basic_string</tt> using the small string optimization move
+assignment may need to assign individual characters into the small
+string buffer, even when the allocator propagates.
+<p/>
+The only requirement on the char-like objects stored in a <tt>basic_string</tt>
+are that they are non-array POD types and <tt>Destructible</tt>, which means
+that a POD type with a deleted move assignment operator should be
+usable in a <tt>basic_string</tt>, despite it being impossible to move assign:
+</p>
+<blockquote><pre>
+#include &lt;string&gt;
+
+struct odd_pod {
+  odd_pod() = default;
+  odd_pod&amp; operator=(odd_pod&amp;&amp;) = delete;
+};
+
+static_assert(std::is_pod&lt;odd_pod&gt;::value, "POD");
+
+int main()
+{
+  using S = std::basic_string&lt;odd_pod&gt;;
+  S s;
+  s = S{};       // fails
+}
+</pre></blockquote>
+<p>
+Using libstdc++ <tt>basic_string&lt;odd_pod&gt;</tt> cannot even be
+default-constructed because the constructor attempts to assign the
+null terminator to the first element of the small string buffer.
+<p/>
+Similar problems exist with POD types with a deleted default constructor.
+<p/>
+I believe that <tt>basic_string</tt> should require its <tt>value_type</tt> to be at
+least <tt>DefaultConstructible</tt> and <tt>MoveAssignable</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
