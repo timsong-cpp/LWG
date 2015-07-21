@@ -270,7 +270,7 @@ void print_issues(std::ostream & out, std::vector<lwg::issue> const & issues, lw
          out << "<hr>\n";
 
          // Number and title
-         out << "<h3><a name=\"" << iss.num << "\"></a>" << iss.num << ". " << iss.title << "</h3>\n";
+         out << "<h3><a name=\"" << iss.num << "\" href=\"#" << iss.num << "\">" << iss.num << ".</a>" << " " << iss.title << "</h3>\n";
 
          // Section, Status, Submitter, Date
          out << "<p><b>Section:</b> ";
