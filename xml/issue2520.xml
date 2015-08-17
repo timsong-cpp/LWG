@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+] >
+
+<issue num="2520" status="New">
+<title>N4089 broke initializing <tt>unique_ptr&lt;T[]&gt;</tt> from a <tt>nullptr</tt></title>
+<section><sref ref="[unique.ptr.runtime.ctor]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>19 Jul 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+According to the wording in <sref ref="[unique.ptr.runtime.ctor]"/>/1,
+this won't work:
+</p>
+<blockquote><pre>
+unique_ptr&lt;int[], DeleterType&gt; x{nullptr, DeleterType{}};
+</pre></blockquote>
+<p>
+<tt>U</tt> is not the same type as <tt>pointer</tt>, so the first bullet will not do.<br/>
+<tt>U</tt> is not a pointer type, so the second bullet will not do.
+<p/>
+An easy fix would be to add a new bullet after the first bullet, like so:
+</p>
+<ul>
+<li><p><tt>U</tt> is the same type as <tt>pointer</tt>, or</p></li>
+<li><p><ins><tt>U</tt> is <tt>nullptr_t</tt>, or</ins></p></li>
+<li><p><tt>pointer</tt> is the same type as <tt>element_type*</tt>, [&hellip;]</p></li>
+</ul>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[unique.ptr.runtime.ctor]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class U&gt; explicit unique_ptr(U p) noexcept;
+template &lt;class U&gt; unique_ptr(U p, <i>see below</i> d) noexcept;
+template &lt;class U&gt; unique_ptr(U p, <i>see below</i> d) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- These constructors behave the same as the constructors that take a <tt>pointer</tt> parameter in the primary
+template except that they shall not participate in overload resolution unless either
+</p>
+<ul>
+<li><p><tt>U</tt> is the same type as <tt>pointer</tt>, or</p></li>
+<li><p><ins><tt>U</tt> is <tt>nullptr_t</tt>, or</ins></p></li>
+<li><p><tt>pointer</tt> is the same type as <tt>element_type*</tt>, <tt>U</tt> is a pointer type <tt>V*</tt>, and 
+<tt>V(*)[]</tt> is convertible to <tt>element_type(*)[]</tt>.</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
