@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+] >
+
+<issue num="2519" status="New">
+<title>Iterator <tt>operator-=</tt> has gratuitous undefined behaviour</title>
+<section><sref ref="[random.access.iterators]"/></section>
+<submitter>Hubert Tong </submitter>
+<date>15 Jul 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In subclause <sref ref="[random.access.iterators]"/>, Table 110, the operational semantics for the expression "<tt>r -= n</tt>" 
+are defined as
+</p>
+<blockquote><pre>
+return r += -n;
+</pre></blockquote>
+<p>
+Given a <tt>difference_type</tt> of a type <tt>int</tt> with range [-32768, 32767], if the value of <tt>n</tt> is -32768, 
+then the evaluation of <tt>-n</tt> causes undefined behaviour (Clause 5 [expr] paragraph 4).
+<p/>
+The operational semantics may be changed such that the undefined behaviour is avoided.
+<p/>
+<b>Suggested wording:</b>
+<p/>
+Replace the operational semantics for "<tt>r -= n</tt>" with:
+</p>
+<blockquote><pre>
+{ 
+  difference_type m = n;
+  if (m >= 0)
+    while (m--)
+      --r;
+  else
+    while (m++)
+      ++r;
+  return r; 
+}
+</pre></blockquote>
+<p>
+Jonathan Wakely:
+<p/>
+I'm now convinced we <em>don't</em> want to change the definition of <tt>-=</tt> and
+instead we should explicitly state the (currently implicit)
+precondition that <tt>n != numeric_limits&lt;difference_type&gt;::min()</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
