@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
+  <!ENTITY hellip "&#x2026;">
+  <!ENTITY mdash  "&#x2014;">
+  <!ENTITY auml   "&#xE4;">
+] >
+
+<issue num="2524" status="New">
+<title><tt>exponential_distribution&lt;float&gt;</tt> sometimes returns inf</title>
+<section><sref ref="[rand.dist.pois.exp]"/></section>
+<submitter>Michael Pr&auml;hofer</submitter>
+<date>20 Aug 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The random number distribution class template <tt>exponential_distribution&lt;float&gt;</tt> may return "inf" as can be 
+seen from the following example program:
+</p>
+<blockquote><pre>
+---------------------------------------------------
+// compiled with
+// g++ -std=c++11 Error_exp_distr.cpp
+
+#include &lt;iostream&gt;
+#include &lt;random&gt;
+#include &lt;bitset&gt;
+int main(){
+  unsigned long long h;
+  std::mt19937_64 mt1(1);
+  std::mt19937_64 mt2(1);
+  mt1.discard(517517);
+  mt2.discard(517517);
+  std::exponential_distribution&lt;float&gt; dis(1.0);
+  h=mt2();
+  std::cout&lt;&lt;std::bitset&lt;64&gt;(h)&lt;&lt;" "&lt;&lt;(float)-log(1-h/pow(2,64))&lt;&lt;" "&lt;&lt;-log(1-(float)h/pow(2,64))&lt;&lt;" "&lt;&lt;dis(mt1)&lt;&lt;std::endl;
+  h=mt2();
+  std::cout&lt;&lt;std::bitset&lt;64&gt;(h)&lt;&lt;" "&lt;&lt;(float)-log(1-h/pow(2,64))&lt;&lt;" "&lt;&lt;-log(1-(float)h/pow(2,64))&lt;&lt;" "&lt;&lt;dis(mt1)&lt;&lt;std::endl;
+}
+---------------------------------------------------
+
+output:
+0110010110001001010011000111000101001100111110100001110011100001 0.505218 0.505218 0.505218
+1111111111111111111111111101010011000110011110011000110101100110 18.4143 inf inf
+</pre></blockquote>
+<p>
+The reason seems to be that converting a <tt>double x</tt> in the range <tt>[0,1)</tt> to <tt>float</tt> may result in <tt>1.0f</tt> 
+if <tt>x</tt> is close enough to <tt>1</tt>. I see two possibilities to fix that:
+</p>
+<ol>
+<li><p>use internally <tt>double</tt> (or <tt>long double</tt>?) and then convert the result at the very end to <tt>float</tt>.</p></li>
+<li><p>take only 24 random bits and convert them to a <tt>float x</tt> in the range <tt>[0,1)</tt> and then return <tt>-log(1-x)</tt>.</p></li>
+</ol>
+
+<p>
+I have not checked if <tt>std::exponential_distribution&lt;double&gt;</tt> has the same problem:
+For <tt>float</tt> on the average 1 out of 2^24 (~10^7) draws returns "inf", which is easily confirmed.
+For <tt>double</tt> on the average 1 out of 2^53 (~10^16) draws might return "inf", which I have not tested.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
