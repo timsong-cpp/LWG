@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='iso-8859-1' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2523" status="New">
+<title><tt>exponential_distribution&lt;float&gt;</tt> sometimes returns inf</title>
+<section><sref ref="[rand.dist.pois.exp]"/></section>
+<submitter>Michael Prähofer</submitter>
+<date>20 Aug 2015</date>
+
+<discussion>
+<p>
+The random number distribution class template
+exponential_distribution&lt;float&gt; may return "inf" as can be seen from the following example program:
+<blockquote><pre>
+---------------------------------------------------
+// compiled with
+// g++ -std=c++11 Error_exp_distr.cpp
+
+#include &lt;iostream&gt;
+#include &lt;random&gt;
+#include &lt;bitset&gt;
+int main(){
+  unsigned long long h;
+  std::mt19937_64 mt1(1);
+  std::mt19937_64 mt2(1);
+  mt1.discard(517517);
+  mt2.discard(517517);
+  std::exponential_distribution&lt;float&gt; dis(1.0);
+  h=mt2();
+  std::cout&lt;&lt;std::bitset&lt;64&gt;(h)&lt;&lt;" "&lt;&lt;(float)-log(1-h/pow(2,64))&lt;&lt;" "&lt;&lt;-log(1-(float)h/pow(2,64))&lt;&lt;" "&lt;&lt;dis(mt1)&lt;&lt;std::endl;
+  h=mt2();
+  std::cout&lt;&lt;std::bitset&lt;64&gt;(h)&lt;&lt;" "&lt;&lt;(float)-log(1-h/pow(2,64))&lt;&lt;" "&lt;&lt;-log(1-(float)h/pow(2,64))&lt;&lt;" "&lt;&lt;dis(mt1)&lt;&lt;std::endl;
+}
+---------------------------------------------------
+
+output:
+0110010110001001010011000111000101001100111110100001110011100001 0.505218 0.505218 0.505218
+1111111111111111111111111101010011000110011110011000110101100110 18.4143 inf inf
+</pre></blockquote>
+
+The reason seems to be that converting a double x in the range [0,1) to float may result in 1.0f if x is close enough to 1.
+I see two possibilities to fix that:
+1. use internally double (or long double?) and then convert the result at the very end to float.
+2. take only 24 random bits and convert them to a float x in the range [0,1) and then return -log(1-x).
+</p>
+
+<p>
+I have not checked if std::exponential_distribution&lt;double&gt; has the same problem:
+For float on the average 1 out of 2^24 (~10^7) draws returns "inf", which is easily confirmed.
+For double on the average 1 out of 2^53 (~10^16) draws might return "inf", which I have not tested.
+</p>
+</discussion>
+
+<resolution>
+<p>
+</p>
+</resolution>
+
+</issue>
