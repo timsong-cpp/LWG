@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D94)</h1>
-<p><p>Revised 2015-08-22 at 13:08:43 UTC</p>
+<p><p>Revised 2015-08-22 at 13:08:44 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -31453,21 +31453,22 @@ namespace std {
 <hr>
 <h3><a name="2524"></a>2524. <tt>exponential_distribution&lt;float&gt;</tt> sometimes returns inf</h3>
 <p><b>Section:</b> 26.5.8.4.2 [rand.dist.pois.exp] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Michael Pr&auml;hofer <b>Opened:</b> 2015-08-20 <b>Last modified:</b> 2015-08-20</p>
+ <b>Submitter:</b> Michael Pr&auml;hofer <b>Opened:</b> 2015-08-20 <b>Last modified:</b> 2015-08-22</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 The random number distribution class template <tt>exponential_distribution&lt;float&gt;</tt> may return "inf" as can be 
 seen from the following example program:
 </p>
-<blockquote><pre>
----------------------------------------------------
+<blockquote>
+<pre>
 // compiled with
 // g++ -std=c++11 Error_exp_distr.cpp
 
 #include &lt;iostream&gt;
 #include &lt;random&gt;
 #include &lt;bitset&gt;
+
 int main(){
   unsigned long long h;
   std::mt19937_64 mt1(1);
@@ -31475,30 +31476,37 @@ int main(){
   mt1.discard(517517);
   mt2.discard(517517);
   std::exponential_distribution&lt;float&gt; dis(1.0);
-  h=mt2();
-  std::cout&lt;&lt;std::bitset&lt;64&gt;(h)&lt;&lt;" "&lt;&lt;(float)-log(1-h/pow(2,64))&lt;&lt;" "&lt;&lt;-log(1-(float)h/pow(2,64))&lt;&lt;" "&lt;&lt;dis(mt1)&lt;&lt;std::endl;
-  h=mt2();
-  std::cout&lt;&lt;std::bitset&lt;64&gt;(h)&lt;&lt;" "&lt;&lt;(float)-log(1-h/pow(2,64))&lt;&lt;" "&lt;&lt;-log(1-(float)h/pow(2,64))&lt;&lt;" "&lt;&lt;dis(mt1)&lt;&lt;std::endl;
+  h = mt2();
+  std::cout &lt;&lt; std::bitset&lt;64&gt;(h) &lt;&lt; " " &lt;&lt; (float) -log(1 - h/pow(2, 64)) &lt;&lt; " " 
+            &lt;&lt; -log(1 - (float) h/pow(2, 64)) &lt;&lt; " " &lt;&lt; dis(mt1) &lt;&lt; std::endl;
+  h = mt2();
+  std::cout &lt;&lt; std::bitset&lt;64&gt;(h) &lt;&lt; " " &lt;&lt; (float) -log(1 - h/pow(2, 64)) &lt;&lt; " " 
+            &lt;&lt; -log(1 - (float) h/pow(2, 64)) &lt;&lt; " " &lt;&lt; dis(mt1) &lt;&lt; std::endl;
 }
----------------------------------------------------
-
+</pre>
+</blockquote>
+<p>
 output:
+</p>
+<blockquote>
+<pre>
 0110010110001001010011000111000101001100111110100001110011100001 0.505218 0.505218 0.505218
 1111111111111111111111111101010011000110011110011000110101100110 18.4143 inf inf
-</pre></blockquote>
+</pre>
+</blockquote>
 <p>
-The reason seems to be that converting a <tt>double x</tt> in the range <tt>[0,1)</tt> to <tt>float</tt> may result in <tt>1.0f</tt> 
+The reason seems to be that converting a <tt>double x</tt> in the range <tt>[0, 1)</tt> to <tt>float</tt> may result in <tt>1.0f</tt> 
 if <tt>x</tt> is close enough to <tt>1</tt>. I see two possibilities to fix that:
 </p>
 <ol>
 <li><p>use internally <tt>double</tt> (or <tt>long double</tt>?) and then convert the result at the very end to <tt>float</tt>.</p></li>
-<li><p>take only 24 random bits and convert them to a <tt>float x</tt> in the range <tt>[0,1)</tt> and then return <tt>-log(1-x)</tt>.</p></li>
+<li><p>take only 24 random bits and convert them to a <tt>float x</tt> in the range <tt>[0, 1)</tt> and then return <tt>-log(1 - x)</tt>.</p></li>
 </ol>
 
 <p>
 I have not checked if <tt>std::exponential_distribution&lt;double&gt;</tt> has the same problem:
-For <tt>float</tt> on the average 1 out of 2^24 (~10^7) draws returns "inf", which is easily confirmed.
-For <tt>double</tt> on the average 1 out of 2^53 (~10^16) draws might return "inf", which I have not tested.
+For <tt>float</tt> on the average 1 out of 2<sup>24</sup> (~10<sup>7</sup>) draws returns "inf", which is easily confirmed.
+For <tt>double</tt> on the average 1 out of 2<sup>53</sup> (~10<sup>16</sup>) draws might return "inf", which I have not tested.
 </p>
 
 
