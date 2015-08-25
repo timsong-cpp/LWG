@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-08-22 at 13:08:44 UTC</p>
+<p><p>Revised 2015-08-25 at 20:08:16 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173"></a>1173. "Equivalence" wishy-washiness</h3>
@@ -16894,6 +16894,85 @@ at the time of the construction of <tt>f</tt></ins> if no allocator was specifie
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2528"></a>2528. Order of <tt>std::tuple</tt> construction unspecified</h3>
+<p><b>Section:</b> 20.4.2.1 [tuple.cnstr] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Brian Rodriguez <b>Opened:</b> 2015-08-25 <b>Last modified:</b> 2015-08-25</p>
+<p><b>View other</b> <a href="lwg-index-open.html#tuple.cnstr">active issues</a> in [tuple.cnstr].</p>
+<p><b>View all other</b> <a href="lwg-index.html#tuple.cnstr">issues</a> in [tuple.cnstr].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <tt>std::tuple</tt> order of element construction is unspecified. It is either in the same order of the type list or in reverse. 
+<p/>
+Consider the following program:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;tuple&gt;
+
+struct X 
+{
+  X(int) { std::cout &lt;&lt; "X constructor\n"; }
+};
+
+struct Y 
+{
+  Y(int) { std::cout &lt;&lt; "Y constructor\n"; }
+};
+
+int main()
+{
+  std::tuple&lt;X, Y&gt; t(1, 2);
+}
+</pre></blockquote>
+<p>
+Here is a <a href="http://coliru.stacked-crooked.com/a/764d0477523ba249">link</a> to two sample compilations. The first uses 
+libstdc++ and constructs in reverse order, and the second uses libc++ and constructs in in-order. 
+<p/>
+A <tt>std::tuple</tt> mimics both a struct and type-generic container and should thus follow their standards. Construction 
+is fundamentally different from a function call, and has historically been important for a specific order to be guaranteed: 
+whichever the developer may decide. Mandating construction order allows the developer to even access "younger" tuple elements 
+in later elements, assuming the list is in some topological order; much like what can be done with struct elements that 
+accept references to other struct elements.
+<p/>
+There are implementation issues as well. While reversed, unnecessary work for braced-initializer-lists will be required as the 
+initializers will need to be placed on the stack so as to respect the order, since lists are evaluated from left to right.  
+This issue could be significant for large tuples or tuples with some elements that require many constructor arguments.
+<p/>
+I propose that the <tt>std::tuple&lt;A, B, ..., Y, Z&gt;</tt>'s constructor implementation be standardized, and made to construct 
+in the same order as its type list e.g. <tt>A{}, B{}, ..., Y{}, Z{}</tt>.
+</p>
+
+<p>
+<b>Daniel:</b>
+<p/>
+When <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3140.html">N3140</a> became accepted, wording had been
+added that gives at least an indication of requiring element initialization in the order of the declaration of the template
+parameters. This argumentation can be based on 20.4.2.1 [tuple.cnstr] p3 (emphasize mine):
+</p>
+<blockquote><p>
+-3- In the constructor descriptions that follow, let <tt><i>i</i></tt> be in the range <tt>[0,sizeof...(Types))</tt> 
+<span style="color:#C80000;font-weight:bold">in order</span>, 
+<tt><i>Ti</i></tt> be the <tt><i>i<sup>th</sup></i></tt> type in <tt>Types</tt>, and <tt><i>Ui</i></tt> be the 
+<tt><i>i<sup>th</sup></i></tt> type in a template parameter pack named <tt>UTypes</tt>, where indexing is
+zero-based.
+</p></blockquote>
+<p>
+But the current wording needs to be improved to make that intention clearer and an issue like this one is necessary to be sure that
+the committee is agreeing (or disagreeing) with that intention, especially because N3140 didn't really point out the relevance of the element
+construction order in the discussion, and because not all constructors explicitly refer to the ordered sequence of numbers generated
+by the variable <tt><i>i</i></tt> (The move constructor does it right, but most other don't do that). 
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
