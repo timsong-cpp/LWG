@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-08-26 at 17:08:32 UTC</p>
+<p><p>Revised 2015-08-26 at 17:08:03 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173"></a>1173. "Equivalence" wishy-washiness</h3>
@@ -5680,7 +5680,9 @@ the best we can do is move the issue to Open.
 <hr>
 <h3><a name="2179"></a>2179. <tt>enable_shared_from_this</tt> and construction from raw pointers</h3>
 <p><b>Section:</b> 20.8.2.5 [util.smartptr.enab], 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2014-02-12</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2015-08-26</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.enab">issues</a> in [util.smartptr.enab].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
 
@@ -5755,6 +5757,12 @@ More discussion is needed to pick a direction to guide a proposed resolution.
 The note says the newly created <tt>shared_ptr</tt> is assigned to the <tt>weak_ptr</tt> member. It doesn't 
 say before doing that the <tt>shared_ptr</tt> should check if the <tt>weak_ptr</tt> is non-empty and possibly 
 share ownership with some other pre-existing <tt>shared_ptr</tt>.
+</p>
+
+<p><i>[2015-08-26 Daniel comments]</i></p>
+
+<p>
+LWG issue <a href="lwg-active.html#2529">2529</a> is independent but related to this issue.
 </p>
 
 
@@ -16965,8 +16973,8 @@ namely: whichever the developer may decide. Mandating construction order will al
 later on in the chain as well, much like a struct allows you to do with its members.
 <p/>
 There are implementation issues as well. Reversed lists will require unnecessary overhead for braced-initializer-list initialization.  
-Since the lists are evaluated from left to right, the initializers will need to be placed on the stack so as to be able to 
-respect the order. This issue could be significant for large tuples, deeply nested tuples, or tuples with elements that require 
+Since lists are evaluated from left to right, the initializers must be placed onto the stack to respect the construction order. 
+This issue could be significant for large tuples, deeply nested tuples, or tuples with elements that require 
 many constructor arguments.
 <p/>
 I propose that the <tt>std::tuple&lt;A, B, ..., Y, Z&gt;</tt>'s constructor implementation be standardized, and made to construct 
@@ -16994,6 +17002,70 @@ construction order in the discussion, and because not all constructors explicitl
 by the variable <tt><i>i</i></tt> (The move constructor does it right, but most other don't do that). 
 </p>
 
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2529"></a>2529. Assigning to <tt>enable_shared_from_this::__weak_this</tt> twice</h3>
+<p><b>Section:</b> 20.8.2.5 [util.smartptr.enab] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2015-08-26</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.enab">issues</a> in [util.smartptr.enab].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+It is unclear what should happen if a pointer to an object with an
+<tt>enable_shared_from_this</tt> base is passed to two different <tt>shared_ptr</tt>
+constructors.
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+
+using namespace std;
+
+int main()
+{
+  struct X : public enable_shared_from_this&lt;X&gt; { };
+  auto xraw = new X;
+  shared_ptr&lt;X&gt; xp1(xraw);  // #1
+  {
+    shared_ptr&lt;X&gt; xp2(xraw, [](void*) { });  // #2
+  }
+  xraw-&gt;shared_from_this();  // #3
+}
+</pre></blockquote>
+<p>
+This is similar to LWG <a href="lwg-active.html#2179">2179</a>, but involves no undefined behaviour due
+to the no-op deleter, and the question is not whether the second
+<tt>shared_ptr</tt> should share ownership with the first, but which <tt>shared_ptr</tt>
+shares ownership with the <tt>enable_shared_from_this::__weak_this</tt> member.
+<p/>
+With all three of the major <tt>std::shared_ptr</tt> implementations the <tt>xp2</tt>
+constructor modifies the <tt>__weak_this</tt> member so the last line of the
+program throws <tt>bad_weak_ptr</tt>, even though all the requirements on the 
+<tt>shared_from_this()</tt> function are met (20.8.2.5 [util.smartptr.enab])/7:
+</p>
+<blockquote><p>
+<i>Requires</i>: <tt>enable_shared_from_this&lt;T&gt;</tt> shall be an accessible base class
+of <tt>T</tt>. <tt>*this</tt> shall be a subobject of an object <tt>t</tt> of type <tt>T</tt>. There shall
+be at least one <tt>shared_ptr</tt> instance <tt>p</tt> that owns <tt>&amp;t</tt>.
+</p></blockquote>
+<p>
+Boost doesn't update <tt>__weak_this</tt>, leaving it sharing with <tt>xp1</tt>, so the
+program doesn't throw. That change was made to <tt>boost::enable_shared_from_this</tt> because 
+someone reported exactly this issue as a bug, see <a href="https://svn.boost.org/trac/boost/ticket/2584">Boost issue 2584</a>.
+<p/>
+On the reflector Peter Dimov explained that there are real-world use
+cases that rely on the Boost behaviour, and none which rely on the
+behaviour of the current <tt>std::shared_ptr</tt> implementations. We should
+specify the behaviour of <tt>enable_shared_from_this</tt> more precisely, and
+resolve this issue one way or another.
+</p>
 
 
 <p><b>Proposed resolution:</b></p>
