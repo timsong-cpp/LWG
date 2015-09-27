@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2543" status="New">
+<title>LWG 2148 (hash support for enum types) seems under-specified</title>
+<section><sref ref="[unord.hash]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>27 Sep 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The rationale in issue <iref ref="2148"/> says:
+</p>
+<blockquote class="note"><p>
+This proposed resolution doesn't specify anything else about the
+primary template, allowing implementations to do whatever they want
+for non-enums: <tt>static_assert</tt> nicely, explode horribly at compiletime
+or runtime, etc.
+</p></blockquote>
+<p>
+libc++ seems to implement it by defining the primary template and
+<tt>static_assert</tt>ing <tt>is_enum</tt> inside it. However, that brings forth
+a problem; there are reasonable SFINAE uses broken by it:
+</p>
+<blockquote><pre>
+#include &lt;type_traits&gt;
+#include &lt;functional&gt;
+
+class S{}; // No hash specialization
+
+template&lt;class T&gt;
+auto f(int) -&gt; decltype(std::hash&lt;T&gt;(), std::true_type());
+
+template&lt;class T&gt;
+auto f(...) -&gt; decltype(std::false_type());
+
+static_assert(!decltype(f&lt;S&gt;(0))::value, "");
+</pre></blockquote>
+<p>
+MSVC doesn't seem to accept that code either.
+<p/>
+There <em>is</em> a way to implement LWG <iref ref="2148"/> so that <tt>hash</tt> for enums is supported
+without breaking that sort of SFINAE uses:
+</p>
+<ol>
+<li><p>Derive the main <tt>hash</tt> template from a library-internal uglified-named
+base template that takes a type and a <tt>bool</tt>, pass as argument for the base
+the result of <tt>is_enum</tt>.</p></li>
+<li><p>Partially specialize that base template so that the false-case has
+a suitable set of private special member function declarations so that it's not
+an aggregate nor usable in almost any expression.</p></li>
+</ol>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
