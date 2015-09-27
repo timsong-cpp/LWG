@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-09-26 at 20:09:53 UTC</p>
+<p><p>Revised 2015-09-27 at 19:09:54 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -17463,8 +17463,8 @@ type convertible to <tt>A</tt>.
 <li><p>Change 23.2.4 [associative.reqmts], Table 101 &mdash; "Associative container requirements" as indicated: 
 <p/>
 [<i>Editorial note</i>: This issue doesn't touch the note column entries for the expressions related to <tt>key_comp()</tt>
-and <tt>value_comp()</tt>, since these are already handled by LWG issues <a href="lwg-active.html#2227">2227</a> and <a href="lwg-active.html#2215">2215</a> &mdash; 
-<i>end editorial note</i>]
+and <tt>value_comp()</tt> (except for the symbolic correction), since these are already handled by LWG issues 
+<a href="lwg-active.html#2227">2227</a> and <a href="lwg-active.html#2215">2215</a> &mdash; <i>end editorial note</i>]
 </p>
 
 <blockquote>
@@ -17650,6 +17650,64 @@ logarithmic
 
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2543" href="#2543">2543.</a> LWG 2148 (hash support for enum types) seems under-specified</h3>
+<p><b>Section:</b> 20.9.13 [unord.hash] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-09-27 <b>Last modified:</b> 2015-09-27</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unord.hash">active issues</a> in [unord.hash].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord.hash">issues</a> in [unord.hash].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The rationale in issue <a href="lwg-defects.html#2148">2148</a> says:
+</p>
+<blockquote class="note"><p>
+This proposed resolution doesn't specify anything else about the
+primary template, allowing implementations to do whatever they want
+for non-enums: <tt>static_assert</tt> nicely, explode horribly at compiletime
+or runtime, etc.
+</p></blockquote>
+<p>
+libc++ seems to implement it by defining the primary template and
+<tt>static_assert</tt>ing <tt>is_enum</tt> inside it. However, that brings forth
+a problem; there are reasonable SFINAE uses broken by it:
+</p>
+<blockquote><pre>
+#include &lt;type_traits&gt;
+#include &lt;functional&gt;
+
+class S{}; // No hash specialization
+
+template&lt;class T&gt;
+auto f(int) -&gt; decltype(std::hash&lt;T&gt;(), std::true_type());
+
+template&lt;class T&gt;
+auto f(...) -&gt; decltype(std::false_type());
+
+static_assert(!decltype(f&lt;S&gt;(0))::value, "");
+</pre></blockquote>
+<p>
+MSVC doesn't seem to accept that code either.
+<p/>
+There <em>is</em> a way to implement LWG <a href="lwg-defects.html#2148">2148</a> so that <tt>hash</tt> for enums is supported
+without breaking that sort of SFINAE uses:
+</p>
+<ol>
+<li><p>Derive the main <tt>hash</tt> template from a library-internal uglified-named
+base template that takes a type and a <tt>bool</tt>, pass as argument for the base
+the result of <tt>is_enum</tt>.</p></li>
+<li><p>Partially specialize that base template so that the false-case has
+a suitable set of private special member function declarations so that it's not
+an aggregate nor usable in almost any expression.</p></li>
+</ol>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
