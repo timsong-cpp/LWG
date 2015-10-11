@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2015-10-03</td>
+  <td align="left">2015-10-11</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D95)</h1>
-<p><p>Revised 2015-10-03 at 16:10:34 UTC</p>
+<p><p>Revised 2015-10-11 at 13:10:31 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D95: 2015-11-01 2015 post-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>294 open issues, up by 0.</li>
+<li>295 open issues, up by 1.</li>
 <li>1772 closed issues, up by 0.</li>
-<li>2066 issues total, up by 0.</li>
+<li>2067 issues total, up by 1.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>No issues added.</li>
+<li>Added the following New issue: <a href="lwg-active.html#2544">2544</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -32809,6 +32809,98 @@ an aggregate nor usable in almost any expression.</p></li>
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2544" href="#2544">2544.</a> <tt>istreambuf_iterator(basic_streambuf&lt;charT, traits&gt;* s)</tt> effects unclear when <tt>s</tt> is <tt>0</tt></h3>
+<p><b>Section:</b> 24.6.3.2 [istreambuf.iterator.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2015-10-05 <b>Last modified:</b> 2015-10-11</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+N4527 24.6.3.2 [istreambuf.iterator.cons] does not mention what the effect of calling 
+<tt>istreambuf_iterator(basic_streambuf&lt;charT, traits&gt;* s)</tt> is when <tt>s</tt> is a null pointer. 
+It should be made clear that this case is well-formed and the result is a end-of-stream iterator.
+<p/>
+Daniel:
+<p/>
+According to 24.6.3 [istreambuf.iterator] p1:
+</p>
+<blockquote><p>
+[&hellip;] The default constructor <tt>istreambuf_iterator()</tt> and the constructor <tt>istreambuf_iterator(0)</tt> both 
+construct an end-of-stream iterator object suitable for use as an end-of-range. [&hellip;]
+</p></blockquote>
+<p>
+This indicates that the described constructor creates an end-of-stream iterator, but this wording is part of the introductory 
+wording and I recommend to make 24.6.3.2 [istreambuf.iterator.cons] clearer, because the existing specification is already
+flawed, e.g. it never specifies when and how the exposition-only-member <tt>sbuf_</tt> is initialized. The proposed wording 
+below attempts to solve these problems as well.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4527.</p>
+
+<ol>
+<li>
+<p>Change 24.6.3.2 [istreambuf.iterator.cons] as indicated:
+<p/>
+[<i>Editorial note</i>: The proposed wording changes also performs some editorial clean-up of the existing mismatches
+of the declarations in the class template synopsis and the individual member specifications. The below wording intentionally
+does not say anything about the concrete value of <tt>sbuf_</tt> for end-of-stream iterator values, because that
+was never specified before; in theory, this could be some magic non-null pointer that can be used in constant expressions. 
+But the wording could be drastically simplified by requiring <tt>sbuf_</tt> to be a null pointer for an end-of-stream iterator value, 
+since I have not yet seen any implementation where this requirement does not hold. &mdash; <i>end editorial note</i>]
+</p>
+<blockquote>
+<pre>
+constexpr istreambuf_iterator() noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Constructs the end-of-stream iterator.
+</p>
+</blockquote>
+<pre>
+istreambuf_iterator(<del>basic_istream&lt;charT,traits&gt;</del><ins>istream_type</ins>&amp; s) noexcept;
+<del>istreambuf_iterator(basic_streambuf&lt;charT,traits&gt;* s) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: <ins>If <tt>s.rdbuf()</tt> is a null pointer, constructs an end-of-stream iterator; otherwise 
+initializes  <tt>sbuf_</tt> with <tt>s.rdbuf()</tt> and constructs an <tt>istreambuf_iterator</tt> that uses the 
+<tt>streambuf_type</tt> object <tt>*sbuf_</tt></ins><del>Constructs an <tt>istreambuf_iterator&lt;&gt;</tt> that 
+uses the <tt>basic_streambuf&lt;&gt;</tt> object <tt>*(s.rdbuf())</tt>, or <tt>*s</tt>, respectively. Constructs 
+an end-of-stream iterator if <tt>s.rdbuf()</tt> is null</del>.
+</p>
+</blockquote>
+<pre>
+<ins>istreambuf_iterator(streambuf_type* s) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: If <tt>s</tt> is a null pointer, constructs an end-of-stream iterator; otherwise initializes 
+<tt>sbuf_</tt> with <tt>s</tt> and constructs an <tt>istreambuf_iterator</tt> that uses the <tt>streambuf_type</tt> 
+object <tt>*sbuf_</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+istreambuf_iterator(const proxy&amp; p) noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: <ins>Initializes <tt>sbuf_</tt> with <tt>p.sbuf_</tt> and constructs an <tt>istreambuf_iterator</tt> 
+that uses the <tt>streambuf_type</tt> object <tt>*sbuf_</tt></ins><del>Constructs a <tt>istreambuf_iterator&lt;&gt;</tt> 
+that uses the <tt>basic_streambuf&lt;&gt;</tt> object pointed to by the <tt>proxy</tt> object's constructor argument 
+<tt>p</tt></del>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
