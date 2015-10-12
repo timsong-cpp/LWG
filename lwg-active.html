@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D95)</h1>
-<p><p>Revised 2015-10-12 at 18:10:04 UTC</p>
+<p><p>Revised 2015-10-12 at 19:10:33 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D95: 2015-11-01 2015 post-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>296 open issues, up by 2.</li>
+<li>297 open issues, up by 3.</li>
 <li>1772 closed issues, up by 0.</li>
-<li>2068 issues total, up by 2.</li>
+<li>2069 issues total, up by 3.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 2 New issues: <a href="lwg-active.html#2544">2544</a>, <a href="lwg-active.html#2545">2545</a>.</li>
+<li>Added the following 3 New issues: <a href="lwg-active.html#2544">2544</a>, <a href="lwg-active.html#2545">2545</a>, <a href="lwg-active.html#2546">2546</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -22021,6 +22021,7 @@ Determines padding for <tt>seq</tt> as described in 27.7.3.6.1 [ostream.formatte
 <h3><a name="2343" href="#2343">2343.</a> Is the value of the ECMA-262 RegExp object's multiline property really false?</h3>
 <p><b>Section:</b> 28.13 [re.grammar] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Nayuta Taga <b>Opened:</b> 2013-10-30 <b>Last modified:</b> 2015-05-22</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.grammar">active issues</a> in [re.grammar].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.grammar">issues</a> in [re.grammar].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -32974,6 +32975,70 @@ throws an exception.
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2546" href="#2546">2546.</a> Implementability of locale-sensitive <em>UnicodeEscapeSequence</em> matching</h3>
+<p><b>Section:</b> 28.13 [re.grammar] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2015-10-08 <b>Last modified:</b> 2015-10-12</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.grammar">active issues</a> in [re.grammar].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.grammar">issues</a> in [re.grammar].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In 28.13 [re.grammar] paragraph 2:
+</p>
+<blockquote><p>
+<tt>basic_regex</tt> member functions shall not call any locale dependent C or C++ API, including the formatted 
+string input functions. Instead they shall call the appropriate traits member function to achieve the required effect.
+</p></blockquote>
+<p>
+Yet, the required interface for a regular expression traits class (28.3 [re.req]) does not appear to have 
+any reliable method for determining whether a character as encoded for the locale associated with the traits 
+instance is the same as a character represented by a <em>UnicodeEscapeSequence</em>, e.g., assuming a sane 
+<tt>ru_RU.koi8r</tt> locale:
+</p>
+<blockquote><pre>
+#include &lt;stdio.h&gt;
+#include &lt;cstdlib&gt;
+#include &lt;regex&gt;
+
+const char data[] = "\xB3";
+const char matchCyrillicCaptialLetterYo[] = R"(\u0401)";
+
+int main(void) 
+{
+  try {
+    std::regex myRegex;
+    myRegex.imbue(std::locale("ru_RU.koi8r"));
+
+    myRegex.assign(matchCyrillicCaptialLetterYo, std::regex_constants::ECMAScript);
+    printf("(%s)\n", std::regex_replace(std::string(data), myRegex, std::string("E")).c_str());
+
+    myRegex.assign("[[:alpha:]]", std::regex_constants::ECMAScript);
+    printf("(%s)\n", std::regex_replace(std::string(data), myRegex, std::string("E")).c_str());
+  } catch (std::regex_error&amp; e) {
+    abort();
+  }
+  return 0;
+}
+</pre></blockquote>
+<p>
+The implementation I tried prints:
+</p>
+<blockquote><pre>
+(&#x401;)
+(E)
+</pre></blockquote>
+<p>
+Which means that the character class matching worked, but not the matching to the <em>UnicodeEscapeSequence</em>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
