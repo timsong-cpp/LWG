@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2546" status="New">
+<title>Implementability of locale-sensitive <em>UnicodeEscapeSequence</em> matching</title>
+<section><sref ref="[re.grammar]"/></section>
+<submitter>Hubert Tong</submitter>
+<date>8 Oct 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <sref ref="[re.grammar]"/> paragraph 2:
+</p>
+<blockquote><p>
+<tt>basic_regex</tt> member functions shall not call any locale dependent C or C++ API, including the formatted 
+string input functions. Instead they shall call the appropriate traits member function to achieve the required effect.
+</p></blockquote>
+<p>
+Yet, the required interface for a regular expression traits class (<sref ref="[re.req]"/>) does not appear to have 
+any reliable method for determining whether a character as encoded for the locale associated with the traits 
+instance is the same as a character represented by a <em>UnicodeEscapeSequence</em>, e.g., assuming a sane 
+<tt>ru_RU.koi8r</tt> locale:
+</p>
+<blockquote><pre>
+#include &lt;stdio.h&gt;
+#include &lt;cstdlib&gt;
+#include &lt;regex&gt;
+
+const char data[] = "\xB3";
+const char matchCyrillicCaptialLetterYo[] = R"(\u0401)";
+
+int main(void) 
+{
+  try {
+    std::regex myRegex;
+    myRegex.imbue(std::locale("ru_RU.koi8r"));
+
+    myRegex.assign(matchCyrillicCaptialLetterYo, std::regex_constants::ECMAScript);
+    printf("(%s)\n", std::regex_replace(std::string(data), myRegex, std::string("E")).c_str());
+
+    myRegex.assign("[[:alpha:]]", std::regex_constants::ECMAScript);
+    printf("(%s)\n", std::regex_replace(std::string(data), myRegex, std::string("E")).c_str());
+  } catch (std::regex_error&amp; e) {
+    abort();
+  }
+  return 0;
+}
+</pre></blockquote>
+<p>
+The implementation I tried prints:
+</p>
+<blockquote><pre>
+(&#x401;)
+(E)
+</pre></blockquote>
+<p>
+Which means that the character class matching worked, but not the matching to the <em>UnicodeEscapeSequence</em>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
