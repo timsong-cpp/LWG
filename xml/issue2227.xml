@@ -1,7 +1,5 @@
-<?xml version='1.0' encoding='iso-8859-1' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY nbsp "&#160;">
-] >
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2227" status="Open">
 <title>Stateful comparison objects in associative containers</title>
@@ -151,9 +149,11 @@ Conclusion: Update wording, revisit later.
 </p>
 
 <note>2015-05-06 Lenexa: Waiting for updated wording</note>
-</discussion>
 
-<resolution>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N3485.</p>
 
 <ol>
@@ -253,6 +253,353 @@ constant
 
 </li>
 
+</ol>
+</blockquote>
+
+<note>2015-10-19 Daniel comments and provides alternative wording</note>
+<p>
+The current standard is especially unclear in regard to what effects move operations of unordered/associative
+containers should have. We have one example that is standardized exactly in this way by looking at 
+<sref ref="[priqueue.cons.alloc]"/> p7:
+</p>
+<blockquote>
+<pre>
+template &lt;class Alloc&gt; priority_queue(priority_queue&amp;&amp; q, const Alloc&amp; a);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: Initializes <tt>c</tt> with <tt>std::move(q.c)</tt> as the first argument and <tt>a</tt> as 
+the second argument, and initializes <tt>comp</tt> with <tt>std::move(q.comp)</tt>
+</p>
+</blockquote>
+</blockquote>
+<p>
+A similarly comparable example are the move-operations of <tt>std::unique_ptr</tt> in regard to the deleter 
+(when this is no a reference), which also respect move-capabilities of that function object.
+<p/>
+We have wording from C++98 for associative containers (but <em>not</em> for unordered containers!) that was never
+adjusted to C++11 move-semantics in <sref ref="[associative.reqmts]"/> p12:
+</p>
+<blockquote><p>
+When an associative container is constructed by passing a comparison object the container shall not store
+a pointer or reference to the passed object, even if that object is passed by reference. When an associative
+container is copied, either through a copy constructor or an assignment operator, the target container shall
+then use the comparison object from the container being copied, as if that comparison object had been
+passed to the target container in its constructor.
+</p></blockquote>
+<p>
+The second sentence of this wording is problematic for several reasons:
+</p>
+<ol>
+<li><p>It only talks about copy operations, not about move operations, except that the term "assignment" without
+leading "copy" is a bit ambigious (albeit it seems clear in the complete context).</p></li>
+<li><p>It is not really clear how to interpret "as if that comparison object had been
+passed to the target container in its constructor" for an assignment operation. A possible but not conclusive
+interpretation could be that this is wording supporting a "copy-via-swap" idiom.</p></li>
+<li><p>There does not exist similar wording for unordered containers, except that Table 102 provides entries for
+copy construction and copy assignment of the containers whose wording just talks of "copies" in either case.</p></li>
+</ol>
+<p>
+Existing implementations differ already:
+</p>
+<ol>
+<li><p>Visual Studio 2015 uses copy construction and copy assignment for the two copy operations but uses swap operations
+for the move operations.</p></li>
+<li><p>GCC's libstdc++ performs copy construction and copy assignment for the two copy operations and for the two
+move operations, respectively</p></li>
+<li><p>clang++'s libc++ performs copy/move construction and copy/move assignment for the corresponding
+four copy/move operations</p></li>
+</ol>
+<p>
+The alternative wording provided below attempts to clarify that container copy/move operations perform the corresponding
+copy/move operations on the owned function objects.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4527.</p>
+
+<ol>
+<li><p>Change <sref ref="[associative.reqmts]"/> p8 as indicated:</p>
+
+<blockquote><p>
+-8- In Table 101, <tt>X</tt> denotes an associative container class, <tt>a</tt> denotes a value of type <tt>X</tt>, 
+<ins><tt>b</tt> denotes a possibly <tt>const</tt> value of type <tt>X</tt>, <tt>rv</tt> denotes a non-<tt>const</tt> rvalue of 
+type <tt>X</tt>,</ins> <tt>u</tt> denotes the name of a variable being declared, [&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Change Table 101 as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 101 &mdash; Associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(il)</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+Same as <tt>X(il.begin(), il.end())</tt>.
+</td>
+<td>
+same as <tt>X(il.begin(), il.end())</tt>.
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>X(b)<br/>
+X a(b)</tt></ins>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<ins>(In addition to the requirements of Table 95)<br/>
+<i>Requires:</i> <tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/> 
+<i>Effects:</i> Copy constructs the comparison object of <tt>a</tt> from<br/> 
+the comparison object of <tt>b</tt>.</ins>
+</td>
+<td>
+<ins>Linear in <tt>b.size()</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>X(rv)<br/>
+X a(rv)</tt></ins>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<ins>(In addition to the requirements of Table 95 and Table 98)<br/>
+<i>Requires:</i> <tt>key_compare</tt> is <tt>MoveConstructible</tt>.<br/> 
+<i>Effects:</i> Move constructs the comparison object of <tt>a</tt> from<br/> 
+the comparison object of <tt>rv</tt>.</ins>
+</td>
+<td>
+<ins>constant</ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>a = b</tt></ins>
+</td>
+<td>
+<ins><tt>X&amp;</tt></ins>
+</td>
+<td>
+<ins>(In addition to the requirements of Table 95 and Table 98)<br/>
+<i>Requires:</i> <tt>key_compare</tt> is <tt>CopyAssignable</tt>.<br/> 
+<i>Effects:</i> Copy assigns the comparison object of <tt>b</tt><br/>
+to the comparison object of <tt>a</tt>.</ins>
+</td>
+<td>
+<ins>Linear in <tt>a.size()</tt> and <tt>b.size()</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>a = rv</tt></ins>
+</td>
+<td>
+<ins><tt>X&amp;</tt></ins>
+</td>
+<td>
+<ins>(In addition to the requirements of Table 95 and Table 98)<br/>
+<i>Requires:</i> <tt>key_compare</tt> is <tt>MoveAssignable</tt>.<br/> 
+<i>Effects:</i> Move assigns from the comparison object of <tt>rv</tt><br/>
+to the comparison object of <tt>a</tt>.</ins>
+</td>
+<td>
+<ins>Linear</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.key_comp()</tt>
+</td>
+<td>
+<tt>X::key_compare</tt>
+</td>
+<td>
+<del>r</del><ins>R</ins>eturns <del>the</del><ins><tt>a</tt>'s</ins> comparison object<br/>
+<del>out of which a was constructed.</del>
+</td>
+<td>
+constant
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+
+<li><p>Change <sref ref="[associative.reqmts]"/> p12 as indicated:</p>
+
+<blockquote><p>
+-12- When an associative container is constructed by passing a comparison object the container shall not store
+a pointer or reference to the passed object, even if that object is passed by reference. <del>When an associative
+container is copied, either through a copy constructor or an assignment operator, the target container shall
+then use the comparison object from the container being copied, as if that comparison object had been
+passed to the target container in its constructor.</del>
+</p></blockquote>
+</li>
+
+
+<li><p>Change <sref ref="[unord.req]"/> p11 as indicated:</p>
+
+<blockquote><p>
+-11- In Table 102: <tt>X</tt> denotes an unordered associative container class, <tt>a</tt> denotes a value of type <tt>X</tt>, 
+<tt>b</tt> denotes a possibly <tt>const</tt> value of type <tt>X</tt>, <ins><tt>rv</tt> denotes a non-<tt>const</tt> rvalue 
+of type <tt>X</tt>,</ins> [&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Change Table 102 as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 102 &mdash; Unordered associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(b)<br/>
+X a(b)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<del>Copy constructor. In addition<br/>
+to the requirements of Table 95,<br/>
+copies the hash function,<br/>
+predicate, and maximum load<br/>
+factor.</del>
+<ins>(In addition to the requirements of Table 95)<br/>
+<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/> 
+<i>Effects:</i> Copy constructs the hash function, predicate, and maximum load factor<br/> 
+of <tt>a</tt> from the corresponding objects of <tt>b</tt>.</ins>
+</td>
+<td>
+Average case linear in<br/> 
+<tt>b.size()</tt>,<br/>
+worst case quadratic.
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>X(rv)<br/>
+X a(rv)</tt></ins>
+</td>
+<td>
+<ins><tt>X</tt></ins>
+</td>
+<td>
+<ins>(In addition to the requirements of Table 95 and Table 98)<br/>
+<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>MoveConstructible</tt>.<br/> 
+<i>Effects:</i> Move constructs the hash function, predicate, and maximum load factor<br/> 
+of <tt>a</tt> from the corresponding objects of <tt>rv</tt>.</ins>
+</td>
+<td>
+<ins>constant</ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a = b</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td>
+<del>Copy assignment operator. In<br/>
+addition to the requirements of<br/>
+Table 95, copies the hash<br/>
+function, predicate, and<br/>
+maximum load factor.</del>
+<ins>(In addition to the requirements of Table 95 and Table 98)<br/>
+<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyAssignable</tt>.<br/> 
+<i>Effects:</i> Copy assigns the hash function, predicate, and maximum load factor<br/> 
+of <tt>b</tt> to the corresponding objects of <tt>a</tt>.</ins>
+</td>
+<td>
+Average case linear in<br/> 
+<tt>b.size()</tt>,<br/>
+worst case quadratic.
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>a = rv</tt></ins>
+</td>
+<td>
+<ins><tt>X&amp;</tt></ins>
+</td>
+<td>
+<ins>(In addition to the requirements of Table 95 and Table 98)<br/>
+<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>MoveAssignable</tt>.<br/> 
+<i>Effects:</i> Move assigns the hash function, predicate, and maximum load factor<br/> 
+from <tt>rv</tt> to the corresponding objects of <tt>a</tt>.</ins>
+</td>
+<td>
+<ins>Linear</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
 </ol>
 
 </resolution>
