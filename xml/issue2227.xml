@@ -313,6 +313,15 @@ four copy/move operations</p></li>
 <p>
 The alternative wording provided below attempts to clarify that container copy/move operations perform the corresponding
 copy/move operations on the owned function objects.
+<p/>
+In addition the wording also resolves LWG <iref ref="2215"/>: I believe that the current
+wording should require that container function objects should meet the <tt>CopyConstructible</tt> requirements. Adding
+this general requirement also fixes the underspecified requirements of the accessor functions <tt>key_comp()</tt> and
+<tt>value_comp()</tt>.
+<p/>
+I don't think that a general requirement for <tt>Swappable</tt> is needed, only the member <tt>swap</tt> function currently requires this.
+Nonetheless the wording below does <em>support</em> stateful functors that are <em>also</em> moveable or move-assignable,
+therefore the specified semantics in terms of move operations.
 </p>
 </discussion>
 
@@ -349,6 +358,71 @@ type <tt>X</tt>,</ins> <tt>u</tt> denotes the name of a variable being declared,
 
 <tr>
 <td>
+<tt>X::key_compare</tt>
+</td>
+<td>
+<tt>Compare</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Compare</tt> is <tt>CopyConstructible</tt>.</ins><br/>
+defaults to <tt>less&lt;key_type&gt;</tt>
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(c)<br/>
+X u(c);</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<del><i>Requires:</i> <tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/></del> 
+<i>Effects</i>: Constructs an empty container.<br/> 
+Uses a copy of <tt>c</tt> as a comparison object.
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i,j,c)<br/>
+X u(i,j,c);</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<i>Requires:</i> <del><tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/></del> 
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: Constructs an empty container and inserts elements<br/>
+from the range <tt>[i, j)</tt> into it; uses <tt>c</tt> as a comparison object.
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
 <tt>X(il)</tt>
 </td>
 <td>
@@ -372,7 +446,6 @@ X a(b)</tt></ins>
 </td>
 <td>
 <ins>(In addition to the requirements of Table 95)<br/>
-<i>Requires:</i> <tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/> 
 <i>Effects:</i> Copy constructs the comparison object of <tt>a</tt> from<br/> 
 the comparison object of <tt>b</tt>.</ins>
 </td>
@@ -391,7 +464,6 @@ X a(rv)</tt></ins>
 </td>
 <td>
 <ins>(In addition to the requirements of Table 95 and Table 98)<br/>
-<i>Requires:</i> <tt>key_compare</tt> is <tt>MoveConstructible</tt>.<br/> 
 <i>Effects:</i> Move constructs the comparison object of <tt>a</tt> from<br/> 
 the comparison object of <tt>rv</tt>.</ins>
 </td>
@@ -504,6 +576,131 @@ of type <tt>X</tt>,</ins> [&hellip;]
 
 <tr>
 <td>
+<tt>X::hasher</tt>
+</td>
+<td>
+<tt>Hash</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Hash</tt> is <tt>CopyConstructible</tt>.<br/></ins>
+<tt>Hash</tt> shall be a unary function object type<br/> 
+such that the expression <tt>hf(k)</tt> has type <tt>std::size_t</tt>.
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X::key_equal</tt>
+</td>
+<td>
+<tt>Pred</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Pred</tt> is <tt>CopyConstructible</tt>.<br/></ins>
+<tt>Pred</tt> shall be a binary predicate that takes<br/> 
+two arguments of type <tt>Key</tt>.<br/> 
+<tt>Pred</tt> is an equivalence relation.
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(n, hf, eq)<br/>
+X a(n, hf, eq)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<del><i>Requires</i>: <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/></del>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(n, hf)<br/>
+X a(n, hf)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> is <tt>CopyConstructible</tt> and<br/></del>
+<tt>key_equal</tt> is <tt>DefaultConstructible</tt>.<br/>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i, j, n, hf, eq)<br/>
+X a(i, j, n, hf, eq)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/></del>
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i, j, n, hf)<br/>
+X a(i, j, n, hf)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> is <tt>CopyConstructible</tt> and<br/></del>
+<tt>key_equal</tt> is <tt>DefaultConstructible</tt>.<br/> 
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
 <tt>X(b)<br/>
 X a(b)</tt>
 </td>
@@ -517,7 +714,6 @@ copies the hash function,<br/>
 predicate, and maximum load<br/>
 factor.</del>
 <ins>(In addition to the requirements of Table 95)<br/>
-<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/> 
 <i>Effects:</i> Copy constructs the hash function, predicate, and maximum load factor<br/> 
 of <tt>a</tt> from the corresponding objects of <tt>b</tt>.</ins>
 </td>
@@ -538,7 +734,6 @@ X a(rv)</tt></ins>
 </td>
 <td>
 <ins>(In addition to the requirements of Table 95 and Table 98)<br/>
-<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>MoveConstructible</tt>.<br/> 
 <i>Effects:</i> Move constructs the hash function, predicate, and maximum load factor<br/> 
 of <tt>a</tt> from the corresponding objects of <tt>rv</tt>.</ins>
 </td>
