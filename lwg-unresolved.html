@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-10-20 at 17:10:03 UTC</p>
+<p><p>Revised 2015-10-20 at 20:10:16 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -6747,7 +6747,7 @@ call reinitializes the object to the described in postconditions initial state.<
 <hr>
 <h3><a name="2215" href="#2215">2215.</a> (unordered) associative container functors should be <tt>CopyConstructible</tt></h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-11-14 <b>Last modified:</b> 2014-06-08</p>
+ <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2012-11-14 <b>Last modified:</b> 2015-10-20</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -6883,10 +6883,18 @@ Alisdair to propose wording.
 The area of this issue partially overlaps what LWG <a href="lwg-active.html#2227">2227</a> addresses.
 </p>
 
+<p><i>[2015-10-20, Daniel comments]</i></p>
+
+<p>
+The revised resolution of LWG <a href="lwg-active.html#2227">2227</a> should resolve this issue as well. It follows the recommendations
+of the submitter to require <tt>CopyConstructible</tt> requirements for the function objects owned by containers,
+but it does not impose any further fundamental requirements.
+</p>
 
 
 <p><b>Proposed resolution:</b></p>
 <p>
+See the resolution of LWG <a href="lwg-active.html#2227">2227</a>.
 </p>
 
 
@@ -7371,7 +7379,7 @@ all the iterators and references before the insertion point remain valid. [&hell
 <hr>
 <h3><a name="2227" href="#2227">2227.</a> Stateful comparison objects in associative containers</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-10-19</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-10-20</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7685,6 +7693,15 @@ four copy/move operations</p></li>
 <p>
 The alternative wording provided below attempts to clarify that container copy/move operations perform the corresponding
 copy/move operations on the owned function objects.
+<p/>
+In addition the wording also resolves LWG <a href="lwg-active.html#2215">2215</a>: I believe that the current
+wording should require that container function objects should meet the <tt>CopyConstructible</tt> requirements. Adding
+this general requirement also fixes the underspecified requirements of the accessor functions <tt>key_comp()</tt> and
+<tt>value_comp()</tt>.
+<p/>
+I don't think that a general requirement for <tt>Swappable</tt> is needed, only the member <tt>swap</tt> function currently requires this.
+Nonetheless the wording below does <em>support</em> stateful functors that are <em>also</em> moveable or move-assignable,
+therefore the specified semantics in terms of move operations.
 </p>
 
 
@@ -7721,6 +7738,71 @@ type <tt>X</tt>,</ins> <tt>u</tt> denotes the name of a variable being declared,
 
 <tr>
 <td>
+<tt>X::key_compare</tt>
+</td>
+<td>
+<tt>Compare</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Compare</tt> is <tt>CopyConstructible</tt>.</ins><br/>
+defaults to <tt>less&lt;key_type&gt;</tt>
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(c)<br/>
+X u(c);</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<del><i>Requires:</i> <tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/></del> 
+<i>Effects</i>: Constructs an empty container.<br/> 
+Uses a copy of <tt>c</tt> as a comparison object.
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i,j,c)<br/>
+X u(i,j,c);</tt>
+</td>
+<td>
+<tt></tt>
+</td>
+<td>
+<i>Requires:</i> <del><tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/></del> 
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: Constructs an empty container and inserts elements<br/>
+from the range <tt>[i, j)</tt> into it; uses <tt>c</tt> as a comparison object.
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
 <tt>X(il)</tt>
 </td>
 <td>
@@ -7744,7 +7826,6 @@ X a(b)</tt></ins>
 </td>
 <td>
 <ins>(In addition to the requirements of Table 95)<br/>
-<i>Requires:</i> <tt>key_compare</tt> is <tt>CopyConstructible</tt>.<br/> 
 <i>Effects:</i> Copy constructs the comparison object of <tt>a</tt> from<br/> 
 the comparison object of <tt>b</tt>.</ins>
 </td>
@@ -7763,7 +7844,6 @@ X a(rv)</tt></ins>
 </td>
 <td>
 <ins>(In addition to the requirements of Table 95 and Table 98)<br/>
-<i>Requires:</i> <tt>key_compare</tt> is <tt>MoveConstructible</tt>.<br/> 
 <i>Effects:</i> Move constructs the comparison object of <tt>a</tt> from<br/> 
 the comparison object of <tt>rv</tt>.</ins>
 </td>
@@ -7876,6 +7956,131 @@ of type <tt>X</tt>,</ins> [&hellip;]
 
 <tr>
 <td>
+<tt>X::hasher</tt>
+</td>
+<td>
+<tt>Hash</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Hash</tt> is <tt>CopyConstructible</tt>.<br/></ins>
+<tt>Hash</tt> shall be a unary function object type<br/> 
+such that the expression <tt>hf(k)</tt> has type <tt>std::size_t</tt>.
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X::key_equal</tt>
+</td>
+<td>
+<tt>Pred</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Pred</tt> is <tt>CopyConstructible</tt>.<br/></ins>
+<tt>Pred</tt> shall be a binary predicate that takes<br/> 
+two arguments of type <tt>Key</tt>.<br/> 
+<tt>Pred</tt> is an equivalence relation.
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(n, hf, eq)<br/>
+X a(n, hf, eq)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<del><i>Requires</i>: <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/></del>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(n, hf)<br/>
+X a(n, hf)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> is <tt>CopyConstructible</tt> and<br/></del>
+<tt>key_equal</tt> is <tt>DefaultConstructible</tt>.<br/>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i, j, n, hf, eq)<br/>
+X a(i, j, n, hf, eq)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/></del>
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i, j, n, hf)<br/>
+X a(i, j, n, hf)</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> is <tt>CopyConstructible</tt> and<br/></del>
+<tt>key_equal</tt> is <tt>DefaultConstructible</tt>.<br/> 
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
 <tt>X(b)<br/>
 X a(b)</tt>
 </td>
@@ -7889,7 +8094,6 @@ copies the hash function,<br/>
 predicate, and maximum load<br/>
 factor.</del>
 <ins>(In addition to the requirements of Table 95)<br/>
-<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.<br/> 
 <i>Effects:</i> Copy constructs the hash function, predicate, and maximum load factor<br/> 
 of <tt>a</tt> from the corresponding objects of <tt>b</tt>.</ins>
 </td>
@@ -7910,7 +8114,6 @@ X a(rv)</tt></ins>
 </td>
 <td>
 <ins>(In addition to the requirements of Table 95 and Table 98)<br/>
-<i>Requires:</i> <tt>hasher</tt> and <tt>key_equal</tt> are <tt>MoveConstructible</tt>.<br/> 
 <i>Effects:</i> Move constructs the hash function, predicate, and maximum load factor<br/> 
 of <tt>a</tt> from the corresponding objects of <tt>rv</tt>.</ins>
 </td>
