@@ -777,6 +777,7 @@ int main(int argc, char* argv[]) {
       generator.make_tentative (issues, target_path);
       generator.make_unresolved(issues, target_path);
       generator.make_immediate (issues, target_path);
+      generator.make_ready     (issues, target_path);
       generator.make_editors_issues(issues, target_path);
 
 

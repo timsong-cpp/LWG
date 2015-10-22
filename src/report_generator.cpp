@@ -511,6 +511,40 @@ out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT M
    print_file_trailer(out);
 }
 
+void report_generator::make_ready(std::vector<issue> const & issues, std::string const & path) {
+   // publish a document listing all ready issues for a formal vote
+   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
+
+   std::string filename{path + "lwg-ready.html"};
+   std::ofstream out{filename.c_str()};
+   if (!out)
+     throw std::runtime_error{"Failed to open " + filename};
+   print_file_header(out, "C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]");
+out << R"(<h1>C++ Standard Library Issues o be moved in [INSERT CURRENT MEETING HERE]</h1>
+<table>
+<tr>
+<td align="left">Doc. no.</td>
+<td align="left">N4???</td>
+</tr>
+<tr>
+<td align="left">Date:</td>
+<td align="left">)" << build_timestamp << R"(</td>
+</tr>
+<tr>
+<td align="left">Project:</td>
+<td align="left">Programming Language C++</td>
+</tr>
+<tr>
+<td align="left">Reply to:</td>
+<td align="left">Marshall Clow &lt;<a href="mailto:lwgchair@gmail.com">lwgchair@gmail.com</a>&gt;</td>
+</tr>
+</table>
+)";
+   out << "<h2>Ready Issues</h2>\n";
+   print_issues(out, issues, section_db, [](issue const & i) {return "Ready" == i.stat;} );
+   print_file_trailer(out);
+}
+
 void report_generator::make_editors_issues(std::vector<issue> const & issues, std::string const & path) {
    // publish a single document listing all 'Voting' and 'Immediate' resolutions (only).
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));

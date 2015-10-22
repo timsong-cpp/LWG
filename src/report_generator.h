@@ -41,6 +41,8 @@ struct report_generator {
    void make_immediate(std::vector<issue> const & issues, std::string const & path);
       // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
 
+   void make_ready(std::vector<issue> const & issues, std::string const & path);
+      // publish a document listing all ready issues for a formal vote
 
    void make_sort_by_num(std::vector<issue>& issues, std::string const & filename);
 
