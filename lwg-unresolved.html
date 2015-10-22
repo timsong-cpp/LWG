@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-10-22 at 17:10:01 UTC</p>
+<p><p>Revised 2015-10-22 at 17:10:55 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -7379,7 +7379,7 @@ all the iterators and references before the insertion point remain valid. [&hell
 <hr>
 <h3><a name="2227" href="#2227">2227.</a> Stateful comparison objects in associative containers</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-10-20</p>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-19 <b>Last modified:</b> 2015-10-22</p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
 <p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -7702,7 +7702,36 @@ this general requirement also fixes the underspecified requirements of the acces
 I don't think that a general requirement for <tt>Swappable</tt> is needed, only the member <tt>swap</tt> function currently requires this.
 Nonetheless the wording below does <em>support</em> stateful functors that are <em>also</em> moveable or move-assignable,
 therefore the specified semantics in terms of move operations.
+<p/>
+I should add the following warning, though: If this proposed wording would be accepted, there is a little chance of
+code breakage, because the current wording <em>can</em> be read that in general there is no requirement that the
+container functors are <tt>CopyConstructible</tt>. The following code example is accepted by gcc + libstd++:
 </p>
+<blockquote><pre>
+#include &lt;map&gt;
+#include &lt;utility&gt;
+#include &lt;iostream&gt;
+
+struct Cmp {
+  Cmp() = default;
+  Cmp(const Cmp&amp;) = delete;
+  Cmp(Cmp&amp;&amp;) = delete;
+  Cmp&amp; operator=(const Cmp&amp;) = delete;
+  Cmp&amp; operator=(Cmp&amp;&amp;) = delete;
+  template&lt;class T&gt;
+  bool operator()(const T&amp; x, const T&amp; y) const
+  {
+    return x &lt; y;
+  }
+};
+
+typedef std::map&lt;int, int, Cmp&gt; MyMap;
+
+int main() {
+  MyMap m;
+  std::cout &lt;&lt; (m.find(12) == m.end()) &lt;&lt; std::endl;
+}
+</pre></blockquote>
 
 
 <p><b>Proposed resolution:</b></p>
