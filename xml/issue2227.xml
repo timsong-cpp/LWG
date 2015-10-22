@@ -322,7 +322,36 @@ this general requirement also fixes the underspecified requirements of the acces
 I don't think that a general requirement for <tt>Swappable</tt> is needed, only the member <tt>swap</tt> function currently requires this.
 Nonetheless the wording below does <em>support</em> stateful functors that are <em>also</em> moveable or move-assignable,
 therefore the specified semantics in terms of move operations.
+<p/>
+I should add the following warning, though: If this proposed wording would be accepted, there is a little chance of
+code breakage, because the current wording <em>can</em> be read that in general there is no requirement that the
+container functors are <tt>CopyConstructible</tt>. The following code example is accepted by gcc + libstd++:
 </p>
+<blockquote><pre>
+#include &lt;map&gt;
+#include &lt;utility&gt;
+#include &lt;iostream&gt;
+
+struct Cmp {
+  Cmp() = default;
+  Cmp(const Cmp&amp;) = delete;
+  Cmp(Cmp&amp;&amp;) = delete;
+  Cmp&amp; operator=(const Cmp&amp;) = delete;
+  Cmp&amp; operator=(Cmp&amp;&amp;) = delete;
+  template&lt;class T&gt;
+  bool operator()(const T&amp; x, const T&amp; y) const
+  {
+    return x &lt; y;
+  }
+};
+
+typedef std::map&lt;int, int, Cmp&gt; MyMap;
+
+int main() {
+  MyMap m;
+  std::cout &lt;&lt; (m.find(12) == m.end()) &lt;&lt; std::endl;
+}
+</pre></blockquote>
 </discussion>
 
 <resolution>
