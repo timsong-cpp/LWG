@@ -520,11 +520,11 @@ void report_generator::make_ready(std::vector<issue> const & issues, std::string
    if (!out)
      throw std::runtime_error{"Failed to open " + filename};
    print_file_header(out, "C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]");
-out << R"(<h1>C++ Standard Library Issues o be moved in [INSERT CURRENT MEETING HERE]</h1>
+out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]</h1>
 <table>
 <tr>
 <td align="left">Doc. no.</td>
-<td align="left">N4???</td>
+<td align="left">R0165???</td>
 </tr>
 <tr>
 <td align="left">Date:</td>
@@ -541,7 +541,7 @@ out << R"(<h1>C++ Standard Library Issues o be moved in [INSERT CURRENT MEETING 
 </table>
 )";
    out << "<h2>Ready Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return "Ready" == i.stat;} );
+   print_issues(out, issues, section_db, [](issue const & i) {return "Ready" == i.stat || "Tentatively Ready" == i.stat;} );
    print_file_trailer(out);
 }
 
