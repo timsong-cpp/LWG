@@ -287,6 +287,14 @@ void print_issues(std::ostream & out, std::vector<lwg::issue> const & issues, lw
          print_date(out, iss.mod_date);
          out << "</p>\n";
 
+         // priority
+         out << "<p><b>Priority: </b>";
+         if (iss.priority == 99)
+            out << "Not Prioritized\n";
+         else
+            out << iss.priority << '\n';
+         out << "</p>\n";
+
          // view active issues in []
          if (active_issues.count(iss) > 1) {
             out << "<p><b>View other</b> <a href=\"lwg-index-open.html#" << remove_square_brackets(iss.tags[0]) << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
