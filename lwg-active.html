@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D95)</h1>
-<p><p>Revised 2015-10-29 at 19:10:52 UTC</p>
+<p><p>Revised 2015-10-29 at 19:10:39 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D95: 2015-11-01 2015 post-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>300 open issues, up by 6.</li>
+<li>301 open issues, up by 7.</li>
 <li>1774 closed issues, up by 2.</li>
-<li>2074 issues total, up by 8.</li>
+<li>2075 issues total, up by 9.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 8 New issues: <a href="lwg-active.html#2544">2544</a>, <a href="lwg-active.html#2545">2545</a>, <a href="lwg-active.html#2546">2546</a>, <a href="lwg-active.html#2547">2547</a>, <a href="lwg-active.html#2548">2548</a>, <a href="lwg-active.html#2549">2549</a>, <a href="lwg-active.html#2550">2550</a>, <a href="lwg-active.html#2551">2551</a>.</li>
+<li>Added the following 9 New issues: <a href="lwg-active.html#2544">2544</a>, <a href="lwg-active.html#2545">2545</a>, <a href="lwg-active.html#2546">2546</a>, <a href="lwg-active.html#2547">2547</a>, <a href="lwg-active.html#2548">2548</a>, <a href="lwg-active.html#2549">2549</a>, <a href="lwg-active.html#2550">2550</a>, <a href="lwg-active.html#2551">2551</a>, <a href="lwg-active.html#2552">2552</a>.</li>
 <li>Changed the following 3 issues to Review (from Open): <a href="lwg-active.html#2309">2309</a>, <a href="lwg-active.html#2393">2393</a>, <a href="lwg-active.html#2441">2441</a>.</li>
 <li>Changed the following issue to SG1 (from New): <a href="lwg-active.html#2533">2533</a>.</li>
 <li>Changed the following issue to NAD (from New): <a href="lwg-closed.html#2538">2538</a>.</li>
@@ -35085,6 +35085,49 @@ otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>. <ins>If an exc
 
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2552" href="#2552">2552.</a> <tt>priority_queue</tt> doesn't work with move-only types</h3>
+<p><b>Section:</b> 23.6.4 [priority.queue] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Matt Austern <b>Opened:</b> 2015-10-27 <b>Last modified:</b> 2015-10-29</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Suppose we want to remove and process the topmost element of a <tt>priority_queue&lt;T&gt;</tt>. For a copyable type we might write
+</p>
+<blockquote><pre>
+auto tmp = q.top();
+q.pop();
+</pre></blockquote>
+<p>
+but of course that doesn't work if <tt>T</tt> is move-only. Nothing of that sort can work, since moving out of <tt>top()</tt> 
+would make the subsequent call to <tt>pop()</tt> fail.
+<p/>
+Currently, <tt>pop()</tt> is defined to perform
+</p>
+<blockquote><pre>
+pop_heap(c.begin(), c.end(), comp);
+c.pop_back();
+</pre></blockquote>
+<p>
+so the removed value continues to exist between the first and second lines but there isn't any access to it. The sort of 
+primitive that would allow consuming and removing the topmost element would be some variation on this, e.g.
+</p>
+<blockquote><pre>
+pop_heap(c.begin(), c.end(), comp);
+auto tmp = move(c.back());
+c.pop_back();
+return tmp;
+</pre></blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
