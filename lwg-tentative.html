@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-10-31 at 16:10:11 UTC</p>
+<p><p>Revised 2015-11-04 at 20:11:25 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
@@ -114,489 +114,269 @@ elements of the container. No diagnostic required.
 
 
 <hr>
-<h3><a name="2224" href="#2224">2224.</a> Ambiguous status of access to non-live objects</h3>
-<p><b>Section:</b> 17.6.4.10 [res.on.objects] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2015-05-05</p>
+<h3><a name="2192" href="#2192">2192.</a> Validity and return type of <tt>std::abs(0u)</tt> is unclear</h3>
+<p><b>Section:</b> 26.8 [c.math] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-02 <b>Last modified:</b> 2015-11-04</p>
 <p><b>Priority: </b>2
 </p>
-<p><b>View all other</b> <a href="lwg-index.html#res.on.objects">issues</a> in [res.on.objects].</p>
+<p><b>View other</b> <a href="lwg-index-open.html#c.math">active issues</a> in [c.math].</p>
+<p><b>View all other</b> <a href="lwg-index.html#c.math">issues</a> in [c.math].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
 <p><b>Discussion:</b></p>
 
 <p>
-The standard currently does not discuss when library objects may be accessed, except in a non-normative 
-note pertaining to synchronization in [res.on.objects], leaving it ambiguous whether single-threaded 
-code can access a library object during its construction or destruction. For example, there is a 
-reasonable question as to what happens if the deleter supplied to a <tt>unique_ptr</tt> transitively 
-accesses the <tt>unique_ptr</tt> itself during <tt>unique_ptr</tt>'s destruction; a straightforward 
-reading suggests that this is permitted, and that the deleter will see the <tt>unique_ptr</tt> still 
-holding the originally stored pointer, but consensus on the LWG reflector indicates this was not the 
-intent (see discussion beginning with 
-<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=33362">c++std-lib-33362</a>).
+In C++03 the following two programs are invalid:
 </p>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
-<p>
-Moved to Open.
-</p>
-<p>
-Geoffrey will provide an example that clearly highlights the issue.
-</p>
-
-<p><i>[2013-03-19 Geoffrey provides revised resolution and an example]</i></p>
-
-
-<p>
-I contend that the most straightforward reading of the current standard requires the following example code to print 
-"good" (because <tt>~unique_ptr</tt> is not specified to modify the state of the internal pointer), but the consensus 
-on the reflector was that its behavior should be undefined.
-<p/>
-This example also shows that, contrary to a comment in the telecon, the PR is not tautological. 12.7 [class.cdtor]/p4 
-explicitly permits member function calls during destruction, so the behavior of this code is well-defined as far as 
-the core language is concerned, despite the fact that it accesses a library object after the end of the object's 
-lifetime. If we want this code to have undefined behavior, we need to specify that at the library level.
-</p>
-
+<ol style="list-style-type:upper-alpha"><li>
 <blockquote><pre>
-#include &lt;memory&gt;
-#include &lt;iostream&gt;
-
-class A;
-
-struct B {
- std::unique_ptr&lt;A&gt; a;
-};
-
-struct A {
- B* b;
- ~A() {
-   if (b-&gt;a.get() == this) {
-     std::cout &lt;&lt; "good" &lt;&lt; std::endl;
-   }
- }
-};
+#include &lt;cmath&gt;
 
 int main() {
- B b;
- b.a.reset(new A);
- b.a-&gt;b = &amp;b;
+  std::abs(0u);
 }
 </pre></blockquote>
-
-<p>
-Previous resolution:
-</p>
-<blockquote class="note">
-<ol>
-<li><p>Change the title of sub-clause 17.6.4.10 [res.on.objects] as indicated:</p>
-<p><del>Shared objects and the library</del><ins>Library object access</ins> [res.on.objects]</p>
 </li>
-
-<li><p>Edit 17.6.4.10 [res.on.objects] p2 as indicated:</p>
-<p>-2- <del>[<i>Note</i>: In particular, the program is required to ensure that completion of the constructor 
-of any object of a class type defined in the standard library happens before any other member function 
-invocation on that object and, unless otherwise specified, to ensure that completion of any member function 
-invocation other than destruction on such an object happens before destruction of that object. This applies 
-even to objects such as mutexes intended for thread synchronization. &mdash; <i>end note</i>]</del>
-<ins>If an object of a standard library type is accessed outside of the object's lifetime (3.8 [basic.life]), 
-the behavior is undefined unless otherwise specified.</ins></p>
-</li>
-</ol>
-</blockquote>
-
-<p><i>[2014 Urbana]</i></p>
-
-<p>
-STL: is this resolved by our change to the reeentrancy rules? [LWG <a href="lwg-active.html#2414">2414</a>]<br/>
-GR: don't think that solves the multi-threaded case<br/>
-MC: I like changing the note to normative text<br/>
-GR: uses the magic "happens before" words, and "access" is magic too<br/>
-JW: I like this. strict improvement, uses the right wording we have to say this properly<br/>
-STL: I like the last sentence of the note, could we add that as a new note at the end?<br/>
-So add "[Note: This applies even to objects such as mutexes intended for thread synchronization.]" to the end and move to Ready 
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3485.</p>
-
-<ol>
-<li><p>Change the title of sub-clause 17.6.4.10 [res.on.objects] as indicated:</p>
-<p><del>Shared objects and the library</del><ins>Library object access</ins> [res.on.objects]</p>
-</li>
-
-<li><p>Edit 17.6.4.10 [res.on.objects] p2 as indicated: <em>[<i>Editorial remark:</i> The motivation, is to 
-be more precise about the meaning of "outside the object's lifetime" in the presence of threads &mdash; <i>end editorial 
-remark</i>]</em></p>
-<p>-2- <del>[<i>Note</i>: In particular, the program is required to ensure that completion of the constructor 
-of any object of a class type defined in the standard library happens before any other member function 
-invocation on that object and, unless otherwise specified, to ensure that completion of any member function 
-invocation other than destruction on such an object happens before destruction of that object. This applies 
-even to objects such as mutexes intended for thread synchronization. &mdash; <i>end note</i>]</del>
-<ins>If an object of a standard library type is accessed, and the beginning of the object's lifetime 
-(3.8 [basic.life]) does not happen before the access, or the access does not happen before the end 
-of the object's lifetime, the behavior is undefined unless otherwise specified. [<i>Note</i>: This applies even to 
-objects such as mutexes intended for thread synchronization. &mdash; <i>end note</i>]</ins></p>
-</li>
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2234" href="#2234">2234.</a> <tt>assert()</tt> should allow usage in constant expressions</h3>
-<p><b>Section:</b> 19.3 [assertions] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2013-01-12 <b>Last modified:</b> 2015-09-27</p>
-<p><b>Priority: </b>2
-</p>
-<p><b>View other</b> <a href="lwg-index-open.html#assertions">active issues</a> in [assertions].</p>
-<p><b>View all other</b> <a href="lwg-index.html#assertions">issues</a> in [assertions].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-It is unclear from the current specification whether <tt>assert()</tt> expressions can be used in 
-(potential) constant expressions. As an example consider the implementation of a <tt>constexpr</tt>
-function:
-</p>
-
+<li>
 <blockquote><pre>
-#include &lt;cassert&gt;
+#include &lt;cstdlib&gt;
 
-template&lt;class T, unsigned N&gt;
-struct array {
-  T data[N];
-  constexpr const T&amp; operator[](unsigned i) const {
-    return assert(i &lt; N), data[i];
+int main() {
+  std::abs(0u);
+}
+</pre></blockquote>
+</li>
+</ol>
+<p>
+because none of the <tt>std::abs()</tt> overloads is a best match.
+</p>
+<p>
+In C++11 the additional "sufficient overload" rule from 26.8 [c.math] p11 (see also LWG
+<a href="lwg-defects.html#2086">2086</a>) can be read to be applicable to the <tt>std::abs()</tt> overloads as well, which
+can lead to the following possible conclusions:
+<p/>
+<ol>
+<li><p>The program</p>
+<blockquote><pre>
+#include &lt;type_traits&gt;
+#include &lt;cmath&gt;
+
+static_assert(std::is_same&lt;decltype(std::abs(0u)), double&gt;(), "Oops");
+
+int main() {
+  std::abs(0u); // Calls std::abs(double)
+}
+</pre></blockquote>
+<p>
+is required to be well-formed, because of sub-bullet 2 ("[..] or an integer type [..]") of 
+26.8 [c.math] p11 (Note that the current resolution of LWG <a href="lwg-defects.html#2086">2086</a> doesn't
+fix this problem).
+</p>
+</li>
+<li><p>Any translation unit including both <tt>&lt;cmath&gt;</tt> and <tt>&lt;cstdlib&gt;</tt>
+might be ill-formed because of two conflicting requirements for the return type of the overload
+<tt>std::abs(int)</tt>.
+</p>
+</li>
+</ol>
+</p>
+
+<p>
+It seems to me that at least the second outcome is not intended, personally I think that both
+are unfortunate: In contrast to all other floating-point functions explicitly listed in sub-clause 
+26.8 [c.math], the <tt>abs</tt> overloads have a special and well-defined meaning for 
+signed integers and thus have explicit overloads returning a signed integral type. I also believe that 
+there is no problem accepting that <tt>std::fabs(0u)</tt> is well-defined with return type <tt>double</tt>, 
+because the leading 'f' clearly signals that we have a floating point function here. But the expected 
+return type of <tt>std::abs(0u)</tt> seems less than clear to me. A very reasonable answer could be that 
+this has the same type as its argument type, alternatively it could be a reasonably chosen signed 
+integer type, or a floating point type. It should also be noted, that the corresponding
+"generic type function" rule set from C99/C1x in 7.25 p2+3 is restricted to the floating-point functions
+from <tt>&lt;math.h&gt;</tt> and <tt>&lt;complex.h&gt;</tt>, so cannot be applied to the <tt>abs</tt>
+functions (but to the <tt>fabs</tt> functions!).
+<p/>
+Selecting a signed integer return type for unsigned input values can also problematic: The directly
+corresponding signed integer type would give half of the possible argument values an implementation-defined
+result value. Choosing the first signed integer value that can represent all positive values would solve this
+problem for <tt>unsigned int</tt>, but there would be no clear answer for the input type <tt>std::uintmax_t</tt>.
+</p>
+<p>
+Based on this it seems to me that the C++03 state in regard to unsigned integer values was the better
+situation, alerting the user that this code is ambigious at the moment (This might be change with different core-language
+rules as described in N3387).
+</p>
+
+<p><i>[2013-04-20, Bristol]</i></p>
+
+
+<p>
+Resolution: leave as new and bring it back in Chicago. 
+</p>
+
+<p><i>[2013-09 Chicago]</i></p>
+
+<p>
+This issue also relates to LWG <a href="lwg-active.html#2294">2294</a>
+<p/> 
+STL: these two issues should be bundled 
+<p/>
+Stefanus: do what Pete says, and add overloads for unsigned to return directly 
+<p/>
+STL: agree Consensus that this is an issue 
+<p/>
+Walter: motion to move to Open 
+<p/>
+STL: no wording for <a href="lwg-active.html#2294">2294</a> 
+<p/>
+Stefanus: move to open and note the 2 issues are related and should be moved together 
+<p/>
+Stefanus: add and define unsigned versions of <tt>abs()</tt>
+</p>
+
+<p><i>[2014-02-03 Howard comments]</i></p>
+
+<p>
+Defining <tt>abs()</tt> for unsigned integers is a bad idea. Doing so would turn compile time errors into run time errors, 
+especially in C++ where we have templates, and the types involved are not always apparent to the programmer at design time.  
+For example, consider:
+</p>
+<blockquote><pre>
+template &lt;class Int&gt;
+Int
+analyze(Int x, Int y)
+{
+  // ...
+  if (std::abs(<span style="color:#C80000;font-weight:bolder">x - y</span>) &lt; threshold)
+  {
+    // ...
   }
-};
-
-int main() {
-  constexpr array&lt;int, 3&gt; ai = {1, 2, 3};
-  constexpr int i = ai[0];
-  int j = ai[0];
-  // constexpr int k = ai[5];
+  // ...
 }
 </pre></blockquote>
-
 <p>
-The first question is whether this program is guaranteed well-formed? A second question is whether is would guaranteed to be
-ill-formed, if we uncomment the last code line in <tt>main()</tt>?
-</p>
-
-<p>
-The wording in 19.3 [assertions] doesn't add anything significant to the C99 wording. From the C99 specification 
-(7.2 p1 and 7.2.1.1 p2) we get already some valuable guarantees:
-</p>
-
-<ul>
-<li><p>
-The expression <tt>assert(e)</tt> is a <tt>void</tt> expression for all expressions <tt>e</tt> independent of 
-the definition of <tt>NDEBUG</tt>.
-</p></li>
-<li><p>
-If <tt>NDEBUG</tt> is defined, <tt>assert(e)</tt> is equivalent to the expression <tt>void()</tt>
-(or anything that cannot be distinguished from that).
-</p></li>
-</ul>
-
-<p>
-The current wording does not yet <em>guarantee</em> that <tt>assert</tt> expressions can be used in constant expressions,
-but all tested implementations (gcc, MSVC) would already support this use-case. It seems to me that this should be possible
-without giving <tt>assert</tt> a special meaning for the core language.
-<p/>
-As a related comment it should be added, that there is a core language 
-<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3444.html">proposal</a> 
-that intents to relax some current constraints for <tt>constexpr</tt> functions and <tt>literal</tt> types. The most 
-interesting one (making <tt>void</tt> a literal types and allowing for expression-statements) would simplify the motivating 
-example implementation of <tt>operator[]</tt> to:
+<tt>std::abs(<i>expr</i>)</tt> is often used to ask: Are these two numbers sufficiently close?  When the assumption is that 
+the two numbers are signed (either signed integral, or floating point), the logic is sound. But when the same logic is 
+accidentally used with an arithmetic type not capable of representing negative numbers, and especially if unsigned overflow 
+will silently happen, then the logic is no longer correct:
 </p>
 <blockquote><pre>
-constexpr const T&amp; operator[](unsigned i) const {
-  assert(i &lt; N);
-  return data[i];
-};
+auto i = analyze(20u, 21u);  // Today a compile time error
+    // But with <tt>abs(unsigned)</tt> becomes a run time error
 </pre></blockquote>
-
-<p><i>[2013-03-15 Issues Teleconference]</i></p>
-
 <p>
-Moved to Open.
-</p>
-<p>
-We are still gaining experience with <tt>constexpr</tt> as a language feature, and there may
-be work in Evolution that would help address some of these concerns.  Defer discussion until
-we have a group familiar with any evolutionary direction.
+This is not idle speculation. Search the net for "<tt>abs unsigned</tt>" 
+<a href="http://www.avrfreaks.net/index.php?name=PNphpBB2&amp;file=printview&amp;t=35514&amp;start=0">here</a> or 
+<a href="http://fischerlaender.de/mysql/surprising-mysql-behaviour-using-unsigned-int">here</a>.
+<p/>
+In C++11, <tt>chrono</tt> <tt>duration</tt>s and <tt>time_point</tt>s are allowed to be based on unsigned integers. Taking the 
+absolute value of the difference of two such <tt>time_point</tt>s would be easy to accidentally do (say in code templated on 
+<tt>time_point</tt>s), and would certainly be a logic bug, caught at compile time unless we provide the error prone <tt>abs(unsigned)</tt>.
 </p>
 
-<p><i>[2014-06-08, Daniel comments and suggests wording]</i></p>
+<p><i>[2015-02, Cologne]</i></p>
 
 <p>
-After approval of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3652.html"/>N3652<a/>,
-<tt>void</tt> is now a literal type and <tt>constexpr</tt> functions can contain multiple statements, so
-this makes the guarantee that <tt>assert</tt> expressions are per-se <tt>constexpr</tt>-friendly even more
-relevant. A possible wording form could be along the lines of:
+GR: Do we want to make the changes to both <tt>&lt;cmath&gt;</tt> and <tt>&lt;cstdlib&gt;</tt>?<br/> 
+AM: I think so; we should provide consistent overloads.<br/> 
+GR: Then we're imposing restrictions on what users put in the global namespace.<br/> 
+AM: I'm not so worried about that. Users already know not to use C library names.<br/>
+VV: So what are we going to do about unsigned integers? AM: We will say that they are ill-formed.<br/>
+AM: Does anyone volunteer to send updated wording to Daniel? GR, can you do it? GR: Sure.<br/>
+GR: To clarify: we want to make unsigned types ill-formed?<br/> 
+AM: With promotion rank at least <tt>unsigned int</tt>.<br/>
+GR: And NL suggests to just list those types.
+<p/>
+Conclusion: Merge the resolution into a single issue. 
 </p>
-<blockquote>
-<p>
-For every core constant expression <em>e</em> of scalar type that evaluates to <tt>true</tt> after being contextually 
-converted to <tt>bool</tt>, the expression <tt>assert(<em>e</em>)</tt> shall be a prvalue core constant expression of type 
-<tt>void</tt>.
-</p>
+
+<strong>Previous resolution from Daniel [SUPERSEDED]:</strong>
+<blockquote class = "note">
+<p>This wording is relative to N3376.</p>
+
+<ol>
+<li><p>Change 26.8 [c.math] p11 as indicated:</p>
+<blockquote><p>
+-11- Moreover<ins>, except for the <tt>abs</tt> functions</ins>, there shall be additional overloads sufficient to ensure:
+<p/>
+[&hellip;]
+</p></blockquote>
+</li>
+</ol>
 </blockquote>
-<p>
-Richard Smith pointed out some weaknesses of this wording form, for example it would not guarantee to require
-the following example to work:
-</p>
-<blockquote><pre>
-constexpr void check(bool b) { assert(b); }
-</pre></blockquote>
-<p>
-because <tt>b</tt> is not a core constant expression in this context.
-<p/>
-He suggested improvements that lead to the wording form presented below (any defects mine). 
-</p>
 
-<p><i>[Lenexa 2015-05-05]</i></p>
+<p><i>[2015-03-03, Geoffrey Romer provides improved wording]</i></p>
 
 <p>
-MC : ran into this<br/>
-Z : Is it guaranteed to be an expression?<br/>
-MC : clarifies that assert runs at runtime, not sure what it does at compile time<br/>
-STL : c standard guarantees its an expression and not a whole statement, so comma chaining it is ok<br/>
-HH : Some implementations work as author wants it to<br/>
-STL : also doing this as constexpr<br/>
-DK/STL : discussing how this can actually work<br/>
-HH : GCC 5 also implements it. We have implementor convergence<br/>
-MC : Wants to do this without giving assert a special meaning<br/>
-STL : NDEBUG being defined where assert appears is not how assert works. This is bug in wording. Should be "when assert is defined" or something like that. ... is a constant subexpression if NDEBUG is defined at the point where assert is last defined or redefined."<br/>
-Would like to strike the "either" because ok if both debug or assertion is true. We want inclusive-or here<br/>
-MC : is redefined needed?<br/>
-STL : my mental model is its defined once and then redefined<br/>
-HH : wants to up to P2<br/>
-Z/STL : discussing how wording takes care of how/when assert is defined/redefefined<br/>
-STL/WB : discussing whether to move to ready or review. -> Want to move it to ready.<br/>
-ask for updated wording<br/>
-p3 -> p2<br/>
-plan to go to ready after checking wording<br/>
+In the following I've drafted combined wording to resolve LWG <a href="lwg-active.html#2192">2192</a> and <a href="lwg-active.html#2294">2294</a>. Note that the first 
+two paragraphs are taken verbatim from the P/R of LWG <a href="lwg-active.html#2294">2294</a>, but the third is newly drafted:
 </p>
 
-<p><i>[Telecom 2015-06-30]</i></p>
+<p><i>[2015-05-05 Lenexa: Howard to draft updated wording]</i></p>
 
-<p>
-HH: standardizing existing practice<br/>
-MC: what about the comment from Lenexa about striking "either"?<br/>
-HH: all three implementations accept it<br/>
-MC: update issue to strike "either" and move to Tentatively Ready<br/>
-</p>
+
+<p><i>[2015-09-11: Howard updated wording]</i></p>
+
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>HH: abs() for unsigned types is really dangerous. People often use abs(x - y), which would be a disaster. </p>
+<p>TK: That's why you need a two-argument abs_diff(x, y), especially for unsigned types. </p>
+<p>JW: Lawrence has a proposal for abs_diff in the mailing.</p>
+<p>STL: As an alternative to considering promotions, I would just ban all unsigned types, even unsigned char.</p>
+<p>STL: Does the PR change any implementation? Is the final paragraph just a consequence? </p><p>HH: It's a consequence. It could just be a note. </p><p>VV: Ship it as is.</p>
+<p>STL: Editorial: capitalize the first letter in the Note.</p>
+<p>Move to Tentatively ready.</p>
 
 
 
 <p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
-
-<strong>Previous resolution [SUPERSEDED]:</strong>
-<blockquote class="note"> 
-<ol>
-<li><p>Introduce the following new definition to the existing list in 17.3 [definitions]: [<i>Drafting note</i>:
-If LWG <a href="lwg-active.html#2296">2296</a> is accepted before this issue, the accepted wording for the new definition should be used instead 
-&mdash; <i>end drafting note</i>]</p>
-
-<blockquote>
-<p>
-<strong>constant subexpression</strong> [defns.const.subexpr]
-<p/>
-an expression whose evaluation as subexpression of a <em>conditional-expression</em> <em>CE</em> (5.16 [expr.cond]) 
-would not prevent <em>CE</em> from being a core constant expression (5.20 [expr.const]).
-</p>
-</blockquote>
-</li>
-
-<li><p>Insert a new paragraph following 19.3 [assertions] p1 as indicated:</p>
-
-<blockquote>
-<p>
-<ins>-?- An expression <tt>assert(<em>E</em>)</tt> is a constant subexpression ( [defns.const.subexpr]), if either</ins>
-</p>
-<ul>
-<li><p><ins><tt>NDEBUG</tt> is defined at the point where <tt>assert(<em>E</em>)</tt> appears, or</ins></p></li>
-<li><p><ins><tt><em>E</em></tt> contextually converted to <tt>bool</tt> (4 [conv]), is a constant subexpression 
-that evaluates to the value <tt>true</tt>.</ins></p></li>
-</ul>
-</blockquote>
-</li>
-
-</ol>
-</blockquote>
+<p>This wording is relative to N4527.</p>
 
 <ol>
-<li><p>Introduce the following new definition to the existing list in 17.3 [definitions]: [<i>Drafting note</i>:
-If LWG <a href="lwg-active.html#2296">2296</a> is accepted before this issue, the accepted wording for the new definition should be used instead 
-&mdash; <i>end drafting note</i>]</p>
-
+<li><p>Insert the following new paragraphs after 26.8 [c.math] p7:</p>
 <blockquote>
 <p>
-<strong>constant subexpression</strong> [defns.const.subexpr]
+-6- In addition to the <tt>int</tt> versions of certain math functions in <tt>&lt;cstdlib&gt;</tt>, C++ adds <tt>long</tt> 
+and <tt>long long</tt> overloaded versions of these functions, with the same semantics.
 <p/>
-an expression whose evaluation as subexpression of a <em>conditional-expression</em> <em>CE</em> (5.16 [expr.cond]) 
-would not prevent <em>CE</em> from being a core constant expression (5.20 [expr.const]).
-</p>
-</blockquote>
-</li>
-
-<li><p>Insert a new paragraph following 19.3 [assertions] p1 as indicated:</p>
-
-<blockquote>
-<p>
-<ins>-?- An expression <tt>assert(<em>E</em>)</tt> is a constant subexpression ( [defns.const.subexpr]), if </ins>
-</p>
-<ul>
-<li><p><ins><tt>NDEBUG</tt> is defined at the point where <tt>assert(<em>E</em>)</tt> appears, or</ins></p></li>
-<li><p><ins><tt><em>E</em></tt> contextually converted to <tt>bool</tt> (4 [conv]), is a constant subexpression 
-that evaluates to the value <tt>true</tt>.</ins></p></li>
-</ul>
-</blockquote>
-</li>
-
-</ol>
-
-
-
-
-
-
-<hr>
-<h3><a name="2273" href="#2273">2273.</a> <tt>regex_match</tt> ambiguity</h3>
-<p><b>Section:</b> 28.11.2 [re.alg.match] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2013-07-14 <b>Last modified:</b> 2015-09-15</p>
-<p><b>Priority: </b>2
-</p>
-<p><b>View all other</b> <a href="lwg-index.html#re.alg.match">issues</a> in [re.alg.match].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-28.11.2 [re.alg.match] p2 in describing regex_match says:
-</p>
-<blockquote>
-<p>
--2-  <i>Effects:</i> Determines whether there is a match between the regular expression <tt>e</tt>, and all of 
-the character sequence <tt>[first,last)</tt>. The parameter <tt>flags</tt> is used to control how the expression 
-is matched against the character sequence. Returns true if such a match exists, false otherwise.
-</p>
-</blockquote>
-
-<p>
-It has come to my attention that different people are interpreting the first sentence of p2 in different ways:
-</p>
-
-<ol>
-<li><p>
-If a search of the input string using the regular expression <tt>e</tt> matches the entire input string, 
-<tt>regex_match</tt> should return true.
-</p></li>
-<li><p>
-Search the input string using the regular expression <tt>e</tt>. Reject all matches that do not match the 
-entire input string. If a such a match is found, return true.
-</p></li>
-</ol>
-
-<p>
-The difference between these two subtly different interpretations is found using the following ECMAScript example:
-</p>
-
-<blockquote><pre>
-std::regex re("Get|GetValue");
-</pre></blockquote>
-
-<p>
-Using <tt>regex_search</tt>, this <tt>re</tt> can never match the input string <tt>"GetValue"</tt>, because ECMA 
-specifies that alternations are ordered, not greedy. As soon as <tt>"Get"</tt> is matched in the left alternation, 
-the matching algorithm stops.
-<p/>
-Using definition 1, <tt>regex_match</tt> would return false for an input string of <tt>"GetValue"</tt>.
-<p/>
-However definition 2 alters the grammar and appears equivalent to augmenting the regex with a trailing <tt>'$'</tt>, 
-which is an anchor that specifies, reject any matches which do not come at the end of the input sequence.
-So, using definition 2, <tt>regex_match</tt> would return true for an input string of <tt>"GetValue"</tt>.
-<p/>
-My opinion is that it would be strange to have <tt>regex_match</tt> return true for a <tt>string/regex</tt> 
-pair that <tt>regex_search</tt> could never find. I.e. I favor definition 1.
-<p/>
-John Maddock writes:
-<p/>
-The intention was always that <tt>regex_match</tt> would reject any match candidate which didn't match the entire 
-input string. So it would find <tt>GetValue</tt> in this case because the <tt>"Get"</tt> alternative had already 
-been rejected as not matching. Note that the comparison with ECMA script is somewhat moot, as ECMAScript defines 
-the regex grammar (the bit we've imported), it does not define anything like <tt>regex_match</tt>, nor do we import 
-from ECMAScript the behaviour of that function. So IMO the function should behave consistently regardless of the 
-regex dialect chosen. Saying "use awk regexes" doesn't cut it, because that changes the grammar in other ways.
-<p/>
-(John favors definition 2).
-<p/>
-We need to clarify 28.11.2 [re.alg.match]/p2 in one of these two directions.
-</p>
-
-<p><i>[2014-06-21, Rapperswil]</i></p>
-
-<p>
-AM: I think there's a clear direction and consensus we agree with John Maddock's position, and if noone else 
-thinks we need the other function I won't ask for it.
-<p/>
-Marshall Clow and STL to draft.
-</p>
-
-<p><i>[2015-06-10, Marshall suggests concrete wording]</i></p>
-
-
-<p><i>[2015-01-11, Telecom]</i></p>
-
-<p>Move to Tenatatively Ready</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N4527.
-</p>
-
-<ol>
-<li><p>Change 28.11.2 [re.alg.match]/2, as follows:</p>
-
-<blockquote><pre>
-template &lt;class BidirectionalIterator, class Allocator, class charT, class traits&gt;
-  bool regex_match(BidirectionalIterator first, BidirectionalIterator last,
-                   match_results&lt;BidirectionalIterator, Allocator&gt;&amp; m,
-                   const basic_regex&lt;charT, traits>&amp; e,
-                   regex_constants::match_flag_type flags =
-                     regex_constants::match_default);
-</pre>
-<blockquote>
-<p>
--1- <i>Requires</i>: The type <tt>BidirectionalIterator</tt> shall satisfy the requirements of a Bidirectional Iterator
-(24.2.6).
-<p/>
--2- <i>Effects</i>: Determines whether there is a match between the regular expression <tt>e</tt>, and all of the character
-sequence <tt>[first,last)</tt>. The parameter <tt>flags</tt> is used to control how the expression is matched against
-the character sequence. <ins>When determining if there is a match, only potential matches that match the entire character 
-sequence are considered.</ins> Returns <tt>true</tt> if such a match exists, <tt>false</tt> otherwise. <ins>[<i>Example</i>:</ins>
+-7- The added signatures are:
 </p>
 <blockquote>
 <pre>
-<ins>std::regex re("Get|GetValue");
-std::cmatch m;
-regex_search("GetValue", m, re);	// returns true, and m[0] contains "Get"
-regex_match ("GetValue", m, re);	// returns true, and m[0] contains "GetValue"
-regex_search("GetValues", m, re);	// returns true, and m[0] contains "Get"
-regex_match ("GetValues", m, re);	// returns false</ins>
+long abs(long); <i>// labs()</i>
+long long abs(long long); <i>// llabs()</i>
+ldiv_t div(long, long); <i>// ldiv()</i>
+lldiv_t div(long long, long long); <i>// lldiv()</i>
 </pre>
 </blockquote>
 <p>
-<ins>&mdash; <i>end example</i>]</ins>
-<p/>
-[&hellip;]
+<ins>-?- To avoid ambiguities, C++ also adds the following overloads of <tt>abs()</tt> to <tt>&lt;cstdlib&gt;</tt>, 
+with the semantics defined in <tt>&lt;cmath&gt;</tt>:</ins>
 </p>
+<blockquote>
+<pre>
+<ins>float abs(float);
+double abs(double);
+long double abs(long double);</ins>
+</pre>
 </blockquote>
+<p>
+<ins>-?- To avoid ambiguities, C++ also adds the following overloads of <tt>abs()</tt> to <tt>&lt;cmath&gt;</tt>, 
+with the semantics defined in <tt>&lt;cstdlib&gt;</tt>:</ins>
+</p>
+<blockquote>
+<pre>
+<ins>int abs(int);
+long abs(long);
+long long abs(long long);</ins>
+</pre>
+</blockquote>
+<p>
+<ins>-?- If <tt>abs()</tt> is called with an argument of type <tt>X</tt> for which
+<tt>is_unsigned&lt;X&gt;::value</tt> is <tt>true</tt> and if <tt>X</tt> cannot be converted to
+<tt>int</tt> by integral promotion (4.5 [conv.prom]), the program is ill-formed.
+[<i>Note</i>: arguments that can be promoted to <tt>int</tt> are permitted for
+compatibility with C. &mdash; <i>end note</i>]</ins>
+</p>
 </blockquote>
 </li>
 </ol>
@@ -750,101 +530,139 @@ However, there are preconditions on the atomic access functions, so these should
 
 
 <hr>
-<h3><a name="2495" href="#2495">2495.</a> There is no such thing as an <i>Exception Safety</i> element</h3>
-<p><b>Section:</b> 20.8.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-05-05 <b>Last modified:</b> 2015-08-17</p>
-<p><b>Priority: </b>0
+<h3><a name="2450" href="#2450">2450.</a> <tt>(greater|less|greater_equal|less_equal)&lt;void&gt;</tt> do not yield a total order for pointers</h3>
+<p><b>Section:</b> 20.9.6 [comparisons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz <b>Opened:</b> 2014-10-30 <b>Last modified:</b> 2015-11-04</p>
+<p><b>Priority: </b>2
 </p>
-<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.const">issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View other</b> <a href="lwg-index-open.html#comparisons">active issues</a> in [comparisons].</p>
+<p><b>View all other</b> <a href="lwg-index.html#comparisons">issues</a> in [comparisons].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-20.8.2.2.1 [util.smartptr.shared.const] includes several "Exception safety"
-elements, but that is not one of the elements defined in 17.5.1.4
-17.5.1.4 [structure.specifications]. We should either define what it means, or
-just move those sentences into the <i>Effects:</i> clause.
+<tt>less&lt;void&gt;::operator(t, u)</tt> (and the same applies to the rest of <tt>void</tt> specializations for standard 
+comparison function objects) returns <tt>t &lt; u</tt> even if <tt>t</tt> and <tt>u</tt> are pointers, which by 
+5.9 [expr.rel]/3 is undefined except if both pointers point to the same array or object. This might be 
+regarded as a specification defect since the intention of N3421 is that <tt>less&lt;&gt;</tt> can substitute for 
+<tt>less&lt;T&gt;</tt> in any case where the latter is applicable. <tt>less&lt;void&gt;</tt> can be rewritten in 
+the following manner to cope with pointers:
+</p>
+<blockquote><pre>
+template&lt;&gt; struct less&lt;void&gt;
+{
+
+  typedef <i>unspecified</i> is_transparent;
+
+  template &lt;class T, class U&gt;
+  struct pointer_overload : std::is_pointer&lt;std::common_type_t&lt;T, U&gt;&gt;
+  {};
+
+  template &lt;
+    class T, class U,
+    typename std::enable_if&lt;!pointer_overload&lt;T, U&gt;::value&gt;::type* = nullptr
+  &gt;
+  auto operator()(T&amp;&amp; t, U&amp;&amp; u) const
+    -&gt; decltype(std::forward&lt;T&gt;(t) &lt; std::forward&lt;U&gt;(u))
+  {
+    return std::forward&lt;T&gt;(t) &lt; std::forward&lt;U&gt;(u);
+  } 
+
+  template &lt;
+    class T, class U,
+    typename std::enable_if&lt;pointer_overload&lt;T, U>::value>::type* = nullptr
+  &gt;
+  auto operator()(T&amp;&amp; t, U&amp;&amp; u) const
+    -&gt; decltype(std::declval&lt;std::less&lt;std::common_type_t&lt;T, U&gt;&gt;&gt;()(std::forward&lt;T&gt;(t), std::forward&lt;U&gt;(u)))
+  {
+    std::less&lt;std::common_type_t&lt;T, U&gt;&gt; l;
+    return l(std::forward&lt;T&gt;(t), std::forward&lt;U&gt;(u));
+  }
+
+};
+</pre></blockquote>
+
+<blockquote class="note">
+<p>
+This wording is relative to N4140.
+</p>
+
+<ol>
+<li><p>Change 20.9.6 [comparisons] p14 as indicated:</p>
+<blockquote><p>
+-14- For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the specializations 
+for any pointer type yield a total order, even if the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, 
+<tt>&gt;=</tt> do not. <ins>For template specializations <tt>greater&lt;void&gt;</tt>, <tt>less&lt;void&gt;</tt>, 
+<tt>greater_equal&lt;void&gt;</tt>, and <tt>less_equal&lt;void&gt;</tt>, the call operator with arguments whose common 
+type <tt><i>CT</i></tt> is a pointer yields the same value as the corresponding comparison function object class 
+specialization for <tt><i>CT</i></tt>.</ins>
+</p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2015-02, Cologne]</i></p>
+
+<p>
+AM: Is there any way this will be resolved elsewhere? VV: No. AM: Then we should bite the bullet and deal with it here.
+<p/>
+MC: These diamond operators are already ugly. Making them more ugly isn't a big problem.
+<p/>
+JY found some issue with types that are convertible, and will reword. 
+<p/>
+Jeffrey suggests improved wording.
+</p>
+
+<p><i>[2015-05, Lenexa]</i></p>
+
+<p>
+STL: when diamond functions designed, this was on purpose<br/>
+STL: this does go against the original design<br/>
+STL: library is smarter and can give a total order<br/>
+MC: given that the original design rejected this, give back to LEWG<br/>
+STL: original proposal did not talk about total order<br/>
+STL: don't feel strongly about changing the design<br/>
+STL: no objections to taking this issue with some wording changes if people want it<br/>
+MC: not happy with wording, comparing pointers &mdash; what does that mean?<br/>
+STL: needs careful attention to wording<br/>
+STL: want to guarantee that <tt>nullptr</tt> participates in total ordering<br/>
+STL: all hooks into composite pointer type<br/>
+MC: move from new to open with better wording<br/>
+STL: to check updates to issue after Lenexa 
 </p>
 
 <p><i>[2015-06, Telecom]</i></p>
 
 <p>
-Move to Tentatively Ready.
+MC: STL on the hook to update. He's shipping something today so not here.<br/>
+MC: also add link to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4229.pdf">N4229</a><br/>
+</p>
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>
+STL was on the hook for wording, but STL: I don't care. The architecture on which this is an issue does not exist.<br/>
+STL: We will also need to incorporate nullptr. TK: I think that's implied, since the wording is in terms of the resulting operation, not the deduced types. <br/>
+STL: Seems legit. MC: I guess I'm OK with this. TK: I'm weakly in favour, so that we can get people to use transparent comparators without worrying. <br/>
+STL: There's no change to implementations.<br/>
+Move to Tentatively ready.
 </p>
 
 
 <p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N4431.</p>
+<p>
+This wording is relative to N4296.
+</p>
 
 <ol>
-<li><p>Change 20.8.2.2.1 [util.smartptr.shared.const] as follows:</p>
-
-<blockquote>
-<pre>
-template&lt;class Y&gt; explicit shared_ptr(Y* p);
-</pre>
-<blockquote>
-<p>
-[&hellip;]
-<p/>
--4- <i>Effects</i>: Constructs a <tt>shared_ptr</tt> object that <i>owns</i> the pointer <tt>p</tt>. <ins>If an exception 
-is thrown, <tt>delete p</tt> is called.</ins>
-<p/>
-[&hellip;]
-<p/>
-<del>-7- <i>Exception safety</i>: If an exception is thrown, <tt>delete p</tt> is called.</del>
-</p>
-</blockquote>
-<pre>
-template &lt;class Y, class D&gt; shared_ptr(Y* p, D d);
-template &lt;class Y, class D, class A&gt; shared_ptr(Y* p, D d, A a);
-template &lt;class D&gt; shared_ptr(nullptr_t p, D d);
-template &lt;class D, class A&gt; shared_ptr(nullptr_t p, D d, A a);
-</pre>
-<blockquote>
-<p>
-[&hellip;]
-<p/>
--9- <i>Effects</i>: Constructs a <tt>shared_ptr</tt> object that owns the object <tt>p</tt> and the deleter <tt>d</tt>. 
-The second and fourth constructors shall use a copy of <tt>a</tt> to allocate memory for internal use. <ins>If an exception 
-is thrown, <tt>d(p)</tt> is called.</ins>
-<p/>
-[&hellip;]
-<p/>
-<del>-12- <i>Exception safety</i>: If an exception is thrown, <tt>d(p)</tt> is called.</del>
-</p>
-</blockquote>
-[&hellip;]
-<pre>
-template &lt;class Y&gt; explicit shared_ptr(const weak_ptr&lt;Y&gt;&amp; r);
-</pre>
-<blockquote>
-<p>
-[&hellip;]
-<p/>
--24- <i>Effects</i>: Constructs a <tt>shared_ptr</tt> object that shares ownership with <tt>r</tt> and stores a copy of the pointer
-stored in <tt>r</tt>. <ins>If an exception is thrown, the constructor has no effect.</ins>
-<p/>
-[&hellip;]
-<p/>
-<del>-27- <i>Exception safety</i>: If an exception is thrown, the constructor has no effect.</del>
-</p>
-</blockquote>
-<pre>
-template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
-</pre>
-<blockquote>
-<p>
-[&hellip;]
-<p/>
--29- <i>Effects</i>: Equivalent to <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
-otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>. <ins>If an exception is thrown, the constructor has no effect.</ins>
-<p/>
-<del>-30- <i>Exception safety</i>: If an exception is thrown, the constructor has no effect.</del>
-</p>
-</blockquote>
-</blockquote>
+<li><p>Change 20.9.6 [comparisons] p14 as indicated:</p>
+<blockquote><p>
+-14- For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the specializations 
+for any pointer type yield a total order, even if the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, 
+<tt>&gt;=</tt> do not. <ins>For template specializations <tt>greater&lt;void&gt;</tt>, <tt>less&lt;void&gt;</tt>, 
+<tt>greater_equal&lt;void&gt;</tt>, and <tt>less_equal&lt;void&gt;</tt>, if the call operator calls a built-in operator 
+comparing pointers, the call operator yields a total order.</ins>
+</p></blockquote>
 </li>
-
 </ol>
 
 
@@ -896,201 +714,6 @@ its return type is, except that the declaration (although not
 necessarily the definition) of the function shall be well formed.
 </p>
 </blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2510" href="#2510">2510.</a> Tag types should not be <tt>DefaultConstructible</tt></h3>
-<p><b>Section:</b> 18.6 [support.dynamic], 20.2 [utility], 20.3.5 [pair.piecewise], 20.7.2 [memory.syn], 20.7.6 [allocator.tag], 30.4 [thread.mutex] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-06-13 <b>Last modified:</b> 2015-08-17</p>
-<p><b>Priority: </b>2
-</p>
-<p><b>View all other</b> <a href="lwg-index.html#support.dynamic">issues</a> in [support.dynamic].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-<tt>std::experimental::optional</tt>, for certain reasons, specifies its <tt>nullopt</tt> type
-to not be <tt>DefaultConstructible</tt>. It doesn't do so for its tag type <tt>in_place_t</tt>
-and neither does the standard proper for any of its tag types. That turns
-out to be very unfortunate, consider the following:
-</p>
-<blockquote><pre>
-#include &lt;memory&gt;
-#include &lt;array&gt;
-
-void f(std::array&lt;int, 1&gt;, int) {} // #1
-void f(std::allocator_arg_t, int) {} // #2
-
-int main()
-{
-  f({}, 666); // #3
-}
-</pre></blockquote>
-<p>
-The call at #3 is ambiguous. What's even worse is that if the overload #1
-is removed, the call works just fine. The whole point of a tag type is that
-it either needs to mentioned in a call or it needs to be a forwarded argument,
-so being able to construct a tag type like that makes no sense.
-<p/>
-Making the types have an <em>explicit default constructor</em> might have helped, but 
-<a href="http://open-std.org/JTC1/SC22/WG21/docs/cwg_active.html#1518">CWG 1518</a>
-is going against that idea.
-<p/>
-[optional.nullopt]/3 solves this problem for <tt>nullopt</tt>:
-</p>
-<blockquote>
-<p>
-Type <tt>nullopt_t</tt> shall not have a default constructor. It shall be a
-literal type. Constant <tt>nullopt</tt> shall be initialized with an argument
-of literal type.
-</p>
-</blockquote>
-
-<p><i>[2015-06, Telecom]</i></p>
-
-<p>
-Move to Tentatively Ready.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to N4527.
-</p>
-
-<ol>
-<li><p>In 18.6 [support.dynamic]/1, change the header <tt>&lt;new&gt;</tt> synopsis:</p>
-
-<blockquote><pre>
-[&hellip;]
-struct nothrow_t <del>{}</del>; <ins><i>see below</i></ins>
-extern const nothrow_t nothrow;
-[&hellip;]
-</pre></blockquote>
-</li>
-<li><p>Add a new paragraph after 18.6 [support.dynamic]/1 (<em>following</em> the header <tt>&lt;new&gt;</tt> synopsis):</p>
-
-<blockquote>
-<p>
-<ins>-?- Type <tt>nothrow_t</tt> shall not have a default constructor.</ins>
-</p>
-</blockquote>
-</li>
-<li><p>In 20.2 [utility]/2, change the header <tt>&lt;utility&gt;</tt> synopsis:</p>
-
-<blockquote><pre>
-[&hellip;]
-// <i>20.3.5, pair piecewise construction</i>
-struct piecewise_construct_t <del>{ }</del>; <ins><i>see below</i></ins>
-constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
-[&hellip;]
-</pre></blockquote>
-</li>
-<li><p>Add a new paragraph after 20.2 [utility]/2 (<em>following</em> the header <tt>&lt;utility&gt;</tt> synopsis):</p>
-
-<blockquote>
-<p>
-<ins>-?- Type <tt>piecewise_construct_t</tt> shall not have a default constructor. It shall
-be a literal type. Constant <tt>piecewise_construct</tt> shall be initialized with an argument of literal type.</ins>
-</p>
-</blockquote>
-</li>
-<li><p>In 20.3.5 [pair.piecewise], apply the following edits:</p>
-
-<blockquote><pre>
-struct piecewise_construct_t <del>{ }</del>;
-constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
-</pre></blockquote>
-</li>
-<li><p>In 20.7.2 [memory.syn]/1, change the header <tt>&lt;memory&gt;</tt> synopsis:</p>
-
-<blockquote><pre>
-[&hellip;]
-// <i>20.7.6, allocator argument tag</i>
-struct allocator_arg_t <del>{ }</del>; <ins><i>see below</i></ins>
-constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
-[&hellip;]
-</pre></blockquote>
-</li>
-<li><p>Add a new paragraph after 20.7.2 [memory.syn]/1 (<em>following</em> the header <tt>&lt;memory&gt;</tt> synopsis):</p>
-
-<blockquote>
-<p>
-<ins>-?- Type <tt>allocator_arg_t</tt> shall not have a default constructor. It shall
-be a literal type. Constant <tt>allocator_arg</tt> shall be initialized with an
-argument of literal type.</ins>
-</p>
-</blockquote>
-</li>
-<li><p>In 20.7.6 [allocator.tag], apply the following edits:</p>
-
-<blockquote><pre>
-namespace std {
-  struct allocator_arg_t <del>{ }</del>;
-  constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
-}
-</pre></blockquote>
-<blockquote class="note">
-<p>
-Editorial drive-by: <tt>piecewise_construct_t</tt> is written, in 20.3.5 [pair.piecewise] like
-</p>
-<blockquote><pre>
-struct piecewise_construct_t { };
-constexpr piecewise_construct_t piecewise_construct{};
-</pre></blockquote>
-<p>
-whereas other tag types such as <tt>allocator_construct_t</tt> are, in e.g.
-20.7.6 [allocator.tag], written like
-</p>
-<blockquote><pre>
-namespace std {
-  struct allocator_arg_t { };
-  constexpr allocator_arg_t allocator_arg{};
-}
-</pre></blockquote>
-<p>
-We should decide whether or not to write out the <tt>std</tt> namespace in such
-paragraphs. I would suggest not to write it out.
-</p>
-</blockquote>
-
-</li>
-<li><p>In 30.4 [thread.mutex]/1, change the header <tt>&lt;mutex&gt;</tt> synopsis:</p>
-
-<blockquote><pre>
-[&hellip;]
-struct defer_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
-struct try_to_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
-struct adopt_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
-
-constexpr defer_lock_t defer_lock { <ins><i>unspecified </i></ins> };
-constexpr try_to_lock_t try_to_lock { <ins><i>unspecified </i></ins> };
-constexpr adopt_lock_t adopt_lock { <ins><i>unspecified </i></ins> };
-[&hellip;]
-</pre></blockquote>
-</li>
-<li><p>Add three new paragraphs after [thread.mutex]/1 (<em>following</em> the header <tt>&lt;mutex&gt;</tt> synopsis):</p>
-
-<blockquote>
-<p>
-<ins>-?- Type <tt>defer_lock_t</tt> shall not have a default constructor. It shall
-be a literal type. Constant <tt>defer_lock</tt> shall be initialized with an
-argument of literal type.</ins>
-<p/>
-<ins>-?- Type <tt>try_to_lock_t</tt> shall not have a default constructor. It shall
-be a literal type. Constant <tt>try_to_lock</tt> shall be initialized with an
-argument of literal type.</ins>
-<p/>
-<ins>-?- Type <tt>adopt_lock_t</tt> shall not have a default constructor. It shall
-be a literal type. Constant <tt>adopt_lock</tt> shall be initialized with an
-argument of literal type.</ins>
-</p>
-</blockquote>
-
 </li>
 </ol>
 
@@ -1221,6 +844,176 @@ constexpr propagate_const<ins>&amp;</ins> operator=(U&amp;&amp; u)
 
 
 <hr>
+<h3><a name="2520" href="#2520">2520.</a> N4089 broke initializing <tt>unique_ptr&lt;T[]&gt;</tt> from a <tt>nullptr</tt></h3>
+<p><b>Section:</b> 20.8.1.3.1 [unique.ptr.runtime.ctor] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-07-19 <b>Last modified:</b> 2015-11-04</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+According to the wording in 20.8.1.3.1 [unique.ptr.runtime.ctor]/1,
+this won't work:
+</p>
+<blockquote><pre>
+unique_ptr&lt;int[], DeleterType&gt; x{nullptr, DeleterType{}};
+</pre></blockquote>
+<p>
+<tt>U</tt> is not the same type as <tt>pointer</tt>, so the first bullet will not do.<br/>
+<tt>U</tt> is not a pointer type, so the second bullet will not do.
+<p/>
+An easy fix would be to add a new bullet after the first bullet, like so:
+</p>
+<ul>
+<li><p><tt>U</tt> is the same type as <tt>pointer</tt>, or</p></li>
+<li><p><ins><tt>U</tt> is <tt>nullptr_t</tt>, or</ins></p></li>
+<li><p><tt>pointer</tt> is the same type as <tt>element_type*</tt>, [&hellip;]</p></li>
+</ul>
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>MC: Is it the right fix? </p>
+<p>GR: It'd be awefully surprising if we had an interface that accepts null pointer values but not std::nullptr_t. I think the PR is good.</p>
+<p>STL: Are any of the assignments and reset affected? [No, they don't operate on explicit {pointer, deleter} pairs.]</p>
+<p>VV: This is already shipping, has been implemented, has been tested and works fine.</p>
+<p>Move to Tentatively ready.</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>Change 20.8.1.3.1 [unique.ptr.runtime.ctor] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class U&gt; explicit unique_ptr(U p) noexcept;
+template &lt;class U&gt; unique_ptr(U p, <i>see below</i> d) noexcept;
+template &lt;class U&gt; unique_ptr(U p, <i>see below</i> d) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- These constructors behave the same as the constructors that take a <tt>pointer</tt> parameter in the primary
+template except that they shall not participate in overload resolution unless either
+</p>
+<ul>
+<li><p><tt>U</tt> is the same type as <tt>pointer</tt>, or</p></li>
+<li><p><ins><tt>U</tt> is <tt>nullptr_t</tt>, or</ins></p></li>
+<li><p><tt>pointer</tt> is the same type as <tt>element_type*</tt>, <tt>U</tt> is a pointer type <tt>V*</tt>, and 
+<tt>V(*)[]</tt> is convertible to <tt>element_type(*)[]</tt>.</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2522" href="#2522">2522.</a> [fund.ts.v2] Contradiction in <tt>set_default_resource</tt> specification</h3>
+<p><b>Section:</b> X [memory.resource.global] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-07-28 <b>Last modified:</b> 2015-11-04</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+[memory.resource.global]/p7-8 says that the effects of <tt>set_default_resource(r)</tt> are
+</p>
+<blockquote><p>
+If <tt>r</tt> is non-null, sets the value of the default memory resource pointer to <tt>r</tt>, otherwise sets the default memory 
+resource pointer to <tt>new_delete_resource()</tt>.
+</p></blockquote>
+<p>
+and the operation has the postcondition 
+</p>
+<blockquote><p>
+<tt>get_default_resource() == r</tt>.
+</p></blockquote>
+<p>
+When <tt>r</tt> is null, however, the postcondition cannot be met, since the call sets the default memory resource pointer to 
+<tt>new_delete_resource()</tt>, and so <tt>get_default_resource()</tt> would return the value of <tt>new_delete_resource()</tt>, which 
+is obviously not null and so cannot compare equal to <tt>r</tt>.
+</p>
+
+<strong>Previous resolution from Tim Song [SUPERSEDED]:</strong>
+<blockquote class = "note">
+<p>
+This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4480.html">N4480</a>.
+</p>
+
+<ol>
+<li><p>Edit [memory.resource.global]/p8 as follows:</p>
+<blockquote>
+<pre>
+<em>-6-</em> memory_resource* set_default_resource(memory_resource* r) noexcept;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <tt>r</tt> is non-null, sets the value of the default memory resource pointer to <tt>r</tt>, 
+otherwise sets the default memory resource pointer to <tt>new_delete_resource()</tt>. 
+<p/>
+-8- <i>Postconditions</i>: <tt>get_default_resource() == r</tt> <ins>if <tt>r</tt> is non-null; otherwise, 
+<tt>get_default_resource() == new_delete_resource()</tt></ins>. 
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2015-09-15 Geoffrey Romer comments and suggests alternative wording]</i></p>
+
+<p>
+ Let's just strike X [memory.resource.global]/p8. The problem is that p8 is restating p7 incorrectly, 
+ but the solution is not to restate p7 correctly, it's to stop trying to restate p7 at all.
+</p>
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>Move to Tentatively ready</p>
+
+<p><i>[2015-10-26]</i></p>
+
+<p>Daniel adjusts wording to lib. fund. v2.</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4529.html">N4529</a>.
+</p>
+
+<ol>
+<li><p>Edit [memory.resource.global]/p8 as follows:</p>
+<blockquote>
+<pre>
+<em>-6-</em> memory_resource* set_default_resource(memory_resource* r) noexcept;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <tt>r</tt> is non-null, sets the value of the default memory resource pointer to <tt>r</tt>, 
+otherwise sets the default memory resource pointer to <tt>new_delete_resource()</tt>. 
+<p/>
+<del>-8- <i>Postconditions</i>: <tt>get_default_resource() == r</tt>.</del>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2526" href="#2526">2526.</a> [fund.ts.v2] Incorrect precondition for <tt>experimental::function::swap</tt></h3>
 <p><b>Section:</b> 20.9.12.2.2 [func.wrap.func.mod] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-08-04 <b>Last modified:</b> 2015-10-26</p>
@@ -1279,6 +1072,57 @@ void swap(function&amp; other);
 -4- <i>Remarks</i>: The allocators of <tt>*this</tt> and <tt>other</tt> are not interchanged. 
 </p>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2539" href="#2539">2539.</a> [fund.ts.v2] <tt>invocation_trait</tt> definition definition doesn't work for surrogate call functions</h3>
+<p><b>Section:</b> 20.10.7.6 [meta.trans.other] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Mike Spertus <b>Opened:</b> 2015-09-25 <b>Last modified:</b> 2015-11-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+In Library Fundamentals 2 (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4529.html">N4529</a>) 
+3.3.2p3 [meta.trans.other], the definition of invocation traits for a class object <tt>f</tt> considers when <tt>f</tt> 
+is called via a function call operator that is matched by the arguments but ignores the possibility that <tt>f</tt> 
+may be called via a surrogate call function (C++14 13.3.1.1.2 [over.call.object] p2), in which case, the definition 
+of the invocation parameters may be either incorrect or even unsatisfiable.
+</p>
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>AM: Do we have this trait yet? JW: No, it cannot be implemented without compiler support.</p>
+<p>Move to tentatively ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4529.html">N4529</a>.</p>
+
+<ol>
+<li><p>In Library Fundamentals 2, change [meta.trans.other] as indicated:</p>
+<blockquote>
+<p>
+-3- Within this section, define the <i>invocation parameters</i> of <tt><i>INVOKE</i>(f, t1, t2, ..., tN)</tt> as follows, 
+in which <tt>T1</tt> is the possibly <i>cv</i>-qualified type of <tt>t1</tt> and <tt>U1</tt> denotes <tt>T1&amp;</tt> if 
+<tt>t1</tt> is an lvalue or <tt>T1&amp;&amp;</tt> if <tt>t1</tt> is an rvalue: 
+</p>
+<ul>
+<li><p>[&hellip;]</p></li>
+<li><p>If <tt>f</tt> is a class object, the <i>invocation parameters</i> are the parameters matching <tt>t1, ..., tN</tt> 
+of the best viable function (C++14 &sect;13.3.3) for the arguments <tt>t1, ..., tN</tt> among the function call operators 
+<ins>and surrogate call functions</ins> of <tt>f</tt>. </p></li>
+<li><p>[&hellip;]</p></li>
+</ul>
 </blockquote>
 </li>
 </ol>
