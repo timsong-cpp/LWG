@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2552" status="New">
+<title><tt>priority_queue</tt> doesn't work with move-only types</title>
+<section><sref ref="[priority.queue]"/></section>
+<submitter>Matt Austern</submitter>
+<date>27 Oct 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Suppose we want to remove and process the topmost element of a <tt>priority_queue&lt;T&gt;</tt>. For a copyable type we might write
+</p>
+<blockquote><pre>
+auto tmp = q.top();
+q.pop();
+</pre></blockquote>
+<p>
+but of course that doesn't work if <tt>T</tt> is move-only. Nothing of that sort can work, since moving out of <tt>top()</tt> 
+would make the subsequent call to <tt>pop()</tt> fail.
+<p/>
+Currently, <tt>pop()</tt> is defined to perform
+</p>
+<blockquote><pre>
+pop_heap(c.begin(), c.end(), comp);
+c.pop_back();
+</pre></blockquote>
+<p>
+so the removed value continues to exist between the first and second lines but there isn't any access to it. The sort of 
+primitive that would allow consuming and removing the topmost element would be some variation on this, e.g.
+</p>
+<blockquote><pre>
+pop_heap(c.begin(), c.end(), comp);
+auto tmp = move(c.back());
+c.pop_back();
+return tmp;
+</pre></blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
