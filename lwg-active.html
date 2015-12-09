@@ -26,7 +26,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2015-12-08</td>
+  <td align="left">2015-12-09</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D96)</h1>
-<p><p>Revised 2015-12-08 at 20:12:42 UTC</p>
+<p><p>Revised 2015-12-09 at 20:12:52 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D96: 2016-02-15 2016 pre-Jacksonville<ul>
 <li><b>Summary:</b><ul>
-<li>260 open issues, up by 3.</li>
+<li>262 open issues, up by 5.</li>
 <li>1819 closed issues, up by 0.</li>
-<li>2079 issues total, up by 3.</li>
+<li>2081 issues total, up by 5.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 3 New issues: <a href="lwg-active.html#2554">2554</a>, <a href="lwg-active.html#2555">2555</a>, <a href="lwg-active.html#2556">2556</a>.</li>
+<li>Added the following 5 New issues: <a href="lwg-active.html#2554">2554</a>, <a href="lwg-active.html#2555">2555</a>, <a href="lwg-active.html#2556">2556</a>, <a href="lwg-active.html#2557">2557</a>, <a href="lwg-active.html#2558">2558</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -29195,6 +29195,165 @@ shared_future&lt;R&gt; share() <ins>noexcept</ins>;
 <p>
 [&hellip;]
 </p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2557" href="#2557">2557.</a> Logical operator traits are broken in the zero-argument case</h3>
+<p><b>Section:</b> 20.10.8 [meta.logical] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2015-11-05 <b>Last modified:</b> 2015-12-09</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.logical">active issues</a> in [meta.logical].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.logical">issues</a> in [meta.logical].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The conjunction trait in 20.10.8 [meta.logical] seems intended to support invocation with zero arguments, e.g. 
+<tt>conjunction&lt;&gt;::value&gt;</tt>, which is likely to be a useful feature. However, the specification doesn't 
+actually make sense in the zero-argument case. See 20.10.8 [meta.logical]/p3:
+</p>
+<blockquote><p>
+The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, &hellip;, BN&gt;</tt> is the first type <tt>B</tt> in 
+the list <tt>true_type</tt>, <tt>B1</tt>, &hellip;, <tt>BN</tt> for which <tt>B::value == false</tt>, or if every 
+<tt>B::value != false</tt> the BaseCharacteristic is <tt>BN</tt>.
+</p></blockquote>
+<p>
+If "<tt>B1, ..., BN</tt>" is an empty list, then every <tt>B::value != false</tt>, so the BaseCharacteristic is <tt>BN</tt>, 
+but there is no <tt>BN</tt> in this case. 
+<p/>
+(If LWG concludes that conjunction intentionally requires at least one argument, I would appreciate their confirmation that 
+I can editorially remove the mention of <tt>true_type</tt>, which seems to have no normative impact outside the zero-argument case.)
+<p/>
+Similar comments apply to the <tt>disjunction</tt> trait, and presumably to the corresponding traits in the Fundamentals working 
+paper, see LWG <a href="lwg-active.html#2558">2558</a>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Revise 20.10.8 [meta.logical] as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class... B&gt; struct conjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>true_type, B1, ..., BN</tt> for which <tt>Bi::value == false</tt>, or if every <tt>Bi::value != false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>conjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... B&gt; struct disjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- The BaseCharacteristic of a specialization <tt>disjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>false_type, B1, ..., BN</tt> for which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>disjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2558" href="#2558">2558.</a> [fund.ts.v2] Logical operator traits are broken in the zero-argument case</h3>
+<p><b>Section:</b> 20.10.8 [meta.logical] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2015-11-05 <b>Last modified:</b> 2015-12-09</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.logical">active issues</a> in [meta.logical].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.logical">issues</a> in [meta.logical].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+The conjunction trait in 20.10.8 [meta.logical] seems intended to support invocation with zero arguments, e.g. 
+<tt>conjunction&lt;&gt;::value&gt;</tt>, which is likely to be a useful feature. However, the specification doesn't 
+actually make sense in the zero-argument case. See 20.10.8 [meta.logical]/p3:
+</p>
+<blockquote><p>
+The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, &hellip;, BN&gt;</tt> is the first type <tt>B</tt> in 
+the list <tt>true_type</tt>, <tt>B1</tt>, &hellip;, <tt>BN</tt> for which <tt>B::value == false</tt>, or if every 
+<tt>B::value != false</tt> the BaseCharacteristic is <tt>BN</tt>.
+</p></blockquote>
+<p>
+If "<tt>B1, ..., BN</tt>" is an empty list, then every <tt>B::value != false</tt>, so the BaseCharacteristic is <tt>BN</tt>, 
+but there is no <tt>BN</tt> in this case. 
+<p/>
+(If LWG concludes that conjunction intentionally requires at least one argument, I would appreciate their confirmation that 
+I can editorially remove the mention of <tt>true_type</tt>, which seems to have no normative impact outside the zero-argument case.)
+<p/>
+Similar comments apply to the <tt>disjunction</tt> trait, and presumably to the corresponding traits in the C++ working paper,
+see LWG <a href="lwg-active.html#2557">2557</a>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>.</p>
+
+<ol>
+<li><p>Revise 20.10.8 [meta.logical] as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class... B&gt; struct conjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>true_type, B1, ..., BN</tt> for which <tt>Bi::value == false</tt>, or if every <tt>Bi::value != false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>conjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... B&gt; struct disjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- The BaseCharacteristic of a specialization <tt>disjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>false_type, B1, ..., BN</tt> for which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>disjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
 </blockquote>
 </li>
 </ol>
