@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2557" status="New">
+<title>Logical operator traits are broken in the zero-argument case</title>
+<section><sref ref="[meta.logical]"/></section>
+<submitter>Geoffrey Romer</submitter>
+<date>5 Nov 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The conjunction trait in <sref ref="[meta.logical]"/> seems intended to support invocation with zero arguments, e.g. 
+<tt>conjunction&lt;&gt;::value&gt;</tt>, which is likely to be a useful feature. However, the specification doesn't 
+actually make sense in the zero-argument case. See <sref ref="[meta.logical]"/>/p3:
+</p>
+<blockquote><p>
+The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, &hellip;, BN&gt;</tt> is the first type <tt>B</tt> in 
+the list <tt>true_type</tt>, <tt>B1</tt>, &hellip;, <tt>BN</tt> for which <tt>B::value == false</tt>, or if every 
+<tt>B::value != false</tt> the BaseCharacteristic is <tt>BN</tt>.
+</p></blockquote>
+<p>
+If "<tt>B1, ..., BN</tt>" is an empty list, then every <tt>B::value != false</tt>, so the BaseCharacteristic is <tt>BN</tt>, 
+but there is no <tt>BN</tt> in this case. 
+<p/>
+(If LWG concludes that conjunction intentionally requires at least one argument, I would appreciate their confirmation that 
+I can editorially remove the mention of <tt>true_type</tt>, which seems to have no normative impact outside the zero-argument case.)
+<p/>
+Similar comments apply to the <tt>disjunction</tt> trait, and presumably to the corresponding traits in the Fundamentals working 
+paper, see LWG <iref ref="2558"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Revise <sref ref="[meta.logical]"/> as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class... B&gt; struct conjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>true_type, B1, ..., BN</tt> for which <tt>Bi::value == false</tt>, or if every <tt>Bi::value != false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>conjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... B&gt; struct disjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- The BaseCharacteristic of a specialization <tt>disjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>false_type, B1, ..., BN</tt> for which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>disjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
