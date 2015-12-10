@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D96)</h1>
-<p><p>Revised 2015-12-10 at 19:12:22 UTC</p>
+<p><p>Revised 2015-12-10 at 20:12:37 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D96: 2016-02-15 2016 pre-Jacksonville<ul>
 <li><b>Summary:</b><ul>
-<li>263 open issues, up by 6.</li>
+<li>264 open issues, up by 7.</li>
 <li>1819 closed issues, up by 0.</li>
-<li>2082 issues total, up by 6.</li>
+<li>2083 issues total, up by 7.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 6 New issues: <a href="lwg-active.html#2554">2554</a>, <a href="lwg-active.html#2555">2555</a>, <a href="lwg-active.html#2556">2556</a>, <a href="lwg-active.html#2557">2557</a>, <a href="lwg-active.html#2558">2558</a>, <a href="lwg-active.html#2559">2559</a>.</li>
+<li>Added the following 7 New issues: <a href="lwg-active.html#2554">2554</a>, <a href="lwg-active.html#2555">2555</a>, <a href="lwg-active.html#2556">2556</a>, <a href="lwg-active.html#2557">2557</a>, <a href="lwg-active.html#2558">2558</a>, <a href="lwg-active.html#2559">2559</a>, <a href="lwg-active.html#2560">2560</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -29398,6 +29398,111 @@ An expression <tt>assert(E)</tt> is a constant subexpression (17.3.28 [defns.con
 defined or redefined</ins>, or</p></li>
 <li><p>[&hellip;]</p></li>
 </ul>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2560" href="#2560">2560.</a> <tt>is_constructible</tt> underspecified when applied to a function type</h3>
+<p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2015-11-14 <b>Last modified:</b> 2015-12-10</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+What is <tt>is_constructible&lt;void()&gt;::value</tt>? Per 20.10.4.3 [meta.unary.prop] p8:
+</p>
+<blockquote>
+<p>
+The predicate condition for a template specialization <tt>is_constructible&lt;T, Args...&gt;</tt> shall be satisfied if
+and only if the following variable definition would be well-formed for some invented variable <tt>t</tt>:
+</p>
+<blockquote><pre>
+T t(declval&lt;Args&gt;()...);
+</pre></blockquote>
+<p>
+[<i>Note</i>: These tokens are never interpreted as a function declaration. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+<p>
+The problem here is that substituting in <tt>T</tt> as a function type doesn't give a variable definition that's not well-formed 
+(by 1.3.27 [defns.well.formed], well-formed means that it doesn't violate any syntactic or diagnosable semantic rules, and 
+it does not). Instead, it gives a logical absurdity: this wording forces us to imagine a variable of function type, which contradicts 
+the definition of "variable" in 3/6, but does so without violating any diagnosable language rule. So presumably the result must 
+be undefined behavior.
+<p/>
+It seems that we need an explicit rule requiring <tt>T</tt> to be an object or reference type.
+<p/>
+<b>Daniel:</b>
+<p/>
+As one of the authors of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3142.html">N3142</a> I would like
+to express that at least according to my mental model the intention for this trait was to be well-defined for <tt>T</tt> being
+a function type with the result of <tt>false</tt> regardless of what the other type arguments are. It would seem like a very 
+unfortunate and unnecessary complication to keep the result as being undefined. First, this result value is symmetric to
+the result of <tt>is_destructible&lt;T&gt;::value</tt> (where the word covers function types explicitly). Second, if such a
+resolution would be applied to the working paper, it wouldn't break existing implementations. I have tested clang 3.8.0,
+gcc 5.x until gcc 6.0, and Visual Studio 2015, all of these implementations evaluate <tt>is_constructible&lt;void()&gt;::value</tt>
+to <tt>false</tt>. 
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Change 20.10.4.3 [meta.unary.prop], Table 49 &mdash; "Type property predicates", as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 49 &mdash; Type property predicates</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Preconditions</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T, class... Args&gt;<br/>
+struct is_constructible;</tt>
+</td>
+
+<td>
+<ins>For a function type <tt>T</tt>,<br/> 
+<tt>is_constructible&lt;T, Args...&gt;::value</tt><br/>
+is <tt>false</tt>, otherwise</ins> <i>see below</i>
+</td>
+
+<td align="center">
+<tt>T</tt> and all types in the<br/>
+parameter pack <tt>Args</tt> shall<br/>
+be complete types,<br/>
+(possibly <i>cv</i>-qualified)<br/>
+<tt>void</tt>, or arrays of<br/>
+unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
 </blockquote>
 </li>
 </ol>
