@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2561" status="New">
+<title>[fund.ts.v2] Incorrect exception specifications for 'swap' in C++ Extensions for Library Fundamentals</title>
+<section><sref ref="[optional.object.swap]"/><sref ref="[propagate_const.modifiers]"/></section>
+<submitter>Daniel Kr&uuml;gler</submitter>
+<date>11 Dec 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+As pointed out in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4511.html#Related_Issues">N4511</a>,
+the Library fundamentals are affected by a similar problem as described in LWG <iref ref="2456"/>. First, it is caused
+by <tt>optional</tt>'s member <tt>swap</tt> (<sref ref="[optional.object.swap]"/>):
+</p>
+<blockquote><pre>
+void swap(optional&lt;T&gt;&amp; rhs) noexcept(<i>see below</i>);
+</pre></blockquote>
+<p>
+with 
+</p>
+<blockquote>
+<p>
+The expression inside <tt>noexcept</tt> is equivalent to: 
+</p>
+<blockquote><pre>
+is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; noexcept(swap(declval&lt;T&amp;&gt;(), declval&lt;T&amp;&gt;()))
+</pre></blockquote>
+</blockquote>
+<p>
+Again, the unqualified lookup for <tt>swap</tt> finds the member <tt>swap</tt> instead of the result of a normal argument-depending 
+lookup, making this ill-formed.
+<p/>
+A second example of such a problem recently entered the arena with the addition of the <tt>propagate_const</tt> template
+with another member <tt>swap</tt> (<sref ref="[propagate_const.modifiers]"/>):
+</p>
+<blockquote>
+<pre>
+constexpr void swap(propagate_const&amp; pt) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-2- The constant-expression in the exception-specification is <tt>noexcept(swap(t_, pt.t_))</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+A working approach is presented in 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4511.html#Proposed_resolution">N4511</a>. By adding a new
+trait to the standard library and referencing this by the library fundamentals (A similar approach had been applied in the
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3940.html#path-inserter-extractor">file system specification</a>
+where the <tt>quoted</tt> manipulator from C++14 had been referred to, albeit the file system specification is generally based on the
+C++11 standard), <tt>optional</tt>'s member <tt>swap</tt> exception specification could be rephrased as follows:
+</p>
+<blockquote>
+<p>
+The expression inside <tt>noexcept</tt> is equivalent to: 
+</p>
+<blockquote><pre>
+is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; <ins>is_nothrow_swappable_v&lt;T&gt;</ins><del>noexcept(swap(declval&lt;T&amp;&gt;(), declval&lt;T&amp;&gt;()))</del>
+</pre></blockquote>
+</blockquote>
+<p>
+and <tt>propagate_const</tt>'s member <tt>swap</tt> exception specification could be rephrased as follows:
+</p>
+<blockquote>
+<pre>
+constexpr void swap(propagate_const&amp; pt) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-2- The constant-expression in the exception-specification is <tt><ins>is_nothrow_swappable_v&lt;T&gt;</ins><del>noexcept(swap(t_, pt.t_))</del></tt>.
+</p>
+</blockquote>
+</blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
