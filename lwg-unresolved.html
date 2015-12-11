@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-12-10 at 21:12:02 UTC</p>
+<p><p>Revised 2015-12-11 at 20:12:38 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -10833,11 +10833,11 @@ Geoffrey provides new wording.
 
 <hr>
 <h3><a name="2310" href="#2310">2310.</a> Public <em>exposition only</em> member in <tt>std::array</tt></h3>
-<p><b>Section:</b> 23.3.2.1 [array.overview] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-09-30 <b>Last modified:</b> 2015-12-10</p>
+<p><b>Section:</b> 23.3.2.1 [array.overview] <b>Status:</b> <a href="lwg-active.html#Review">Review</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-09-30 <b>Last modified:</b> 2015-12-11</p>
 <p><b>Priority: </b>4
 </p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
 23.3.2.1 [array.overview] shows <tt>std::array</tt> with an "exposition only" data member, <tt>elems</tt>.
@@ -20123,6 +20123,88 @@ unknown bound.
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2561" href="#2561">2561.</a> [fund.ts.v2] Incorrect exception specifications for 'swap' in C++ Extensions for Library Fundamentals</h3>
+<p><b>Section:</b> X [optional.object.swap], X [propagate_const.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2015-12-11</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+As pointed out in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4511.html#Related_Issues">N4511</a>,
+the Library fundamentals are affected by a similar problem as described in LWG <a href="lwg-active.html#2456">2456</a>. First, it is caused
+by <tt>optional</tt>'s member <tt>swap</tt> (X [optional.object.swap]):
+</p>
+<blockquote><pre>
+void swap(optional&lt;T&gt;&amp; rhs) noexcept(<i>see below</i>);
+</pre></blockquote>
+<p>
+with 
+</p>
+<blockquote>
+<p>
+The expression inside <tt>noexcept</tt> is equivalent to: 
+</p>
+<blockquote><pre>
+is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; noexcept(swap(declval&lt;T&amp;&gt;(), declval&lt;T&amp;&gt;()))
+</pre></blockquote>
+</blockquote>
+<p>
+Again, the unqualified lookup for <tt>swap</tt> finds the member <tt>swap</tt> instead of the result of a normal argument-depending 
+lookup, making this ill-formed.
+<p/>
+A second example of such a problem recently entered the arena with the addition of the <tt>propagate_const</tt> template
+with another member <tt>swap</tt> (X [propagate_const.modifiers]):
+</p>
+<blockquote>
+<pre>
+constexpr void swap(propagate_const&amp; pt) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-2- The constant-expression in the exception-specification is <tt>noexcept(swap(t_, pt.t_))</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+A working approach is presented in 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4511.html#Proposed_resolution">N4511</a>. By adding a new
+trait to the standard library and referencing this by the library fundamentals (A similar approach had been applied in the
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3940.html#path-inserter-extractor">file system specification</a>
+where the <tt>quoted</tt> manipulator from C++14 had been referred to, albeit the file system specification is generally based on the
+C++11 standard), <tt>optional</tt>'s member <tt>swap</tt> exception specification could be rephrased as follows:
+</p>
+<blockquote>
+<p>
+The expression inside <tt>noexcept</tt> is equivalent to: 
+</p>
+<blockquote><pre>
+is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; <ins>is_nothrow_swappable_v&lt;T&gt;</ins><del>noexcept(swap(declval&lt;T&amp;&gt;(), declval&lt;T&amp;&gt;()))</del>
+</pre></blockquote>
+</blockquote>
+<p>
+and <tt>propagate_const</tt>'s member <tt>swap</tt> exception specification could be rephrased as follows:
+</p>
+<blockquote>
+<pre>
+constexpr void swap(propagate_const&amp; pt) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-2- The constant-expression in the exception-specification is <tt><ins>is_nothrow_swappable_v&lt;T&gt;</ins><del>noexcept(swap(t_, pt.t_))</del></tt>.
+</p>
+</blockquote>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
