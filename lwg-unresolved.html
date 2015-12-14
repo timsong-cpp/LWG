@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-12-11 at 20:12:38 UTC</p>
+<p><p>Revised 2015-12-14 at 21:12:25 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -17475,7 +17475,7 @@ bidirectional iterator)</caption>
 <hr>
 <h3><a name="2521" href="#2521">2521.</a> [fund.ts.v2] <tt>weak_ptr</tt>'s converting move constructor should be modified as well for array support</h3>
 <p><b>Section:</b> X [memory.smartptr.weak.const] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-07-25 <b>Last modified:</b> 2015-10-26</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-07-25 <b>Last modified:</b> 2015-12-13</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -17512,7 +17512,7 @@ This has also been fixed in the current working draft. &mdash;
 <blockquote>
 <pre>
 <ins>weak_ptr(weak_ptr&amp;&amp; r) noexcept;
-template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept</ins>
+template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;</ins>
 </pre>
 <blockquote>
 <p>
@@ -20131,7 +20131,7 @@ unknown bound.
 <hr>
 <h3><a name="2561" href="#2561">2561.</a> [fund.ts.v2] Incorrect exception specifications for 'swap' in C++ Extensions for Library Fundamentals</h3>
 <p><b>Section:</b> X [optional.object.swap], X [propagate_const.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2015-12-11</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2015-11-14 <b>Last modified:</b> 2015-12-12</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -20205,6 +20205,68 @@ constexpr void swap(propagate_const&amp; pt) noexcept(<i>see below</i>);
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2562" href="#2562">2562.</a> Consistent total ordering of pointers by comparison functors</h3>
+<p><b>Section:</b> 20.9.6 [comparisons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2015-11-18 <b>Last modified:</b> 2015-12-14</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#comparisons">active issues</a> in [comparisons].</p>
+<p><b>View all other</b> <a href="lwg-index.html#comparisons">issues</a> in [comparisons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+N4567 20.9.6 [comparisons]/14 specifies that the comparison functors provide a total ordering for pointer types:
+</p>
+<blockquote><p>
+For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the specializations for 
+any pointer type yield a total order, even if the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, <tt>&gt;=</tt> 
+do not.
+</p></blockquote>
+<p>
+It notably does not specify:
+</p>
+<ul>
+<li><p>whether the specializations of all of the named templates for a given pointer type yield the <em>same</em> total order</p></li>
+<li><p>whether the total order imposed respects the partial order imposed by the built-in operators</p></li>
+<li><p>whether the total order imposed is consistent with the partition induced by <tt>==</tt></p></li>
+</ul>
+<p>
+All of which are important for sane semantics and provided by common implementations, since the built-in operators provide 
+a total order and the comparison functors yield that same order.
+<p/>
+It would be extremely confusing &mdash; if not outright insane &mdash; for e.g.:
+</p>
+<ul>
+<li><p><tt>less&lt;int*&gt;</tt> and <tt>greater&lt;int*&gt;</tt> to yield different orders</p></li>
+<li><p><tt>less&lt;int*&gt;</tt> to disagree with <tt>&lt;</tt> on the relative order of two pointers for which <tt>&lt;</tt> 
+is defined</p></li>
+<li><p><tt>less&lt;int*&gt;</tt> to order <tt>a</tt> before <tt>b</tt> when <tt>a == b</tt>, i.e., not preserve equality.</p></li>
+</ul>
+<p>
+Consistent semantics for the various comparison functors and the built-in operators is so intuitive as to be assumed by most programmers.
+<p/>
+Related issues: <a href="lwg-active.html#2450">2450</a>, <a href="lwg-active.html#2457">2457</a>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Alter 20.9.6 [comparisons]/14 to read:</p>
+<blockquote><p>
+For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the specializations for any pointer type
+yield <del>a</del><ins>the same</ins> total order, even if the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, 
+<tt>&gt;=</tt> do not. <ins>The total order shall respect the partial order imposed by the built-in operators.</ins>
+</p></blockquote>
+</li>
+</ol>
 
 
 
