@@ -50,6 +50,26 @@ belonging to the container being copied.", but this isn't exactly a copy constru
 <p>TK: Whether you think this is kind of copy-constructor or a constructor from raw string data, the new form in the PR is more flexible. You can still get the default-constructed allocator if you want, but conversely, getting the select_on_container_copy is really hard to type in the old form.</p>
 <p>JW has objections (written in the issue) but won't block "Review" status.</p>
 <p>Move to Review, hopefully to be made ready at a telecon.</p>
+
+<note>2015-11-22, Pablo comments</note>
+<p>
+I like the direction of the PR, but it is incomplete. Consider the following (assuming the PR):
+</p>
+<blockquote><pre>
+typedef basic_string&lt;char, char_traits&lt;char&gt;, A&lt;char&gt;&gt; stringA;
+vector&lt;stringA, scoped_allocator_adaptor&lt;A&lt;stringA&gt;&gt;&gt; vs;
+stringA s;
+
+vs.emplace_back(s, 2);  // Ill-formed
+</pre></blockquote>
+<p>
+The problem is that uses-allocator construction requires that we be able to pass an allocator to the constructor 
+<tt>stringA(s, 2, allocator)</tt>, but no such constructor exists. I think this defect already exists, but we should 
+fix it a the same time that we fix 2402. So, I would say we need a third constructor:
+</p>
+<blockquote><pre>
+basic_string(const basic_string&amp; str, size_type pos, const Allocator&amp; a);
+</pre></blockquote>
 </discussion>
 
 <resolution>
