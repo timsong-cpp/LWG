@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2565" status="New">
+<title><tt>std::function</tt>'s move constructor should guarantee nothrow for <tt>reference_wrapper</tt>s and function pointers</title>
+<section><sref ref="[func.wrap.func.con]"/></section>
+<submitter>Tim Song</submitter>
+<date>5 Dec 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[func.wrap.func.con]"/>/5 guarantees that copying a <tt>std::function</tt> whose "target is a callable object passed 
+via <tt>reference_wrapper</tt> or a function pointer", but the standard doesn't provide this guarantee for the move constructor, 
+which makes scant sense.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4567.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: The inserted paragraph is a copy of <sref ref="[func.wrap.func.con]"/>/5, only changing "copy constructor" 
+to "copy or move constructor". It does not attempt to fix the issue identified in LWG <iref ref="2370"/>, whose P/R will likely 
+need updating if this wording is adopted.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Insert after <sref ref="[func.wrap.func.con]"/>/6:</p>
+
+<blockquote>
+<pre>
+function(function&amp;&amp; f);
+template &lt;class A&gt; function(allocator_arg_t, const A&amp; a, function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects</i>: If <tt>!f</tt>, <tt>*this</tt> has no target; otherwise, move-constructs the target of <tt>f</tt> into the 
+target of <tt>*this</tt>, leaving <tt>f</tt> in a valid state with an unspecified value.
+<p/>
+<ins>-?- <i>Throws</i>: Shall not throw exceptions if <tt>f</tt>'s target is a callable object passed via <tt>reference_wrapper</tt> 
+or a function pointer. Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by the copy or move constructor of the stored 
+callable object. [<i>Note</i>: Implementations are encouraged to avoid the use of dynamically allocated memory for small callable 
+objects, for example, where <tt>f</tt>'s target is an object holding only a pointer or reference to an object and a member function 
+pointer. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
