@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2571" status="New">
+<title>[map.modifiers]/2 imposes nonsensical requirement on <tt>insert(InputIterator, InputIterator)</tt></title>
+<section><sref ref="[map.modifiers]"/></section>
+<submitter>Tim Song</submitter>
+<date>12 Dec 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The initial paragraphs of <sref ref="[map.modifiers]"/> currently says:
+</p>
+<blockquote>
+<pre>
+template &lt;class P&gt; pair&lt;iterator, bool&gt; insert(P&amp;&amp; x);
+template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x);
+template &lt;class InputIterator&gt;
+void insert(InputIterator first, InputIterator last);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: The first form is equivalent to <tt>return emplace(std::forward&lt;P&gt;(x))</tt>. The second form is
+equivalent to <tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.
+<p/>
+-2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_-
+type, P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+This paragraph used to have text saying "The signature taking <tt>InputIterator</tt> parameters does not require 
+<tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced <tt>InputIterator</tt> 
+returns a non-<tt>const</tt> rvalue <tt>pair&lt;key_type,mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> is 
+required for both <tt>key_type</tt> and <tt>mapped_type</tt>", but that was removed by LWG <iref ref="2005"/>, whose PR 
+was written as if that overload didn't exist in the text.
+<p/>
+It looks like the text addressing this overload is redundant to the requirements on <tt>a.insert(i, j)</tt> in Table 102 
+that <tt>value_type</tt> be <tt>EmplaceConstructible</tt> from <tt>*i</tt>. If so, then the signature should just be 
+deleted from this section.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Edit <sref ref="[map.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class P&gt; pair&lt;iterator, bool&gt; insert(P&amp;&amp; x);
+template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x);
+<del>template &lt;class InputIterator&gt;
+void insert(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: The first form is equivalent to <tt>return emplace(std::forward&lt;P&gt;(x))</tt>. The second form is
+equivalent to <tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.
+<p/>
+-2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_-
+type, P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
