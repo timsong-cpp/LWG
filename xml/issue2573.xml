@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2573" status="New">
+<title>[fund.ts.v2] <tt>std::hash&lt;std::experimental::shared_ptr&lt;T&gt;&gt;</tt> does not work for arrays</title>
+<section><sref ref="[memory.smartptr.shared]"/></section>
+<submitter>Tim Song</submitter>
+<date>13 Dec 2015</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+The library fundamentals TS does not provide a separate specification for <tt>std::hash&lt;std::experimental::shared_ptr&lt;T&gt;&gt;</tt>, 
+deferring to the C++14 specification in &sect;20.8.2.7/3:
+</p>
+<blockquote>
+<pre>
+template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
+</pre>
+<blockquote>
+<p>
+-3- The template specialization shall meet the requirements of class template <tt>hash</tt> (20.9.13). For an object <tt>p</tt> 
+of type <tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> shall evaluate to the same value as
+<tt>hash&lt;T*&gt;()(p.get())</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+That specification doesn't work if <tt>T</tt> is an array type (<tt>U[N]</tt> or <tt>U[]</tt>), as in this case <tt>get()</tt> 
+returns <tt>U*</tt>, which cannot be hashed by <tt>std::hash&lt;T*&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>.
+</p>
+
+<ol>
+<li><p>Insert a new subclause after <sref ref="[memory.smartptr.shared.cast]"/>:</p>
+<blockquote class="note">
+<p>
+[<i>Note for the editor</i>: The synopses in [header.memory.synop] and [memory.smartptr.shared] should be updated to refer 
+to the new subclause rather than C++14 &sect;20.8.2.7]
+</p>
+</blockquote>
+
+<blockquote>
+<p><ins>?.?.?.? <tt>shared_ptr</tt> hash support [memory.smartptr.shared.hash]</ins></p>
+<pre>
+<ins>template &lt;class T&gt; struct hash&lt;experimental::shared_ptr&lt;T&gt;&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-1- The template specialization shall meet the requirements of class template <tt>hash</tt> (C++14 &sect;20.9.12). 
+For an object <tt>p</tt> of type <tt>experimental::shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;experimental::shared_ptr&lt;T&gt;&gt;()(p)</tt> 
+shall evaluate to the same value as <tt>hash&lt;experimental::shared_ptr&lt;T&gt;::element_type*&gt;()(p.get())</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
