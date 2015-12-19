@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2015-12-17 at 19:12:00 UTC</p>
+<p><p>Revised 2015-12-19 at 15:12:52 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -20745,7 +20745,7 @@ that it is valid to write <tt>conjunction_v&lt;is_class&lt;T&gt;, is_foo&lt;T&gt
 <hr>
 <h3><a name="2571" href="#2571">2571.</a> [map.modifiers]/2 imposes nonsensical requirement on <tt>insert(InputIterator, InputIterator)</tt></h3>
 <p><b>Section:</b> 23.4.4.4 [map.modifiers] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-12 <b>Last modified:</b> 2015-12-17</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-12 <b>Last modified:</b> 2015-12-19</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#map.modifiers">issues</a> in [map.modifiers].</p>
@@ -20766,8 +20766,8 @@ void insert(InputIterator first, InputIterator last);
 -1- <i>Effects</i>: The first form is equivalent to <tt>return emplace(std::forward&lt;P&gt;(x))</tt>. The second form is
 equivalent to <tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.
 <p/>
--2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_-
-type, P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
+-2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_type,
+P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
 </p>
 </blockquote>
 </blockquote>
@@ -20802,8 +20802,8 @@ void insert(InputIterator first, InputIterator last);</del>
 -1- <i>Effects</i>: The first form is equivalent to <tt>return emplace(std::forward&lt;P&gt;(x))</tt>. The second form is
 equivalent to <tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.
 <p/>
--2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_-
-type, P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
+-2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_type,
+P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
 </p>
 </blockquote>
 </blockquote>
@@ -20857,6 +20857,72 @@ T&amp; operator*() const noexcept;
 -4- <i>Remarks</i>: When <tt>T</tt> is <ins>(possibly <i>cv</i>-qualified)</ins> <tt>void</tt>, it is unspecified whether this 
 member function is declared. If it is declared, it is unspecified what its return type is, except that the declaration 
 (although not necessarily the definition) of the function shall be well formed.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2573" href="#2573">2573.</a> [fund.ts.v2] <tt>std::hash&lt;std::experimental::shared_ptr&lt;T&gt;&gt;</tt> does not work for arrays</h3>
+<p><b>Section:</b> X [memory.smartptr.shared] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-13 <b>Last modified:</b> 2015-12-19</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+The library fundamentals TS does not provide a separate specification for <tt>std::hash&lt;std::experimental::shared_ptr&lt;T&gt;&gt;</tt>, 
+deferring to the C++14 specification in &sect;20.8.2.7/3:
+</p>
+<blockquote>
+<pre>
+template &lt;class T&gt; struct hash&lt;shared_ptr&lt;T&gt; &gt;;
+</pre>
+<blockquote>
+<p>
+-3- The template specialization shall meet the requirements of class template <tt>hash</tt> (20.9.13). For an object <tt>p</tt> 
+of type <tt>shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;shared_ptr&lt;T&gt; &gt;()(p)</tt> shall evaluate to the same value as
+<tt>hash&lt;T*&gt;()(p.get())</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+That specification doesn't work if <tt>T</tt> is an array type (<tt>U[N]</tt> or <tt>U[]</tt>), as in this case <tt>get()</tt> 
+returns <tt>U*</tt>, which cannot be hashed by <tt>std::hash&lt;T*&gt;</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>.
+</p>
+
+<ol>
+<li><p>Insert a new subclause after  [memory.smartptr.shared.cast]:</p>
+<blockquote class="note">
+<p>
+[<i>Note for the editor</i>: The synopses in [header.memory.synop] and [memory.smartptr.shared] should be updated to refer 
+to the new subclause rather than C++14 &sect;20.8.2.7]
+</p>
+</blockquote>
+
+<blockquote>
+<p><ins>?.?.?.? <tt>shared_ptr</tt> hash support [memory.smartptr.shared.hash]</ins></p>
+<pre>
+<ins>template &lt;class T&gt; struct hash&lt;experimental::shared_ptr&lt;T&gt;&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-1- The template specialization shall meet the requirements of class template <tt>hash</tt> (C++14 &sect;20.9.12). 
+For an object <tt>p</tt> of type <tt>experimental::shared_ptr&lt;T&gt;</tt>, <tt>hash&lt;experimental::shared_ptr&lt;T&gt;&gt;()(p)</tt> 
+shall evaluate to the same value as <tt>hash&lt;experimental::shared_ptr&lt;T&gt;::element_type*&gt;()(p.get())</tt>.</ins>
 </p>
 </blockquote>
 </blockquote>
