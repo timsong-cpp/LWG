@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-01-13 at 19:01:36 UTC</p>
+<p><p>Revised 2016-01-14 at 19:01:40 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -21047,6 +21047,179 @@ ostream_iterator(ostream_type&amp; s, const charT* delimiter);
 
 </li>
 
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2577" href="#2577">2577.</a> <tt>{shared,unique}_lock</tt> should use <tt>std::addressof</tt></h3>
+<p><b>Section:</b> 30.4.2.2.1 [thread.lock.unique.cons], 30.4.2.3.1 [thread.lock.shared.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-01-01 <b>Last modified:</b> 2016-01-14</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#thread.lock.unique.cons">issues</a> in [thread.lock.unique.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+So that they work with user-defined types that have overloaded unary <tt>&amp;</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit 30.4.2.2.1 [thread.lock.unique.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+explicit unique_lock(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, defer_lock_t) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == false</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, try_to_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock()</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+<p/>
+-14- <i>Throws</i>: Nothing.
+</p>
+</blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  unique_lock(mutex_type&amp; m, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_until(abs_time)</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  unique_lock(mutex_type&amp; m, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_for(rel_time)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 30.4.2.3.1 [thread.lock.shared.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+explicit shared_lock(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, defer_lock_t) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == false</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, try_to_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared()</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  shared_lock(mutex_type&amp; m,
+              const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-16- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared_until(abs_time)</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  shared_lock(mutex_type&amp; m,
+              const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-19- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared_for(rel_time)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
 </ol>
 
 
