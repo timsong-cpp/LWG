@@ -1,0 +1,173 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2577" status="New">
+<title><tt>{shared,unique}_lock</tt> should use <tt>std::addressof</tt></title>
+<section><sref ref="[thread.lock.unique.cons]"/><sref ref="[thread.lock.shared.cons]"/></section>
+<submitter>Tim Song</submitter>
+<date>1 Jan 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+So that they work with user-defined types that have overloaded unary <tt>&amp;</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[thread.lock.unique.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+explicit unique_lock(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, defer_lock_t) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == false</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, try_to_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock()</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+<p/>
+-14- <i>Throws</i>: Nothing.
+</p>
+</blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  unique_lock(mutex_type&amp; m, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_until(abs_time)</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  unique_lock(mutex_type&amp; m, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_for(rel_time)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit <sref ref="[thread.lock.shared.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+explicit shared_lock(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, defer_lock_t) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == false</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, try_to_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared()</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  shared_lock(mutex_type&amp; m,
+              const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-16- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared_until(abs_time)</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  shared_lock(mutex_type&amp; m,
+              const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-19- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared_for(rel_time)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
