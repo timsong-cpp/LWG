@@ -38,7 +38,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D96)</h1>
-<p><p>Revised 2016-01-15 at 20:01:37 UTC</p>
+<p><p>Revised 2016-01-15 at 20:01:07 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -156,12 +156,12 @@ ownership of it.
 <ul>
 <li>D96: 2016-02-15 2016 pre-Jacksonville<ul>
 <li><b>Summary:</b><ul>
-<li>282 open issues, up by 25.</li>
+<li>283 open issues, up by 26.</li>
 <li>1819 closed issues, up by 0.</li>
-<li>2101 issues total, up by 25.</li>
+<li>2102 issues total, up by 26.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 25 New issues: <a href="lwg-active.html#2554">2554</a>, <a href="lwg-active.html#2555">2555</a>, <a href="lwg-active.html#2556">2556</a>, <a href="lwg-active.html#2557">2557</a>, <a href="lwg-active.html#2558">2558</a>, <a href="lwg-active.html#2559">2559</a>, <a href="lwg-active.html#2560">2560</a>, <a href="lwg-active.html#2561">2561</a>, <a href="lwg-active.html#2562">2562</a>, <a href="lwg-active.html#2563">2563</a>, <a href="lwg-active.html#2564">2564</a>, <a href="lwg-active.html#2565">2565</a>, <a href="lwg-active.html#2566">2566</a>, <a href="lwg-active.html#2567">2567</a>, <a href="lwg-active.html#2568">2568</a>, <a href="lwg-active.html#2569">2569</a>, <a href="lwg-active.html#2570">2570</a>, <a href="lwg-active.html#2571">2571</a>, <a href="lwg-active.html#2572">2572</a>, <a href="lwg-active.html#2573">2573</a>, <a href="lwg-active.html#2574">2574</a>, <a href="lwg-active.html#2575">2575</a>, <a href="lwg-active.html#2576">2576</a>, <a href="lwg-active.html#2577">2577</a>, <a href="lwg-active.html#2578">2578</a>.</li>
+<li>Added the following 26 New issues: <a href="lwg-active.html#2554">2554</a>, <a href="lwg-active.html#2555">2555</a>, <a href="lwg-active.html#2556">2556</a>, <a href="lwg-active.html#2557">2557</a>, <a href="lwg-active.html#2558">2558</a>, <a href="lwg-active.html#2559">2559</a>, <a href="lwg-active.html#2560">2560</a>, <a href="lwg-active.html#2561">2561</a>, <a href="lwg-active.html#2562">2562</a>, <a href="lwg-active.html#2563">2563</a>, <a href="lwg-active.html#2564">2564</a>, <a href="lwg-active.html#2565">2565</a>, <a href="lwg-active.html#2566">2566</a>, <a href="lwg-active.html#2567">2567</a>, <a href="lwg-active.html#2568">2568</a>, <a href="lwg-active.html#2569">2569</a>, <a href="lwg-active.html#2570">2570</a>, <a href="lwg-active.html#2571">2571</a>, <a href="lwg-active.html#2572">2572</a>, <a href="lwg-active.html#2573">2573</a>, <a href="lwg-active.html#2574">2574</a>, <a href="lwg-active.html#2575">2575</a>, <a href="lwg-active.html#2576">2576</a>, <a href="lwg-active.html#2577">2577</a>, <a href="lwg-active.html#2578">2578</a>, <a href="lwg-active.html#2579">2579</a>.</li>
 <li>Changed the following issue to Tentatively Ready (from New): <a href="lwg-active.html#2545">2545</a>.</li>
 <li>Changed the following 2 issues to Review (from Open): <a href="lwg-active.html#2310">2310</a>, <a href="lwg-active.html#2516">2516</a>.</li>
 </ul></li>
@@ -30865,6 +30865,79 @@ The former requirements should reference the latter, normatively.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2579" href="#2579">2579.</a> Inconsistency wrt Allocators in <tt>basic_string</tt> assignment vs. <tt>basic_string::assign</tt></h3>
+<p><b>Section:</b> 21.4.6.3 [string::assign] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-01-05 <b>Last modified:</b> 2016-01-15</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In issue <a href="lwg-defects.html#2063">2063</a>, we changed the <i>Effects</i> of <tt>basic_string::assign(basic_string&amp;&amp;)</tt> to match the 
+behavior of <tt>basic_string::operator=(basic_string&amp;&amp;)</tt>, making them consistent.
+<p/>
+We did not consider <tt>basic_string::assign(const basic_string&amp;)</tt>, and its <i>Effects</i> differ from 
+<tt>operator=(const basic_string&amp;)</tt>.
+<p/>
+Given the following definition:
+</p>
+<blockquote><pre>
+typedef std::basic_string&lt;char, std::char_traits&lt;char&gt;, MyAllocator&lt;char&gt;&gt; MyString;
+
+MyAllocator&lt;char&gt; alloc1, alloc2;
+MyString string1("Alloc1", alloc1);
+MyString string2(alloc2);
+</pre></blockquote>
+<p>
+the following bits of code are not equivalent:
+</p>
+<blockquote><pre>
+string2 = string1;       // (a) calls operator=(const MyString&amp;)
+string2.assign(string1); // (b) calls MyString::assign(const MyString&amp;)
+</pre></blockquote>
+<p>
+What is the allocator for <tt>string2</tt> after each of these calls?
+</p>
+<ol style="list-style-type:lower-alpha">
+<li><p>If <tt>MyAllocator&lt;char&gt;::propagate_on_container_copy_assignment</tt> is true, then it should be <tt>alloc2</tt>, 
+otherwise it should be <tt>alloc1</tt>.</p></li>
+<li><p><tt>alloc2</tt></p></li>
+</ol>
+<p>	
+21.4.6.3 [string::assign]/1 says that (b) is equivalent to <tt>assign(string1, 0, npos)</tt>, which eventually calls 
+<tt>assign(str.data() + pos, rlen)</tt>. No allocator transfer there.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Modify 21.4.6.3 [string::assign] p.1 as indicated:</p>
+
+<blockquote>
+<pre>
+basic_string&amp; assign(const basic_string&amp; str);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Equivalent to <tt><ins>*this = str</ins><del>assign(str, 0, npos)</del></tt>.
+<p/>
+-2- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
 
 
 
