@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2580" status="New">
+<title>Who is definitive: <tt>operator=</tt> or <tt>assign</tt>?</title>
+<section><sref ref="[string.cons]"/><sref ref="[string::assign]"/><sref ref="[re.regex.assign]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>5 Jan 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+There are two "containers" in the standard who have member functions named <tt>assign</tt> that take parameters of the 
+type of the container (as opposed to iterators, pointers, what have you).
+<p/>
+In <tt>string</tt>'s case, we define <tt>assign</tt> in terms of <tt>operator=</tt>.
+In <tt>regex</tt>'s case, we define <tt>operator=</tt> in terms of <tt>assign</tt>.
+<p/>
+We should pick a style and use use it.
+<p/>
+In <sref ref="[string.cons]"/>, we have:
+</p>
+<blockquote>
+<pre>
+basic_string&amp; operator=(const basic_string&amp; str);
+</pre>
+<blockquote>
+<p>
+-17- <i>Effects</i>: If <tt>*this</tt> and <tt>str</tt> are not the same object, modifies <tt>*this</tt> as shown in Table 70. 
+<p/>
+-18- If <tt>*this</tt> and <tt>str</tt> are the same object, the member has no effect.
+<p/>
+-19- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+<pre>
+basic_string&amp; operator=(basic_string&amp;&amp; str)
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value || 
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</pre>
+<blockquote>
+<p>
+-20- <i>Effects</i>: Move assigns as a sequence container (23.2), except that iterators, pointers and references may be invalidated.
+<p/>
+-21- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+</blockquote>
+<p>
+In <sref ref="[string::assign]"/>, we have:
+</p>
+<blockquote>
+<pre>
+basic_string&amp; assign(const basic_string&amp; str);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Equivalent to <tt>assign(str, 0, npos)</tt>. 
+<p/>
+-2- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote>
+<pre>
+basic_string&amp; assign(basic_string&amp;&amp; str) 
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to <tt>*this = std::move(str)</tt>.
+<p/>
+-3- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+Marshall says: There is an outstanding issues here, to change /1 to be similar to /2.
+<p/>
+In <sref ref="[re.regex.assign]"/>, we have:
+</p>
+<blockquote>
+<pre>
+basic_regex&amp; operator=(const basic_regex&amp; e);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: returns <tt>assign(e)</tt>.
+</p>
+</blockquote>
+<pre>
+basic_regex&amp; operator=(basic_regex&amp;&amp; e) noexcept;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: returns <tt>assign(std::move(e))</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+<em>and</em>
+</p> 
+<blockquote>
+<pre>
+basic_regex&amp; assign(const basic_regex&amp; that);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: copies <tt>that</tt> into <tt>*this</tt> and returns <tt>*this</tt>.
+<p/>
+-8- <i>Postconditions</i>: <tt>flags()</tt> and <tt>mark_count()</tt> return <tt>that.flags()</tt> and 
+<tt>that.mark_count()</tt>, respectively.
+</p>
+</blockquote>
+<pre>
+basic_regex&amp; assign(basic_regex&amp;&amp; that) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects</i>: move assigns from <tt>that</tt> into <tt>*this</tt> and returns <tt>*this</tt>.
+<p/>
+-10- <i>Postconditions</i>: <tt>flags()</tt> and <tt>mark_count()</tt> return the values that <tt>that.flags()</tt> and 
+<tt>that.mark_count()</tt>, respectively, had before assignment. <tt>that</tt> is in a valid state with unspecified value.
+</p>
+</blockquote>
+</blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
