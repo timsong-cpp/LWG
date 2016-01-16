@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-01-15 at 20:01:42 UTC</p>
+<p><p>Revised 2016-01-16 at 16:01:59 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -13738,6 +13738,7 @@ and may differ between programs. <ins>Whether <tt>~type_info()</tt> is <tt>virtu
  <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2015-12-14</p>
 <p><b>Priority: </b>3
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#string.cons">active issues</a> in [string.cons].</p>
 <p><b>View all other</b> <a href="lwg-index.html#string.cons">issues</a> in [string.cons].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Review">Review</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -21404,6 +21405,138 @@ basic_string&amp; assign(const basic_string&amp; str);
 
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2580" href="#2580">2580.</a> Who is definitive: <tt>operator=</tt> or <tt>assign</tt>?</h3>
+<p><b>Section:</b> 21.4.2 [string.cons], 21.4.6.3 [string::assign], 28.8.3 [re.regex.assign] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-01-05 <b>Last modified:</b> 2016-01-16</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#string.cons">active issues</a> in [string.cons].</p>
+<p><b>View all other</b> <a href="lwg-index.html#string.cons">issues</a> in [string.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+There are two "containers" in the standard who have member functions named <tt>assign</tt> that take parameters of the 
+type of the container (as opposed to iterators, pointers, what have you).
+<p/>
+In <tt>string</tt>'s case, we define <tt>assign</tt> in terms of <tt>operator=</tt>.
+In <tt>regex</tt>'s case, we define <tt>operator=</tt> in terms of <tt>assign</tt>.
+<p/>
+We should pick a style and use use it.
+<p/>
+In 21.4.2 [string.cons], we have:
+</p>
+<blockquote>
+<pre>
+basic_string&amp; operator=(const basic_string&amp; str);
+</pre>
+<blockquote>
+<p>
+-17- <i>Effects</i>: If <tt>*this</tt> and <tt>str</tt> are not the same object, modifies <tt>*this</tt> as shown in Table 70. 
+<p/>
+-18- If <tt>*this</tt> and <tt>str</tt> are the same object, the member has no effect.
+<p/>
+-19- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+<pre>
+basic_string&amp; operator=(basic_string&amp;&amp; str)
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value || 
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</pre>
+<blockquote>
+<p>
+-20- <i>Effects</i>: Move assigns as a sequence container (23.2), except that iterators, pointers and references may be invalidated.
+<p/>
+-21- <i>Returns</i>: <tt>*this</tt>
+</p>
+</blockquote>
+</blockquote>
+<p>
+In 21.4.6.3 [string::assign], we have:
+</p>
+<blockquote>
+<pre>
+basic_string&amp; assign(const basic_string&amp; str);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Equivalent to <tt>assign(str, 0, npos)</tt>. 
+<p/>
+-2- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote>
+<pre>
+basic_string&amp; assign(basic_string&amp;&amp; str) 
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to <tt>*this = std::move(str)</tt>.
+<p/>
+-3- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+Marshall says: There is an outstanding issues here, to change /1 to be similar to /2.
+<p/>
+In 28.8.3 [re.regex.assign], we have:
+</p>
+<blockquote>
+<pre>
+basic_regex&amp; operator=(const basic_regex&amp; e);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: returns <tt>assign(e)</tt>.
+</p>
+</blockquote>
+<pre>
+basic_regex&amp; operator=(basic_regex&amp;&amp; e) noexcept;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: returns <tt>assign(std::move(e))</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+<em>and</em>
+</p> 
+<blockquote>
+<pre>
+basic_regex&amp; assign(const basic_regex&amp; that);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: copies <tt>that</tt> into <tt>*this</tt> and returns <tt>*this</tt>.
+<p/>
+-8- <i>Postconditions</i>: <tt>flags()</tt> and <tt>mark_count()</tt> return <tt>that.flags()</tt> and 
+<tt>that.mark_count()</tt>, respectively.
+</p>
+</blockquote>
+<pre>
+basic_regex&amp; assign(basic_regex&amp;&amp; that) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects</i>: move assigns from <tt>that</tt> into <tt>*this</tt> and returns <tt>*this</tt>.
+<p/>
+-10- <i>Postconditions</i>: <tt>flags()</tt> and <tt>mark_count()</tt> return the values that <tt>that.flags()</tt> and 
+<tt>that.mark_count()</tt>, respectively, had before assignment. <tt>that</tt> is in a valid state with unspecified value.
+</p>
+</blockquote>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
