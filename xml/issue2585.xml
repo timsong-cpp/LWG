@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2585" status="New">
+<title><tt>forward_list::resize(size_type, const value_type&amp;)</tt> effects incorrect</title>
+<section><sref ref="[forwardlist.modifiers]"/></section>
+<submitter>Tim Song</submitter>
+<date>14 Jan 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[forwardlist.modifiers]"/>/29 says that the effects of <tt>forward_list::resize(size_type sz, const value_type&amp; c)</tt> 
+are:
+</p>
+<blockquote class="note"><p>
+<i>Effects</i>: If <tt>sz &lt; distance(begin(), end())</tt>, erases the last <tt>distance(begin(), end()) - sz</tt> elements
+from the list. Otherwise, inserts <tt>sz - distance(begin(), end())</tt> elements at the end of
+the list such that each new element, <tt>e</tt>, is initialized by a method equivalent to calling 
+<tt>allocator_traits&lt;allocator_type&gt;::construct(get_allocator(), std::addressof(e), c)</tt>.
+</p></blockquote>
+<p>
+In light of LWG <iref ref="2218"/>, the use of <tt>allocator_traits&lt;allocator_type&gt;::construct</tt> is incorrect, 
+as a rebound allocator may be used. There's no need to repeat this information, in any event &mdash; no other specification 
+of <tt>resize()</tt> does it.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[forwardlist.modifiers]"/>/29 as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: "copies of <tt>c</tt>" is the phrase used by <tt>vector::resize</tt> and <tt>deque::resize</tt>.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+void resize(size_type sz, const value_type&amp; c);
+</pre>
+<blockquote>
+<p>
+-29- <i>Effects</i>: If <tt>sz &lt; distance(begin(), end())</tt>, erases the last <tt>distance(begin(), end()) - sz</tt> elements
+from the list. Otherwise, inserts <tt>sz - distance(begin(), end())</tt> <del>elements</del><ins>copies of <tt>c</tt></ins> at 
+the end of the list <del>such that each new element, <tt>e</tt>, is initialized by a method equivalent to calling 
+<tt>allocator_traits&lt;allocator_type&gt;::construct(get_allocator(), std::addressof(e), c)</tt></del>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
