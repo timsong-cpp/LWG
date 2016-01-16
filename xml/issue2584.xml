@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2584" status="New">
+<title><tt>&lt;regex&gt;</tt> ECMAScript <tt>IdentityEscape</tt> is ambiguous</title>
+<section><sref ref="[re.grammar]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>13 Jan 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Stephan and I are seeing differences in implementation for how non-special characters should be handled in the 
+<tt>IdentityEscape</tt> part of the ECMAScript grammar. For example:
+</p>
+<blockquote><pre>
+#include &lt;stdio.h&gt;
+#include &lt;iostream&gt;
+#ifdef USE_BOOST
+#include &lt;boost/regex.hpp&gt;
+using namespace boost;
+#else
+#include &lt;regex&gt;
+#endif
+using namespace std;
+
+int main() {
+  try {
+    const regex r("\\z");
+    cout &lt;&lt; "Constructed \\z." &lt;&lt; endl;
+    if (regex_match("z", r))
+      cout &lt;&lt; "Matches z" &lt;&lt; endl;
+  } catch (const regex_error&amp; e) {
+      cout &lt;&lt; e.what() &lt;&lt; endl;
+  }
+}
+</pre></blockquote>
+<p>
+libstdc++, boost, and browsers I tested with (Microsoft Edge, Google Chrome) all happily interpret <tt>\z</tt>, which 
+otherwise has no meaning, as an identity character escape for the letter <tt>z</tt>.
+libc++ and msvc++ say that this is invalid, and throw <tt>regex_error</tt> with <tt>error_escape</tt>.
+<p/>
+ECMAScript 3 (which is what C++ currently points to) seems to agree with libc++ and msvc++:
+</p>
+<blockquote>
+<pre>
+IdentityEscape ::
+  SourceCharacter <b>but not</b> IdentifierPart
+
+IdentifierPart ::
+  IdentifierStart
+  UnicodeCombiningMark
+  UnicodeDigit
+  UnicodeConnectorPunctuation
+  \ UnicodeEscapeSequence
+
+IdentifierStart ::
+  UnicodeLetter
+  $
+  _
+  \ UnicodeEscapeSequence
+</pre>
+</blockquote>
+<p>
+But this doesn't make any sense &mdash; it prohibits things like <tt>\$</tt> which users absolutely need to be able to escape. 
+So let's look at ECMAScript 6. I believe this says much the same thing, but updates the spec to better handle Unicode by 
+referencing what the Unicode standard says is an identifier character:
+</p>
+<blockquote>
+<pre>
+IdentityEscape ::
+  SyntaxCharacter
+  /
+  SourceCharacter <b>but not</b> UnicodeIDContinue
+  
+UnicodeIDContinue ::
+  any Unicode code point with the Unicode property "ID_Continue", "Other_ID_Continue", or "Other_ID_Start"
+</pre>
+</blockquote>
+<p>
+However, ECMAScript 6 has an appendix B defining "additional features for web browsers" which says:
+</p>
+<blockquote>
+<pre>
+IdentityEscape ::
+  SourceCharacter but not c
+</pre>
+</blockquote>
+<p>
+which appears to agree with what libstdc++, boost, and browsers are doing.
+<p/>
+What should be the correct behavior here?
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[re.grammar]"/>/3 as indicated:</p>
+
+<blockquote>
+<p>
+-3- The following productions within the ECMAScript grammar are modified as follows:
+</p>
+<blockquote><pre>
+ClassAtom ::
+  -
+  ClassAtomNoDash
+  ClassAtomExClass
+  ClassAtomCollatingElement
+  ClassAtomEquivalence
+  
+<ins>IdentityEscape ::
+  SourceCharacter <b>but not</b> c</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
