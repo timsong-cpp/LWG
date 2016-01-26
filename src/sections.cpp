@@ -3,8 +3,8 @@
 #include <cassert>
 #include <istream>
 #include <ostream>
-
 #include <sstream>
+#include <iostream>
 
 #if !defined(CPP14_LIBRARY_IS_NEEDED_FOR_STD_EXCHANGE)
 // This should be part of <utility> in C++14 lib
@@ -43,12 +43,13 @@ auto lwg::operator != (section_num const & x, section_num const & y) noexcept ->
 }
 
 auto lwg::operator >> (std::istream& is, section_num& sn) -> std::istream & {
+  std::cout << "sections.cpp line 46\n";
    sn.prefix.clear();
    sn.num.clear();
    ws(is);
    if (is.peek() == 'T') {
       is.get();
-      if (is.peek() == 'R') {
+      if (is.peek() == 'R' || is.peek() == 'S') {
          std::string w;
          is >> w;
          if (w == "R1") {
@@ -57,6 +58,8 @@ auto lwg::operator >> (std::istream& is, section_num& sn) -> std::istream & {
          else if (w == "RDecimal") {
             sn.prefix = "TRDecimal";
          }
+         else if (w == "SFilesystem")
+            sn.prefix = "TSFilesystem";
          else {
             throw std::runtime_error{"section_num format error"};
          }
@@ -111,6 +114,7 @@ auto lwg::operator << (std::ostream& os, section_num const & sn) -> std::ostream
 }
 
 auto lwg::read_section_db(std::istream & infile) -> section_map {
+  std::cout << "sections.cpp line 115\n";
    section_map section_db;
    while (infile) {
       ws(infile);
@@ -121,10 +125,12 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
          auto p = line.rfind('[');
          assert(p != std::string::npos);
          section_tag tag = line.substr(p);
+         std::cout << "tag=\"" << tag << "\"\n";
          assert(tag.size() > 2);
          assert(tag[0] == '[');
          assert(tag[tag.size()-1] == ']');
          line.erase(p-1);
+         std::cout << "line=\"" << line << "\"\n";
 
          section_num num;
          if (tag.find("[trdec.") != std::string::npos) {
@@ -134,6 +140,11 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
          else if (tag.find("[tr.") != std::string::npos) {
             num.prefix = "TR1";
             line.erase(0, 4);
+         }
+         else if (tag.find("[fs.") != std::string::npos) {
+            num.prefix = "TSFilesystem";
+            std::cout << "*****" << line << "*****" << std::endl;
+            line.erase(0, 13);
          }
 
          std::istringstream temp(line);
@@ -155,6 +166,7 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
          }
 
          section_db[tag] = num;
+         std::cout << num << '\n';
       }
    }
    return section_db;
