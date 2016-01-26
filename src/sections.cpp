@@ -5,6 +5,7 @@
 #include <ostream>
 #include <sstream>
 #include <iostream>
+#include <cctype>
 
 #if !defined(CPP14_LIBRARY_IS_NEEDED_FOR_STD_EXCHANGE)
 // This should be part of <utility> in C++14 lib
@@ -121,32 +122,34 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
       std::string line;
       getline(infile, line);
       if (!line.empty()) {
+         // get [x.x....] symbolic tag 
          assert(line.back() == ']');
          auto p = line.rfind('[');
          assert(p != std::string::npos);
-         section_tag tag = line.substr(p);
-         std::cout << "tag=\"" << tag << "\"\n";
+         section_tag tag = line.substr(p);   // save [x.x....] symbolic tag
          assert(tag.size() > 2);
          assert(tag[0] == '[');
          assert(tag[tag.size()-1] == ']');
-         line.erase(p-1);
-         std::cout << "line=\"" << line << "\"\n";
+         line.erase(p-1);    // remove symbolic tag
 
          section_num num;
-         if (tag.find("[trdec.") != std::string::npos) {
-            num.prefix = "TRDecimal";
-            line.erase(0, 10);
-         }
-         else if (tag.find("[tr.") != std::string::npos) {
-            num.prefix = "TR1";
-            line.erase(0, 4);
-         }
-         else if (tag.find("[fs.") != std::string::npos) {
-            num.prefix = "TSFilesystem";
-            std::cout << "*****" << line << "*****" << std::endl;
-            line.erase(0, 13);
+         std::string::size_type pos = 0;
+         while ((pos+4) < line.size() && std::isspace(line[pos]))
+           ++pos;
+         if ((pos + 4) < line.size() && line[pos] == 'T'
+           && (line[pos + 1] == 'R' || line[pos + 1] == 'S'))
+         {
+           std::string::size_type end;
+           if ((end = line.find(' ', pos)) != std::string::npos)
+           {
+             num.prefix = line.substr(pos, end);  // save prefix
+             line.erase(pos, end+1);  // remove prefix + trailing space
+           }
+           else
+             std::cout << "Warning: invalid format: \"" << line << "\"\n";
          }
 
+         // save [n.n....] numeric tag
          std::istringstream temp(line);
          if (!std::isdigit(line[0])) {
             char c;
@@ -165,8 +168,7 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
             }
          }
 
-         section_db[tag] = num;
-         std::cout << num << '\n';
+         section_db[tag] = num;  // stuff tag / num pair into section database
       }
    }
    return section_db;
