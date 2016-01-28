@@ -115,7 +115,6 @@ auto lwg::operator << (std::ostream& os, section_num const & sn) -> std::ostream
 }
 
 auto lwg::read_section_db(std::istream & infile) -> section_map {
-  std::cout << "sections.cpp line 115\n";
    section_map section_db;
    while (infile) {
       ws(infile);
