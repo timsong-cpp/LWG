@@ -51,20 +51,11 @@ auto lwg::operator >> (std::istream& is, section_num& sn) -> std::istream & {
    if (is.peek() == 'T') {
       is.get();
       if (is.peek() == 'R' || is.peek() == 'S') {
-         std::string w;
-         is >> w;
-         if (w == "R1") {
-            sn.prefix = "TR1";
-         }
-         else if (w == "RDecimal") {
-            sn.prefix = "TRDecimal";
-         }
-         else if (w == "SFilesystem")
-            sn.prefix = "TSFilesystem";
-         else {
-            throw std::runtime_error{"section_num format error"};
-         }
-         ws(is);
+        sn.prefix = 'T';
+        std::string w;
+        is >> w;
+        sn.prefix += w;
+        ws(is);
       }
       else {
          sn.num.push_back(100 + 'T' - 'A');

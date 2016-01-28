@@ -36,7 +36,7 @@
 // The only known compiler to support all of this today is the experimental gcc trunk (4.6)
 
 // TODO
-// .  Better handling of TR "sections", and grouping of issues in "Clause X"
+// .  Grouping of issues in "Clause X" by TR/TS
 // .  Sort the Revision comments in the same order as the 'Status' reports, rather than alphabetically
 // .  Lots of tidy and cleanup after merging the revision-generating tool
 // .  Refactor more common text

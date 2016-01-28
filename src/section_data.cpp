@@ -15,7 +15,6 @@ struct section_num
 std::istream&
 operator >> (std::istream& is, section_num& sn)
 {
-  std::cout << "section_data.cpp line 18\n";
     sn.prefix.clear();
     sn.num.clear();
     ws(is);
@@ -24,16 +23,10 @@ operator >> (std::istream& is, section_num& sn)
         is.get();
         if (is.peek() == 'R' || is.peek() == 'S')
         {
+            sn.prefix = 'T';
             std::string w;
             is >> w;
-            if (w == "R1")
-                sn.prefix = "TR1";
-            else if (w == "RDecimal")
-                sn.prefix = "TRDecimal";
-            else if (w == "SFilesystem")
-                sn.prefix = "TSFilesystem";
-            else
-                throw std::runtime_error("section_num format error");
+            sn.prefix += w;
             ws(is);
         }
         else
