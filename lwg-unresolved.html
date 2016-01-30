@@ -19,7 +19,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-01-30 at 13:01:07 UTC</p>
+<p><p>Revised 2016-01-30 at 14:01:28 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -6339,6 +6339,7 @@ Also, the requirements for move-assignment should refer to Table 141. Further it
  <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-10-06 <b>Last modified:</b> 2015-11-04</p>
 <p><b>Priority: </b>3
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
 <p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -22165,6 +22166,80 @@ whether such constructs are intended to be supported, but if they are not, the c
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2589" href="#2589">2589.</a> <tt>match_results</tt> can't satisfy the requirements of a container</h3>
+<p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2016-01-24 <b>Last modified:</b> 2016-01-30</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+N4567 28.10 [re.results] p2 mentions
+</p>
+<blockquote>
+<p>
+The class template <tt>match_results</tt> shall satisfy the requirements of an allocator-aware container and of a
+sequence container, as specifed in 23.2.3, except that only operations defined for const-qualified sequence
+containers are supported.
+</p>
+</blockquote>
+<p>
+However, this is impossible because <tt>match_results</tt> has a <tt>operator==</tt> whose semantics differs from the one 
+required in Table 95 &mdash; "Container requirements".
+<p/>
+Table 95 requires that <tt>a == b</tt> is an equivalence relation and means <tt>equal(a.begin(), a.end(), b.begin(), b.end())</tt>. 
+But for <tt>match_results</tt>, <tt>a == b</tt> and <tt>equal(a.begin(), a.end(), b.begin(), b.end())</tt> can give different 
+results. For example:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;regex&gt;
+#include &lt;string&gt;
+#include &lt;algorithm&gt;
+
+int main()
+{
+  std::regex re("a*");
+  std::string target("baaab");
+  std::smatch a;
+
+  std::regex_search(target, a, re);
+
+  std::string target2("raaau");
+  std::smatch b;
+
+  std::regex_search(target2, b, re);
+
+  std::cout &lt;&lt; std::boolalpha;
+  std::cout &lt;&lt; (a == b) &lt;&lt; '\n'; // false
+  std::cout &lt;&lt; std::equal(a.begin(), a.end(), b.begin(), b.end()) &lt;&lt; '\n'; // true
+}
+</pre></blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 28.10 [re.results] p2 as indicated:</p>
+<blockquote><p>
+-2- The class template <tt>match_results</tt> shall satisfy the requirements of an allocator-aware container and of a
+sequence container, as specified in 23.2.3, except that only operations defined for const-qualified sequence
+containers are supported <ins>and that the semantics of comparison functions are different from those required for a 
+container</ins>.
+</p></blockquote>
+</li>
+</ol>
 
 
 
