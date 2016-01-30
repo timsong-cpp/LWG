@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2588" status="New">
+<title>[fund.ts.v2] "Convertible to <tt>bool</tt>" requirement in <tt>conjunction</tt> and <tt>disjunction</tt></title>
+<section><sref ref="[meta.logical]"/></section>
+<submitter>Tim Song</submitter>
+<date>18 Jan 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+The specification of <tt>conjunction</tt> and <tt>disjunction</tt> in <sref ref="[meta.logical]"/> p2 and p5 requires 
+<tt>Bi::value</tt> to be convertible to <tt>bool</tt>, but nothing in the specification of the actual behavior of the 
+templates, which instead uses the expressions <tt>Bi::value == false</tt> and <tt>Bi::value != false</tt> instead, 
+actually requires this conversion.
+<p/>
+If the intention of this requirement is to allow implementations to pass <tt>Bi::value</tt> directly to <tt>std::conditional</tt>, 
+like the sample implementation in P0013R1:
+</p>
+<blockquote><pre>
+template&lt;class B1, class B2&gt;
+struct and_&lt;B1, B2&gt; : conditional_t&lt;B1::value, B2, B1&gt; { };
+</pre></blockquote>
+<p>
+then it's insufficient in at least two ways:
+</p>
+<ol>
+<li><p>Nothing in the specification requires the result of comparing <tt>Bi::value</tt> with <tt>false</tt> to be consistent 
+with the result of the implicit conversion. This is similar to LWG <iref ref="2114"/>, though I don't think the 
+<tt>BooleanTestable</tt> requirements in that issue's P/R covers <tt>Bi::value == false</tt> and <tt>Bi::value != false</tt>.</p></li>
+<li><p>More importantly, the above implementation is ill-formed for, e.g., 
+<tt>std::conjunction&lt;std::integral_constant&lt;int, 2&gt;, std::integral_constant&lt;int, 4&gt;&gt;</tt>, because converting 2 
+to <tt>bool</tt> is a narrowing conversion that is not allowed for non-type template arguments (see <sref ref="[expr.const]"/>/4). 
+(Note that GCC currently doesn't diagnose this error at all, and Clang doesn't diagnose it inside system headers.) It's not clear 
+whether such constructs are intended to be supported, but if they are not, the current wording doesn't prohibit it.</p></li> 
+</ol>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
