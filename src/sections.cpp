@@ -13,18 +13,39 @@
 // Will be available soon when assuming libc++ with Clang 3.4, or gcc 4.9 and later
 namespace {
 
-template <typename TYPE, typename V_TYPE>
-auto exchange(TYPE & object, V_TYPE && value) -> TYPE {
-   auto result = object;
-   object = std::forward<V_TYPE>(value);
-   return result;
-}
+  template <typename TYPE, typename V_TYPE>
+  auto exchange(TYPE & object, V_TYPE && value) -> TYPE {
+    auto result = object;
+    object = std::forward<V_TYPE>(value);
+    return result;
+  }
 
 } // close unnamed namespace
 #else
 #include <utility>
 using std::exchange;
 #endif
+
+auto lwg::operator<(section_tag const & x, section_tag const & y) noexcept -> bool {
+   return (x.prefix < y.prefix) ?  true
+        : (y.prefix < x.prefix) ? false
+        : x.name < y.name;
+}
+
+auto lwg::operator==(section_tag const & x, section_tag const & y) noexcept -> bool {
+   return x.prefix == y.prefix && x.name == y.name;
+}
+
+auto lwg::operator!=(section_tag const & x, section_tag const & y) noexcept -> bool {
+   return !(x == y);
+}
+
+auto lwg::operator << (std::ostream& os, section_tag const & tag) -> std::ostream & {
+//   if (!tag.prefix.empty()) { os << tag.prefix << " "; }
+   os << tag.name;
+   return os;
+}
+
 
 auto lwg::operator < (section_num const & x, section_num const & y) noexcept -> bool {
    // prefixes are unique, so there should be no need for a tiebreak.
@@ -44,7 +65,6 @@ auto lwg::operator != (section_num const & x, section_num const & y) noexcept ->
 }
 
 auto lwg::operator >> (std::istream& is, section_num& sn) -> std::istream & {
-  std::cout << "sections.cpp line 46\n";
    sn.prefix.clear();
    sn.num.clear();
    ws(is);
@@ -87,7 +107,7 @@ auto lwg::operator >> (std::istream& is, section_num& sn) -> std::istream & {
 }
 
 auto lwg::operator << (std::ostream& os, section_num const & sn) -> std::ostream & {
-   if (!sn.prefix.empty()) { os << sn.prefix << " "; }
+//   if (!sn.prefix.empty()) { os << sn.prefix << " "; }
 
    bool use_period{false};
    for (auto sub : sn.num ) {
@@ -116,28 +136,29 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
          assert(line.back() == ']');
          auto p = line.rfind('[');
          assert(p != std::string::npos);
-         section_tag tag = line.substr(p);   // save [x.x....] symbolic tag
-         assert(tag.size() > 2);
-         assert(tag[0] == '[');
-         assert(tag[tag.size()-1] == ']');
-         line.erase(p-1);    // remove symbolic tag
+         section_tag tag;
+         tag.name = line.substr(p);   // save [x.x....] symbolic tag
+         assert(tag.name.size() > 2);
+         assert(tag.name[0] == '[');
+         assert(tag.name[tag.name.size()-1] == ']');
+         tag.name.erase(0, 1);  // erase '[' from name
+         tag.name.erase(tag.name.size() - 1);  // erase ']' from name
+         line.erase(p-1);    // remove symbolic tag from line
 
+         // get the prefix if any
          section_num num;
-         std::string::size_type pos = 0;
-         while ((pos+4) < line.size() && std::isspace(line[pos]))
-           ++pos;
-         if ((pos + 4) < line.size() && line[pos] == 'T'
-           && (line[pos + 1] == 'R' || line[pos + 1] == 'S'))
+         while (!line.empty() && std::isspace(line[0]))
+           line.erase(0,1);
+         if (line.size() > 1 && std::isalpha(line[0])
+           && line[1] != ' ' && line[1] != '.') // not an annex
          {
            std::string::size_type end;
-           if ((end = line.find(' ', pos)) != std::string::npos)
-           {
-             num.prefix = line.substr(pos, end);  // save prefix
-             line.erase(pos, end+1);  // remove prefix + trailing space
+           if ((end = line.find(' ')) != std::string::npos) {
+             num.prefix = line.substr(0, end);  // save prefix
+             line.erase(0, end+1);  // remove prefix + trailing space
            }
-           else
-             std::cout << "Warning: invalid format: \"" << line << "\"\n";
          }
+         tag.prefix = num.prefix;
 
          // save [n.n....] numeric tag
          std::istringstream temp(line);
@@ -157,7 +178,8 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
                temp >> dot;
             }
          }
-
+//         std::cout << "tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
+//         std::cout << "num=\"" << num.prefix << "\", \"" << num.num[0] << "\"\n";
          section_db[tag] = num;  // stuff tag / num pair into section database
       }
    }

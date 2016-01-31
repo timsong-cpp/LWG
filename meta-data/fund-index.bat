@@ -6,6 +6,6 @@ echo Complete. See %2
 goto ok
 
 :error
-echo Invoke: build_index html-input-file text-output-file
+echo Invoke: fund_index html-input-file text-output-file
 
 :ok

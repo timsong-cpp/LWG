@@ -329,10 +329,12 @@ void format_issue_as_html(lwg::issue & is,
                }
 
                ++k;
-               r = s.substr(k, l-k);
+               lwg::section_tag tag;
+               tag.prefix = is.doc_prefix;
+               tag.name = r = s.substr(k, l-k);
                {
                   std::ostringstream t;
-                  t << section_db[r] << ' ';
+                  t << section_db[tag] << ' ';
                   r.insert(0, t.str());
                }
 

@@ -9,16 +9,16 @@
 
 // solution specific headers
 #include "date.h"
+#include "sections.h"
 
 namespace lwg
 {
-
-using section_tag = std::string;
 
 struct issue {
    int                        num;            // ID - issue number
    std::string                stat;           // current status of the issue
    std::string                title;          // descriptive title for the issue
+   std::string                doc_prefix;     // extracted from title; e.g. filesys.ts
    std::vector<section_tag>   tags;           // section(s) of the standard affected by the issue
    std::string                submitter;      // original submitter of the issue
    gregorian::date            date;           // date the issue was filed
@@ -36,12 +36,6 @@ struct order_by_issue_number {
     bool operator()(issue const & x, int y)           const noexcept   {  return x.num < y;       }
     bool operator()(int x,           issue const & y) const noexcept   {  return x     < y.num;   }
 };
-
-
-struct section_num;
-
-using section_tag = std::string;
-using section_map = std::map<section_tag, section_num>;
 
 auto parse_issue_from_file(std::string file_contents, std::string const & filename, lwg::section_map & section_db) -> issue;
   // Seems appropriate constructor behavior.
