@@ -130,9 +130,9 @@ changed resolution: Currently the following program is accepted by three popular
 gcc 6 libstdc++, and clang 3.8.0 libc++:
 </p>
 <blockquote><pre>
-#include &lt;functional>
-#include &lt;iostream>
-#include &lt;typeinfo>
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;typeinfo&gt;
 #include "boost/function.hpp"
 
 void foo(int) {}
@@ -244,9 +244,19 @@ pointer.
 <p>Discussion whether "tentatively ready" or "review". The latter would require one more meeting. EF: We already have implementation convergence. MC: I worry about a two-meeting delay. WEB: All that being said, I'd be slightly more confident with a review since we'll have new wording, but I wouldn't object. MC: We can look at it in a telecon and move it.</p>
 <p>STL reads out email to Daniel.</p>
 <p>Status Review, to be moved to TR at the next telecon.</p>
-</discussion>
 
-<resolution>
+<note>2016-01-31, Daniel comments and suggests less controversive resolution</note>
+<p>
+It seems that specifically the wording changes for <sref ref="[func.wrap.func.targ]"/> p2 prevent this issue
+from making make progress. Therefore the separate issue LWG <iref ref="2591"/> has been created, that focuses
+solely on this aspect. Furtheron the current P/R of this issue has been adjusted to the minimal possible one,
+where the term "Callable" has been replaced by the new term "Lvalue-Callable".
+</p>
+
+<p>
+<strong>Previous resolution II [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N4527.</p>
 
 <ol>
@@ -304,6 +314,75 @@ template&lt;class T&gt; const T* target() const noexcept;
 -2- <ins><i>Remarks</i>: If <tt>T</tt> is a type that is not <tt>Lvalue-Callable</tt> (20.9.11.2) for parameter types 
 <tt>ArgTypes</tt> and return type <tt>R</tt>, the program is ill-formed</ins><del><i>Requires</i>: <tt>T</tt> shall be a type that is <tt>Callable</tt> (20.9.11.2) for parameter types 
 <tt>ArgTypes</tt> and return type <tt>R</tt></del>.
+<p/>
+-3- <i>Returns</i>: If <tt>target_type() == typeid(T)</tt> a pointer to the stored function target; otherwise a null
+pointer.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Change <sref ref="[func.wrap.func]"/> p2 as indicated:</p>
+
+<blockquote><p>
+-2- A callable <del>object <tt>f</tt> of</del> type <ins>(<sref ref="[func.def]"/>)</ins> <tt>F</tt> is <em><ins>Lvalue-</ins>Callable</em> 
+for argument types <tt>ArgTypes</tt> and return type <tt>R</tt> if the expression <tt><i>INVOKE</i>(<del>f</del><ins>declval&lt;F&amp;&gt;()</ins>, 
+declval&lt;ArgTypes&gt;()..., R)</tt>, considered as an unevaluated operand (Clause 5), is well formed (20.9.2).
+</p></blockquote>
+</li>
+
+<li><p>Change <sref ref="[func.wrap.func.con]"/> p8+p21 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F&gt; function(F f);
+template &lt;class F, class A&gt; function(allocator_arg_t, const A&amp; a, F f);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-8- <i>Remarks</i>: These constructors shall not participate in overload resolution unless <tt><del>f</del><ins>F</ins></tt> is 
+<tt><ins>Lvalue-</ins>Callable</tt> (<sref ref="[func.wrap.func]"/>) for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+template&lt;class F&gt; function&amp; operator=(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-21- <i>Remarks</i>: This assignment operator shall not participate in overload resolution unless 
+<tt><del>declval&lt;typename decay&lt;F&gt;::type&amp;&gt;()</del><ins>decay_t&lt;F&gt;</ins></tt> is 
+<tt><ins>Lvalue-</ins>Callable</tt> (<sref ref="[func.wrap.func]"/>) for argument types <tt>ArgTypes...</tt> and 
+return type <tt>R</tt>.
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[func.wrap.func.targ]"/> p2 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class T&gt; T* target() noexcept;
+template&lt;class T&gt; const T* target() const noexcept;
+</pre>
+<blockquote>
+<p>
+-2- <i>Requires</i>: <tt>T</tt> shall be a type that is <tt><ins>Lvalue-</ins>Callable</tt> (<sref ref="[func.wrap.func]"/>) 
+for parameter types <tt>ArgTypes</tt> and return type <tt>R</tt>.
 <p/>
 -3- <i>Returns</i>: If <tt>target_type() == typeid(T)</tt> a pointer to the stored function target; otherwise a null
 pointer.
