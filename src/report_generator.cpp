@@ -65,7 +65,7 @@ assert(!y.tags.empty());
       lwg::section_num const & xn = section_db.get()[x.tags[0]];
       lwg::section_num const & yn = section_db.get()[y.tags[0]];
       return  xn.prefix < yn.prefix
-          or (xn.prefix > yn.prefix  and  xn.num[0] < yn.num[0]);
+          or (xn.prefix == yn.prefix  and  xn.num[0] < yn.num[0]);
    }
 
 private:
@@ -746,11 +746,13 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, std::str
 
    // Would prefer to use const_iterators from here, but oh well....
    for (auto i = b; i != e;) {
-assert(!i->tags.empty());
+      assert(!i->tags.empty());
+      std::string current_prefix = section_db[i->tags[0]].prefix;
       int current_num = section_db[i->tags[0]].num[0];
       auto j = i;
       for (; j != e; ++j) {
-         if (section_db[j->tags[0]].num[0] != current_num) {
+        if (section_db[j->tags[0]].prefix != current_prefix
+           || section_db[j->tags[0]].num[0] != current_num) {
              break;
          }
       }
