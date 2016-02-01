@@ -169,6 +169,7 @@ R"(<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
+  table {border-collapse: collapse;}
 </style>
 </head>
 <body>
