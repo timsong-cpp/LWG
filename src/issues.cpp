@@ -184,12 +184,14 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename, lw
    is.title = tx.substr(k, l-k);
 
    // Extract doc_prefix from title
-   if (is.title[0] == '[') {
+   if (is.title[0] == '['
+     && is.title.find("[CD]") == std::string::npos) // special case for a few titles
+   {
       std::string::size_type pos = is.title.find(']');
       if (pos != std::string::npos)
         is.doc_prefix = is.title.substr(1, pos - 1);
 //    std::cout << is.doc_prefix << '\n';
-  }
+   }
 
    // Get issue sections
    k = tx.find("<section>", l);
