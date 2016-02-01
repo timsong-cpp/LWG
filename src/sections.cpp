@@ -42,7 +42,7 @@ auto lwg::operator!=(section_tag const & x, section_tag const & y) noexcept -> b
 
 auto lwg::operator << (std::ostream& os, section_tag const & tag) -> std::ostream & {
 //   if (!tag.prefix.empty()) { os << tag.prefix << " "; }
-   os << tag.name;
+   os << '[' << tag.name << ']';
    return os;
 }
 
