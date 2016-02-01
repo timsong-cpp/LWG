@@ -217,7 +217,9 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename, lw
       is.tags.emplace_back(tag);
       if (section_db.find(is.tags.back()) == section_db.end()) {
           section_num num{};
-          num.num.push_back(100 + 'X' - 'A');
+ //         num.num.push_back(100 + 'X' - 'A');
+          num.prefix = tag.prefix;
+          num.num.push_back(99);
           section_db[is.tags.back()] = num;
       }
       k = k2;
