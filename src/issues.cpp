@@ -145,7 +145,8 @@ auto lwg::is_ready(std::string stat) -> bool {
    return "Ready" == remove_tentatively(stat);
 }
 
-auto lwg::parse_issue_from_file(std::string tx, std::string const & filename, lwg::section_map & section_db) -> issue {
+auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
+  lwg::section_map & section_db) -> issue {
    struct bad_issue_file : std::runtime_error {
       bad_issue_file(std::string const & filename, char const * error_message)
          : runtime_error{"Error parsing issue file " + filename + ": " + error_message}

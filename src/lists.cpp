@@ -308,6 +308,8 @@ void format_issue_as_html(lwg::issue & is,
          }
 
          if (s[j-1] == '/') { // self-contained tag: sref, iref
+
+            // format section references
             if (tag == "sref") {
                static const
                auto report_missing_quote = [](std::ostringstream & er, unsigned num) {
@@ -331,7 +333,9 @@ void format_issue_as_html(lwg::issue & is,
                ++k;
                lwg::section_tag tag;
                tag.prefix = is.doc_prefix;
-               tag.name = r = s.substr(k, l-k);
+               r = s.substr(k, l-k);
+               tag.name = r.substr(1, r.size() - 2);
+               //std::cout << "section_tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
                {
                   std::ostringstream t;
                   t << section_db[tag] << ' ';
@@ -343,6 +347,8 @@ void format_issue_as_html(lwg::issue & is,
                i += r.size() - 1;
                continue;
             }
+
+            // format issue references
             else if (tag == "iref") {
                static const
                auto report_missing_quote = [](std::ostringstream & er, unsigned num) {
