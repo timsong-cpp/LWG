@@ -19,12 +19,12 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-02-04 at 16:02:53 UTC</p>
+<p><p>Revised 2016-02-07 at 20:02:07 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
 <p><b>Section:</b> 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2015-04-08</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements">active issues</a> in [container.requirements].</p>
@@ -388,7 +388,7 @@ compatibility with C. &mdash; <i>end note</i>]</ins>
 <hr>
 <h3><a name="2337" href="#2337">2337.</a> <tt>shared_ptr operator*()</tt> should not be <tt>noexcept</tt></h3>
 <p><b>Section:</b> 20.8.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2015-03-29</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2015-04-08</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.obs">active issues</a> in [util.smartptr.shared.obs].</p>
@@ -894,7 +894,7 @@ of the best viable function (C++14 &sect;13.3.3) for the arguments <tt>t1, ..., 
 <hr>
 <h3><a name="2545" href="#2545">2545.</a> Simplify wording for <tt>bind</tt> without explicitly specified return type</h3>
 <p><b>Section:</b> 20.9.10.3 [func.bind.bind] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2015-10-05 <b>Last modified:</b> 2016-01-13</p>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2015-10-05 <b>Last modified:</b> 2016-01-04</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#func.bind.bind">issues</a> in [func.bind.bind].</p>
@@ -961,6 +961,1565 @@ throws an exception.
 [&hellip;]
 </p>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2557" href="#2557">2557.</a> Logical operator traits are broken in the zero-argument case</h3>
+<p><b>Section:</b> 20.10.8 [meta.logical] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2015-11-05 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.logical">active issues</a> in [meta.logical].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.logical">issues</a> in [meta.logical].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The conjunction trait in 20.10.8 [meta.logical] seems intended to support invocation with zero arguments, e.g. 
+<tt>conjunction&lt;&gt;::value</tt>, which is likely to be a useful feature. However, the specification doesn't 
+actually make sense in the zero-argument case. See 20.10.8 [meta.logical]/p3:
+</p>
+<blockquote><p>
+The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, &hellip;, BN&gt;</tt> is the first type <tt>B</tt> in 
+the list <tt>true_type</tt>, <tt>B1</tt>, &hellip;, <tt>BN</tt> for which <tt>B::value == false</tt>, or if every 
+<tt>B::value != false</tt> the BaseCharacteristic is <tt>BN</tt>.
+</p></blockquote>
+<p>
+If "<tt>B1, ..., BN</tt>" is an empty list, then every <tt>B::value != false</tt>, so the BaseCharacteristic is <tt>BN</tt>, 
+but there is no <tt>BN</tt> in this case. 
+<p/>
+(If LWG concludes that <tt>conjunction</tt> intentionally requires at least one argument, I would appreciate their confirmation that 
+I can editorially remove the mention of <tt>true_type</tt>, which seems to have no normative impact outside the zero-argument case.)
+<p/>
+Similar comments apply to the <tt>disjunction</tt> trait, and to the corresponding traits in the Fundamentals working 
+paper, see LWG <a href="lwg-active.html#2558">2558</a>.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Revise 20.10.8 [meta.logical] as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class... B&gt; struct conjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>true_type, B1, ..., BN</tt> for which <tt>Bi::value == false</tt>, or if every <tt>Bi::value != false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>conjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... B&gt; struct disjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- The BaseCharacteristic of a specialization <tt>disjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>false_type, B1, ..., BN</tt> for which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>disjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2558" href="#2558">2558.</a> [fund.ts.v2] Logical operator traits are broken in the zero-argument case</h3>
+<p><b>Section:</b> 20.10.8 [meta.logical] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2015-11-05 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.logical">active issues</a> in [meta.logical].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.logical">issues</a> in [meta.logical].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+The conjunction trait in 20.10.8 [meta.logical] seems intended to support invocation with zero arguments, e.g. 
+<tt>conjunction&lt;&gt;::value</tt>, which is likely to be a useful feature. However, the specification doesn't 
+actually make sense in the zero-argument case. See 20.10.8 [meta.logical]/p3:
+</p>
+<blockquote><p>
+The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, &hellip;, BN&gt;</tt> is the first type <tt>B</tt> in 
+the list <tt>true_type</tt>, <tt>B1</tt>, &hellip;, <tt>BN</tt> for which <tt>B::value == false</tt>, or if every 
+<tt>B::value != false</tt> the BaseCharacteristic is <tt>BN</tt>.
+</p></blockquote>
+<p>
+If "<tt>B1, ..., BN</tt>" is an empty list, then every <tt>B::value != false</tt>, so the BaseCharacteristic is <tt>BN</tt>, 
+but there is no <tt>BN</tt> in this case. 
+<p/>
+(If LWG concludes that <tt>conjunction</tt> intentionally requires at least one argument, I would appreciate their confirmation that 
+I can editorially remove the mention of <tt>true_type</tt>, which seems to have no normative impact outside the zero-argument case.)
+<p/>
+Similar comments apply to the <tt>disjunction</tt> trait, and to the corresponding traits in the C++ working paper,
+see LWG <a href="lwg-active.html#2557">2557</a>.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>.</p>
+
+<ol>
+<li><p>Revise 20.10.8 [meta.logical] as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class... B&gt; struct conjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- The BaseCharacteristic of a specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>true_type, B1, ..., BN</tt> for which <tt>Bi::value == false</tt>, or if every <tt>Bi::value != false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>conjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... B&gt; struct disjunction : <i>see below</i> { };
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- The BaseCharacteristic of a specialization <tt>disjunction&lt;B1, ..., BN&gt;</tt> is the first type <tt>Bi</tt> in the
+list <tt>false_type, B1, ..., BN</tt> for which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
+BaseCharacteristic is <del><tt>BN</tt></del><ins>the last type in the list</ins>. [<i>Note</i>: This means a specialization 
+of <tt>disjunction</tt> does not necessarily have a BaseCharacteristic of either <tt>true_type</tt> or <tt>false_type</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2559" href="#2559">2559.</a> Error in LWG 2234's resolution</h3>
+<p><b>Section:</b> 19.3 [assertions] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-11-07 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#assertions">active issues</a> in [assertions].</p>
+<p><b>View all other</b> <a href="lwg-index.html#assertions">issues</a> in [assertions].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The resolution of LWG <a href="lwg-defects.html#2234">2234</a> says that <tt>assert(E)</tt> is a constant subexpression if "<tt>NDEBUG</tt> is defined 
+at the point where <tt>assert(E)</tt> appears".
+<p/>
+This is incorrect, as noted in one of STL's comments in that issue's discussion, but was apparently overlooked.
+<p/>
+The proposed resolution below just borrows STL's phrasing from the discussion.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Change 19.3 [assertions] p2 as indicated:</p>
+
+<blockquote>
+<p>
+An expression <tt>assert(E)</tt> is a constant subexpression (17.3.28 [defns.const.subexpr]), if
+</p>
+<ul>
+<li><p><tt>NDEBUG</tt> is defined at the point where <del><tt>assert(E)</tt> appears</del><ins><tt>assert</tt> is last 
+defined or redefined</ins>, or</p></li>
+<li><p>[&hellip;]</p></li>
+</ul>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2560" href="#2560">2560.</a> <tt>is_constructible</tt> underspecified when applied to a function type</h3>
+<p><b>Section:</b> 20.10.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2015-11-14 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+What is <tt>is_constructible&lt;void()&gt;::value</tt>? Per 20.10.4.3 [meta.unary.prop] p8:
+</p>
+<blockquote>
+<p>
+The predicate condition for a template specialization <tt>is_constructible&lt;T, Args...&gt;</tt> shall be satisfied if
+and only if the following variable definition would be well-formed for some invented variable <tt>t</tt>:
+</p>
+<blockquote><pre>
+T t(declval&lt;Args&gt;()...);
+</pre></blockquote>
+<p>
+[<i>Note</i>: These tokens are never interpreted as a function declaration. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+<p>
+The problem here is that substituting in <tt>T</tt> as a function type doesn't give a variable definition that's not well-formed 
+(by 1.3.27 [defns.well.formed], well-formed means that it doesn't violate any syntactic or diagnosable semantic rules, and 
+it does not). Instead, it gives a logical absurdity: this wording forces us to imagine a variable of function type, which contradicts 
+the definition of "variable" in 3/6, but does so without violating any diagnosable language rule. So presumably the result must 
+be undefined behavior.
+<p/>
+It seems that we need an explicit rule requiring <tt>T</tt> to be an object or reference type.
+<p/>
+<b>Daniel:</b>
+<p/>
+As one of the authors of <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3142.html">N3142</a> I would like
+to express that at least according to my mental model the intention for this trait was to be well-defined for <tt>T</tt> being
+a function type with the result of <tt>false</tt> regardless of what the other type arguments are. It would seem like a very 
+unfortunate and unnecessary complication to keep the result as being undefined. First, this result value is symmetric to
+the result of <tt>is_destructible&lt;T&gt;::value</tt> (where the word covers function types explicitly). Second, if such a
+resolution would be applied to the working paper, it wouldn't break existing implementations. I have tested clang 3.8.0,
+gcc 5.x until gcc 6.0, and Visual Studio 2015, all of these implementations evaluate <tt>is_constructible&lt;void()&gt;::value</tt>
+to <tt>false</tt>. 
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Change 20.10.4.3 [meta.unary.prop], Table 49 &mdash; "Type property predicates", as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 49 &mdash; Type property predicates</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Preconditions</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T, class... Args&gt;<br/>
+struct is_constructible;</tt>
+</td>
+
+<td>
+<ins>For a function type <tt>T</tt>,<br/> 
+<tt>is_constructible&lt;T, Args...&gt;::value</tt><br/>
+is <tt>false</tt>, otherwise</ins> <i>see below</i>
+</td>
+
+<td align="center">
+<tt>T</tt> and all types in the<br/>
+parameter pack <tt>Args</tt> shall<br/>
+be complete types,<br/>
+(possibly <i>cv</i>-qualified)<br/>
+<tt>void</tt>, or arrays of<br/>
+unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2565" href="#2565">2565.</a> <tt>std::function</tt>'s move constructor should guarantee nothrow for <tt>reference_wrapper</tt>s and function pointers</h3>
+<p><b>Section:</b> 20.9.12.2.1 [func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-05 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func.con">active issues</a> in [func.wrap.func.con].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.con">issues</a> in [func.wrap.func.con].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.9.12.2.1 [func.wrap.func.con]/5 guarantees that copying a <tt>std::function</tt> whose "target is a callable object passed 
+via <tt>reference_wrapper</tt> or a function pointer" does not throw exceptions, but the standard doesn't provide this guarantee for the move constructor, 
+which makes scant sense.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: The inserted paragraph is a copy of 20.9.12.2.1 [func.wrap.func.con]/5, only changing "copy constructor" 
+to "copy or move constructor". It does not attempt to fix the issue identified in LWG <a href="lwg-active.html#2370">2370</a>, whose P/R will likely 
+need updating if this wording is adopted.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Insert after 20.9.12.2.1 [func.wrap.func.con]/6:</p>
+
+<blockquote>
+<pre>
+function(function&amp;&amp; f);
+template &lt;class A&gt; function(allocator_arg_t, const A&amp; a, function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects</i>: If <tt>!f</tt>, <tt>*this</tt> has no target; otherwise, move-constructs the target of <tt>f</tt> into the 
+target of <tt>*this</tt>, leaving <tt>f</tt> in a valid state with an unspecified value.
+<p/>
+<ins>-?- <i>Throws</i>: Shall not throw exceptions if <tt>f</tt>'s target is a callable object passed via <tt>reference_wrapper</tt> 
+or a function pointer. Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by the copy or move constructor of the stored 
+callable object. [<i>Note</i>: Implementations are encouraged to avoid the use of dynamically allocated memory for small callable 
+objects, for example, where <tt>f</tt>'s target is an object holding only a pointer or reference to an object and a member function 
+pointer. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2566" href="#2566">2566.</a> Requirements on the first template parameter of container adaptors</h3>
+<p><b>Section:</b> 23.6 [container.adaptors] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-08 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#container.adaptors">issues</a> in [container.adaptors].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+As noted in <a href="http://stackoverflow.com/questions/34128782/what-is-the-use-of-first-template-parameter-in-priority-queue">this 
+StackOverflow question</a>, 23.6 [container.adaptors] doesn't seem to place any requirement on the first template parameter 
+(<tt>T</tt>) of <tt>stack</tt>, <tt>queue</tt>, and <tt>priority_queue</tt>: the only use of <tt>T</tt> is in the default template 
+argument (which need not be used) for the second template parameter (<tt>Container</tt>), while all of the operations of the adaptors 
+are defined using <tt>Container</tt>'s member typedefs.
+<p/>
+This permits confusing and arguably nonsensical types like <tt>queue&lt;double, deque&lt;std::string&gt;&gt;</tt> or 
+<tt>priority_queue&lt;std::nothrow_t, vector&lt;int&gt;&gt;</tt>, which presumably wasn't intended.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Edit 23.6.1 [container.adaptors.general]/2 as indicated:</p>
+
+<blockquote>
+<p>
+-2- The container adaptors each take a <tt>Container</tt> template parameter, and each constructor takes a <tt>Container</tt>
+reference argument. This container is copied into the <tt>Container</tt> member of each adaptor. If the container
+takes an allocator, then a compatible allocator may be passed in to the adaptor's constructor. Otherwise,
+normal copy or move construction is used for the container argument. <ins>The first template parameter <tt>T</tt> of the container 
+adaptors shall denote the same type as <tt>Container::value_type</tt>.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2571" href="#2571">2571.</a> [map.modifiers]/2 imposes nonsensical requirement on <tt>insert(InputIterator, InputIterator)</tt></h3>
+<p><b>Section:</b> 23.4.4.4 [map.modifiers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-12 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#map.modifiers">issues</a> in [map.modifiers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The initial paragraphs of 23.4.4.4 [map.modifiers] currently read:
+</p>
+<blockquote>
+<pre>
+template &lt;class P&gt; pair&lt;iterator, bool&gt; insert(P&amp;&amp; x);
+template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x);
+template &lt;class InputIterator&gt;
+void insert(InputIterator first, InputIterator last);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: The first form is equivalent to <tt>return emplace(std::forward&lt;P&gt;(x))</tt>. The second form is
+equivalent to <tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.
+<p/>
+-2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_type,
+P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+Clearly, p2's requirement makes no sense for <tt>insert(InputIterator, InputIterator)</tt> - it doesn't even have 
+a template parameter called <tt>P</tt>.
+<p/>
+This paragraph used to have text saying "The signature taking <tt>InputIterator</tt> parameters does not require 
+<tt>CopyConstructible</tt> of either <tt>key_type</tt> or <tt>mapped_type</tt> if the dereferenced <tt>InputIterator</tt> 
+returns a non-<tt>const</tt> rvalue <tt>pair&lt;key_type,mapped_type&gt;</tt>. Otherwise <tt>CopyConstructible</tt> is 
+required for both <tt>key_type</tt> and <tt>mapped_type</tt>", but that was removed by LWG <a href="lwg-defects.html#2005">2005</a>, whose PR 
+was written as if that overload didn't exist in the text.
+<p/>
+It looks like the text addressing this overload is redundant to the requirements on <tt>a.insert(i, j)</tt> in Table 102 
+that <tt>value_type</tt> be <tt>EmplaceConstructible</tt> from <tt>*i</tt>. If so, then the signature should just be 
+deleted from this section.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Edit 23.4.4.4 [map.modifiers] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class P&gt; pair&lt;iterator, bool&gt; insert(P&amp;&amp; x);
+template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x);
+<del>template &lt;class InputIterator&gt;
+void insert(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: The first form is equivalent to <tt>return emplace(std::forward&lt;P&gt;(x))</tt>. The second form is
+equivalent to <tt>return emplace_hint(position, std::forward&lt;P&gt;(x))</tt>.
+<p/>
+-2- <i>Remarks</i>: These signatures shall not participate in overload resolution unless <tt>std::is_constructible&lt;value_type,
+P&amp;&amp;&gt;::value</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2572" href="#2572">2572.</a> The remarks for <tt>shared_ptr::operator*</tt> should apply to <i>cv</i>-qualified <tt>void</tt> as well</h3>
+<p><b>Section:</b> 20.8.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-13 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.obs">active issues</a> in [util.smartptr.shared.obs].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.obs">issues</a> in [util.smartptr.shared.obs].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.8.2.2.5 [util.smartptr.shared.obs]/4 says for <tt>shared_ptr::operator*</tt>
+</p>
+<blockquote>
+<p>
+<i>Remarks</i>: When <tt>T</tt> is <tt>void</tt>, it is unspecified whether this member function is declared. If it is declared,
+it is unspecified what its return type is, except that the declaration (although not necessarily the
+definition) of the function shall be well formed.
+</p>
+</blockquote>
+<p>
+This remark should also apply when <tt>T</tt> is <i>cv</i>-qualified <tt>void</tt> (compare LWG <a href="lwg-defects.html#2500">2500</a>).
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Edit 20.8.2.2.5 [util.smartptr.shared.obs]/4 as indicated:</p>
+
+<blockquote>
+<pre>
+T&amp; operator*() const noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-4- <i>Remarks</i>: When <tt>T</tt> is <ins>(possibly <i>cv</i>-qualified)</ins> <tt>void</tt>, it is unspecified whether this 
+member function is declared. If it is declared, it is unspecified what its return type is, except that the declaration 
+(although not necessarily the definition) of the function shall be well formed.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2574" href="#2574">2574.</a> [fund.ts.v2] <tt>std::experimental::function::operator=(F&amp;&amp;)</tt> should be constrained</h3>
+<p><b>Section:</b> 20.9.12.2.1 [func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-05 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func.con">active issues</a> in [func.wrap.func.con].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.con">issues</a> in [func.wrap.func.con].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+LWG <a href="lwg-defects.html#2132">2132</a> constrained <tt>std::function</tt>'s constructor and assignment operator from callable objects for C++14. 
+The constructors of <tt>std::experimental::function</tt> isn't separately specified in the fundamentals TS and so inherited the 
+constraints from C++14, but the assignment operator is separately specified and presumably needs to be constrained.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>.
+</p>
+
+<ol>
+<li><p>Insert a paragraph after 20.9.12.2.1 [func.wrap.func.con]/15 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F&gt; function&amp; operator=(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-14- <i>Effects</i>: <tt>function(allocator_arg, <i>ALLOCATOR_OF</i>(*this), std::forward&lt;F&gt;(f)).swap(*this);</tt>
+<p/>
+-15- <i>Returns</i>: <tt>*this</tt>. 
+<p/>
+<ins>-?- <i>Remarks</i>: This assignment operator shall not participate in overload resolution unless 
+<tt>declval&lt;decay_t&lt;F&gt;&amp;&gt;()</tt> is Callable (C++14 &sect;20.9.11.2) for argument types 
+<tt>ArgTypes...</tt> and return type <tt>R</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2575" href="#2575">2575.</a> [fund.ts.v2] <tt>experimental::function::assign</tt> should be removed</h3>
+<p><b>Section:</b> 20.9.12.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-20 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+Following the lead of LWG <a href="lwg-defects.html#2385">2385</a>, the <tt>assign(F&amp;&amp;, const A&amp;)</tt> member function template in 
+<tt>std::experimental::function</tt> makes no sense (it causes undefined behavior unless the allocator passed compares equal 
+to the one already used by <tt>*this</tt>) and should be removed.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>.
+</p>
+
+<ol>
+<li><p>Edit 20.9.12.2 [func.wrap.func], class template <tt>function</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  namespace experimental {
+  inline namespace fundamentals_v2 {
+    [&hellip;]
+    template&lt;class R, class... ArgTypes&gt;
+    class function&lt;R(ArgTypes...)&gt; {
+    public:
+      [&hellip;]
+      void swap(function&amp;);
+      <del>template&lt;class F, class A&gt; void assign(F&amp;&amp;, const A&amp;);</del>
+      [&hellip;]
+    };
+    [&hellip;]
+  } // namespace fundamentals_v2
+  } // namespace experimental
+  [&hellip;]
+} // namespace std
+</pre>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2576" href="#2576">2576.</a> <tt>istream_iterator</tt> and <tt>ostream_iterator</tt> should use <tt>std::addressof</tt></h3>
+<p><b>Section:</b> 24.6 [stream.iterators] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-01-01 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#stream.iterators">issues</a> in [stream.iterators].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+To defend against overloaded unary <tt>&amp;</tt>. This includes the constructors of both iterators, and 
+<tt>istream_iterator::operator-&gt;</tt>.
+<p/>
+Note that <tt>{i,o}stream_type</tt> are specializations of <tt>basic_{i,o}stream</tt>, but the constructors might still 
+pick up an overloaded <tt>&amp;</tt> via the <tt>traits</tt> template parameter. This change also provides consistency 
+with <tt>std::experimental::ostream_joiner</tt> (which uses <tt>std::addressof</tt>).
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit 24.6.1.1 [istream.iterator.cons]/3+4 as indicated:</p>
+
+<blockquote>
+<pre>
+istream_iterator(istream_type&amp; s);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Initializes <tt>in_stream</tt> with <tt><del>&amp;s</del><ins>addressof(s)</ins></tt>. <tt>value</tt> 
+may be initialized during construction or the first time it is referenced.
+<p/>
+-4- <i>Postcondition</i>: <tt>in_stream == <del>&amp;s</del><ins>addressof(s)</ins></tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 24.6.1.2 [istream.iterator.ops]/2 as indicated:</p>
+
+<blockquote>
+<pre>
+const T* operator-&gt;() const;
+</pre>
+<blockquote>
+<p>
+-2- <i>Returns</i>: <tt><del>&amp;</del><ins>addressof</ins>(operator*())</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 24.6.2.1 [ostream.iterator.cons.des]/1+2 as indicated:</p>
+
+<blockquote>
+<pre>
+ostream_iterator(ostream_type&amp; s);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Initializes <tt>out_stream</tt> with <tt><del>&amp;s</del><ins>addressof(s)</ins></tt> and 
+<tt>delim</tt> with null.
+</p>
+</blockquote>
+<pre>
+ostream_iterator(ostream_type&amp; s, const charT* delimiter);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Initializes <tt>out_stream</tt> with <tt><del>&amp;s</del><ins>addressof(s)</ins></tt> and 
+<tt>delim</tt> with <tt>delimiter</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2577" href="#2577">2577.</a> <tt>{shared,unique}_lock</tt> should use <tt>std::addressof</tt></h3>
+<p><b>Section:</b> 30.4.2.2.1 [thread.lock.unique.cons], 30.4.2.3.1 [thread.lock.shared.cons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-01-01 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#thread.lock.unique.cons">issues</a> in [thread.lock.unique.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+So that they work with user-defined types that have overloaded unary <tt>&amp;</tt>.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit 30.4.2.2.1 [thread.lock.unique.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+explicit unique_lock(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, defer_lock_t) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == false</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, try_to_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock()</tt>.
+</p>
+</blockquote>
+<pre>
+unique_lock(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+<p/>
+-14- <i>Throws</i>: Nothing.
+</p>
+</blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  unique_lock(mutex_type&amp; m, const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_until(abs_time)</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  unique_lock(mutex_type&amp; m, const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt>, 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_for(rel_time)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Edit 30.4.2.3.1 [thread.lock.shared.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+explicit shared_lock(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, defer_lock_t) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == false</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, try_to_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared()</tt>.
+</p>
+</blockquote>
+<pre>
+shared_lock(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == true</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Clock, class Duration&gt;
+  shared_lock(mutex_type&amp; m,
+              const chrono::time_point&lt;Clock, Duration&gt;&amp; abs_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-16- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared_until(abs_time)</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class Rep, class Period&gt;
+  shared_lock(mutex_type&amp; m,
+              const chrono::duration&lt;Rep, Period&gt;&amp; rel_time);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-19- <i>Postconditions</i>: <tt>pm == <del>&amp;m</del><ins>addressof(m)</ins></tt> and <tt>owns == res</tt> 
+where <tt>res</tt> is the value returned by the call to <tt>m.try_lock_shared_for(rel_time)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2579" href="#2579">2579.</a> Inconsistency wrt Allocators in <tt>basic_string</tt> assignment vs. <tt>basic_string::assign</tt></h3>
+<p><b>Section:</b> 21.4.6.3 [string::assign] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-01-05 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In issue <a href="lwg-defects.html#2063">2063</a>, we changed the <i>Effects</i> of <tt>basic_string::assign(basic_string&amp;&amp;)</tt> to match the 
+behavior of <tt>basic_string::operator=(basic_string&amp;&amp;)</tt>, making them consistent.
+<p/>
+We did not consider <tt>basic_string::assign(const basic_string&amp;)</tt>, and its <i>Effects</i> differ from 
+<tt>operator=(const basic_string&amp;)</tt>.
+<p/>
+Given the following definition:
+</p>
+<blockquote><pre>
+typedef std::basic_string&lt;char, std::char_traits&lt;char&gt;, MyAllocator&lt;char&gt;&gt; MyString;
+
+MyAllocator&lt;char&gt; alloc1, alloc2;
+MyString string1("Alloc1", alloc1);
+MyString string2(alloc2);
+</pre></blockquote>
+<p>
+the following bits of code are not equivalent:
+</p>
+<blockquote><pre>
+string2 = string1;       // (a) calls operator=(const MyString&amp;)
+string2.assign(string1); // (b) calls MyString::assign(const MyString&amp;)
+</pre></blockquote>
+<p>
+What is the allocator for <tt>string2</tt> after each of these calls?
+</p>
+<ol style="list-style-type:lower-alpha">
+<li><p>If <tt>MyAllocator&lt;char&gt;::propagate_on_container_copy_assignment</tt> is true, then it should be <tt>alloc2</tt>, 
+otherwise it should be <tt>alloc1</tt>.</p></li>
+<li><p><tt>alloc2</tt></p></li>
+</ol>
+<p>	
+21.4.6.3 [string::assign]/1 says that (b) is equivalent to <tt>assign(string1, 0, npos)</tt>, which eventually calls 
+<tt>assign(str.data() + pos, rlen)</tt>. No allocator transfer there.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Modify 21.4.6.3 [string::assign] p.1 as indicated:</p>
+
+<blockquote>
+<pre>
+basic_string&amp; assign(const basic_string&amp; str);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Equivalent to <tt><ins>*this = str</ins><del>assign(str, 0, npos)</del></tt>.
+<p/>
+-2- <i>Returns</i>: <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2581" href="#2581">2581.</a> Specialization of <tt>&lt;type_traits&gt;</tt> variable templates should be prohibited</h3>
+<p><b>Section:</b> 20.10.2 [meta.type.synop] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-01-07 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.type.synop">issues</a> in [meta.type.synop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.10.2 [meta.type.synop]/1 only prohibits adding specializations of class templates in <tt>&lt;type_traits&gt;</tt>. 
+Now that we have <tt>_v</tt> variable templates, this prohibition should apply to them as well.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit 20.10.2 [meta.type.synop]/1 as indicated:</p>
+
+<blockquote>
+<p>
+-1- The behavior of a program that adds specializations for any of the <del>class</del> templates defined in this subclause 
+is undefined unless otherwise specified.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2582" href="#2582">2582.</a> [res.on.functions]/2's prohibition against incomplete types shouldn't apply to type traits</h3>
+<p><b>Section:</b> 20.10 [meta] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-01-07 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta">active issues</a> in [meta].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta">issues</a> in [meta].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+17.6.4.8 [res.on.functions]/2.5 says that the behavior is undefined "if an incomplete type is used as a template argument 
+when instantiating a template component, unless specifically allowed for that component."
+<p/>
+This rule should not apply to type traits &mdash; a literal application would make <tt>is_same&lt;void, void&gt;</tt> 
+undefined behavior, since nothing in 20.10 [meta] (or elsewhere) "specifically allows" instantiating <tt>is_same</tt> 
+with incomplete types.
+<p/>
+Traits that require complete types are already explicitly specified as such, so the proposed wording below simply negates 
+17.6.4.8 [res.on.functions]/2.5 for 20.10 [meta].
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Insert a new paragraph after 20.10.2 [meta.type.synop]/1:</p>
+
+<blockquote>
+<p>
+<ins>-?- Unless otherwise specified, an incomplete type may be used to instantiate a template in this subclause.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2583" href="#2583">2583.</a> There is no way to supply an allocator for <tt>basic_string(str, pos)</tt></h3>
+<p><b>Section:</b> 21.4.2 [string.cons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2016-01-05 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#string.cons">active issues</a> in [string.cons].</p>
+<p><b>View all other</b> <a href="lwg-index.html#string.cons">issues</a> in [string.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Container and <tt>string</tt> constructors in the standard follow two general rules:
+</p>
+<ol>
+<li><p>Every constructor needs a version with and without an allocator argument (possibly through the use of 
+default arguments).</p></li>
+<li><p>Every constructor <em>except the copy constructor</em> for which an allocator is not provided uses a 
+default-constructed allocator.</p></li>
+</ol>
+<p>
+The first rule ensures emplacing a <tt>string</tt> into a container that uses a scoped allocator will correctly propagate 
+the container's allocator to the new element.
+<p/>
+The current standard allows constructing a <tt>string</tt> as <tt>basic_string(str, pos)</tt> but not 
+<tt>basic_string(str, pos, alloc)</tt>. This omission breaks the first rule and causes something like the following to fail:
+</p>
+<blockquote>
+<pre>
+typedef basic_string&lt;char, char_traits&lt;char&gt;, A&lt;char&gt;&gt; stringA;
+vector&lt;stringA, scoped_allocator_adaptor&lt;A&lt;stringA&gt;&gt;&gt; vs;
+stringA s;
+
+vs.emplace_back(s, 2); // Ill-formed
+</pre>
+</blockquote>
+<p>
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 21.4 [basic.string], class template <tt>basic_string</tt> synopsis, as indicated</p>
+
+<blockquote>
+<pre>
+basic_string(const basic_string&amp; str, size_type pos, <del>size_type n = npos,</del>
+             const Allocator&amp; a = Allocator());
+<ins>basic_string(const basic_string&amp; str, size_type pos, size_type n,
+             const Allocator&amp; a = Allocator());</ins>             
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 21.4.2 [string.cons] as indicated</p>
+
+<blockquote>
+<pre>
+basic_string(const basic_string&amp; str,
+             size_type pos, <del>size_type n = npos,</del>
+             const Allocator&amp; a = Allocator());
+</pre>
+<blockquote>
+<p>
+-3- <i>Throws</i>: <tt>out_of_range</tt> if <tt>pos &gt; str.size()</tt>.
+<p/>
+-4- <i>Effects</i>: Constructs an object of class <tt>basic_string</tt> and determines the effective length <tt>rlen</tt> 
+of the initial string value as <del>the smaller of <tt>n</tt> and</del> <tt>str.size() - pos</tt>, as indicated in Table 65.
+</p>
+</blockquote>
+<pre>
+<ins>basic_string(const basic_string&amp; str, size_type pos, size_type n,
+             const Allocator&amp; a = Allocator());</ins>             
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Throws</i>: <tt>out_of_range</tt> if <tt>pos &gt; str.size()</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects</i>: Constructs an object of class <tt>basic_string</tt> and determines the effective length <tt>rlen</tt> 
+of the initial string value as the smaller of <tt>n</tt> and <tt>str.size() - pos</tt>, as indicated in Table 65.</ins>
+</p>
+<table border="1">
+<caption>Table 65 &mdash; <tt>basic_string(const basic_string&amp;, size_type, <del>size_type,</del> const Allocator&amp;)</tt> 
+<ins>and <tt>basic_string(const basic_string&amp;, size_type, size_type, const Allocator&amp;)</tt></ins> effects</caption>
+
+<tr>
+<th>Element</th>
+<th>Value</th>
+</tr>
+
+<tr>
+<td><tt>data()</tt></td>
+<td>points at the first element of an allocated copy of
+<tt>rlen</tt> consecutive elements of the string controlled
+by <tt>str</tt> beginning at position <tt>pos</tt></td>
+</tr>
+
+<tr>
+<td><tt>size()</tt></td>
+<td><tt>rlen</tt></td>
+</tr>
+
+<tr>
+<td><tt>capacity()</tt></td>
+<td>a value at least as large as <tt>size()</tt></td>
+</tr>
+
+</table> 
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2585" href="#2585">2585.</a> <tt>forward_list::resize(size_type, const value_type&amp;)</tt> effects incorrect</h3>
+<p><b>Section:</b> 23.3.4.5 [forwardlist.modifiers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-01-14 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#forwardlist.modifiers">issues</a> in [forwardlist.modifiers].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+23.3.4.5 [forwardlist.modifiers]/29 says that the effects of <tt>forward_list::resize(size_type sz, const value_type&amp; c)</tt> 
+are:
+</p>
+<blockquote class="note"><p>
+<i>Effects</i>: If <tt>sz &lt; distance(begin(), end())</tt>, erases the last <tt>distance(begin(), end()) - sz</tt> elements
+from the list. Otherwise, inserts <tt>sz - distance(begin(), end())</tt> elements at the end of
+the list such that each new element, <tt>e</tt>, is initialized by a method equivalent to calling 
+<tt>allocator_traits&lt;allocator_type&gt;::construct(get_allocator(), std::addressof(e), c)</tt>.
+</p></blockquote>
+<p>
+In light of LWG <a href="lwg-defects.html#2218">2218</a>, the use of <tt>allocator_traits&lt;allocator_type&gt;::construct</tt> is incorrect, 
+as a rebound allocator may be used. There's no need to repeat this information, in any event &mdash; no other specification 
+of <tt>resize()</tt> does it.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Edit 23.3.4.5 [forwardlist.modifiers]/29 as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: "copies of <tt>c</tt>" is the phrase used by <tt>vector::resize</tt> and <tt>deque::resize</tt>.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+void resize(size_type sz, const value_type&amp; c);
+</pre>
+<blockquote>
+<p>
+-29- <i>Effects</i>: If <tt>sz &lt; distance(begin(), end())</tt>, erases the last <tt>distance(begin(), end()) - sz</tt> elements
+from the list. Otherwise, inserts <tt>sz - distance(begin(), end())</tt> <del>elements</del><ins>copies of <tt>c</tt></ins> at 
+the end of the list <del>such that each new element, <tt>e</tt>, is initialized by a method equivalent to calling 
+<tt>allocator_traits&lt;allocator_type&gt;::construct(get_allocator(), std::addressof(e), c)</tt></del>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2586" href="#2586">2586.</a> Wrong value category used in <tt>scoped_allocator_adaptor::construct()</tt></h3>
+<p><b>Section:</b> 20.13.4 [allocator.adaptor.members], 20.7.7.2 [allocator.uses.construction] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-01-15 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#allocator.adaptor.members">active issues</a> in [allocator.adaptor.members].</p>
+<p><b>View all other</b> <a href="lwg-index.html#allocator.adaptor.members">issues</a> in [allocator.adaptor.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.13.4 [allocator.adaptor.members] p9 says that the <tt>is_constructible</tt>
+tests are done using <tt>inner_allocator_type</tt>, which checks for
+construction from an rvalue, but then the constructor is passed
+<tt>inner_allocator()</tt> which returns a non-<tt>const</tt> lvalue reference. The
+value categories should be consistent, otherwise this fails to
+compile:
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+#include &lt;scoped_allocator&gt;
+
+struct X {
+  using allocator_type = std::allocator&lt;X&gt;;
+  X(std::allocator_arg_t, allocator_type&amp;&amp;) { }
+  X(allocator_type&amp;) { }
+};
+
+int main() {
+  std::scoped_allocator_adaptor&lt;std::allocator&lt;X&gt;&gt; sa;
+  sa.construct(sa.allocate(1));
+}
+</pre></blockquote>
+<p>
+<tt>uses_allocator&lt;X, decltype(sa)::inner_allocator_type&gt;></tt> is true, because
+it can be constructed from an rvalue of the allocator type, so bullet (9.1) doesn't apply.
+<p/>
+<tt>is_constructible&lt;X, allocator_arg_t, decltype(sa)::inner_allocator_type></tt> 
+is true, so bullet (9.2) applies.
+That means we try to construct the object passing it
+<tt>sa.inner_allocator()</tt> which is an lvalue reference, so it fails.
+<p/>
+The <tt>is_constructible</tt> checks should use an lvalue reference, as that's
+what's actually going to be used.
+<p/>
+I don't think the same problem exists in the related wording in
+20.7.7.2 [allocator.uses.construction] if we assume that the value categories
+of <tt>v1, v2, ..., vN</tt> and <tt>alloc</tt> are meant to be preserved, so that the
+<tt>is_constructible</tt> traits and the initialization expressions match.
+However, it does say "an allocator <tt>alloc</tt> of type <tt>Alloc</tt>" and if <tt>Alloc</tt>
+is an reference type then it's not an allocator, so I suggest a small tweak there too.
+</p>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+Strike first paragraph of PR, and move to Tentatively Ready.
+</p>
+
+<strong>Original Resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<ol>
+<li><p>Change 20.7.7.2 [allocator.uses.construction] p1:</p>
+<blockquote>
+<p>
+-1- Uses-allocator construction with allocator <tt>Alloc</tt> refers to the construction of an object <tt>obj</tt> 
+of type <tt>T</tt>, using constructor arguments <tt>v1, v2, ..., vN</tt> of types <tt>V1, V2, ..., VN</tt>, respectively, 
+and an allocator <ins>(or reference to an allocator)</ins> <tt>alloc</tt> of type <tt>Alloc</tt>, according to the 
+following rules:
+</p>
+</blockquote>
+</li>
+
+<li><p>Change the 2nd and 3rd bullets in 20.13.4 [allocator.adaptor.members] p9 to add two lvalue-references:</p>
+
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(9.2) &mdash; Otherwise, if <tt>uses_allocator&lt;T, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T, allocator_arg_t, inner_allocator_type<ins>&amp;</ins>, Args...&gt;::value</tt> is <tt>true</tt>, calls 
+<tt><i>OUTERMOST_ALLOC_TRAITS</i>(*this)::construct(<i>OUTERMOST</i>(*this), p, allocator_arg, inner_allocator(), 
+std::forward&lt;Args&gt;(args)...)</tt>.</p></li>
+<li><p>(9.3) &mdash; Otherwise, if <tt>uses_allocator&lt;T, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T, Args..., inner_allocator_type<ins>&amp;</ins>&gt;::value</tt> is <tt>true</tt>, calls 
+<tt><i>OUTERMOST_ALLOC_TRAITS</i>(*this)::construct(<i>OUTERMOST</i>(*this), p, std::forward&lt;Args&gt;(args)...,
+inner_allocator())</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Change the 2nd, 3rd, 6th, and 7th bullets in 20.13.4 [allocator.adaptor.members] p11 to
+add four lvalue-references:</p>
+
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(11.2) &mdash; Otherwise, if <tt>uses_allocator&lt;T1, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T1, allocator_arg_t, inner_allocator_type<ins>&amp;</ins>, Args1...&gt;::value</tt> is <tt>true</tt>, 
+then <tt>xprime</tt> is <tt>tuple_cat(tuple&lt;allocator_arg_t, inner_allocator_type&amp;&gt;(allocator_arg, 
+inner_allocator()), std::move(x))</tt>.</p></li>
+<li><p>(11.3) &mdash; Otherwise, if <tt>uses_allocator&lt;T1, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T1, Args1..., inner_allocator_type<ins>&amp;</ins>&gt;::value</tt> is <tt>true</tt>, then 
+<tt>xprime</tt> is <tt>tuple_cat(std::move(x), tuple&lt;inner_allocator_type&amp;&gt;(inner_allocator()))</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+<li><p>(11.6) &mdash; Otherwise, if <tt>uses_allocator&lt;T2, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T2, allocator_arg_t, inner_allocator_type<ins>&amp;</ins>, Args2...&gt;::value</tt> is <tt>true</tt>, 
+then <tt>yprime</tt> is <tt>tuple_cat(tuple&lt;allocator_arg_t, inner_allocator_type&amp;&gt;(allocator_arg, 
+inner_allocator()), std::move(y))</tt>.</p></li>
+<li><p>(11.7) &mdash; Otherwise, if <tt>uses_allocator&lt;T2, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T2, Args2..., inner_allocator_type<ins>&amp;</ins>&gt;::value</tt> is <tt>true</tt>, then 
+<tt>yprime</tt> is <tt>tuple_cat(std::move(y), tuple&lt;inner_allocator_type&amp;&gt;(inner_allocator()))</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change the 2nd and 3rd bullets in 20.13.4 [allocator.adaptor.members] p9 to add two lvalue-references:</p>
+
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(9.2) &mdash; Otherwise, if <tt>uses_allocator&lt;T, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T, allocator_arg_t, inner_allocator_type<ins>&amp;</ins>, Args...&gt;::value</tt> is <tt>true</tt>, calls 
+<tt><i>OUTERMOST_ALLOC_TRAITS</i>(*this)::construct(<i>OUTERMOST</i>(*this), p, allocator_arg, inner_allocator(), 
+std::forward&lt;Args&gt;(args)...)</tt>.</p></li>
+<li><p>(9.3) &mdash; Otherwise, if <tt>uses_allocator&lt;T, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T, Args..., inner_allocator_type<ins>&amp;</ins>&gt;::value</tt> is <tt>true</tt>, calls 
+<tt><i>OUTERMOST_ALLOC_TRAITS</i>(*this)::construct(<i>OUTERMOST</i>(*this), p, std::forward&lt;Args&gt;(args)...,
+inner_allocator())</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Change the 2nd, 3rd, 6th, and 7th bullets in 20.13.4 [allocator.adaptor.members] p11 to
+add four lvalue-references:</p>
+
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(11.2) &mdash; Otherwise, if <tt>uses_allocator&lt;T1, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T1, allocator_arg_t, inner_allocator_type<ins>&amp;</ins>, Args1...&gt;::value</tt> is <tt>true</tt>, 
+then <tt>xprime</tt> is <tt>tuple_cat(tuple&lt;allocator_arg_t, inner_allocator_type&amp;&gt;(allocator_arg, 
+inner_allocator()), std::move(x))</tt>.</p></li>
+<li><p>(11.3) &mdash; Otherwise, if <tt>uses_allocator&lt;T1, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T1, Args1..., inner_allocator_type<ins>&amp;</ins>&gt;::value</tt> is <tt>true</tt>, then 
+<tt>xprime</tt> is <tt>tuple_cat(std::move(x), tuple&lt;inner_allocator_type&amp;&gt;(inner_allocator()))</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+<li><p>(11.6) &mdash; Otherwise, if <tt>uses_allocator&lt;T2, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T2, allocator_arg_t, inner_allocator_type<ins>&amp;</ins>, Args2...&gt;::value</tt> is <tt>true</tt>, 
+then <tt>yprime</tt> is <tt>tuple_cat(tuple&lt;allocator_arg_t, inner_allocator_type&amp;&gt;(allocator_arg, 
+inner_allocator()), std::move(y))</tt>.</p></li>
+<li><p>(11.7) &mdash; Otherwise, if <tt>uses_allocator&lt;T2, inner_allocator_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_constructible&lt;T2, Args2..., inner_allocator_type<ins>&amp;</ins>&gt;::value</tt> is <tt>true</tt>, then 
+<tt>yprime</tt> is <tt>tuple_cat(std::move(y), tuple&lt;inner_allocator_type&amp;&gt;(inner_allocator()))</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2590" href="#2590">2590.</a> Aggregate initialization for <tt>std::array</tt></h3>
+<p><b>Section:</b> 23.3.2.1 [array.overview] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Robert Haberlach <b>Opened:</b> 2016-01-30 <b>Last modified:</b> 2016-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#array.overview">active issues</a> in [array.overview].</p>
+<p><b>View all other</b> <a href="lwg-index.html#array.overview">issues</a> in [array.overview].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Similar to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1270">core issue 1270's</a> resolution, 
+23.3.2.1 [array.overview]/2 should cover aggregate-initialization in general. 
+As it stands, that paragraph solely mentions copy-list-initialization &mdash; i.e. it is unclear whether the following 
+notation is (guaranteed to be) well-formed:
+</p>
+<blockquote><pre>
+std::array&lt;int, 1&gt; arr{0};
+</pre></blockquote>
+
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+<p>
+P0; move to Tentatively Ready.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 23.3.2.1 [array.overview] p2 as indicated:</p>
+<blockquote><p>
+-2- An <tt>array</tt> is an aggregate (8.5.1) that can be <ins>list-</ins>initialized with <del>the syntax</del>
+</p>
+<blockquote><pre>
+<del>array&lt;T, N&gt; a = { <i>initializer-list</i> };</del>
+</pre></blockquote>
+<p>
+<del>where <i>initializer-list</i> is a comma-separated list of</del> up to <tt>N</tt> elements whose types are convertible to <tt>T</tt>.
+</p>
 </blockquote>
 </li>
 </ol>
