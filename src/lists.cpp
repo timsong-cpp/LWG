@@ -335,7 +335,22 @@ void format_issue_as_html(lwg::issue & is,
                tag.prefix = is.doc_prefix;
                r = s.substr(k, l-k);
                tag.name = r.substr(1, r.size() - 2);
+
+               // heuristic: if the name is not found using the doc_prefix, try
+               // using no prefix (i.e. the C++ standard itself)
+               if (!tag.prefix.empty() && section_db.find(tag) == section_db.end())
+               {
+                 //std::cout << "issue:" << is.num << " tag" << tag << '\n';
+                 lwg::section_tag fallback_tag;
+                 fallback_tag.name = tag.name;
+                 if (section_db.find(fallback_tag) != section_db.end())
+                 {
+                   //std::cout << "bingo\n";
+                   tag.prefix.clear();
+                 }    
+               }
                //std::cout << "section_tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
+ 
                {
                   std::ostringstream t;
                   t << section_db[tag] << ' ';

@@ -26,7 +26,9 @@ using section_map = std::map<section_tag, section_num>;
 auto operator <  (section_tag const & x, section_tag const & y) noexcept -> bool;
 auto operator == (section_tag const & x, section_tag const & y) noexcept -> bool;
 auto operator != (section_tag const & x, section_tag const & y) noexcept -> bool;
-auto operator << (std::ostream & os, section_tag const & tag) -> std::ostream &;
+auto operator << (std::ostream & os,
+  section_tag const & tag) -> std::ostream &; // with square brackets
+std::string as_string(section_tag const & x); // without square brackets
 
 auto operator <  (section_num const & x, section_num const & y) noexcept -> bool;
    // section 'x' sorts before section 'y' if its 'prefix' field lexicographically
@@ -40,7 +42,6 @@ auto operator != (section_num const & x, section_num const & y) noexcept -> bool
 
 auto operator >> (std::istream & is, section_num & sn) -> std::istream &;
 auto operator << (std::ostream & os, section_num const & sn) -> std::ostream &;
-
 
 auto read_section_db(std::istream & stream) -> section_map;
    // Read the current C++ standard tag -> section number index

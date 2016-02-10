@@ -218,7 +218,7 @@ assert(!i->tags.empty());
       out << section_db[i->tags[0]] << " " << i->tags[0];
       if (i->tags[0] != prev_tag) {
          prev_tag = i->tags[0];
-         out << "<a name=\"" << prev_tag << "\"</a>";
+         out << "<a name=\"" << as_string(prev_tag) << "\"</a>";
       }
       out << "</td>\n";
 
@@ -296,13 +296,13 @@ void print_issues(std::ostream & out, std::vector<lwg::issue> const & issues, lw
          // view active issues in []
          if (active_issues.count(iss) > 1) {
             out << "<p><b>View other</b> <a href=\"lwg-index-open.html#"
-              << iss.tags[0] << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
+              << as_string(iss.tags[0]) << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
          }
 
          // view all issues in []
          if (all_issues.count(iss) > 1) {
             out << "<p><b>View all other</b> <a href=\"lwg-index.html#"
-              << iss.tags[0] << "\">issues</a> in " << iss.tags[0] << ".</p>\n";
+              << as_string(iss.tags[0]) << "\">issues</a> in " << iss.tags[0] << ".</p>\n";
          }
          // view all issues with same status
          if (issues_by_status.count(iss) > 1) {
