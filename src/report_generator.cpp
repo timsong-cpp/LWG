@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+# define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "report_generator.h"
 
 #include "mailing_info.h"
@@ -61,7 +65,7 @@ assert(!y.tags.empty());
       lwg::section_num const & xn = section_db.get()[x.tags[0]];
       lwg::section_num const & yn = section_db.get()[y.tags[0]];
       return  xn.prefix < yn.prefix
-          or (xn.prefix > yn.prefix  and  xn.num[0] < yn.num[0]);
+          or (xn.prefix == yn.prefix  and  xn.num[0] < yn.num[0]);
    }
 
 private:
@@ -125,14 +129,6 @@ auto major_section(lwg::section_num const & sn) -> std::string {
    return out.str();
 }
 
-auto remove_square_brackets(lwg::section_tag const & tag) -> lwg::section_tag {
-   assert(tag.size() > 2);
-   assert(tag.front() == '[');
-   assert(tag.back() == ']');
-   return tag.substr(1, tag.size()-2);
-}
-
-
 void print_date(std::ostream & out, gregorian::date const & mod_date ) {
    out << mod_date.year() << '-';
    if (mod_date.month() < 10) { out << '0'; }
@@ -158,6 +154,7 @@ R"(<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
     "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
+<meta charset="utf-8">
 <title>)" << title << R"(</title>
 <style type="text/css">
   p {text-align:justify}
@@ -172,6 +169,7 @@ R"(<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
+  table {border-collapse: collapse;}
 </style>
 </head>
 <body>
@@ -204,7 +202,7 @@ R"(<table border="1" cellpadding="4">
 </tr>
 )";
 
-   std::string prev_tag;
+   lwg::section_tag prev_tag;
    for (; i != e; ++i) {
       out << "<tr>\n";
 
@@ -220,7 +218,7 @@ assert(!i->tags.empty());
       out << section_db[i->tags[0]] << " " << i->tags[0];
       if (i->tags[0] != prev_tag) {
          prev_tag = i->tags[0];
-         out << "<a name=\"" << remove_square_brackets(prev_tag) << "\"</a>";
+         out << "<a name=\"" << prev_tag << "\"</a>";
       }
       out << "</td>\n";
 
@@ -297,12 +295,14 @@ void print_issues(std::ostream & out, std::vector<lwg::issue> const & issues, lw
 
          // view active issues in []
          if (active_issues.count(iss) > 1) {
-            out << "<p><b>View other</b> <a href=\"lwg-index-open.html#" << remove_square_brackets(iss.tags[0]) << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
+            out << "<p><b>View other</b> <a href=\"lwg-index-open.html#"
+              << iss.tags[0] << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
          }
 
          // view all issues in []
          if (all_issues.count(iss) > 1) {
-            out << "<p><b>View all other</b> <a href=\"lwg-index.html#" << remove_square_brackets(iss.tags[0]) << "\">issues</a> in " << iss.tags[0] << ".</p>\n";
+            out << "<p><b>View all other</b> <a href=\"lwg-index.html#"
+              << iss.tags[0] << "\">issues</a> in " << iss.tags[0] << ".</p>\n";
          }
          // view all issues with same status
          if (issues_by_status.count(iss) > 1) {
@@ -747,11 +747,13 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, std::str
 
    // Would prefer to use const_iterators from here, but oh well....
    for (auto i = b; i != e;) {
-assert(!i->tags.empty());
+      assert(!i->tags.empty());
+      std::string current_prefix = section_db[i->tags[0]].prefix;
       int current_num = section_db[i->tags[0]].num[0];
       auto j = i;
       for (; j != e; ++j) {
-         if (section_db[j->tags[0]].num[0] != current_num) {
+        if (section_db[j->tags[0]].prefix != current_prefix
+           || section_db[j->tags[0]].num[0] != current_num) {
              break;
          }
       }

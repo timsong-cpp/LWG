@@ -4,6 +4,7 @@
 #include <utility>
 #include <stdexcept>
 #include <algorithm>
+#include <iostream>
 
 struct section_num
 {
@@ -20,16 +21,12 @@ operator >> (std::istream& is, section_num& sn)
     if (is.peek() == 'T')
     {
         is.get();
-        if (is.peek() == 'R')
+        if (is.peek() == 'R' || is.peek() == 'S')
         {
+            sn.prefix = 'T';
             std::string w;
             is >> w;
-            if (w == "R1")
-                sn.prefix = "TR1";
-            else if (w == "RDecimal")
-                sn.prefix = "TRDecimal";
-            else
-                throw std::runtime_error("section_num format error");
+            sn.prefix += w;
             ws(is);
         }
         else

@@ -1,5 +1,9 @@
 // I, Howard Hinnant, hereby place this code in the public domain.
 
+#ifdef _MSC_VER
+# define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "date.h"
 #include <time.h>
 

@@ -36,7 +36,7 @@
 // The only known compiler to support all of this today is the experimental gcc trunk (4.6)
 
 // TODO
-// .  Better handling of TR "sections", and grouping of issues in "Clause X"
+// .  Grouping of issues in "Clause X" by TR/TS
 // .  Sort the Revision comments in the same order as the 'Status' reports, rather than alphabetically
 // .  Lots of tidy and cleanup after merging the revision-generating tool
 // .  Refactor more common text
@@ -308,6 +308,8 @@ void format_issue_as_html(lwg::issue & is,
          }
 
          if (s[j-1] == '/') { // self-contained tag: sref, iref
+
+            // format section references
             if (tag == "sref") {
                static const
                auto report_missing_quote = [](std::ostringstream & er, unsigned num) {
@@ -329,10 +331,14 @@ void format_issue_as_html(lwg::issue & is,
                }
 
                ++k;
+               lwg::section_tag tag;
+               tag.prefix = is.doc_prefix;
                r = s.substr(k, l-k);
+               tag.name = r.substr(1, r.size() - 2);
+               //std::cout << "section_tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
                {
                   std::ostringstream t;
-                  t << section_db[r] << ' ';
+                  t << section_db[tag] << ' ';
                   r.insert(0, t.str());
                }
 
@@ -341,6 +347,8 @@ void format_issue_as_html(lwg::issue & is,
                i += r.size() - 1;
                continue;
             }
+
+            // format issue references
             else if (tag == "iref") {
                static const
                auto report_missing_quote = [](std::ostringstream & er, unsigned num) {

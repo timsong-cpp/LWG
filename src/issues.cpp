@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+# define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "issues.h"
 
 #include "sections.h"
@@ -10,6 +14,8 @@
 #include <stdexcept>
 
 #include <sstream>
+
+#include <iostream>  // eases debugging
 
 #include <ctime>
 #include <sys/stat.h>  // plan to factor this dependency out
@@ -139,7 +145,8 @@ auto lwg::is_ready(std::string stat) -> bool {
    return "Ready" == remove_tentatively(stat);
 }
 
-auto lwg::parse_issue_from_file(std::string tx, std::string const & filename, lwg::section_map & section_db) -> issue {
+auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
+  lwg::section_map & section_db) -> issue {
    struct bad_issue_file : std::runtime_error {
       bad_issue_file(std::string const & filename, char const * error_message)
          : runtime_error{"Error parsing issue file " + filename + ": " + error_message}
@@ -177,6 +184,16 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename, lw
    l = tx.find("</title>", k);
    is.title = tx.substr(k, l-k);
 
+   // Extract doc_prefix from title
+   if (is.title[0] == '['
+     && is.title.find("[CD]") == std::string::npos) // special case for a few titles
+   {
+      std::string::size_type pos = is.title.find(']');
+      if (pos != std::string::npos)
+        is.doc_prefix = is.title.substr(1, pos - 1);
+//    std::cout << is.doc_prefix << '\n';
+   }
+
    // Get issue sections
    k = tx.find("<section>", l);
    if (k == std::string::npos) {
@@ -194,10 +211,16 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename, lw
          throw bad_issue_file{filename, "Unable to find issue section"};
       }
       ++k;
-      is.tags.emplace_back(tx.substr(k, k2-k));
+      section_tag tag;
+      tag.prefix = is.doc_prefix;
+      tag.name = tx.substr(k+1, k2 - k - 2);
+//std::cout << "lookup tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
+      is.tags.emplace_back(tag);
       if (section_db.find(is.tags.back()) == section_db.end()) {
           section_num num{};
-          num.num.push_back(100 + 'X' - 'A');
+ //         num.num.push_back(100 + 'X' - 'A');
+          num.prefix = tag.prefix;
+          num.num.push_back(99);
           section_db[is.tags.back()] = num;
       }
       k = k2;

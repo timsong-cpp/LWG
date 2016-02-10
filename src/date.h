@@ -9,6 +9,7 @@
 #include <istream>
 #include <locale>
 #include <ostream>
+#include <ciso646>
 
 namespace gregorian
 {
