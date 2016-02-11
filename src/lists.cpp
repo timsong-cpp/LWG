@@ -346,10 +346,10 @@ void format_issue_as_html(lwg::issue & is,
                  if (section_db.find(fallback_tag) != section_db.end())
                  {
                    //std::cout << "bingo\n";
-                   tag.prefix.clear();
+                   tag = fallback_tag;
+                   //std::cout << "section_tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
                  }    
                }
-               //std::cout << "section_tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
  
                {
                   std::ostringstream t;
