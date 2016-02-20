@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2016-02-14</td>
+  <td align="left">2016-02-20</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D97)</h1>
-<p><p>Revised 2016-02-14 at 20:02:56 UTC</p>
+<p><p>Revised 2016-02-20 at 20:02:49 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -28316,7 +28316,7 @@ algorithm is in <tt>&lt;meow&gt;</tt>, the new overloads should be in <tt>&lt;ex
 <hr>
 <h3><a name="2542" href="#2542">2542.</a> Missing <tt>const</tt> requirements for associative containers</h3>
 <p><b>Section:</b> 23.2.4 [associative.reqmts] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2015-09-26 <b>Last modified:</b> 2015-10-21</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2015-09-26 <b>Last modified:</b> 2016-02-20</p>
 <p><b>Priority: </b>1
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
@@ -28374,9 +28374,35 @@ more obvious when considering the member <tt>value_compare</tt> of <tt>std::map<
 <tt>const operator()</tt> overload which invokes the call expression of data member <tt>comp</tt>.
 </p>
 
+<p><i>[2016-02-20, Daniel comments and extends suggested wording]</i></p>
+
+<p>
+It has been pointed out to me, that the suggested wording is a potentially breaking change and should therefore
+be mentioned in Annex C.
+<p/>
+First, let me emphasize that this potentially breaking change is <em>solely</em> caused by the wording change in
+23.2.4 [associative.reqmts] p8:
+</p>
+<blockquote>
+<p>
+[&hellip;] and <tt>c</tt> denotes a <ins>possibly <tt>const</tt></ins> value of type <tt>X::key_compare</tt>; [&hellip;]
+</p>
+</blockquote>
+<p>
+So, even if that proposal would be rejected, the rest of the suggested changes could (and should) be
+considered for further evaluation, because the remaining parts do just repair an obvious mismatch between
+the concrete associative containers (<tt>std::set</tt>, <tt>std::map</tt>, &hellip;) and the requirement
+tables.
+<p/>
+Second, I believe that the existing wording was never really clear in regard to <em>require</em> a Standard Library
+to accept comparison functors with non-<tt>const operator()</tt>. If the committee really intends to require
+a Library to support comparison functors with non-<tt>const operator()</tt>, this should be clarified by at least
+an additional note to e.g. 23.2.4 [associative.reqmts] p8.
+</p>
+
 
 <p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N4527.</p>
+<p>This wording is relative to N4567.</p>
 
 <ol>
 <li><p>Change 23.2.4 [associative.reqmts] p8 as indicated:</p>
@@ -28594,6 +28620,40 @@ logarithmic
 </table>
 </blockquote>
 
+</li>
+
+<li><p>Add a new entry to Annex C, C.4 [diff.cpp14], as indicated:</p>
+
+<blockquote>
+<p>
+<ins>C.4.4 Clause 23: containers library [diff.cpp14.containers]</ins>
+<p/>
+<ins>23.2.4</ins>
+<p/>
+<ins><b>Change:</b> Requirements change: </ins>
+<p/>
+<ins><b>Rationale:</b> Increase portability, clarification of associative container requirements.</ins>
+<p/>
+<ins><b>Effect on original feature:</b> Valid 2014 code that attempts to use associative containers 
+having a comparison object with non-<tt>const</tt> function call operator may fail to compile:</ins>
+</p>
+<blockquote><pre>
+<ins>#include &lt;set&gt;
+
+struct compare 
+{
+  bool operator()(int a, int b)
+  {
+    return a &lt; b;
+  }
+};
+
+int main() {
+  const std::set&lt;int, compare&gt; s;
+  s.find(0);
+}</ins>
+</pre></blockquote>
+</blockquote>
 </li>
 </ol>
 
