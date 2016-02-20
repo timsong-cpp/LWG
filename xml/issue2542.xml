@@ -59,10 +59,35 @@ function objects of associative containers need to support the predicate call ex
 more obvious when considering the member <tt>value_compare</tt> of <tt>std::map</tt> which provides (only) a
 <tt>const operator()</tt> overload which invokes the call expression of data member <tt>comp</tt>.
 </p>
+
+<note>2016-02-20, Daniel comments and extends suggested wording</note>
+<p>
+It has been pointed out to me, that the suggested wording is a potentially breaking change and should therefore
+be mentioned in Annex C.
+<p/>
+First, let me emphasize that this potentially breaking change is <em>solely</em> caused by the wording change in
+<sref ref="[associative.reqmts]"/> p8:
+</p>
+<blockquote>
+<p>
+[&hellip;] and <tt>c</tt> denotes a <ins>possibly <tt>const</tt></ins> value of type <tt>X::key_compare</tt>; [&hellip;]
+</p>
+</blockquote>
+<p>
+So, even if that proposal would be rejected, the rest of the suggested changes could (and should) be
+considered for further evaluation, because the remaining parts do just repair an obvious mismatch between
+the concrete associative containers (<tt>std::set</tt>, <tt>std::map</tt>, &hellip;) and the requirement
+tables.
+<p/>
+Second, I believe that the existing wording was never really clear in regard to <em>require</em> a Standard Library
+to accept comparison functors with non-<tt>const operator()</tt>. If the committee really intends to require
+a Library to support comparison functors with non-<tt>const operator()</tt>, this should be clarified by at least
+an additional note to e.g. <sref ref="[associative.reqmts]"/> p8.
+</p>
 </discussion>
 
 <resolution>
-<p>This wording is relative to N4527.</p>
+<p>This wording is relative to N4567.</p>
 
 <ol>
 <li><p>Change <sref ref="[associative.reqmts]"/> p8 as indicated:</p>
@@ -280,6 +305,40 @@ logarithmic
 </table>
 </blockquote>
 
+</li>
+
+<li><p>Add a new entry to Annex C, <sref ref="[diff.cpp14]"/>, as indicated:</p>
+
+<blockquote>
+<p>
+<ins>C.4.4 Clause 23: containers library [diff.cpp14.containers]</ins>
+<p/>
+<ins>23.2.4</ins>
+<p/>
+<ins><b>Change:</b> Requirements change: </ins>
+<p/>
+<ins><b>Rationale:</b> Increase portability, clarification of associative container requirements.</ins>
+<p/>
+<ins><b>Effect on original feature:</b> Valid 2014 code that attempts to use associative containers 
+having a comparison object with non-<tt>const</tt> function call operator may fail to compile:</ins>
+</p>
+<blockquote><pre>
+<ins>#include &lt;set&gt;
+
+struct compare 
+{
+  bool operator()(int a, int b)
+  {
+    return a &lt; b;
+  }
+};
+
+int main() {
+  const std::set&lt;int, compare&gt; s;
+  s.find(0);
+}</ins>
+</pre></blockquote>
+</blockquote>
 </li>
 </ol>
 </resolution>
