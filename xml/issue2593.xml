@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2593" status="New">
+<title>Moved-from state of Allocators</title>
+<section><sref ref="[allocator.requirements]"/></section>
+<submitter>David Krauss</submitter>
+<date>19 Feb 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[allocator.requirements]"/> suggests that the moved-from state of an allocator may be unequal to its 
+previous state. Such a move constructor would break most container implementations, which move-construct the 
+embedded allocator along with a compressed pair. Even if a moved-from container is empty, it should still 
+subsequently allocate from the same resource pool as it did before.
+</p>
+<blockquote><pre>
+std::vector&lt;int, pool&gt; a(500, my_pool);
+auto b = std::move(a); // b uses my_pool too.
+a.resize(500); // should still use my_pool.
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[allocator.requirements]"/>, Table 28 &mdash; "Allocator requirements" as indicated:
+<blockquote class="note">
+<p>
+Note there's an editorial error in Table 28 in that line and the surrounding ones. The left column was apparently 
+updated to use <tt>u</tt> and the right column is still using <tt>a</tt>/<tt>a1</tt>/<tt>b</tt>.
+</p>
+</blockquote>
+</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 28 &mdash; Allocator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X u(move(a));<br/>
+X u = move(a);</tt>
+</td>
+<td></td>
+<td>
+Shall not exit via an exception.
+post: <ins><tt>u</tt> is equal to <tt>a</tt> and equal to the prior value of <tt>a</tt></ins><del><tt>a1</tt> 
+equals the prior value of <tt>a</tt></del>.
+</td>
+<td>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
