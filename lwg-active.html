@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2016-02-20</td>
+  <td align="left">2016-02-21</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D97)</h1>
-<p><p>Revised 2016-02-20 at 21:02:33 UTC</p>
+<p><p>Revised 2016-02-21 at 11:02:09 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,9 +158,9 @@ ownership of it.
 <ul>
 <li>D97: 2016-03-20 2016 post-Jacksonville<ul>
 <li><b>Summary:</b><ul>
-<li>305 open issues, up by 0.</li>
+<li>306 open issues, up by 1.</li>
 <li>1882 closed issues, up by 0.</li>
-<li>2187 issues total, up by 0.</li>
+<li>2188 issues total, up by 1.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>No issues added.</li>
@@ -32481,6 +32481,78 @@ pointer.
 </blockquote>
 </li>
 
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2592" href="#2592">2592.</a> Require that <tt>chrono::duration_cast</tt>s from smaller durations to larger durations do not overflow</h3>
+<p><b>Section:</b> 20.12.2 [time.syn] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Andy Giese <b>Opened:</b> 2016-02-05 <b>Last modified:</b> 2016-02-21</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.syn">issues</a> in [time.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently 20.12.2 [time.syn] states
+</p>
+<blockquote><pre>
+<i>// convenience typedefs</i>
+typedef duration&lt;<i>signed integer type of at least 64 bits</i>,        nano&gt; nanoseconds;
+typedef duration&lt;<i>signed integer type of at least 55 bits</i>,       micro&gt; microseconds;
+typedef duration&lt;<i>signed integer type of at least 45 bits</i>,       milli&gt; milliseconds;
+typedef duration&lt;<i>signed integer type of at least 35 bits</i>             &gt; seconds;
+typedef duration&lt;<i>signed integer type of at least 29 bits</i>, ratio&lt;  60&gt;&gt; minutes;
+typedef duration&lt;<i>signed integer type of at least 23 bits</i>, ratio&lt;3600&gt;&gt; hours;
+</pre></blockquote>
+<p>
+However, a <tt>duration_cast&lt;minutes&gt;(seconds::max())</tt> would cause overflow if the underlying signed integers 
+only met the minimums specified.
+<p/>
+The standard should specify that implementations guarantee that a <tt>duration_cast</tt> from any smaller duration in 
+these "convenience typedefs" will not overflow any larger duration. That is, <tt>hours</tt> should be able to hold 
+the maximum of <tt>minutes</tt>, which should be able to hold the maximum of <tt>seconds</tt> and so on.
+<p/>
+More formally, if the ratio <tt>typedef A</tt> and <tt>typedef B</tt> is <tt>1:Y</tt> where <tt>Y &gt; 1</tt> (e.g., 
+1 : 60 in case of <tt>minutes</tt> : <tt>seconds</tt>), then <tt>#bits<sub>A</sub>-1</tt> must be at least 
+<tt>ceil(log<sub>2</sub>(2<sup>#bits<sub>B</sub>-1)/Y)</sup>)</tt>.
+<p/>
+In the case of <tt>minutes</tt> : <tt>seconds</tt>, <tt>X = 1</tt>, <tt>Y = 60</tt>. Let 
+<tt>#bits<sub>seconds</sub> = 32</tt>. Therefore:
+</p>
+<ul>
+<li><p><tt>2<sup>(#bits<sub>seconds</sub> - 1)</sup> = 2<sup>31</sup> = 2147483648</tt></p></li>
+<li><p><tt>ceil(log<sub>2</sub>(2<sup>31</sup> / 60) = 26</tt></p></li>
+<li><p><tt>#bits<sub>minutes</sub> - 1 = 26</tt></p></li>
+<li><p><tt>#bits<sub>minutes</sub> = 27</tt></p></li>
+</ul>
+<p>
+Therefore, a minimum of 27 bits would be needed to store <tt>minutes</tt> if 32 were used to store <tt>seconds</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Change 20.12.2 [time.syn], header <tt>&lt;chrono&gt;</tt> synopsis, as indicated</p>
+
+<blockquote><pre>
+[&hellip;]
+<i>// convenience typedefs</i>
+typedef duration&lt;<i>signed integer type of at least 64 bits</i>,        nano&gt; nanoseconds;
+typedef duration&lt;<i>signed integer type of at least 55 bits</i>,       micro&gt; microseconds;
+typedef duration&lt;<i>signed integer type of at least <ins>46</ins><del>45</del> bits</i>,       milli&gt; milliseconds;
+typedef duration&lt;<i>signed integer type of at least <ins>37</ins><del>35</del> bits</i>             &gt; seconds;
+typedef duration&lt;<i>signed integer type of at least <ins>32</ins><del>29</del> bits</i>, ratio&lt;  60&gt;&gt; minutes;
+typedef duration&lt;<i>signed integer type of at least <ins>27</ins><del>23</del> bits</i>, ratio&lt;3600&gt;&gt; hours;
+[&hellip;]
+</pre></blockquote>
+
+</li>
 </ol>
 
 
