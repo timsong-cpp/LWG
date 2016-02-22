@@ -539,7 +539,7 @@ auto operator<<( std::ostream & out, discover_new_issues const & x) -> std::ostr
    std::map<std::string, std::vector<int>, status_order> added_issues;
    for (auto const & i : new_issues ) {
       auto j = std::lower_bound(old_issues.cbegin(), old_issues.cend(), std::get<0>(i), find_num{});
-      if(j == old_issues.end()) {
+      if(j == old_issues.end() or std::get<0>(*j) != std::get<0>(i)) {
          added_issues[std::get<1>(i)].push_back(std::get<0>(i));
       }
    }
