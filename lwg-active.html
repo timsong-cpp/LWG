@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2016-02-25</td>
+  <td align="left">2016-02-27</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D97)</h1>
-<p><p>Revised 2016-02-25 at 18:02:10 UTC</p>
+<p><p>Revised 2016-02-27 at 22:02:17 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -8929,7 +8929,7 @@ to <tt>*this</tt>.
 <hr>
 <h3><a name="2114" href="#2114">2114.</a> Incorrect "<em>contextually</em> convertible to <tt>bool</tt>" requirements</h3>
 <p><b>Section:</b> 17.6.3.3 [nullablepointer.requirements], 24.2.3 [input.iterators], 24.2.7 [random.access.iterators], 25.1 [algorithms.general], 25.4 [alg.sorting], 30.2.1 [thread.req.paramname] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-12-09 <b>Last modified:</b> 2016-02-27</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -9509,9 +9509,52 @@ Status stays Open.<br/>
 Marshall to ping Daniel with feedback.<br/>
 </p>
 
+<p><i>[2016-02-27, Daniel updates wording]</i></p>
+
+<ol>
+<li>
+<p>
+The revised wording has been updated from N3936 to N4567. 
+</p>
+</li>
+<li>
+<p>
+To satisfy the Kona 2015 committee comments, the wording in 
+[booleantestable.requirements] has been improved to better separate the two different requirements of "can be 
+contextually converted to <tt>bool</tt>" and "can be implicitly converted to <tt>bool</tt>. Both are necessary because 
+it is possible to define a type that has the latter property but not the former, such as the following one:
+</p>
+<blockquote><pre>
+using Bool = int;
+
+struct OddBoolean 
+{
+  explicit OddBoolean(bool) = delete;
+  OddBoolean(Bool){}
+};
+
+OddBoolean b2 = true; // OK
+OddBoolean b1(true);  // Error
+</pre></blockquote>
+</li>
+<li>
+<p>
+In [booleantestable.requirements] a note has been added to ensure that an implementation is not allowed to 
+break any short-circuiting semantics.
+</p>
+</li>
+<li>
+<p>
+I decided to separate LWG <a href="lwg-active.html#2587">2587</a>/<a href="lwg-active.html#2588">2588</a> from this issue. Both these issues aren't exactly the
+same but depending on the committee's position, their resolution might benefit from the new vocabulary introduced
+here.
+</p>
+</li>
+</ol>
+
 
 <p><b>Proposed resolution:</b></p>
-<p>This wording is relative to N3936.</p>
+<p>This wording is relative to N4567.</p>
 
 <ol>
 <li><p>Change 17.6.3.1 [utility.arg.requirements] p1, Table 17 &mdash; "EqualityComparable requirements", and
@@ -9597,15 +9640,19 @@ A type <tt>B</tt> meets the <tt>BooleanTestable</tt> requirements if the express
 and have the indicated semantics, and if <tt>B</tt> also satisfies all the other requirements of this sub-clause 
 [booleantestable.requirements].
 <p/>
-An object <tt>b</tt> of type <tt>B</tt> can be implicitly converted to <tt>bool</tt> and can be contextually converted 
-to <tt>bool</tt> (Clause 4). The result values of both kinds of conversions shall be equivalent. 
+An object <tt>b</tt> of type <tt>B</tt> can be implicitly converted to <tt>bool</tt> and in addition can be 
+contextually converted to <tt>bool</tt> (Clause 4). The result values of both kinds of conversions shall be equivalent. 
 <p/>
 [<i>Example</i>: The types <tt>bool</tt>, <tt>std::true_type</tt>, and <tt>std::bitset&lt;&gt;::reference</tt> are 
 <tt>BooleanTestable</tt> types. &mdash; <i>end example</i>]
 <p/>
-In Table ??, <tt>B2</tt> and <tt>Bn</tt> denote types (possibly equal to <tt>B</tt> or to each other) that meet the 
-<tt>BooleanTestable</tt> requirements, <tt>b1</tt> denotes a (possibly <tt>const</tt>) value of <tt>B</tt>, <tt>b2</tt> 
-denotes a (possibly <tt>const</tt>) value of <tt>B2</tt>, and <tt>t1</tt> denotes a value of type <tt>bool</tt>.
+For the purpose of Table ??, let <tt>B2</tt> and <tt>Bn</tt> denote types (possibly both equal to <tt>B</tt> or to each other) 
+that meet the <tt>BooleanTestable</tt> requirements, let <tt>b1</tt> denote a (possibly <tt>const</tt>) value of <tt>B</tt>, 
+let <tt>b2</tt> denote a (possibly <tt>const</tt>) value of <tt>B2</tt>, and let <tt>t1</tt> denote a value of type 
+<tt>bool</tt>.
+<p/>
+[<i>Note</i>: These rules ensure what an implementation can rely on but doesn't grant it
+license to break short-circuiting behavior of a <tt>BooleanTestable</tt> type. &mdash; <i>end note</i>]
 </p>
 </blockquote>
 </blockquote>
@@ -9784,19 +9831,19 @@ expressions returning types that <del>are convertible to
 </blockquote>
 </li>
 
-<li><p>Change 23.2.1 [container.requirements.general], Table 96 &mdash; "Container requirements", and
-Table 98 &mdash; "Optional container operations" as indicated:</p>
+<li><p>Change 23.2.1 [container.requirements.general], Table 95 &mdash; "Container requirements", and
+Table 97 &mdash; "Optional container operations" as indicated:</p>
 
 <blockquote>
 <p>
--4- In Tables 96, 97, and 98 <tt>X</tt> denotes a container class containing objects of type <tt>T</tt>, <tt>a</tt> and 
+-4- In Tables 95, 96, and 97 <tt>X</tt> denotes a container class containing objects of type <tt>T</tt>, <tt>a</tt> and 
 <tt>b</tt> denote values of type <tt>X</tt>, <tt>u</tt> denotes an identifier, <tt>r</tt> denotes a non-<tt>const</tt> value 
 of type <tt>X</tt>, <del>and</del> <tt>rv</tt> denotes a non-<tt>const</tt> rvalue of type <tt>X</tt><ins>, and <tt>BT</tt> 
 denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantestable.requirements])</ins>.
 </p>
 <blockquote>
 <table border="1">
-<caption>Table 96 &mdash; Container requirements</caption>
+<caption>Table 95 &mdash; Container requirements</caption>
 <tr>
 <th align="center">Expression</th>
 <th align="center">Return type</th>
@@ -9861,7 +9908,7 @@ denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantes
 </p>
 <blockquote>
 <table border="1">
-<caption>Table 98 &mdash; Optional container requirements</caption>
+<caption>Table 97 &mdash; Optional container requirements</caption>
 <tr>
 <th align="center">Expression</th>
 <th align="center">Return type</th>
@@ -9931,12 +9978,12 @@ denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantes
 </blockquote>
 </li>
 
-<li><p>Change 24.2.1 [iterator.requirements.general], Table 107 &mdash; "Input iterator requirements", and
-Table 111 &mdash; "Random access iterator requirements" as indicated:</p>
+<li><p>Change 24.2.1 [iterator.requirements.general], Table 106 &mdash; "Input iterator requirements", and
+Table 110 &mdash; "Random access iterator requirements" as indicated:</p>
 
 <blockquote>
 <p>
--11- In the following sections, <tt>a</tt> and <tt>b</tt> denote values of type <tt>X</tt> or <tt>const X</tt>, 
+-12- In the following sections, <tt>a</tt> and <tt>b</tt> denote values of type <tt>X</tt> or <tt>const X</tt>, 
 <tt>difference_type</tt> and <tt>reference</tt> refer to the types <tt>iterator_traits&lt;X&gt;::difference_type</tt> and 
 <tt>iterator_traits&lt;X&gt;::reference</tt>, respectively, <tt>n</tt> denotes a value of <tt>difference_type</tt>, <tt>u</tt>, 
 <tt>tmp</tt>, and <tt>m</tt> denote identifiers, <tt>r</tt> denotes a value of <tt>X&amp;</tt>, <tt>t</tt> denotes
@@ -9945,7 +9992,7 @@ denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantes
 </p>
 <blockquote>
 <table border="1">
-<caption>Table 107 &mdash; Input iterator requirements</caption>
+<caption>Table 106 &mdash; Input iterator requirements</caption>
 <tr>
 <th align="center">Expression</th>
 <th align="center">Return type</th>
@@ -9971,7 +10018,7 @@ denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantes
 </p>
 <blockquote>
 <table border="1">
-<caption>Table 111 &mdash; Random access iterator requirements</caption>
+<caption>Table 110 &mdash; Random access iterator requirements</caption>
 <tr>
 <th align="center">Expression</th>
 <th align="center">Return type</th>
@@ -10041,14 +10088,19 @@ denotes a type that meets the <tt>BooleanTestable</tt> requirements ([booleantes
 </blockquote>
 </li>
 
-<li><p>Change 25.1 [algorithms.general] p8+p9 as indicated: [<i>Drafting note</i>: The wording change also fixes
+<li><p>Change 25.1 [algorithms.general] p8+p9 as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: The wording changes below also fix
 (a) unusual wording forms used ("should work") which are unclear in which sense they are imposing normative requirements and
 (b) the problem, that the current wording seems to allow that the predicate may mutate a call argument, if that is not a 
 dereferenced iterator.
-Upon applying the new wording it became obvious that the wording has the effect that currently algorithms such as
-<tt>adjacent_find</tt>, <tt>search_n</tt>, <tt>unique</tt>, and <tt>unique_copy</tt> are not correctly described 
-(because they have no iterator argument named <tt>first1</tt>), which could give raise to a new library issue. 
-&mdash; <i>end drafting note</i>]</p>
+Upon applying the new wording it became obvious that the both the previous and the new wording has the effect that currently 
+algorithms such as <tt>adjacent_find</tt>, <tt>search_n</tt>, <tt>unique</tt>, and <tt>unique_copy</tt> are not correctly 
+described (because they have no iterator argument named <tt>first1</tt>), which could give raise to a new library issue. 
+&mdash; <i>end drafting note</i>]
+</p>
+</blockquote>
 
 <blockquote>
 <p>
@@ -10098,11 +10150,11 @@ first argument <tt>a</tt> is less than the second argument <tt>b</tt>, and <tt>f
 </blockquote>
 </li>
 
-<li><p>Change 27.5.4.2 [fpos.operations] and Table 127 &mdash; "Position type requirements" as indicated:</p>
+<li><p>Change 27.5.4.2 [fpos.operations] and Table 126 &mdash; "Position type requirements" as indicated:</p>
 
 <blockquote>
 <p>
--1- Operations specified in Table 127 are permitted. In that table,
+-1- Operations specified in Table 126 are permitted. In that table,
 </p>
 <ul>
 <li><p><tt>P</tt> refers to an instance of <tt>fpos</tt>,</p></li>
@@ -10113,7 +10165,7 @@ first argument <tt>a</tt> is less than the second argument <tt>b</tt>, and <tt>f
 </ul>
 <blockquote>
 <table border="1">
-<caption>Table 127 &mdash; Position type requirements</caption>
+<caption>Table 126 &mdash; Position type requirements</caption>
 <tr>
 <th align="center">Expression</th>
 <th align="center">Return type</th>
@@ -10157,11 +10209,12 @@ first argument <tt>a</tt> is less than the second argument <tt>b</tt>, and <tt>f
 </blockquote>
 </li>
 
-<li><p>Change 30.2.1 [thread.req.paramname] p2 as indicated:</p>
+<li><p>Change 30.2.1 [thread.req.paramname] p1 as indicated:</p>
 
 <blockquote>
 <p>
--2- <del>If a parameter is <tt>Predicate</tt>, <tt>operator()</tt> applied to the actual template argument shall return a value that
+-1- Throughout this Clause, the names of template parameters are used to express type requirements. <del>If a template
+parameter is named <tt>Predicate</tt>, <tt>operator()</tt> applied to the template argument shall return a value that
 is convertible to <tt>bool</tt></del><ins><tt>Predicate</tt> is a function object type (20.9 [function.objects]).
 Let <tt>pred</tt> denote an lvalue of type <tt>Predicate</tt>. Then the expression <tt>pred()</tt> shall have a type that meets the 
 <tt>BooleanTestable</tt> requirements ( [booleantestable.requirements]). The return value of <tt>pred()</tt>, 
