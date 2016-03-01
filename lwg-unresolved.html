@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-02-27 at 22:02:17 UTC</p>
+<p><p>Revised 2016-03-01 at 20:03:13 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -14480,7 +14480,7 @@ types (3.9 [basic.types]).</ins>
 <hr>
 <h3><a name="2426" href="#2426">2426.</a> Issue about <tt>compare_exchange</tt></h3>
 <p><b>Section:</b> 29.6.5 [atomics.types.operations.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Hans Boehm <b>Opened:</b> 2014-08-25 <b>Last modified:</b> 2015-10-21</p>
+ <b>Submitter:</b> Hans Boehm <b>Opened:</b> 2014-08-25 <b>Last modified:</b> 2016-03-01</p>
 <p><b>Priority: </b>1
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#atomics.types.operations.req">active issues</a> in [atomics.types.operations.req].</p>
@@ -14702,6 +14702,12 @@ Handed over to SG1.
 We believed we were done with it, but it was kicked back to us, with the wording we suggested not yet applied.  It may have been that our suggestions were unclear.  Was that the concern?
 </p>
 
+<p><i>[2016-02 Jacksonville]</i></p>
+
+<p>
+Applied the other half of the "if and only if" response from SG1.
+</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
@@ -14721,7 +14727,7 @@ or by <tt>this</tt>. Further, if</del><ins>. If and only if</ins> the comparison
 When only one <tt>memory_order</tt> argument is supplied, the value of <tt>success</tt> is <tt>order</tt>, 
 and the value of <tt>failure</tt> is <tt>order</tt> except that a value of <tt>memory_order_acq_rel</tt>
 shall be replaced by the value <tt>memory_order_acquire</tt> and a value of <tt>memory_order_release</tt> shall
-be replaced by the value <tt>memory_order_relaxed</tt>. <ins>If the comparison is false then, after the atomic
+be replaced by the value <tt>memory_order_relaxed</tt>. <ins>If and only if the comparison is false then, after the atomic
 operation, the contents of the memory in <tt>expected</tt> are replaced by the value read from <tt>object</tt> or
 by <tt>this</tt> during the atomic comparison.</ins> If the operation returns true, these operations are
 atomic read-modify-write operations (1.10) <ins>on the memory pointed to by <tt>this</tt> or 
@@ -14849,6 +14855,309 @@ namespace std {
 </blockquote>
 
 </li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2436" href="#2436">2436.</a> Comparators for associative containers should always be <tt>CopyConstructible</tt></h3>
+<p><b>Section:</b> 23.2.4 [associative.reqmts], 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-10-01 <b>Last modified:</b> 2016-03-01</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
+<p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The associative container requirements attempt to permit comparators that are <tt>DefaultConstructible</tt> 
+but non-<tt>CopyConstructible</tt>. However, the Standard contradicts itself. 23.4.4.1 [map.overview] depicts 
+<tt>map() : map(Compare()) { }</tt> which requires both <tt>DefaultConstructible</tt> and <tt>CopyConstructible</tt>.
+<p/>
+Unlike fine-grained element requirements (which are burdensome for implementers, but valuable for users), such 
+fine-grained comparator requirements are both burdensome for implementers (as the Standard's self-contradiction 
+demonstrates) and worthless for users. We should unconditionally require <tt>CopyConstructible</tt> comparators.  
+(Note that <tt>DefaultConstructible</tt> should remain optional; this is not problematic for implementers, and 
+allows users to use lambdas.)
+<p/>
+Key equality predicates for unordered associative containers are also affected. However, 17.6.3.4 [hash.requirements]/1 
+already requires hashers to be <tt>CopyConstructible</tt>, so 23.2.5 [unord.req]'s redundant wording should 
+be removed.
+</p>
+
+<p><i>[2015-02, Cologne]</i></p>
+
+<p>
+GR: I prefer to say "<tt>Compare</tt>" rather than "<tt>X::key_compare</tt>", since the former is what the user supplies. 
+JY: It makes sense to use "<tt>Compare</tt>" when we talk about requirements but "<tt>key_compare</tt>" when we use it. 
+<p/>
+AM: We're adding requirements here, which is a breaking change, even though nobody will ever have had a non-<tt>CopyConstructible</tt> 
+comparator. But the simplification is probably worth it.
+<p/>
+GR: I don't care about unmovable containers. But I do worry that people might want to move they comparators. MC: How do 
+you reconcile that with the function that says "give me the comparator"? GR: That one returns by value? JY: Yes. [To MC] 
+You make it a requirement of that function. [To GR] And it [the <tt>key_comp()</tt> function] is missing its requirements. 
+We need to add them everywhere. GR: map already has the right requirements.
+<p/>
+JM: I dispute this. If in C++98 a type wasn't copyable, it had some interesting internal state, but in C++98 you wouldn't 
+have been able to pass it into the container since you would have had to make a copy. JY: No, you could have 
+default-constructed it and never moved it, e.g. a mutex. AM: So, it's a design change, but one that we should make. 
+That's probably an LEWG issue. AM: There's a contradiction in the Standard here, and we need to fix it one way or another.
+<p/>
+<b>Conclusion</b>: Move to LEWG 
+</p>
+
+<p><i>[2016-03, Jacksonville]</i></p>
+
+<p>
+Adding <tt>CopyConstructible</tt> requirement OK.
+<p/>
+Unanimous yes.
+<p/>
+We discussed allowing <tt>MoveConstructible</tt>. A moved-from <tt>set&lt;&gt;</tt> might still contain elements, 
+and using them would become undefined if the comparator changed behavior.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N3936.
+</p>
+
+<ol>
+<li><p>Change 23.2.4 [associative.reqmts] Table 102 as indicated (Editorial note: For "expression" <tt>X::key_compare</tt> 
+"defaults to" is redundant with the class definitions for map/etc.):</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 102 &mdash; Associative container requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X::key_compare</tt>
+</td>
+<td>
+<tt>Compare</tt>
+</td>
+<td>
+<del>defaults to <tt>less&lt;key_type&gt;</tt></del><br/>
+<ins><i>Requires</i>: <tt>key_compare</tt> is <tt>CopyConstructible</tt>.</ins>
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(c)<br/>
+X a(c);</tt>
+</td>
+<td>
+</td>
+<td>
+<del><i>Requires</i>: <tt>key_compare</tt> is <tt>CopyConstructible</tt>.</del><br/>
+<i>Effects</i>: Constructs an empty
+container. Uses a copy of <tt>c</tt> as
+a comparison object.
+</td>
+<td>
+constant
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i,j,c)<br/>
+X a(i,j,c);</tt>
+</td>
+<td>
+</td>
+<td>
+<i>Requires</i>: <del><tt>key_compare</tt> is <tt>CopyConstructible</tt>.</del><br/>
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: Constructs [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote></li>
+
+<li><p>Change 23.2.5 [unord.req] Table 103 as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 103 &mdash; Unordered associative container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X::key_equal</tt>
+</td>
+<td>
+<tt>Pred</tt>
+</td>
+<td>
+<ins><i>Requires</i>: <tt>Pred</tt> is <tt>CopyConstructible</tt>.</ins><br/>
+<tt>Pred</tt> shall be a binary predicate that takes two arguments of type <tt>Key</tt>.<br/> 
+<tt>Pred</tt> is an equivalence relation.
+</td>
+<td>
+compile time
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(n, hf, eq)<br/>
+X a(n, hf, eq);</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<del><i>Requires</i>: <tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.</del><br/>
+<i>Effects</i>: Constructs [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(n, hf)<br/>
+X a(n, hf);</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> is <tt>CopyConstructible</tt> and</del><br/>
+<tt>key_equal</tt> is <tt>DefaultConstructible</tt><br/>
+<i>Effects</i>: Constructs [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i, j, n, hf, eq)<br/>
+X a(i, j, n, hf, eq);</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> and <tt>key_equal</tt> are <tt>CopyConstructible</tt>.</del><br/>
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: Constructs [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X(i, j, n, hf)<br/>
+X a(i, j, n, hf);</tt>
+</td>
+<td>
+<tt>X</tt>
+</td>
+<td>
+<i>Requires</i>: <del><tt>hasher</tt> is <tt>CopyConstructible</tt> and</del><br/>
+<tt>key_equal</tt> is <tt>DefaultConstructible</tt><br/>
+<tt>value_type</tt> is <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt>.<br/>
+<i>Effects</i>: Constructs [&hellip;]
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote></li>
 </ol>
 
 
@@ -19983,167 +20292,6 @@ otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>. <ins>If an exc
 </blockquote>
 </blockquote>
 
-</li>
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2553" href="#2553">2553.</a> [fund.ts.v2] <tt>basic_string_view</tt> substring constructor</h3>
-<p><b>Section:</b> 7.3 [fund.ts.v2::string.view.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Evan Teran <b>Opened:</b> 2015-10-29 <b>Last modified:</b> 2015-11-04</p>
-<p><b>Priority: </b>Not Prioritized
-</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p><b>Addresses: fund.ts.v2</b></p>
-<p>
-<tt>string_view</tt> can be tremendously useful for dealing with sub-strings without copying. However, the 
-<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3921.html">current proposal</a> for <tt>basic_string_view</tt>, 
-has no constructor which provides a direct way of creating a view of a sub-string of a <tt>basic_string</tt>. 
-Instead, we construct a view of the whole <tt>basic_string</tt>, and then as a second step create a sub-string, 
-for example using <tt>substr</tt>. To simplify what I believe to be a common use case, I suggest adding an additional constructor.
-<p/>
-The proposed wording for this is as follows:
-</p>
-<blockquote>
-<pre>
-template &lt;class Allocator&gt;
-basic_string_view(const basic_string&lt;charT, traits, Allocator&gt;&amp; str, size_type pos, size_type count = npos);
-</pre>
-<blockquote>
-<p>
-<i>Throws</i>: <tt>out_of_range</tt> if <tt>pos &gt;= str.size()</tt>.
-<p/>
-<i>Effects</i>: Determines the effective length <tt>rlen</tt> of the string to reference as the smaller of <tt>count</tt> and 
-<tt>size() - pos</tt>.
-<p/>
-<i>Postcondition</i>:
-</p>
-<blockquote>
-<table border="1">
-<tr>
-<td>
-<tt>data_ = str.data() + pos</tt>
-</td>
-<td>
-<tt>size_ = rlen</tt>
-</td>
-</tr>
-</table>
-</blockquote>
-</blockquote>
-</blockquote>
-<p>
-In other words, the result is as if constructed via: <tt>basic_string_view(basic_string_view(str).substr(pos, count));</tt>
-<p/>
-An example implementation could look like this:
-</p>
-<blockquote><pre>
-template &lt;class Allocator&gt;
-basic_string_view(const basic_string&lt;charT, traits, Allocator&gt;&amp; str, size_type pos, size_type count = npos) 
-  : data_(nullptr), size_(0) 
-{
-  basic_string_view(str).substr(pos, count).swap(*this);
-}
-</pre></blockquote>
-<p>
-Note that while we have a default parameter for <tt>count</tt>, <tt>pos</tt> does not. I believe that it is best to have 
-this as a separate overload, as opposed to default parameters on the current constructor for two reasons:
-</p>
-<ol>
-<li><p>The current constructor taking a <tt>basic_string</tt> does not throw, this overload can throw if <tt>pos &gt;= str.size()</tt>.</p></li>
-<li><p>This constructor performs slightly more work, it is not necessary to impose this extra work on the basic case of 
-constructing a view of a whole string.</p></li>
-</ol>
-<p>
-This has been briefly discussed in the <a href="https://groups.google.com/a/isocpp.org/forum/#!topic/std-proposals/ZtYnPdK9vIY">isocpp forums</a>. 
-There were no obvious objections to this small improvement. Additionally, another reason to consider this addition is 
-to provide a more consistent interface. With raw strings, we have the ability to construct a <tt>basic_string_view</tt> 
-which is a sub-string. For example:
-</p>
-<blockquote><pre>
-const char* s = "hello world";
-auto v = string_view(s + 6);
-</pre></blockquote>
-<p>
-But there is no constructor which easily does the same when starting with a <tt>basic_string</tt>.
-<p/>
-Finally, As a example, consider the following (trivial) code:
-</p>
-<blockquote><pre>
-void print_string(string_view v) {
-  std::cout &lt;&lt; v &lt;&lt; '\n';
-}
-
-int main() {
-  std::string s = "hello world"; // for example, we want to print the sub-string "world", without copies
-
-  // current method:
-  print_substring(string_view(s).substr(6));
-
-  // suggested method:
-  print_substring(string_view(s, 6);
-}
-</pre></blockquote>
-<p>
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>
-This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4529.html">N4529</a>.
-</p>
-
-<ol>
-<li><p>Insert between 7.3 [string.view.cons] p5 and p6 the following sequence of paragraphs:</p>
-
-<blockquote>
-<pre>
-<ins>template &lt;class Allocator&gt;
-basic_string_view(const basic_string&lt;charT, traits, Allocator&gt;&amp; str, size_type pos, size_type count = npos);</ins>
-</pre>
-<blockquote>
-<p>
-<ins>-?- <i>Throws</i>: <tt>out_of_range</tt> if <tt>pos &gt;= str.size()</tt>.</ins>
-<p/>
-<ins>-?- <i>Effects</i>: Determines the effective length <tt>rlen</tt> of the string to reference as the smaller of <tt>count</tt> and 
-<tt>size() - pos</tt>.</ins>
-<p/>
-<ins>-?- <i>Postcondition</i>: Constructs a <tt>basic_string_view</tt>, with the postconditions in Table ?</ins>
-</p>
-<blockquote>
-<table border="1">
-<caption><ins>Table ? &mdash; <tt>basic_string_view(const basic_string&lt;charT, traits, Allocator&gt;&amp;, size_type, size_type)</tt> effects</ins></caption>
-<tr>
-<th><ins>Element</ins></th>
-<th><ins>Value</ins></th>
-</tr>
-
-<tr>
-<td>
-<ins><tt>data_</tt></ins>
-</td>
-<td>
-<ins><tt>str.data() + pos</tt></ins>
-</td>
-</tr>
-
-<tr>
-<td>
-<ins><tt>size_</tt></ins>
-</td>
-<td>
-<ins><tt>rlen</tt></ins>
-</td>
-</tr>
-
-</table>
-</blockquote>
-</blockquote>
-</blockquote>
 </li>
 </ol>
 
