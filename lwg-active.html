@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2016-03-03</td>
+  <td align="left">2016-03-05</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D97)</h1>
-<p><p>Revised 2016-03-03 at 22:03:52 UTC</p>
+<p><p>Revised 2016-03-05 at 10:03:51 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -18575,7 +18575,7 @@ and <tt>data() == addressof(front())</tt></ins>.
 <hr>
 <h3><a name="2312" href="#2312">2312.</a> <tt>tuple</tt>'s constructor constraints need to be phrased more precisely</h3>
 <p><b>Section:</b> 20.4.2.1 [tuple.cnstr] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2016-03-03</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-09-21 <b>Last modified:</b> 2016-03-05</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#tuple.cnstr">active issues</a> in [tuple.cnstr].</p>
@@ -18755,6 +18755,12 @@ is_convertible&lt;U1, T0&gt;::value &amp;&amp; is_convertible&lt;U2, T1&gt;::val
 
 </ol>
 </blockquote>
+
+<p><i>[2016-03, Jacksonville]</i></p>
+
+<p>
+STL provides improved wording.
+</p>
 
 
 <p><b>Proposed resolution:</b></p>
@@ -29452,7 +29458,7 @@ It looks like this is the only missing member of C's <tt>[v]{f,s,sn}[w]{printf,s
 <h3><a name="2549" href="#2549">2549.</a> Tuple <i>EXPLICIT</i> constructor templates that take <tt>tuple</tt> parameters end up taking references 
 to temporaries and will create dangling references</h3>
 <p><b>Section:</b> 20.4.2.1 [tuple.cnstr] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-10-11 <b>Last modified:</b> 2016-02-21</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-10-11 <b>Last modified:</b> 2016-03-05</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#tuple.cnstr">active issues</a> in [tuple.cnstr].</p>
@@ -29549,8 +29555,8 @@ I wrote into the bug report is just one example of a very subtle temporary
 being created.
 </p>
 
-
-<p><b>Proposed resolution:</b></p>
+<p><strong>Previous resolution from Ville [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <ol style="list-style-type:upper-alpha">
 <li><p><b>Alternative 1:</b></p>
 <ol>
@@ -29678,6 +29684,112 @@ false.</ins></p></li>
 <p>
 The constructor is explicit if and only if <tt>is_convertible&lt;U<sub><i>i</i></sub>&amp;&amp;, 
 T<sub><i>i</i></sub>&gt;::value</tt> is false for at least one <tt><i>i</i></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-03, Jacksonville]</i></p>
+
+<p>
+STL provides a simplification of Ville's alternative #2 (with no semantic changes), and it's shipping in VS 2015 Update 2.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol style="list-style-type:upper-alpha">
+<li>
+<p>
+This approach is orthogonal to the Proposed Resolution for LWG <a href="lwg-active.html#2312">2312</a>:
+</p>
+<ol>
+<li><p>Edit 20.4.2.1 [tuple.cnstr] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class... UTypes&gt; <i>EXPLICIT</i> constexpr tuple(const tuple&lt;UTypes...&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<tt>is_constructible&lt;<i>T<sub>i</sub></i>, const <i>U<sub>i</sub></i>&amp;&gt;::value</tt> is <tt>true</tt> for all 
+<tt><i>i</i></tt><ins>, and <tt>sizeof...(Types) != 1</tt>, or (when <tt>Types...</tt> expands to <tt>T</tt> and 
+<tt>UTypes...</tt> expands to <tt>U</tt>) <tt>!is_convertible_v&lt;const tuple&lt;U&gt;&amp;, T&gt; &amp;&amp; 
+!is_constructible_v&lt;T, const tuple&lt;U&gt;&amp;&gt; &amp;&amp; !is_same_v&lt;T, U&gt;</tt> is <tt>true</tt></ins>. 
+The constructor is explicit if and only if <tt>is_convertible&lt;const <i>U<sub>i</sub></i>&amp;, 
+<i>T<sub>i</sub></i>&gt;::value</tt> is <tt>false</tt> for at least one <tt><i>i</i></tt>.
+</p>
+</blockquote>
+
+<pre>
+template &lt;class... UTypes&gt; <i>EXPLICIT</i> constexpr tuple(tuple&lt;UTypes...&gt;&amp;&amp; u);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<tt>is_constructible&lt;<i>T<sub>i</sub></i>, <i>U<sub>i</sub></i>&amp;&amp;&gt;::value</tt> is <tt>true</tt> for all 
+<tt><i>i</i></tt><ins>, and <tt>sizeof...(Types) != 1</tt>, or (when <tt>Types...</tt> expands to <tt>T</tt> and 
+<tt>UTypes...</tt> expands to <tt>U</tt>) <tt>!is_convertible_v&lt;tuple&lt;U&gt;, T&gt; &amp;&amp; 
+!is_constructible_v&lt;T, tuple&lt;U&gt;&gt; &amp;&amp; !is_same_v&lt;T, U&gt;</tt> is <tt>true</tt></ins>. 
+The constructor is explicit if and only if <tt>is_convertible&lt;<i>U<sub>i</sub></i>&amp;&amp;, 
+<i>T<sub>i</sub></i>&gt;::value</tt> is <tt>false</tt> for at least one <tt><i>i</i></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</li>
+
+<li><p>This approach is presented as a merge with the parts of the Proposed Resolution for LWG <a href="lwg-active.html#2312">2312</a>
+with overlapping modifications in the same paragraph, to provide editorial guidance if <a href="lwg-active.html#2312">2312</a> would be 
+accepted.</p>
+
+<ol>
+<li><p>Edit 20.4.2.1 [tuple.cnstr] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class... UTypes&gt; <i>EXPLICIT</i> constexpr tuple(const tuple&lt;UTypes...&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<ins><tt>sizeof...(Types) == sizeof...(UTypes)</tt>, and</ins>
+<tt>is_constructible&lt;<i>T<sub>i</sub></i>, const <i>U<sub>i</sub></i>&amp;&gt;::value</tt> is <tt>true</tt> for all 
+<tt><i>i</i></tt><ins>, and <tt>sizeof...(Types) != 1</tt>, or (when <tt>Types...</tt> expands to <tt>T</tt> and 
+<tt>UTypes...</tt> expands to <tt>U</tt>) <tt>!is_convertible_v&lt;const tuple&lt;U&gt;&amp;, T&gt; &amp;&amp; 
+!is_constructible_v&lt;T, const tuple&lt;U&gt;&amp;&gt; &amp;&amp; !is_same_v&lt;T, U&gt;</tt> is <tt>true</tt></ins>. 
+The constructor is explicit if and only if <tt>is_convertible&lt;const <i>U<sub>i</sub></i>&amp;, 
+<i>T<sub>i</sub></i>&gt;::value</tt> is <tt>false</tt> for at least one <tt><i>i</i></tt>.
+</p>
+</blockquote>
+
+<pre>
+template &lt;class... UTypes&gt; <i>EXPLICIT</i> constexpr tuple(tuple&lt;UTypes...&gt;&amp;&amp; u);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<ins><tt>sizeof...(Types) == sizeof...(UTypes)</tt>, and</ins>
+<tt>is_constructible&lt;<i>T<sub>i</sub></i>, <i>U<sub>i</sub></i>&amp;&amp;&gt;::value</tt> is <tt>true</tt> for all 
+<tt><i>i</i></tt><ins>, and <tt>sizeof...(Types) != 1</tt>, or (when <tt>Types...</tt> expands to <tt>T</tt> and 
+<tt>UTypes...</tt> expands to <tt>U</tt>) <tt>!is_convertible_v&lt;tuple&lt;U&gt;, T&gt; &amp;&amp; 
+!is_constructible_v&lt;T, tuple&lt;U&gt;&gt; &amp;&amp; !is_same_v&lt;T, U&gt;</tt> is <tt>true</tt></ins>. 
+The constructor is explicit if and only if <tt>is_convertible&lt;<i>U<sub>i</sub></i>&amp;&amp;, 
+<i>T<sub>i</sub></i>&gt;::value</tt> is <tt>false</tt> for at least one <tt><i>i</i></tt>.
 </p>
 </blockquote>
 </blockquote>
