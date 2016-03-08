@@ -65,6 +65,7 @@ auto find_file(std::string const & status) -> std::string {
          : stat == "NAD Future"     ?  "lwg-closed.html"
          : stat == "NAD Editorial"  ?  "lwg-closed.html"
          : stat == "NAD Concepts"   ?  "lwg-closed.html"
+         : stat == "NAD Arrays"     ?  "lwg-closed.html"
          : stat == "Deferred"       ?  "lwg-active.html"
          : stat == "Ready"          ?  "lwg-active.html"
          : stat == "Review"         ?  "lwg-active.html"

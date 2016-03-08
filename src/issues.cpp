@@ -95,6 +95,7 @@ auto lwg::filename_for_status(std::string stat) -> std::string {
         : (stat == "NAD Future")    ? LWG_CLOSED
         : (stat == "NAD Editorial") ? LWG_CLOSED
         : (stat == "NAD Concepts")  ? LWG_CLOSED
+        : (stat == "NAD Arrays")    ? LWG_CLOSED
         : (stat == "Voting")        ? LWG_ACTIVE
         : (stat == "Immediate")     ? LWG_ACTIVE
         : (stat == "Ready")         ? LWG_ACTIVE
