@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2016-04-10</td>
+  <td align="left">2016-04-12</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D98)</h1>
-<p><p>Revised 2016-04-10 at 22:04:55 UTC</p>
+<p><p>Revised 2016-04-12 at 20:04:59 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,12 +158,12 @@ ownership of it.
 <ul>
 <li>D98: 2016-06-01 2016 pre-Oulu mailing<ul>
 <li><b>Summary:</b><ul>
-<li>276 open issues, up by 8.</li>
+<li>277 open issues, up by 9.</li>
 <li>1922 closed issues, up by 0.</li>
-<li>2198 issues total, up by 8.</li>
+<li>2199 issues total, up by 9.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 8 New issues: <a href="lwg-active.html#2595">2595</a>, <a href="lwg-active.html#2596">2596</a>, <a href="lwg-active.html#2597">2597</a>, <a href="lwg-active.html#2598">2598</a>, <a href="lwg-active.html#2599">2599</a>, <a href="lwg-active.html#2600">2600</a>, <a href="lwg-active.html#2675">2675</a>, <a href="lwg-active.html#2676">2676</a>.</li>
+<li>Added the following 9 New issues: <a href="lwg-active.html#2595">2595</a>, <a href="lwg-active.html#2596">2596</a>, <a href="lwg-active.html#2597">2597</a>, <a href="lwg-active.html#2598">2598</a>, <a href="lwg-active.html#2599">2599</a>, <a href="lwg-active.html#2600">2600</a>, <a href="lwg-active.html#2675">2675</a>, <a href="lwg-active.html#2676">2676</a>, <a href="lwg-active.html#2677">2677</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -31009,6 +31009,90 @@ add:</span></i></p>
   <p><ins><i>Effects:</i> calls <code>open(p.c_str(), mode)</code>.</ins></p>
 </blockquote>
 
+
+
+
+
+
+<hr>
+<h3><a name="2677" href="#2677">2677.</a> <code>directory_entry::status</code> is not allowed to be
+cached as a quality-of-implementation issue</h3>
+<p><b>Section:</b> 27.10.12.3 [directory_entry.obs] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Billy O'Neal <b>Opened:</b> 2016-03-03 <b>Last modified:</b> 2016-04-12</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>To fix multi-threading problems in <code>directory_entry</code>, caching behavior
+was removed from the type. This is bad for performance reasons,
+because the values can no longer be cached from the result of <code>readdir</code>
+on POSIX platforms, or from <code>FindFirstFile/FindNextFile</code> on Windows.</p>
+
+<p>It appears that the intent was to allow implementers to fill in the
+values for <code>directory_entry::status</code> inside <code>directory_iterator</code>, but as
+currently specified:</p>
+
+    <blockquote><i>Returns:</i> <code>status(path()[, ec])</code>.</blockquote>
+
+<p>This is not allowed to be cached, because the target of the path can
+change. For example, consider the following program:</p>
+
+<pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;filesystem&gt;
+#include &lt;fstream&gt;
+
+using namespace std;
+namespace fs = ::std::filesystem;
+
+void verify(const bool b, const char * const msg) {
+    if (!b) {
+        printf("fail: %s\n", msg);
+        exit(1);
+    }
+}
+
+void touch_file(const char * const filename) {
+    ofstream f(filename);
+    f &lt;&lt; '\n' &lt;&lt; endl;
+    verify(f.good(), "File write failed");
+}
+
+int main() {
+    fs::remove_all("subDir");
+    fs::create_directory("subDir");
+    fs::create_directory("subDir/child");
+    touch_file("subDir/child/child");
+    fs::current_path("./subDir");
+    fs::directory_iterator dir(".");
+    ++dir;
+    fs::directory_entry entry = *dir;
+
+    verify(entry == "./child",
+      "unexpected subdirectory"); //enumerating "subDir" returned the directory "child"
+
+    fs::file_status status = entry.status();
+    verify(status.type() == fs::file_type::directory,
+        "subDir/child was not a directory");
+    fs::current_path("./child");
+    status = entry.status(); // REQUIRED to re-stat() on POSIX,
+                             // GetFileAttributes() on Windows
+    verify(status.type() == fs::file_type::regular,
+        "subDir/child/child was not a regular file");
+    return 0;
+}</pre>
+
+  <p>
+    <code>directory_entry</code> should be re-specified to allow implementers to cache
+    the value of <code>status(path)</code> at the time <code>irectory_iterator</code> was
+    incremented to avoid repeated <code>stat()</code> / <code>GetFileAttributes</code> calls. (This
+    may mean additional constructors are necessary for <code>directory_entry</code> as well)
+  </p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+</p>
 
 
 
