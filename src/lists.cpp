@@ -532,7 +532,7 @@ auto operator<<( std::ostream & out, discover_new_issues const & x) -> std::ostr
 
       using status_string = std::string;
       auto operator()(status_string const & x, status_string const & y) const noexcept -> bool {
-         return { lwg::get_status_priority(x) < lwg::get_status_priority(y) };
+         return lwg::get_status_priority(x) < lwg::get_status_priority(y);
       }
    };
 
