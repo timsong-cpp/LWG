@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2681" status="New">
+<title><code>filesystem::copy()</code> cannot copy symlinks</title>
+<section><sref ref="[fs.op.copy]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Apr 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p><sref ref="[fs.op.copy]"/> paragraph 3 bullet (3.4) says that if <code>is_symlink(f)</code> and
+<code>copy_options</code> is set in options then it should copy a symlink, but that
+case cannot be reached.</p>
+
+<p><code>is_symlink(f)</code> can only be true if f was set using
+<code>symlink_status(from)</code>, but that doesn't happen unless one of
+<code>create_symlinks</code> or <code>skip_symlinks</code> is set in options. It should depend
+on <code>copy_symlinks</code> too.</p>
+
+<p>I'm not sure what the correct behaviour is, but I don't think we
+want to simply add a check for <code>copy_symlinks</code> in bullet (3.1) because
+that would mean that <code>t = symlink_status(to)</code>, and I don't think we want
+that. Consider <code>'touch file; mkdir dir; ln -s dir link;'</code> and then
+<code>filesystem::copy("file", "link",
+filesystem::copy_options::copy_symlinks)</code>. If <code>t = symlink_status(to)</code>
+then <code>is_directory(t) == false</code>, and we don't use bullet (3.5.4) but go
+to (3.5.5) instead and fail. So when <code>copy_symlinks</code> is set we still
+need to use <code>t = status(to)</code> as specified today.</p>
+</discussion>
+
+<resolution>
+<p>Modify paragraph 3 of <sref ref="[fs.op.copy]"/> as shown:</p>
+
+<p><i>Effects:</i> Before the first use of <code>f</code> and <code>t</code>:<br/><br/>
+ — If <code>(options & copy_options::create_symlinks) != copy_options::none ||
+(options & copy_options::skip_symlinks) != copy_options::none</code>
+then <code>auto f = symlink_status(from)</code> and if needed <code>auto t = symlink_status(to)</code>.<br/><br/>
+<ins>
+ — Otherwise, if <code>(options & copy_options::copy_symlinks) != copy_options::none</code>
+then <code>auto f = symlink_status(from)</code> and if needed <code>auto t = status(to)</code>.
+</ins><br/>
+ — Otherwise, <code>auto f = status(from)</code> and if needed <code>auto t = status(to)</code>.
+</p>
+</resolution>
+
+</issue>

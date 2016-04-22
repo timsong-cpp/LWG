@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2682" status="New">
+<title><code>filesystem::copy()</code> won't create a symlink to a directory</title>
+<section><sref ref="[fs.op.copy]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Apr 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>(First raised in c++std-lib-38544)</p>
+
+<p><code>filesystem::copy</code> doesn't create a symlink to a directory in this case:</p>
+
+<blockquote>
+  <code>copy("/", "root", copy_options::create_symlinks);</code>
+</blockquote>
+
+<p>If the first path is a file then a symlink is created, but I think my
+implementation is correct to do nothing for a directory. We get to
+bullet <sref ref="[fs.op.copy]"/> (3.6) where <code>is_directory(f)</code> is true, but <code>options
+== create_symlinks</code>, so we go to the next bullet (3.7) which says
+"Otherwise, no effects."</p>
+
+<p>I think the case above should either create a symlink, or should
+report an error. GNU cp -s gives an error in this case, printing
+"omitting directory '/'". An error seems reasonable, you can use
+<code>create_symlink</code> to create a symlink to a directory.
+</p>
+</discussion>
+
+<resolution>
+<p>Add a new bullet following (3.6) in <sref ref="[fs.op.copy]"/> as shown:</p>
+
+<p>— If <code>!exists(t)</code>, then <code>create_directory(to, from)</code>.<br/>
+  — Then, iterate over the files in <code>from</code>, as if by <code>for (directory_entry& x :
+ directory_iterator(from))</code>, and for each iteration
+  <code>copy(x.path(), to/x.path().filename(), options | copy_options::unspecified )</code></p>
+
+<p><INS>
+— Otherwise, if <code>is_directory(f) && (options &
+copy_options::create_symlinks) != copy_options::none</code>, then report an
+error with an <code>error_code</code> argument equal to
+<code>make_error_code(errc::is_a_directory)</code>.
+</INS></p>
+
+<p>— Otherwise, no effects.
+</p>
+</resolution>
+
+</issue>
