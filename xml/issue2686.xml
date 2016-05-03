@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2686" status="New">
+<title>Why is std::hash specialized for error_code, but not error_condition?</title>
+<section><sref ref="[system_error.syn]"/></section>
+<submitter>Tim Sung</submitter>
+<date>3 May 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Both <tt>error_code</tt> and <tt>error_condition</tt> have an operator&lt; overload, 
+enabling their use in associative containers without having to write a custom comparator. 
+</p>
+<p>
+However, only <tt>error_code</tt> has a <tt>std::hash</tt>
+specialization. So it's possible to have a
+<tt>set&lt;error_code&gt;</tt>, a <tt>set&lt;error_condition&gt;</tt>,
+an <tt>unordered_set&lt;error_code&gt;</tt>, but not an
+<tt>unordered_set&lt;error_condition&gt;</tt>. This seems...odd.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4582.
+</p>
+<p>
+1. Edit [system_error.syn], header &lt;system_error&gt; synopsis, as indicated:
+</p>
+
+<p><pre>
+namespace std {
+    // ...
+
+    // 19.5.6 Hash support
+    template&lt;class T&gt; struct hash;
+    template&lt;&gt; struct hash&lt;error_code&gt;;
+    <ins>template&lt;&gt; struct hash&lt;error_condition&gt;;</ins>
+
+   // ...
+}
+</pre></p>
+
+<p>
+2. Edit [syserr.hash] as indicated:
+</p>
+
+<p><pre>
+template &lt;&gt; struct hash&lt;error_code&gt;;
+<ins>template &lt;&gt; struct hash&lt;error_condition&gt;;</ins>
+
+1 The template specialization<ins>s</ins> shall meet the requirements of class template hash (20.12.14).
+</pre></p>
+</resolution>
+
+</issue>
