@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2689" status="New">
+<title>Parallel versions of <tt>std::copy</tt> and <tt>std::move</tt> shouldn't be in order</title>
+<section><sref ref="[alg.copy]"/><sref ref="[alg.move]"/></section>
+<submitter>Tim Song</submitter>
+<date>23 Mar 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[algorithms.parallel.overloads]"/>/2 says that "Unless otherwise specified, the semantics of 
+<tt>ExecutionPolicy</tt> algorithm overloads are identical to their overloads without."
+<p/>
+There's no "otherwise specified" for the <tt>ExecutionPolicy</tt> overloads for <tt>std::copy</tt> and <tt>std::move</tt>, 
+so the requirement that they "start[] from first and proceed[] to last" in the original algorithm's description would 
+seem to apply, which defeats the whole point of adding a parallel overload.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4582.
+</p>
+<ol>
+<li><p>Insert the following paragraphs after <sref ref="[alg.copy]"/>/4:</p>
+
+<blockquote><pre>
+<ins>template&lt;class ExecutionPolicy, class InputIterator, class OutputIterator&gt;
+  OutputIterator copy(ExecutionPolicy&amp;&amp; policy, InputIterator first, InputIterator last,
+                      OutputIterator result);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: The ranges <tt>[first, last)</tt> and <tt>[result, result + (last - first))</tt> shall not 
+overlap.</ins>
+<p/>
+<ins>-?- <i>Effects</i>: Copies elements in the range <tt>[first, last)</tt> into the range <tt>[result, result + (last -
+first))</tt>. For each non-negative integer <tt>n &lt; (last - first)</tt>, performs <tt>*(result + n) = *(first + n)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns</i>: <tt>result + (last - first)</tt>.</ins>
+<p/>
+<ins>-?- <i>Complexity</i>: Exactly <tt>last - first</tt> assignments.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Insert the following paragraphs after <sref ref="[alg.move]"/>/4:</p>
+
+<blockquote><pre>
+<ins>template&lt;class ExecutionPolicy, class InputIterator, class OutputIterator&gt;
+  OutputIterator move(ExecutionPolicy&amp;&amp; policy, InputIterator first, InputIterator last,
+                      OutputIterator result);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: The ranges <tt>[first, last)</tt> and <tt>[result, result + (last - first))</tt> shall not 
+overlap.</ins>
+<p/>
+<ins>-?- <i>Effects</i>: Moves elements in the range <tt>[first, last)</tt> into the range <tt>[result, result + (last -
+first))</tt>. For each non-negative integer <tt>n &lt; (last - first)</tt>, performs 
+<tt>*(result + n) = std::move(*(first + n))</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns</i>: <tt>result + (last - first)</tt>.</ins>
+<p/>
+<ins>-?- <i>Complexity</i>: Exactly <tt>last - first</tt> assignments.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
