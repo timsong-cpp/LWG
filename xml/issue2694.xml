@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2694" status="New">
+<title>Application of LWG 436 accidentally deleted definition of "facet"</title>
+<section><sref ref="[locale.facet]"/></section>
+<submitter>Tim Song</submitter>
+<date>15 Apr 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+[locale.facet]/1 (then-called [lib.locale.facet]) read in C++03:
+</p>
+<blockquote>
+<p>
+Class <tt>facet</tt> is the base class for locale feature sets. A class is a <i>facet</i> if it is publicly derived 
+from another facet, or if it is a class derived from <tt>locale::facet</tt> and containing a publicly-accessible 
+declaration as follows: [<i>Footnote</i>: This is a complete list of requirements; there are no other requirements. 
+Thus, a facet class need not have a public copy constructor, assignment, default constructor, destructor, etc.]
+</p>
+<blockquote><pre>
+static ::std::locale::id id;
+</pre></blockquote>
+<p>
+Template parameters in this clause which are required to be facets are those named <tt>Facet</tt> in declarations. 
+A program that passes a type that is <em>not</em> a facet, as an (explicit or deduced) template parameter to a locale 
+function expecting a facet, is ill-formed.
+</p>
+</blockquote>
+<p>
+LWG <iref ref="436"/>'s intent appears to be to ban <tt>volatile</tt>-qualified facets and permitting 
+<tt>const</tt>-qualified ones. The PR was somewhat poorly worded, however, and the editor in applying 
+it deleted the whole first half of the paragraph, including the definition of <i>facet</i> and the requirement 
+for a static data member named <tt>id</tt>.
+<p/>
+As a result, we have things like <sref ref="[locale.id]"/>/2 and <sref ref="[locale.global.templates]"/>/1 referring 
+to the <tt>id</tt> member that's not defined anywhere in the working draft.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4582.
+</p>
+<ol>
+<li><p>Insert the following paragraph before <sref ref="[locale.facet]"/>/1:</p>
+
+<blockquote>
+<p>
+<ins>-?- Class <tt>facet</tt> is the base class for locale feature sets. A class is a <i>facet</i> if it is publicly 
+derived from another facet, or if it is a class derived from <tt>locale::facet</tt> and containing a publicly accessible 
+declaration as follows: [<i>Footnote</i>: This is a complete list of requirements; there are no other requirements. Thus, a 
+facet class need not have a public copy constructor, assignment, default constructor, destructor, etc.]</ins>
+</p>
+<blockquote><pre>
+<ins>static ::std::locale::id id;</ins>
+</pre></blockquote>
+<p>
+-1- Template parameters in this Clause which are required to be facets are those named <tt>Facet</tt> in declarations. A
+program that passes a type that is <i>not</i> a facet, or a type that refers to a volatile-qualified facet, as an (explicit
+or deduced) template parameter to a locale function expecting a facet, is ill-formed. A const-qualified facet is
+a valid template argument to any locale function that expects a Facet template parameter.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
