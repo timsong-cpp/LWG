@@ -1,0 +1,182 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2687" status="New">
+<title><tt>{inclusive,exclusive}_scan</tt> misspecified</title>
+<section><sref ref="[exclusive.scan]"/><sref ref="[inclusive.scan]"/>
+<sref ref="[transform.exclusive.scan]"/><sref ref="[transform.inclusive.scan]"/></section>
+<submitter>Tim Song</submitter>
+<date>21 Mar 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When P0024R2 changed the description of <tt>{inclusive,exclusive}_scan</tt> (and the <tt>transform_</tt> version), 
+it seems to have introduced an off-by-one error. Consider what N4582 <sref ref="[inclusive.scan]"/>/2 says of 
+<tt>inclusive_scan</tt>:
+</p>
+<blockquote>
+<p>
+Effects: Assigns through each iterator <tt>i</tt> in <tt>[result, result + (last - first))</tt> the value of
+</p>
+<ul>
+<li><p>
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, *j, ...)</tt> for every <tt>j</tt> in <tt>[first, first
++ (i - result))</tt> if <tt>init</tt> is provided, or
+</p></li>
+<li><p>
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, *j, ...)</tt> for every <tt>j</tt> in <tt>[first, first + (i
+- result))</tt> otherwise.
+</p></li>
+</ul>
+</blockquote>
+<p>
+When <tt>i == result</tt>, <tt>i - result = 0</tt>, so the range <tt>[first, first + (i - result))</tt> is 
+<tt>[first, first)</tt> &mdash; which is empty. Thus according to the specification, we should assign 
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init)</tt> if <tt>init</tt> is provided, or 
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op)</tt> otherwise, which doesn't seem "inclusive" &mdash; and isn't 
+even defined in the second case.
+<p/>
+The parallelism TS's version uses <tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, *first, ..., *(first + (i - result)))</tt> &mdash; 
+which is a closed range, not a half-open one.
+<p/>
+Similar issues affect <tt>exclusive_scan</tt>, <tt>transform_inclusive_scan</tt>, and <tt>transform_exclusive_scan</tt>. 
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4582.
+</p>
+<ol>
+<li><p>Edit <sref ref="[exclusive.scan]"/>/2 as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: when <tt>i</tt> is <tt>result</tt>, <tt>[first, first + (i - result))</tt> is an empty range, 
+so the value to be assigned reduces to <tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init)</tt>, which is 
+<tt>init</tt>, so there's no need to special case this.]
+</p>
+</blockquote>
+
+<blockquote><pre>
+template&lt;class InputIterator, class OutputIterator, class T, class BinaryOperation&gt;
+  OutputIterator exclusive_scan(InputIterator first, InputIterator last,
+                                OutputIterator result,
+                                T init, BinaryOperation binary_op);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Assigns through each iterator <tt>i</tt> in <tt>[result, result + (last - first))</tt> the value of
+<ins><tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, *j, ...)</tt> for every <tt>j</tt> in 
+<tt>[first, first + (i - result))</tt>.</ins></p>
+<ul>
+<li><p>
+<del><tt>init</tt>, if <tt>i</tt> is <tt>result</tt>, otherwise</del>
+</p></li>
+<li><p>
+<del><tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, *j, ...)</tt> for every <tt>j</tt> in <tt>[first, first
++ (i - result) - 1)</tt>.</del>
+</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[inclusive.scan]"/>/2 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class InputIterator, class OutputIterator, class BinaryOperation&gt;
+  OutputIterator inclusive_scan(InputIterator first, InputIterator last,
+                                OutputIterator result,
+                                BinaryOperation binary_op);
+template&lt;class InputIterator, class OutputIterator, class BinaryOperation&gt;
+  OutputIterator inclusive_scan(InputIterator first, InputIterator last,
+                                OutputIterator result,
+                                BinaryOperation binary_op, T init);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Assigns through each iterator <tt>i</tt> in <tt>[result, result + (last - first))</tt> the value of
+</p>
+<ul>
+<li><p>
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, *j, ...)</tt> for every <tt>j</tt> in <tt>[first, first
++ (i - result <ins>+ 1</ins>))</tt> if <tt>init</tt> is provided, or
+</p></li>
+<li><p>
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, *j, ...)</tt> for every <tt>j</tt> in <tt>[first, first
++ (i - result <ins>+ 1</ins>))</tt> otherwise.
+</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[transform.exclusive.scan]"/>/1 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class InputIterator, class OutputIterator,
+         class UnaryOperation,
+         class T, class BinaryOperation&gt;
+  OutputIterator transform_exclusive_scan(InputIterator first, InputIterator last,
+                                          OutputIterator result,
+                                          UnaryOperation unary_op,
+                                          T init, BinaryOperation binary_op);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Assigns through each iterator <tt>i</tt> in <tt>[result, result + (last - first))</tt> the value of
+<ins><tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, unary_op(*j), ...)</tt> for every <tt>j</tt> in 
+<tt>[first, first + (i - result))</tt>.</ins></p>
+<ul>
+<li><p>
+<del><tt>init</tt>, if <tt>i</tt> is <tt>result</tt>, otherwise</del>
+</p></li>
+<li><p>
+<del><tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, unary_op(*j), ...)</tt> for every <tt>j</tt> in 
+<tt>[first, first + (i - result) - 1)</tt>.</del>
+</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[transform.inclusive.scan]"/>/1 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class InputIterator, class OutputIterator,
+         class UnaryOperation,
+         class BinaryOperation&gt;
+  OutputIterator transform_inclusive_scan(InputIterator first, InputIterator last,
+                                          OutputIterator result,
+                                          UnaryOperation unary_op,
+                                          BinaryOperation binary_op);
+template&lt;class InputIterator, class OutputIterator,
+         class UnaryOperation,
+         class BinaryOperation, class T&gt;
+  OutputIterator transform_inclusive_scan(InputIterator first, InputIterator last,
+                                          OutputIterator result,
+                                          UnaryOperation unary_op,
+                                          BinaryOperation binary_op, T init);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Assigns through each iterator <tt>i</tt> in <tt>[result, result + (last - first))</tt> the value of
+</p>
+<ul>
+<li><p>
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, init, unary_op(*j), ...)</tt> for every <tt>j</tt> in <tt>[first, first
++ (i - result <ins>+ 1</ins>))</tt> if <tt>init</tt> is provided, or
+</p></li>
+<li><p>
+<tt><i>GENERALIZED_NONCOMMUTATIVE_SUM</i>(binary_op, unary_op(*j), ...)</tt> for every <tt>j</tt> in <tt>[first, first
++ (i - result <ins>+ 1</ins>))</tt> otherwise.
+</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
