@@ -61,6 +61,23 @@ These bits were chosen to satisfy the above formula. Note that
 minimums only increased, so larger ranges could be held. A nice
 outcome of this choice is that <tt>minutes</tt> does not go above 32 bits.
 </p>
+
+<note>2016-04-23, Tim Song comments</note>
+<p>
+The P/R of LWG 2592 doesn't fix the issue it wants to solve, because the actual underlying type will likely 
+have more bits than the specified minimum.
+<p/>
+Consider <tt>seconds</tt>, which the P/R requires to have at least 37 bits. On a typical system this implies 
+using a 64-bit integer. To ensure that casting from <tt>seconds::max()</tt> to <tt>minutes</tt> doesn't overflow 
+in such a system, it is necessary for the latter to have at least 59 bits (which means, in practice, 64 bits too), 
+not just 32 bits. Thus, just changing the minimum number of bits will not be able to provide the desired guarantee 
+that casting from a smaller unit to a larger one never overflow.
+<p/>
+If such a guarantee is to be provided, it needs to be spelled out directly. Note that the difference here is 9 bits 
+(for the 1000-fold case) and 5 bits (for the 60-fold case), which is less than the size difference between integer 
+types on common systems, so such a requirement would effectively require those convenience typedefs to use the 
+same underlying integer type.
+</p>
 </discussion>
 
 <resolution>
