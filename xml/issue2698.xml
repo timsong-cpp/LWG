@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2698" status="New">
+<title>Effect of <tt>assign()</tt> on iterators/pointers/references</title>
+<section><sref ref="[sequence.reqmts]"/></section>
+<submitter>Tim Song</submitter>
+<date>25 Apr 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The sequence container requirements table says nothing about the effect of <tt>assign()</tt> on iterators, 
+pointers or references into the container. Before LWG <iref ref="2209"/> (and LWG <iref ref="320"/> for <tt>std::list</tt>), 
+<tt>assign()</tt> was specified as "erase everything then <tt>insert</tt>", which implies wholesale invalidation from the 
+"erase everything" part. With that gone, the blanket "no invalidation" wording in 
+<sref ref="[container.requirements.general]"/>/12 would seem to apply, which makes absolutely no sense.
+<p/>
+The proposed wording below simply spells out the invalidation rule implied by the previous "erase everything" wording.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4582.
+</p>
+<ol>
+<li><p>In <sref ref="[sequence.reqmts]"/>, edit Table 107 (Sequence container requirements) as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 107 &mdash; Sequence container requirements (in addition to container)</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+</tr>
+<tr>
+<td colspan="3" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td>
+<tt>a.assign(i, j)</tt>
+</td>
+<td><tt>void</tt></td>
+<td>
+<i>Requires</i>: <tt>T</tt> shall be <tt>EmplaceConstructible</tt> into <tt>X</tt> from <tt>*i</tt> and assignable from 
+<tt>*i</tt>.<br/>For <tt>vector</tt>, if the iterator does not meet the forward iterator requirements (24.2.5),<br/> 
+<tt>T</tt> shall also be <tt>MoveInsertable</tt> into <tt>X</tt>.<br/> Each iterator in the range <tt>[i, j)</tt> shall be 
+dereferenced exactly once. <br/>pre: <tt>i</tt>, <tt>j</tt> are not iterators into <tt>a</tt>.<br/> Replaces elements 
+in <tt>a</tt> with a copy of <tt>[i, j)</tt>.<ins><br/>Invalidates all references, pointers and iterators referring to the 
+elements of <tt>a</tt>.<br/>For <tt>vector</tt> and <tt>deque</tt>, also invalidates the past-the-end iterator.</ins>
+</td>
+</tr>
+<tr>
+<td colspan="3" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td>
+<tt>a.assign(n, t)</tt>
+</td>
+<td><tt>void</tt></td>
+<td>
+<i>Requires</i>: <tt>T</tt> shall be <tt>CopyInsertable</tt> into <tt>X</tt> and <tt>CopyAssignable</tt>.<br/>
+pre: <tt>t</tt> is not a reference into <tt>a</tt>.<br/> Replaces elements in <tt>a</tt> with <tt>n</tt> 
+copies of <tt>t</tt>.<ins><br/>Invalidates all references, pointers and iterators referring to the elements of 
+<tt>a</tt>.<br/>
+For <tt>vector</tt> and <tt>deque</tt>, also invalidates the past-the-end iterator.</ins>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
