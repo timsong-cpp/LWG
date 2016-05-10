@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-05-10 at 19:05:17 UTC</p>
+<p><p>Revised 2016-05-10 at 20:05:16 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -18511,6 +18511,8 @@ There was concern that the effects wording is not right.  Jonathan provided upda
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-07-03 <b>Last modified:</b> 2016-05-02</p>
 <p><b>Priority: </b>3
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#class.path">active issues</a> in [class.path].</p>
+<p><b>View all other</b> <a href="lwg-index.html#class.path">issues</a> in [class.path].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>This doesn't seem to be in Boost.Filesystem, so maybe it isn't needed,
@@ -21057,12 +21059,10 @@ Replaces elements in <tt>a</tt> with <tt>n</tt> copies of <tt>t</tt>.
 
 <hr>
 <h3><a name="2706" href="#2706">2706.</a> Error reporting for <tt>recursive_directory_iterator::pop()</tt> is under-specified</h3>
-<p><b>Section:</b> 23.2.3 [sequence.reqmts] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+<p><b>Section:</b> 27.10.14 [class.rec.dir.itr] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-09 <b>Last modified:</b> 2016-05-10</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
-<p><b>View other</b> <a href="lwg-index-open.html#sequence.reqmts">active issues</a> in [sequence.reqmts].</p>
-<p><b>View all other</b> <a href="lwg-index.html#sequence.reqmts">issues</a> in [sequence.reqmts].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -21111,6 +21111,120 @@ void pop();
 cease iteration of the directory currently being iterated over, and continue iteration over the parent directory.
 <p/>
 <ins>-?- <i>Throws</i>: As specified in Error reporting (27.5.6.5 [error.reporting]).</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2707" href="#2707">2707.</a> <tt>path</tt> construction and assignment should have "<tt>string_type&amp;&amp;</tt>" overloads</h3>
+<p><b>Section:</b> 27.10.8 [class.path] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-09 <b>Last modified:</b> 2016-05-10</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#class.path">active issues</a> in [class.path].</p>
+<p><b>View all other</b> <a href="lwg-index.html#class.path">issues</a> in [class.path].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently construction of a <tt>path</tt> from the native <tt>string_type</tt> always performs a copy, even when 
+that string is passed as a rvalue. This is a large pessimization as paths are commonly constructed from temporary strings.
+<p/>
+One pattern I frequently see is:
+</p>
+<blockquote><pre>
+path foo(path const&amp; p) {
+  auto s = p.native();
+  mutateString(s);
+  return s;
+}
+</pre></blockquote>
+<p>
+Implementations should be allowed to move from <tt>s</tt> and avoid an unnecessary allocation.
+I believe <tt>string_type&amp;&amp;</tt> constructor and assignment operator overloads should be added to support this.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4582.
+</p>
+
+<ol>
+<li><p>Change 27.10.8 [class.path], class <tt>path</tt> synopsis, as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: Making the <tt>string_type&amp;&amp;</tt> constructors and assignment operators <tt>noexcept</tt> 
+would over-constrain implementations which may need to perform construct additional state]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class path {
+  public:
+    [&hellip;]
+    <i>// 27.10.8.4.1, constructors and destructor</i>
+    path() noexcept;
+    path(const path&amp; p);
+    path(path&amp;&amp; p) noexcept;
+    <ins>path(string_type&amp;&amp; source);</ins>
+    template &lt;class Source&gt;
+    path(const Source&amp; source);
+    [&hellip;]
+    
+    <i>// 27.10.8.4.2, assignments</i>
+    path&amp; operator=(const path&amp; p);
+    path&amp; operator=(path&amp;&amp; p) noexcept;
+    <ins>path&amp; operator=(string_type&amp;&amp; source);
+    path&amp; assign(string_type&amp;&amp; source);</ins>
+    template &lt;class Source&gt;
+    path&amp; operator=(const Source&amp; source);
+    template &lt;class Source&gt;
+    path&amp; assign(const Source&amp; source)
+    template &lt;class InputIterator&gt;
+    path&amp; assign(InputIterator first, InputIterator last);    
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add a new paragraph following 27.10.8.4.1 [path.construct]/3:</p>
+
+<blockquote>
+<pre>
+<ins>path(string_type&amp;&amp; source);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Constructs an object of class <tt>path</tt> with <tt>pathname</tt> having the original value of 
+<tt>source</tt>. <tt>source</tt> is left in a valid but unspecified state.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Add a new paragraph following 27.10.8.4.2 [path.assign]/4:</p>
+
+<blockquote>
+<pre>
+<ins>path&amp; operator=(string_type&amp;&amp; source);
+path&amp; assign(string_type&amp;&amp; source);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Modifies <tt>pathname</tt> to have the original value of <tt>source</tt>. <tt>source</tt> 
+is left in a valid but unspecified state.</ins>
+<p/>
+<ins>-?- <i>Returns</i>:<tt>*this</tt></ins>
 </p>
 </blockquote>
 </blockquote>
