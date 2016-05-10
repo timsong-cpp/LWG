@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2707" status="New">
+<title><tt>path</tt> construction and assignment should have "<tt>string_type&amp;&amp;</tt>" overloads</title>
+<section><sref ref="[class.path]"/></section>
+<submitter>Eric Fiselier</submitter>
+<date>9 May 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently construction of a <tt>path</tt> from the native <tt>string_type</tt> always performs a copy, even when 
+that string is passed as a rvalue. This is a large pessimization as paths are commonly constructed from temporary strings.
+<p/>
+One pattern I frequently see is:
+</p>
+<blockquote><pre>
+path foo(path const&amp; p) {
+  auto s = p.native();
+  mutateString(s);
+  return s;
+}
+</pre></blockquote>
+<p>
+Implementations should be allowed to move from <tt>s</tt> and avoid an unnecessary allocation.
+I believe <tt>string_type&amp;&amp;</tt> constructor and assignment operator overloads should be added to support this.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4582.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[class.path]"/>, class <tt>path</tt> synopsis, as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: Making the <tt>string_type&amp;&amp;</tt> constructors and assignment operators <tt>noexcept</tt> 
+would over-constrain implementations which may need to perform construct additional state]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class path {
+  public:
+    [&hellip;]
+    <i>// 27.10.8.4.1, constructors and destructor</i>
+    path() noexcept;
+    path(const path&amp; p);
+    path(path&amp;&amp; p) noexcept;
+    <ins>path(string_type&amp;&amp; source);</ins>
+    template &lt;class Source&gt;
+    path(const Source&amp; source);
+    [&hellip;]
+    
+    <i>// 27.10.8.4.2, assignments</i>
+    path&amp; operator=(const path&amp; p);
+    path&amp; operator=(path&amp;&amp; p) noexcept;
+    <ins>path&amp; operator=(string_type&amp;&amp; source);
+    path&amp; assign(string_type&amp;&amp; source);</ins>
+    template &lt;class Source&gt;
+    path&amp; operator=(const Source&amp; source);
+    template &lt;class Source&gt;
+    path&amp; assign(const Source&amp; source)
+    template &lt;class InputIterator&gt;
+    path&amp; assign(InputIterator first, InputIterator last);    
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add a new paragraph following <sref ref="[path.construct]"/>/3:</p>
+
+<blockquote>
+<pre>
+<ins>path(string_type&amp;&amp; source);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Constructs an object of class <tt>path</tt> with <tt>pathname</tt> having the original value of 
+<tt>source</tt>. <tt>source</tt> is left in a valid but unspecified state.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Add a new paragraph following <sref ref="[path.assign]"/>/4:</p>
+
+<blockquote>
+<pre>
+<ins>path&amp; operator=(string_type&amp;&amp; source);
+path&amp; assign(string_type&amp;&amp; source);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Modifies <tt>pathname</tt> to have the original value of <tt>source</tt>. <tt>source</tt> 
+is left in a valid but unspecified state.</ins>
+<p/>
+<ins>-?- <i>Returns</i>:<tt>*this</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
