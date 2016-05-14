@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-05-12 at 17:05:29 UTC</p>
+<p><p>Revised 2016-05-14 at 19:05:06 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -18745,7 +18745,7 @@ The descriptions of most functions are explicit about the use of the <code>ec</c
 <hr>
 <h3><a name="2676" href="#2676">2676.</a> Provide <code>filesystem::path</code> overloads for <i>File-based streams</i></h3>
 <p><b>Section:</b> 27.9 [file.streams] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Beman Dawes <b>Opened:</b> 2016-03-16 <b>Last modified:</b> 2016-05-10</p>
+ <b>Submitter:</b> Beman Dawes <b>Opened:</b> 2016-03-16 <b>Last modified:</b> 2016-05-14</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#file.streams">issues</a> in [file.streams].</p>
@@ -21514,6 +21514,77 @@ or if <tt>F</tt> has no <i>Returns:</i> element, a non-<tt>void</tt> return from
 <i>Postconditions:</i>, or <i>Complexity:</i> element, then that supersedes any occurrences of that element in the code
 sequence.
 </p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2711" href="#2711">2711.</a> <tt>path</tt> is convertible from approximately everything under the sun</h3>
+<p><b>Section:</b> 27.10.8.4.1 [path.construct] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-05-10 <b>Last modified:</b> 2016-05-14</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The unconstrained <tt>template&lt;class Source&gt; path(const Source&amp; source);</tt> constructor defines an 
+implicit conversion from pretty much everything to <tt>path</tt>. This can lead to surprising ambiguities in 
+overload resolution.
+<p/>
+For example, given LWG <a href="lwg-active.html#2676">2676</a>'s proposed resolution, the following code appears to be ambiguous:
+</p>
+<blockquote><pre>
+struct meow {
+  operator const char *() const;
+};
+
+std::ifstream purr(meow{});
+</pre></blockquote>
+<p>
+because a <tt>meow</tt> can be converted to either a <tt>path</tt> or a <tt>const char*</tt> by a user-defined 
+conversion, even though part of the stated goal of LWG <a href="lwg-active.html#2676">2676</a>'s P/R is to avoid "break[ing] user 
+code depending on user-defined automatic conversions to the existing argument types".
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4582.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <tt>decay_t&lt;Source&gt;</tt> handles both the input iterator case ([path.req]/1.2) and 
+the array case (27.10.8.3 [path.req]/1.3). The level of constraints required is debatable; the following wording limits 
+the constraint to "is a <tt>basic_string</tt> or an iterator", but perhaps stronger constraints (e.g., an 
+<tt>iterator_category</tt> check in the second case, and/or a <tt>value_type</tt> check for both cases) would be desirable.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Change 27.10.8.4.1 [path.construct] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class Source&gt;
+  path(const Source&amp; source);
+template &lt;class InputIterator&gt;
+  path(InputIterator first, InputIterator last);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Constructs an object of class <tt>path</tt>, storing the effective range of <tt>source</tt> (27.10.8.3) 
+or the range <tt>[first, last)</tt> in <tt>pathname</tt>, converting format and encoding if required (27.10.8.2.1).
+<p/>
+<ins>-?- <i>Remarks:</i> The first overload shall not participate in overload resolution unless either <tt>Source</tt> 
+is a specialization of <tt>basic_string</tt> or the qualified-id <tt>iterator_traits&lt;decay_t&lt;Source&gt;&gt;::value_type</tt> 
+is valid and denotes a type (14.8.2 [temp.deduct]).</ins>
+</p>
+</blockquote>
 </blockquote>
 </li>
 </ol>
