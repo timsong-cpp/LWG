@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-06-05 at 15:06:49 UTC</p>
+<p><p>Revised 2016-06-05 at 15:06:06 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -21613,6 +21613,8 @@ in the calling thread. <ins>[<i>Note:</i> The invocations are not interleaved; s
  <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-28 <b>Last modified:</b> 2016-06-05</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#fs.op.permissions">active issues</a> in [fs.op.permissions].</p>
+<p><b>View all other</b> <a href="lwg-index.html#fs.op.permissions">issues</a> in [fs.op.permissions].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
@@ -21670,6 +21672,75 @@ void permissions(const path&amp; p, perms prms, error_code&amp; ec) <del>noexcep
 != perms::none)</tt>.
 </p>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2720" href="#2720">2720.</a> <tt>permissions</tt> function incorrectly specified for symlinks</h3>
+<p><b>Section:</b> 27.10.15.26 [fs.op.permissions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-28 <b>Last modified:</b> 2016-06-05</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#fs.op.permissions">active issues</a> in [fs.op.permissions].</p>
+<p><b>View all other</b> <a href="lwg-index.html#fs.op.permissions">issues</a> in [fs.op.permissions].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently when adding or removing permissions the <tt>permissions(p, prms, [...])</tt> function always 
+determines the current permissions for a file <tt>p</tt> using <tt>status(p).permissions()</tt>. This 
+means that it resolves symlinks even when <tt>perms::resolve_symlinks</tt> was not specified.
+<p/>
+I believe this is the incorrect behavior. Instead <tt>symlink_status(p).permissions()</tt> should be used 
+unless <tt>perms::resolve_symlinks</tt> is specified.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4582.</p>
+<ol>
+<li><p>In 27.10.15.26 [fs.op.permissions] change Table 150 &mdash; "Effects of permission bits" as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 150 &mdash; Effects of permission bits</caption>
+
+<tr>
+<th>Bits present in <tt>prms</tt></th>
+<th>Effective bits applied</th>
+</tr>
+
+<tr>
+<td>Neither <tt>add_perms</tt> nor <tt>remove_perms</tt></td>
+<td><tt>prms &amp; perms::mask</tt></td>
+</tr>
+
+<tr>
+<td><tt>add_perms</tt> <ins>and <tt>resolve_symlinks</tt></ins></td>
+<td><tt>status(p).permissions() | (prms &amp; perms::mask)</tt></td>
+</tr>
+
+<tr>
+<td><tt>remove_perms</tt> <ins>and <tt>resolve_symlinks</tt></ins></td>
+<td><tt>status(p).permissions() &amp; (prms &amp; perms::mask)</tt></td>
+</tr>
+
+<tr>
+<td><ins><tt>add_perms</tt> and not <tt>resolve_symlinks</tt></ins></td>
+<td><ins><tt>symlink_status(p).permissions() | (prms &amp; perms::mask)</tt></ins></td>
+</tr>
+
+<tr>
+<td><ins><tt>remove_perms</tt> and not <tt>resolve_symlinks</tt></ins></td>
+<td><ins><tt>symlink_status(p).permissions() &amp; ~(prms &amp; perms::mask)</tt></ins></td>
+</tr>
+
+</table> 
+
 </blockquote>
 </li>
 </ol>
