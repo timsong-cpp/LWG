@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2719" status="New">
+<title><tt>permissions</tt> function should not be <tt>noexcept</tt> due to narrow contract</title>
+<section><sref ref="[fs.op.permissions]"/></section>
+<submitter>Eric Fiselier</submitter>
+<date>28 May 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently the signatures for <tt>permissions</tt> are:
+</p>
+<blockquote>
+<pre>
+void permissions(const path&amp; p, perms prms);
+void permissions(const path&amp; p, perms prms, error_code&amp; ec) noexcept;
+</pre>
+</blockquote>
+<p>
+However both overloads have a narrow contract since due to the requires clause:
+</p>
+<blockquote>
+<p>
+<i>Requires:</i> <tt>!((prms &amp; perms::add_perms) != perms::none
+ &amp;&amp; (prms &amp; perms::remove_perms) != perms::none)</tt>.
+</p>
+</blockquote>
+<p>
+For this reason I believe the second overload of <tt>permissions</tt> should not be marked <tt>noexcept</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4582.</p>
+<ol>
+<li><p>Change <sref ref="[fs.filesystem.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  [&hellip;]
+
+  void permissions(const path&amp; p, perms prms);
+  void permissions(const path&amp; p, perms prms, error_code&amp; ec) <del>noexcept</del>;
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[fs.op.permissions]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void permissions(const path&amp; p, perms prms);
+void permissions(const path&amp; p, perms prms, error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires:</i> <tt>!((prms &amp; perms::add_perms) != perms::none &amp;&amp; (prms &amp; perms::remove_perms)
+!= perms::none)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
