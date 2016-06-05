@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2722" status="New">
+<title><tt>equivalent</tt> incorrectly specifies throws clause</title>
+<section><sref ref="[fs.op.equivalent]"/></section>
+<submitter>Eric Fiselier</submitter>
+<date>28 May 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The spec for <tt>equivalent</tt> has a throws clause which reads: [fs.op.equivalent]/5
+</p>
+<blockquote>
+<p>
+<i>Throws:</i> <tt>filesystem_error</tt> if <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) 
+&amp;&amp; is_other(s2))</tt>, otherwise as specified in Error reporting (27.10.7).
+</p>
+</blockquote>
+<p>
+This explicit requirement to throw is incorrect for the <tt>equivalent</tt> overload which takes an <tt>error_code</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4582.</p>
+<ol>
+<li><p>Modify <sref ref="[fs.op.equivalent]"/> as follows:</p>
+
+<blockquote>
+<pre>
+bool equivalent(const path&amp; p1, const path&amp; p2);
+bool equivalent(const path&amp; p1, const path&amp; p2, error_code&amp; ec) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Determines <tt>file_status s1</tt> and <tt>s2</tt>, as if by <tt>status(p1)</tt> and 
+<tt>status(p2)</tt>, respectively.
+<p/>
+-2- <i>Returns:</i> <ins>If <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) &amp;&amp; is_other(s2))</tt> 
+an error is reported (<sref ref="[fs.err.report]"/>). Otherwise</ins> <tt>true</tt>, if <tt>s1 == s2</tt> and 
+<tt>p1</tt> and <tt>p2</tt> resolve to the same file system entity, else <tt>false</tt>. The signature with argument 
+<tt>ec</tt> returns <tt>false</tt> if an error occurs.
+<p/>
+-3- Two paths are considered to resolve to the same file system entity if two candidate entities reside on the
+same device at the same location. This is determined as if by the values of the POSIX <tt>stat</tt> structure,
+obtained as if by <tt>stat()</tt> for the two paths, having equal <tt>st_dev</tt> values and equal <tt>st_ino</tt> values.
+<p/>
+-4- <i>Throws:</i> <del><tt>filesystem_error</tt> if <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) &amp;&amp; 
+is_other(s2))</tt>, otherwise a</del><ins>A</ins>s specified in <del>E</del><ins>e</ins>rror reporting 
+(<sref ref="[fs.err.report]"/>).
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
