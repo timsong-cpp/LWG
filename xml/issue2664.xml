@@ -47,12 +47,60 @@
 <note>2016-02, Jacksonville</note>
 <p>Beman to provide wording.</p>
 
+<note>2016-06-13, Beman provides wording and rationale</note>
+<p><b>Rationale:</b> The purpose of the append operations is to provide a simple concatenation facility for users wishing to extend a path by appending one or more additional elements, and to do so without worrying about the details of when a separator is needed. In that context it makes no sense to provide an argument that has a <i>root-name</i>. The simplest solution is simply to require <code>!p.has_root_name()</code>.
+The other suggested solutions IMO twist the functions into something harder to reason about
+yet any advantages for users are purely speculative. The concatenation functions can
+be used instead for corner cases.</p>
+
 <note><b>Apr 2016 Issue updated to address the C++ Working Paper. Previously addressed File System TS</b></note> 
 
 </discussion>
 
 <resolution>
-<p></p>
+<p><i>Change 27.10.8.4.3 path appends [path.append] as indicated:</i></p>
+<blockquote>
+<code>path&amp; operator/=(const path&amp; p);</code>
+  <blockquote>
+  <p><ins><i>Requires:</i> <code>!p.has_root_name()</code>.</ins></p>
+  <p><i>Effects:</i> Appends <code>path::preferred_separator</code> to pathname unless:</p>
+  <p> &mdash; an added separator would be redundant, or</p>
+  <p> &mdash; would change a relative path to an absolute path [<i>Note:</i> An empty path is relative. <i>—end note</i>], or</p>
+  <p> &mdash; <code>p.empty()</code>, or</p>
+  <p> &mdash; <code>*p.native().cbegin()</code> is a directory separator.</p>
+  <p>Then appends <code>p.native()</code> to pathname.</p>
+  <p><i>Returns:</i> <code>*this</code></p>
+  </blockquote>
+<code>template &lt;class Source&gt;<br/>
+&nbsp; path&amp; operator/=(const Source&amp; source);<br/>
+template &lt;class Source&gt<br/>
+&nbsp; path&amp; append(const Source&amp; source);<br/>
+template &lt;class InputIterator&gt<br/>
+&nbsp; path&amp; append(InputIterator first, InputIterator last);</code>
+  <blockquote>
+  <p><ins><i>Requires:</i> <code>!source.has_root_name()</code> or
+<code>!*first.has_root_name()</code>, respectively.</ins></p>
+  <p><i>Effects:</i> Appends <code>path::preferred_separator</code> to pathname,
+converting format and encoding if required(27.10.8.2.2), unless:</p>
+  <p> &mdash; an added separator would be redundant, or</p>
+  <p> &mdash; would change a relative path to an absolute path, or</p>
+  <p> &mdash; <code>source.empty()</code>, or</p>
+  <p> &mdash; <code>*source.native().cbegin()</code> is a directory separator.</p>
+  <p>Appends the effective range of <code>source</code> (27.10.8.3) or the range
+<code>[first, last)</code>
+to <code>pathname</code>, converting format and encoding if required (27.10.8.2.2).</p>
+  <p><i>Returns:</i> <code>*this</code></p>
+  </blockquote>
+</blockquote>
+
+<p><i>Change 27.10.8.6 path non-member functions [path.non-member] as indicated:</i></p>
+<blockquote>
+<code>path operator/(const path&amp; lhs, const path&amp; rhs);</code>
+  <blockquote>
+  <p><ins><i>Requires:</i> <code>!rhs.has_root_name()</code>.</ins></p>
+  <p><i>Returns:</i> <code>path(lhs) /= rhs</code>.</p>
+  </blockquote>
+</blockquote>
 </resolution>
 
 </issue>
