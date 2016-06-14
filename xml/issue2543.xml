@@ -56,6 +56,35 @@ an aggregate nor usable in almost any expression.</p></li>
 <p>EricWF to come back with wording; move to Open</p>
 
 <note>2016-05-08, Eric Fiselier &amp; Ville provide wording</note>
+
+<note>2016-05-25, Tim Song comments</note>
+<p>
+I see two issues with this P/R:
+</p>
+<ol>
+<li><p>
+"for which neither the library nor the user provides an explicit specialization" should probably be "for which neither 
+the library nor the user provides an explicit or partial specialization".
+</p></li>
+<li><p>
+Saying that the specialization "is not <tt>DefaultConstructible</tt> nor <tt>MoveAssignable</tt>" is not enough to 
+guarantee that common SFINAE uses will work. Both of those requirements have several parts, and it's not too hard 
+to fail only some of them. For instance, not meeting the assignment postcondition breaks <tt>MoveAssignable</tt>, 
+but is usually not SFINAE-detectible. And for <tt>DefaultConstructible</tt>, it's easy to write something in a way 
+that breaks <tt>T()</tt> but not <tt>T{}</tt> (due to aggregate initialization in the latter case).
+</p></li>
+</ol>
+
+<note>2016-06-14, Daniel comments</note>
+<p>
+The problematic part of the P/R is that it describes constraints that would be suitable if they were constraints 
+for user-code, but they are not suitable as requirements imposed on implementations to provide certain guarantees 
+for clients of the Library. The guarantees should be written in terms of testable compile-time expressions, e.g. based on 
+negative results of <tt>is_default_constructible&lt;hash&lt;X&gt;&gt;::value</tt>, 
+<tt>std::is_copy_constructible&lt;hash&lt;X&gt;&gt;::value</tt>, and possibly also 
+<tt>std::is_destructible&lt;hash&lt;X&gt;&gt;::value</tt>. <em>How</em> an implementation realizes these negative 
+results shouldn't be specified, though, but the expressions need to be well-formed and well-defined.
+</p>
 </discussion>
 
 <resolution>
