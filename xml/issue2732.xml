@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2732" status="New">
+<title>Questionable specification of <tt>path::operator/=</tt> and <tt>path::append</tt></title>
+<section><sref ref="[path.append]"/></section>
+<submitter>Tim Song</submitter>
+<date>14 Jun 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current specification of <tt>operator/=</tt> taking a <tt>const Source&amp;</tt> parameter, and of 
+<tt>path::append</tt> in <sref ref="[path.append]"/> appears requires <tt>Source</tt> to have a <tt>native()</tt> 
+and an <tt>empty()</tt> member, and seemingly requires different behavior for <tt>append(<i>empty_range</i>)</tt> 
+and <tt>append(first, last)</tt> when <tt>first == last</tt> (the last two bullet points being specified with 
+<tt>source</tt> alone), which doesn't make any sense.
+<p/>
+It appears that these overloads can just be specified using the <tt>operator/=(const path&amp;)</tt> overload.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4594.</p>
+<ol>
+<li><p>Edit <sref ref="[path.append]"/>/4-5 as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class Source&gt;
+  path&amp; operator/=(const Source&amp; source);
+template &lt;class Source&gt;
+  path&amp; append(const Source&amp; source);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> <tt>operator/=(path(source))</tt></ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class InputIterator&gt;
+  path&amp; append(InputIterator first, InputIterator last);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> <del>Appends <tt>path::preferred_separator</tt> to <tt>pathname</tt>, converting format and encoding 
+if required (<sref ref="[path.cvt]"/>), unless:</del>
+</p>
+<ul>
+<li><p><del>an added <i>directory-separator</i> would be redundant, or</del></p></li>
+<li><p><del>an added <i>directory-separator</i> would change an relative path to an absolute path, or</del></p></li>
+<li><p><del><tt>source.empty()</tt> is <tt>true</tt>, or</del></p></li>
+<li><p><del><tt>*source.native().cbegin()</tt> is a <i>directory-separator</i>.</del></p></li>
+</ul>
+<p>
+<del>Then appends the effective range of <tt>source</tt> (<sref ref="[path.req]"/>) or the range <tt>[first, last)</tt> to 
+<tt>pathname</tt>, converting format and encoding if required 
+(<sref ref="[path.cvt]"/>)</del><ins><tt>operator/=(path(first, last))</tt></ins>.
+<p/>
+-5- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
