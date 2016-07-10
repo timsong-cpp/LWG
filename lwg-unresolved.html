@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-07-03 at 18:07:14 UTC</p>
+<p><p>Revised 2016-07-10 at 13:07:42 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -21121,7 +21121,7 @@ public:
 <hr>
 <h3><a name="2732" href="#2732">2732.</a> Questionable specification of <tt>path::operator/=</tt> and <tt>path::append</tt></h3>
 <p><b>Section:</b> 27.10.8.4.3 [path.append] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-14 <b>Last modified:</b> 2016-07-03</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-14 <b>Last modified:</b> 2016-07-06</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#path.append">active issues</a> in [path.append].</p>
@@ -21130,7 +21130,7 @@ public:
 <p><b>Discussion:</b></p>
 <p>
 The current specification of <tt>operator/=</tt> taking a <tt>const Source&amp;</tt> parameter, and of 
-<tt>path::append</tt> in 27.10.8.4.3 [path.append] appears requires <tt>Source</tt> to have a <tt>native()</tt> 
+<tt>path::append</tt> in 27.10.8.4.3 [path.append] appears to require <tt>Source</tt> to have a <tt>native()</tt> 
 and an <tt>empty()</tt> member, and seemingly requires different behavior for <tt>append(<i>empty_range</i>)</tt> 
 and <tt>append(first, last)</tt> when <tt>first == last</tt> (the last two bullet points being specified with 
 <tt>source</tt> alone), which doesn't make any sense.
@@ -21435,7 +21435,7 @@ See also: ISO C 7.5, 7.10.2, 7.10.6.
 <hr>
 <h3><a name="2736" href="#2736">2736.</a> <tt>nullopt_t</tt> insufficiently constrained</h3>
 <p><b>Section:</b> 20.6.5 [optional.nullopt] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-17 <b>Last modified:</b> 2016-07-03</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-17 <b>Last modified:</b> 2016-07-06</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -21464,8 +21464,8 @@ constexpr nullopt_t nullopt(nullopt_t{});
 </blockquote>
 <ul>
 <li><tt>nullopt_t</tt> has no default constructor because it has a user-declared (copy) constructor;</li>
-<li><tt>nullopt_t</tt> has a trivial destructor, is an aggregate, and is an literal type;</li>
-<li><tt>nullopt_t</tt> has been initialized with an argument of literal type, to wit, <tt>nullopt_t</tt>.</li>
+<li><tt>nullopt_t</tt> has a trivial destructor, is an aggregate, and is a literal type;</li>
+<li><tt>nullopt</tt> has been initialized with an argument of literal type, to wit, <tt>nullopt_t</tt>.</li>
 </ul>
 <p>
 But such a <tt>nullopt_t</tt> is still constructible from <tt>{}</tt> and so still makes <tt>opt = {}</tt> ambiguous.
@@ -21760,6 +21760,90 @@ constexpr T* operator-&gt;();
 <p/>
 -4- <i>Remarks:</i> <del>Unless <tt>T</tt> is a user-defined type with overloaded unary <tt>operator&amp;</tt>, 
 t</del><ins>T</ins>hese functions shall be <tt>constexpr</tt> functions.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2741" href="#2741">2741.</a> <tt>is_partitioned</tt> requirements need updating</h3>
+<p><b>Section:</b> 25.4.14 [alg.partitions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-06 <b>Last modified:</b> 2016-07-10</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.partitions">issues</a> in [alg.partitions].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<blockquote class="note">
+<p>
+<i>Requires:</i> <tt>InputIterator</tt>'s value type shall be convertible to <tt>Predicate</tt>'s argument type.
+</p>
+</blockquote>
+<p>
+This seems to date from the days of adaptable function objects with an <tt>argument_type</tt> typedef, but in 
+modern C++ the predicate might not have an argument type. It could have a function template that accepts various 
+arguments, so it doesn't make sense to state requirements in terms of a type that isn't well defined.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4594.</p>
+
+<ol>
+<li><p>Edit 25.4.14 [alg.partitions] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class InputIterator, class Predicate&gt;
+bool is_partitioned(InputIterator first, InputIterator last, Predicate pred);
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires:</i> <del><tt>InputIterator</tt>'s value type shall be convertible to <tt>Predicate</tt>'s argument 
+type</del><ins>The expression <tt>pred(*i)</tt> shall be well-formed for all <tt>i</tt> in <tt>[first, last)</tt></ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class InputIterator, class OutputIterator1,
+          class OutputIterator2, class Predicate&gt;
+  pair&lt;OutputIterator1, OutputIterator2&gt;
+  partition_copy(InputIterator first, InputIterator last,
+                 OutputIterator1 out_true, OutputIterator2 out_false,
+                 Predicate pred);
+</pre>
+<blockquote>
+<p>
+-12- <i>Requires:</i> <tt>InputIterator</tt>'s value type shall be <tt>CopyAssignable</tt>, and shall be writable 
+(24.2.1 [iterator.requirements.general]) to the <tt>out_true</tt> and <tt>out_false</tt> 
+<tt>OutputIterator</tt>s, and <del>shall be convertible to <tt>Predicate</tt>'s argument type</del><ins>the
+expression <tt>pred(*i)</tt> shall be well-formed for all <tt>i</tt> in <tt>[first, last)</tt></ins>. 
+The input range shall not overlap with either of the output ranges.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class ForwardIterator, class Predicate&gt;
+  ForwardIterator partition_point(ForwardIterator first,
+                                  ForwardIterator last,
+                                  Predicate pred);
+</pre>
+<blockquote>
+<p>
+-16- <i>Requires:</i> <del><tt>ForwardIterator</tt>'s value type shall be convertible to <tt>Predicate</tt>'s argument 
+type</del><ins>The expression <tt>pred(*i)</tt> shall be well-formed for all <tt>i</tt> in <tt>[first, last)</tt></ins>. 
+<tt>[first, last)</tt> shall be partitioned by <tt>pred</tt>, i.e. all elements that satisfy <tt>pred</tt> shall appear 
+before those that do not.
+<p/>
+[&hellip;]
 </p>
 </blockquote>
 </blockquote>
