@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2535" status="New">
+<issue num="2535" status="NAD">
 <title>Inconsistency between <tt>ostream::write</tt> and <tt>ostream::operator&lt;&lt;</tt></title>
 <section><sref ref="[string.io]"/><sref ref="[ostream.unformatted]"/></section>
 <submitter>Marshall Clow</submitter>
@@ -100,6 +100,26 @@ reduces to "string-like" things which are empty (<tt>string</tt>, <tt>string_vie
 <li><p>b) remove the requirement that <tt>ostream::operator&lt;&lt;</tt> call <tt>sputn</tt> when there are no characters 
 to output.</p></li>
 </ol>
+
+<note>06-2016 Oulu, Saturday morning</note>
+<p>MC: Problem is this program produces different outputs on different platforms. The issue is what happens when you write 0 bytes: do you have to call xsputn? This affects a real customer.</p>
+<p>NJ: Why is this a problem? Why not QOI?</p>
+<p>DKu: I don’t think it’s a problem.</p>
+<p>MC: Making your own streambuf is an explicit customization point.</p>
+<p>DKu: But you should expect different numbers of calls.</p>
+<p>NJ: They may even split the input, and call xsputn more than once for an input.</p>
+<p>MC: Do we actually say that anywhere?</p>
+<p>DKu: I think so.</p>
+<p>MC: If you can find that, I’d be OK with NAD. The other thing that bothers me is that in one case it says you’re required to call sputn even if there’s no input, but the other wording doesn’t contain that requirement.</p>
+<p>DKu: The first wording says “as if by”, which may give wiggle room to not call it.</p>
+<p>DKu: In the second wording, sputc will never call sputn; it puts character into buffer, and calls overflow if the buffer is full. sputn is strictly an optimization.</p>
+<p>MC: OK, I’m convinced this could be NAD, that the standard simply gives no guarantees about this. Are we OK with this lack of precision and implementation variance, or does the spec need to be more precise?</p>
+<p>DKu: If you look at [ostream]/p2, it deliberately doesn’t specify how the functions are called. Even if sputn is called, no guarantee that xsputn is called at all: if there’s space in the buffer, the implementation may just put the characters in the buffer. This flexibility makes user implementations nicer, so I think this is definitely NAD</p>
+<p>BD: This stuff is incredibly chewed-over. There used to always be a group working on this stuff; it’s hard to believe there’s anything in here that’s not deliberate, so you can’t change it with this small group; you need to talk to all the implementers.</p>
+<p>MC: Any objections to NAD?</p>
+<p>no objections.</p>
+
+Closing as NAD.
 </discussion>
 
 <resolution>
