@@ -44,6 +44,10 @@ auto utc_timestamp() -> std::tm const & {
 // global data - would like to do something about that.
 static std::string const build_timestamp{format_time("<p>Revised %Y-%m-%d at %H:%m:%S UTC</p>\n", utc_timestamp())};
 
+static std::string const maintainer_email{"lwgchair@gmail.com"};
+
+static std::string const maintainer_name{"Marshall Clow"};
+
 
 struct order_by_first_tag {
    bool operator()(lwg::issue const & x, lwg::issue const & y) const noexcept {
@@ -510,7 +514,8 @@ out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT M
 </tr>
 <tr>
 <td align="left">Reply to:</td>
-<td align="left">Alisdair Meredith &lt;<a href="mailto:lwgchair@gmail.com">lwgchair@gmail.com</a>&gt;</td>
+<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
+                                                                     << maintainer_email << R"(</a>&gt;</td>
 </tr>
 </table>
 )";
@@ -544,7 +549,8 @@ out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING
 </tr>
 <tr>
 <td align="left">Reply to:</td>
-<td align="left">Marshall Clow &lt;<a href="mailto:lwgchair@gmail.com">lwgchair@gmail.com</a>&gt;</td>
+<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
+                                                                     << maintainer_email << R"(</a>&gt;</td>
 </tr>
 </table>
 )";
