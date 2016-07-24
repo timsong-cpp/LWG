@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-07-24 at 18:07:28 UTC</p>
+<p><p>Revised 2016-07-24 at 19:07:39 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -21799,7 +21799,7 @@ a typedef <tt>FD</tt>.
 <hr>
 <h3><a name="2744" href="#2744">2744.</a> <tt>any</tt>'s <tt>in_place</tt> constructors</h3>
 <p><b>Section:</b> 20.8.3.1 [any.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Ville Voutilainen  <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-07-24</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-07-24</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -21871,6 +21871,109 @@ template &lt;class T, class U, class... Args&gt;
 <p/>
 -19- <i>Remarks:</i> <del>The function</del><ins>This constructor</ins> shall not participate in overload resolution unless 
 <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2745" href="#2745">2745.</a> [fund.ts.v2] Implementability of LWG 2451</h3>
+<p><b>Section:</b> 99 [fund.ts.v2::optional.object] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-07-24</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#fund.ts.v2::optional.object">issues</a> in [fund.ts.v2::optional.object].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+LWG <a href="lwg-defects.html#2451">2451</a> adds conditionally explicit converting constructors to <tt>optional&lt;T&gt;</tt> that accept:
+</p>
+<ol>
+<li>Types convertible to <tt>T</tt>: <tt>template &lt;class U&gt; constexpr optional(T&amp;&amp;);</tt></li>
+<li>Rvalue <tt>optional&lt;U&gt;</tt> when <tt>U&amp;&amp;</tt> is convertible to <tt>T</tt>: 
+<tt>template &lt;class U&gt; constexpr optional(optional&lt;U&gt;&amp;&amp;);</tt></li>
+<li>Lvalue <tt>const optional&lt;U&gt;</tt> when <tt>const U&amp;</tt> is convertible to <tt>T</tt>: 
+<tt>template &lt;class U&gt; constexpr optional(const optional&lt;U&gt;&amp;);</tt></li>
+</ol>
+<p>
+All three of these constructors are required to be <tt>constexpr</tt> "If <tt>T</tt>'s selected constructor is a 
+<tt>constexpr</tt> constructor". While this is not problematic for #1, it is not possible in the current language 
+to implement signatures #2 and #3 as <tt>constexpr</tt> functions for the same reasons that <tt>optional</tt>'s 
+<em>non-converting</em> constructors from <tt>optional&lt;T&gt;&amp;&amp;</tt> and <tt>const optional&lt;T&gt;&amp;</tt> 
+cannot be <tt>constexpr</tt>.
+<p/>
+We should remove the "<tt>constexpr</tt>" specifier from the declarations of the conditionally explicit converting 
+constructors that accept <tt>optional&lt;U&gt;&amp;&amp;</tt> and <tt>const optional&lt;U&gt;&amp;</tt>, and strike 
+the remarks requiring these constructors to be <tt>constexpr</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4600.html">N4600</a>.</p>
+
+<blockquote class="note">
+<p>
+Wording relative to N4600 + LWG <a href="lwg-defects.html#2451">2451</a>, although it should be noted that this resolution should be applied 
+wherever LWG <a href="lwg-defects.html#2451">2451</a> is applied, be that to the fundamentals TS or the specification of <tt>optional</tt> in the 
+C++ Working Paper.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Edit 99 [optional.object] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T&gt;
+class optional
+{
+public:
+  typedef T value_type;
+
+  // 5.3.1, Constructors
+  [&hellip;]
+  template &lt;class U&gt; constexpr optional(U&amp;&amp;);
+  template &lt;class U&gt; <del>constexpr</del> optional(const optional&lt;U&gt;&amp;);
+  template &lt;class U&gt; <del>constexpr</del> optional(optional&lt;U&lt;&amp;&amp;);
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>In 20.6.3.1 [optional.object.ctor], modify the new signature specifications added by LWG <a href="lwg-defects.html#2451">2451</a></p>
+
+<blockquote>
+<pre>
+template &lt;class U&gt;
+  <del>constexpr</del> optional(const optional&lt;U&gt;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-48- <i>Remarks:</i> <del>If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, this constructor 
+shall be a <tt>constexpr</tt> constructor.</del> This constructor shall not participate in overload resolution 
+unless [&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class U&gt;
+  <del>constexpr</del> optional(optional&lt;U&gt;&amp;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-53- <i>Remarks:</i> <del>If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, this constructor 
+shall be a <tt>constexpr</tt> constructor.</del> This constructor shall not participate in overload resolution 
+unless [&hellip;]
 </p>
 </blockquote>
 </blockquote>
