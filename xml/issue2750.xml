@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2750" status="New">
+<title>[fund.ts.v2] LWG 2451 conversion constructor constraint</title>
+<section><sref ref="[optional.object.ctor]"/></section>
+<submitter>Casey Carter</submitter>
+<date>20 Jul 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+LWG <iref ref="2451"/> adds a converting constructor to <tt>optional</tt> with signature:
+</p>
+<blockquote>
+<pre>
+template &lt;class U&gt;
+constexpr optional(U&amp;&amp; v);
+</pre>
+</blockquote>
+<p>
+and specifies that "This constructor shall not participate in overload resolution unless 
+<tt>is_constructible_v&lt;T, U&amp;&amp;&gt;</tt> is <tt>true</tt> and <tt>U</tt> is not the same type as <tt>T</tt>." 
+This suffices to avoid this constructor being selected by overload resolution for arguments that should match the 
+move constructor, but not for arguments that should match the copy constructor. The recent churn around tuple's 
+constructors suggests that we want this constructor to not participate in overload resolution if 
+<tt>remove_cv_t&lt;remove_reference_t&lt;U&gt;&gt;</tt> is the same type as <tt>T</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4600.html">N4600</a>.</p>
+
+<blockquote class="note">
+<p>
+Wording relative to N4600 + LWG <iref ref="2451"/>, although it should be noted that this resolution should be applied 
+wherever LWG <iref ref="2451"/> is applied, be that to the fundamentals TS or the specification of <tt>optional</tt> in the 
+C++ Working Paper.
+</p>
+</blockquote>
+
+<ol>
+<li><p>In <sref ref="[optional.object.ctor]"/>, modify as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class U&gt;
+  constexpr optional(U&amp;&amp; v);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-43- <i>Remarks:</i> If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, this constructor shall 
+be a <tt>constexpr</tt> constructor. This constructor shall not participate in overload resolution unless 
+<tt>is_constructible_v&lt;T, U&amp;&amp;&gt;</tt> is <tt>true</tt> and <tt><ins>decay_t&lt;</ins>U<ins>&gt;</ins></tt> 
+is not the same type as <tt>T</tt>. The constructor is explicit if and only if <tt>is_convertible_v&lt;U&amp;&amp;, T&gt;</tt> 
+is <tt>false</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
