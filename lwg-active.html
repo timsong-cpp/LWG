@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-07-26 at 18:07:07 UTC</p>
+<p><p>Revised 2016-07-26 at 19:07:26 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,12 +158,12 @@ ownership of it.
 <ul>
 <li>D100: 2016-10-17 2016 pre-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>296 open issues, up by 4.</li>
+<li>297 open issues, up by 5.</li>
 <li>1974 closed issues, up by 1.</li>
-<li>2270 issues total, up by 5.</li>
+<li>2271 issues total, up by 6.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 5 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>.</li>
+<li>Added the following 6 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>.</li>
 <li>Changed the following issue to NAD (from New): <a href="lwg-closed.html#2535">2535</a>.</li>
 </ul></li>
 </ul>
@@ -30726,6 +30726,83 @@ template &lt;class T&gt; void swap(optional&lt;T&gt;&amp; x, optional&lt;T&gt;&a
 <p/>
 <ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless 
 <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and <tt>is_swappable_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2749" href="#2749">2749.</a> <tt>swappable</tt> traits for <tt>variant</tt>s</h3>
+<p><b>Section:</b> 20.7.2.6 [variant.swap], 20.7.9 [variant.specalg] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-07-26</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>variant</tt> does not play nice with swappable traits, the non-member specialized <tt>swap</tt> overload is not 
+SFINAE friendly. On the other hand, the member <tt>swap</tt> is SFINAE friendly, albeit with an incomplete condition, 
+when arguably it shouldn't be. Given the <i>Effects</i>, <i>Throws</i>, and <i>Remarks</i> clauses, the SFINAE 
+condition should include <tt>is_move_constructible_v</tt> and <tt>is_move_assignable_v</tt> to account for the 
+involvement of <tt>variant</tt>'s move constructor and move assignment operator (the <tt>noexcept</tt> specification is 
+correct as is, since the move assignment operator would only be called for <tt>variant</tt>s with different alternatives). 
+This SFINAE condition should apply to the non-member <tt>swap</tt> overload, while the member <tt>swap</tt> should require 
+all alternatives are swappable (as defined by 17.6.3.2 [swappable.requirements]).
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Modify 20.7.2.6 [variant.swap] as indicated:</p>
+
+<blockquote>
+<pre>
+void swap(variant&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> Lvalues of type <tt>T<sub><i>i</i></sub></tt> shall be swappable and 
+<tt>is_move_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp; is_move_assignable_v&lt;T<sub><i>i</i></sub>&gt;</tt> 
+is <tt>true</tt> for all <tt><i>i</i></tt>.</ins>
+<p/>
+[&hellip;]
+<p/>
+-3- <i>Remarks:</i> <del>This function shall not participate in overload resolution unless <tt>is_swappable_v&lt;Ti&gt;</tt> 
+is <tt>true</tt> for all <tt><i>i</i></tt>.</del> If an exception is thrown during the call to function 
+<tt>swap(get&lt;<i>i</i>&gt;(*this), get&lt;<i>i</i>&gt;(rhs))</tt>, the states of the contained values of 
+<tt>*this</tt> and of <tt>rhs</tt> are determined by the exception safety guarantee of swap for lvalues of 
+<tt>T<sub><i>i</i></sub></tt> with <tt><i>i</i></tt> being <tt>index()</tt>. If an exception is thrown during the 
+exchange of the values of <tt>*this</tt> and <tt>rhs</tt>, the states of the values of <tt>*this</tt> and of <tt>rhs</tt> 
+are determined by the exception safety guarantee of <tt>variant</tt>'s move constructor and move assignment operator. 
+The expression inside <tt>noexcept</tt> is equivalent to the logical AND of 
+<tt>is_nothrow_move_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp; 
+is_nothrow_swappable_v&lt;T<sub><i>i</i></sub>&gt;</tt> for all <tt><i>i</i></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 20.7.9 [variant.specalg] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class... Types&gt; void swap(variant&lt;Types...&gt;&amp; v, variant&lt;Types...&gt;&amp; w) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to <tt>v.swap(w)</tt>.
+<p/>
+-2- <i>Remarks:</i> <ins>This function shall not participate in overload resolution unless 
+<tt>is_move_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp; is_move_assignable_v&lt;T<sub><i>i</i></sub>&gt; 
+&amp;&amp; is_swappable_v&lt;T<sub><i>i</i></sub>&gt;</tt> is <tt>true</tt> for all <tt><i>i</i></tt>.</ins> The 
+expression inside <tt>noexcept</tt> is equivalent to <tt>noexcept(v.swap(w))</tt>.
 </p>
 </blockquote>
 </blockquote>
