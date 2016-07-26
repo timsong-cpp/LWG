@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2751" status="New">
+<title><tt>shared_ptr</tt> deleter not specified to observe expired <tt>weak_ptr</tt> instances</title>
+<section><sref ref="[util.smartptr.shared.dest]"/></section>
+<submitter>Aaron Jacobs</submitter>
+<date>21 Jul 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The C++14 standard contains no language that guarantees the deleter run by a
+<tt>shared_ptr</tt> will see all associated <tt>weak_ptr</tt> instances as expired. For example,
+the standard doesn't appear to guarantee that the assertion in the following
+snippet won't fire:
+</p>
+<blockquote><pre>
+std::weak_ptr&lt;Foo&gt; weak;
+std::shared_ptr&lt;Foo&gt; strong{
+  new Foo,
+  [&amp;weak] (Foo* f) {
+    assert(weak.expired());
+    delete f;
+  },
+};
+</pre></blockquote>
+<p>
+It seems clear that the intent is that associated <tt>weak_ptr</tt>s are expired,
+because otherwise <tt>shared_ptr</tt> deleters could resurrect a reference to an object
+that is being deleted.
+<p/>
+Suggested fix: <sref ref="[util.smartptr.shared.dest]"/> should specify that the decrease in
+<tt>use_count()</tt> caused by the destructor is sequenced before the call to the
+deleter or the call to <tt>delete p</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
