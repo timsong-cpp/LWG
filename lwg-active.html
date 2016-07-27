@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-07-27 at 19:07:26 UTC</p>
+<p><p>Revised 2016-07-27 at 22:07:50 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,12 +158,12 @@ ownership of it.
 <ul>
 <li>D100: 2016-10-17 2016 pre-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>300 open issues, up by 8.</li>
+<li>301 open issues, up by 9.</li>
 <li>1974 closed issues, up by 1.</li>
-<li>2274 issues total, up by 9.</li>
+<li>2275 issues total, up by 10.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 9 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>, <a href="lwg-active.html#2750">2750</a>, <a href="lwg-active.html#2751">2751</a>, <a href="lwg-active.html#2752">2752</a>.</li>
+<li>Added the following 10 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>, <a href="lwg-active.html#2750">2750</a>, <a href="lwg-active.html#2751">2751</a>, <a href="lwg-active.html#2752">2752</a>, <a href="lwg-active.html#2753">2753</a>.</li>
 <li>Changed the following issue to NAD (from New): <a href="lwg-closed.html#2535">2535</a>.</li>
 </ul></li>
 </ul>
@@ -30986,6 +30986,231 @@ could not be allocated<ins>.</ins>
 <tt>std::allocator_traits&lt;Allocator&gt;::template rebind&lt;<em>unspecified</em>&gt;::allocate</tt></ins>.
 </li>
 </ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2753" href="#2753">2753.</a> Optional's constructors and assignments need constraints</h3>
+<p><b>Section:</b> 20.6.3.1 [optional.object.ctor], 20.6.3.3 [optional.object.assign] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-07-27</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+To use <tt>optional&lt;T&gt;</tt> as if it were a <tt>T</tt> in generic contexts, <tt>optional&lt;T&gt;</tt>'s "generic" 
+operations must behave as do those of <tt>T</tt> under overload resolution. At minimum, <tt>optional</tt>'s constructors 
+and assignment operators should not participate in overload resolution with argument types that cannot be used to 
+construct/assign the contained <tt>T</tt> so that <tt>is_constructible_v&lt;optional&lt;T&gt;, Args...&gt;</tt> 
+(respectively <tt>is_assignable_v&lt;optional&lt;T&gt;&amp;, RHS&lt;</tt>) is equivalent to 
+<tt>is_constructible_v&lt;T, Args...&gt;</tt> (respectively <tt>is_assignable_v&lt;T&amp;, RHS&gt;</tt>).
+</p>
+<p>
+In passing, note that the Requires element for <tt>optional</tt>'s in-place <tt>initializer_list</tt> constructor 
+unnecessarily duplicates its Remarks element; it should be removed.
+</p>
+<p>
+It should also be noted that the resolution of LWG <a href="lwg-defects.html#2451">2451</a> adds constructors to <tt>optional</tt> with 
+appropriate constraints, but does not constrain the additional assignment operators. If LWG chooses to apply the 
+resolution of 2451 to the WP, the Requires elements of the additional assignment operators should also be converted 
+to constraints as the wording herein does for the assignment operators in N4606.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Remove 20.6.3.1 [optional.object.ctor] p3, and add a new paragraph after p6:</p>
+
+<blockquote>
+<pre>
+optional(const optional&lt;T&gt;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Requires:</i> <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+<ins>-?- <em>Remarks:</em> The function shall not participate in overload resolution unless 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.1 [optional.object.ctor] p7, and change p11 to:</p>
+
+<blockquote>
+<pre>
+optional(optional&lt;T&gt;&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+<del>-7- <i>Requires:</i> <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-11- <em>Remarks:</em> The expression inside <tt>noexcept</tt> is equivalent to 
+<tt>is_nothrow_move_constructible_v&lt;T&gt;</tt>. <ins>The function shall not participate in 
+overload resolution unless <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.1 [optional.object.ctor] p12, and change p16 to:</p>
+
+<blockquote>
+<pre>
+constexpr optional(const T&amp; v);
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Requires:</i> <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-16- <em>Remarks:</em> If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, 
+this constructor shall be a <tt>constexpr</tt> constructor. <ins>The function shall not participate 
+in overload resolution unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.1 [optional.object.ctor] p17, and change p21 to:</p>
+
+<blockquote>
+<pre>
+constexpr optional(T&amp;&amp; v);
+</pre>
+<blockquote>
+<p>
+<del>-17- <i>Requires:</i> <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-21- <em>Remarks:</em> If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, this constructor shall 
+be a <tt>constexpr</tt> constructor. <ins>The function shall not participate in overload resolution unless 
+<tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.1 [optional.object.ctor] p22, and change p26 to:</p>
+
+<blockquote>
+<pre>
+template &lt;class... Args&gt; 
+  constexpr explicit optional(in_place_t, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<del>-22- <i>Requires:</i> <tt>is_constructible_v&lt;T, Args&amp;&amp;...&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-26- <em>Remarks:</em> If <tt>T</tt>'s constructor selected for the initialization is a <tt>constexpr</tt> constructor, 
+this constructor shall be a <tt>constexpr</tt> constructor. <ins>The function shall not participate in overload 
+resolution unless <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.1 [optional.object.ctor] p27.</p>
+
+<blockquote>
+<pre>
+template &lt;class U, class... Args&gt; 
+  constexpr explicit optional(in_place_t, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<del>-27- <i>Requires:</i> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args&amp;&amp;...&gt;</tt> is 
+<tt>true</tt>.</del>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.3 [optional.object.assign] p4, and change p8 to:</p>
+
+<blockquote>
+<pre>
+optional&lt;T&gt;&amp; operator=(const optional&lt;T&gt;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+<del>-4- <i>Requires:</i> <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and 
+<tt>is_copy_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-8- <em>Remarks:</em> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
+If an exception is thrown during the call to <tt>T</tt>'s copy constructor, no effect. If an exception is thrown 
+during the call to <tt>T</tt>'s copy assignment, the state of its contained value is as defined by the exception 
+safety guarantee of <tt>T</tt>'s copy assignment. <ins>The function shall not participate in overload resolution 
+unless <tt>is_copy_constructible_v&lt;T&gt; &amp;&amp; is_copy_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.3 [optional.object.assign] p9, and add a new paragraph after p14:</p>
+
+<blockquote>
+<pre>
+optional&lt;T&gt;&amp; operator=(optional&lt;T&gt;&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+<del>-9- <i>Requires:</i> <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and 
+<tt>is_move_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-14- <i>Remarks:</i> [&hellip;] If an exception is thrown during the call to <tt>T</tt>'s move
+assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety 
+guarantee of <tt>T</tt>'s move assignment.
+<p/>
+<ins>The function shall not participate in overload resolution unless 
+<tt>is_move_constructible_v&lt;T&gt; &amp;&amp; is_move_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</ins></p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Remove 20.6.3.3 [optional.object.assign] p15, and change p19 to (yes, this wording is odd - the intent 
+is that it will "do the right thing" after incorporation of LWG <a href="lwg-defects.html#2451">2451</a>):</p>
+
+<blockquote>
+<pre>
+template &lt;class U&gt; optional&lt;T&gt;&amp; operator=(U&amp;&amp; v);
+</pre>
+<blockquote>
+<p>
+<del>-15- <i>Requires:</i> <tt>is_constructible_v&lt;T, U&gt;</tt> is <tt>true</tt> and 
+<tt>is_assignable_v&lt;T&amp;, U&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-19- <em>Remarks:</em> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
+If an exception is thrown during the call to <tt>T</tt>'s constructor, the state of <tt>v</tt> is determined by the 
+exception safety guarantee of <tt>T</tt>'s constructor. If an exception is thrown during the call to <tt>T</tt>'s 
+assignment, the state of <tt>*val</tt> and <tt>v</tt> is determined by the exception safety guarantee of <tt>T</tt>'s 
+assignment. The function shall not participate in overload resolution unless <tt>is_same_v&lt;decay_t&lt;U&gt;, 
+T&gt;<ins> &amp;&amp; is_constructible_v&lt;T, U&gt; &amp;&amp; is_assignable_v&lt;T&amp;, U&gt;</ins></tt> is 
+<tt>true</tt>.
+</p>
 </blockquote>
 </blockquote>
 </li>
