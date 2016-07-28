@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-07-28 at 17:07:47 UTC</p>
+<p><p>Revised 2016-07-28 at 18:07:51 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,12 +158,12 @@ ownership of it.
 <ul>
 <li>D100: 2016-10-17 2016 pre-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>302 open issues, up by 10.</li>
+<li>303 open issues, up by 11.</li>
 <li>1974 closed issues, up by 1.</li>
-<li>2276 issues total, up by 11.</li>
+<li>2277 issues total, up by 12.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 11 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>, <a href="lwg-active.html#2750">2750</a>, <a href="lwg-active.html#2751">2751</a>, <a href="lwg-active.html#2752">2752</a>, <a href="lwg-active.html#2753">2753</a>, <a href="lwg-active.html#2754">2754</a>.</li>
+<li>Added the following 12 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>, <a href="lwg-active.html#2750">2750</a>, <a href="lwg-active.html#2751">2751</a>, <a href="lwg-active.html#2752">2752</a>, <a href="lwg-active.html#2753">2753</a>, <a href="lwg-active.html#2754">2754</a>, <a href="lwg-active.html#2755">2755</a>.</li>
 <li>Changed the following issue to NAD (from New): <a href="lwg-closed.html#2535">2535</a>.</li>
 </ul></li>
 </ul>
@@ -31251,6 +31251,80 @@ general location, in order to avoid repeating that requirement all over the plac
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2755" href="#2755">2755.</a> string.view.io uses non-existent <tt>basic_string_view::to_string</tt> function</h3>
+<p><b>Section:</b> 21.4.4 [string.view.io], 21.3.2.9 [string.io] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-07-28</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In looking at N4606, [string.view.io] has an <i>Effects</i> clause that references <tt>basic_string_view::to_string</tt> 
+which no longer exists after the application of <a href="http://wg21.link/p0254r2">P0254R2</a>.
+</p>
+
+<p><i>[2016-07-26, Marshall suggests concrete wording]</i></p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Modify 21.3.2.9 [string.io] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Allocator&gt;
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os,
+               const basic_string&lt;charT, traits, Allocator&gt;&amp; str);
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> <ins>Equivalent to: <tt>return os &lt;&lt; basic_string_view&lt;charT, 
+traits&gt;(str);</tt></ins><del>Behaves as a formatted output function (27.7.3.6.1 [ostream.formatted.reqmts]) 
+of <tt>os</tt>. Forms a character sequence <tt>seq</tt>, initially consisting of the elements defined by the 
+range <tt>[str.begin(), str.end())</tt>. Determines padding for <tt>seq</tt> as described in 
+27.7.3.6.1 [ostream.formatted.reqmts]. Then inserts <tt>seq</tt> as if by calling <tt>os.rdbuf()-&gt;sputn(seq, n)</tt>, 
+where <tt>n</tt> is the larger of <tt>os.width()</tt> and <tt>str.size()</tt>; then calls <tt>os.width(0)</tt>.</del>
+<p/>
+<del>-6- <i>Returns:</i> <tt>os</tt></del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 21.4.4 [string.view.io] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os,
+               basic_string_view&lt;charT, traits&gt; str);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> <del>Equivalent to: <tt>return os &lt;&lt; str.to_string();</tt></del><ins>Behaves 
+as a formatted output function (27.7.3.6.1 [ostream.formatted.reqmts]) of <tt>os</tt>. Forms a character 
+sequence <tt>seq</tt>, initially consisting of the elements defined by the range <tt>[str.begin(), 
+str.end())</tt>. Determines padding for <tt>seq</tt> as described in 27.7.3.6.1 [ostream.formatted.reqmts]. Then 
+inserts <tt>seq</tt> as if by calling <tt>os.rdbuf()-&gt;sputn(seq, n)</tt>, where <tt>n</tt> is the larger of 
+<tt>os.width()</tt> and <tt>str.size()</tt>; then calls <tt>os.width(0)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>os</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
