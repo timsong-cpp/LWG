@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2757" status="New">
+<title><tt>std::string{}.insert(3, "ABCDE", 0, 1)</tt> is ambiguous</title>
+<section><sref ref="[string::insert]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>30 Jul 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Before C++17, we had the following signature to <tt>std::basic_string</tt>:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  insert(size_type pos1, const basic_string&amp; str, size_type pos2, size_type n = npos);
+</pre></blockquote>
+<p>
+Unlike most of the other member functions on <tt>std::basic_string</tt>, there were not corresponding
+versions that take a <tt>CharT*</tt> or <tt>(CharT *, size)</tt>.
+<p/>
+In <a href="http://wg21.link/p0254r2">p0254r2</a>, we added:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  insert(size_type pos1, basic_string_view sv, size_type pos2, size_type n = npos);
+</pre></blockquote>
+<p>
+which made the code above ambiguous. There are two conversions from "<tt>const CharT*</tt>", 
+one to <tt>basic_string</tt>, and the other to <tt>basic_string_view</tt>, and they're both equally 
+good (in the view of the compiler).
+<p/>
+This ambiguity also occurs with the calls
+</p>
+<blockquote><pre>
+assign(const basic_string&amp; str, size_type pos, size_type n = npos);
+assign(basic_string_view    sv, size_type pos, size_type n = npos);
+</pre></blockquote>
+<p>
+but I will file a separate issue for that.
+<p/>
+The solution is to add <em>even more</em> overloads to <tt>insert</tt>, to make it match all the other member
+functions of <tt>basic_string</tt>, which come in fours (<tt>string</tt>, <tt>pointer</tt>, <tt>pointer + size</tt>, 
+<tt>string_view</tt>).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+<blockquote class="note">
+<p>
+[Note to the editor: If you want to re-order these functions to group them better, feel free]
+</p>
+</blockquote>
+
+<ol>
+<li><p>After <sref ref="[string::insert]"/>/4 add the following:</p>
+
+<blockquote class="note">
+<p>
+[Note: Alternative wording for the first <i>Effects</i> clause:
+</p>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return insert(pos1, s + pos2, min(n, len - pos2));</tt></ins>
+</p>
+</blockquote>
+<p>
+]
+</p>
+</blockquote>
+<blockquote>
+<pre>
+<ins>basic_string&amp;
+  insert(size_type pos1, const charT* s, size_type len, size_type pos2, size_type n = npos);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>s</tt> points to an array of at least <tt>len</tt> elements of <tt>charT</tt>.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; len</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Determines the effective length <tt>rlen</tt> of the string to insert as the smaller of 
+<tt>n</tt> and <tt>len - pos2</tt> and calls <tt>insert(pos1, s + pos2, rlen)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>basic_string&amp;
+  insert(size_type pos1, const charT* s, size_type pos2, size_type n = npos);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>s</tt> points to an array of at least <tt>traits::length(s) + 1</tt> elements of <tt>charT</tt>.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; traits::length(s)</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return insert(pos1, s, traits::length(s), pos2, n);</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[string::insert]"/>/3 and /4 as follows:</p>
+
+<blockquote>
+<pre>
+basic_string&amp;
+  insert(size_type pos1,
+         const basic_string&amp; str,
+         size_type pos2, size_type n = npos);
+</pre>
+<blockquote>
+<p>
+-2- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; str.size()</tt>.
+<p/>
+-3- <i>Effects:</i> <ins><ins>Equivalent to: <tt>return insert(pos1, str.data(), str.size(), pos2, n);</tt></ins></ins><del>Determines 
+the effective length <tt>rlen</tt> of the string to insert as the smaller of <tt>n</tt> and 
+<tt>str.size() - pos2</tt> and calls <tt>insert(pos1, str.data() + pos2, rlen)</tt>.</del>
+<p/>
+<del>-4- <i>Returns:</i> <tt>*this</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[string::insert]"/>/7 and /8 as follows:</p>
+
+<blockquote>
+<pre>
+basic_string&amp; insert(size_type pos1, basic_string_view&lt;charT, traits&gt; sv,
+                     size_type pos2, size_type n = npos);
+</pre>
+<blockquote>
+<p>
+-6- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; sv.size()</tt>.
+<p/>
+-7- <i>Effects:</i> <ins><ins>Equivalent to: <tt>return insert(pos1, sv.data(), sv.size(), pos2, n);</tt></ins></ins><del>Determines 
+the effective length <tt>rlen</tt> of the string to assign as the smaller of <tt>n</tt> and 
+<tt>sv.size() - pos2</tt> and calls <tt>insert(pos1, sv.data() + pos2, rlen)</tt>.</del>
+<p/>
+<del>-8- <i>Returns:</i> <tt>*this</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
