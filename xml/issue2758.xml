@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2758" status="New">
+<title><tt>std::string{}.assign("ABCDE", 0, 1)</tt> is ambiguous</title>
+<section><sref ref="[string::assign]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>30 Jul 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Before C++17, we had the following signature to <tt>std::basic_string</tt>:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  assign(const basic_string&amp; str, size_type pos, size_type n = npos);
+</pre></blockquote>
+<p>
+Unlike most of the other member functions on <tt>std::basic_string</tt>, there were not corresponding
+versions that take a <tt>charT*</tt> or <tt>(charT *, size)</tt>.
+<p/>
+In <a href="http://wg21.link/p0254r2">p0254r2</a>, we (I) added:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  assign(basic_string_view&lt;charT, traits&gt; sv, size_type pos, size_type n = npos);
+</pre></blockquote>
+<p>
+which made the code above ambiguous. There are two conversions from "<tt>const charT*</tt>", 
+one to <tt>basic_string</tt>, and the other to <tt>basic_string_view</tt>, and they're both equally 
+good (in the view of the compiler).
+<p/>
+This ambiguity also occurs with the calls
+</p>
+<blockquote><pre>
+insert(size_type pos1, const basic_string&amp; str,             size_type pos2, size_type n = npos);
+insert(size_type pos1, basic_string_view&lt;charT, traits&gt; sv, size_type pos2, size_type n = npos);
+</pre></blockquote>
+<p>
+but I will file a separate issue (<iref ref="2757"/>) for that.
+<p/>
+The solution is to add <em>even more</em> overloads to <tt>assign</tt>, to make it match all the other member
+functions of <tt>basic_string</tt>, which come in fours (<tt>string</tt>, <tt>pointer</tt>, <tt>pointer + size</tt>, 
+<tt>string_view</tt>).
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
