@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2016-07-28</td>
+  <td align="left">2016-07-30</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-07-28 at 19:07:17 UTC</p>
+<p><p>Revised 2016-07-30 at 16:07:30 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,12 +158,12 @@ ownership of it.
 <ul>
 <li>D100: 2016-10-17 2016 pre-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>304 open issues, up by 12.</li>
+<li>305 open issues, up by 13.</li>
 <li>1974 closed issues, up by 1.</li>
-<li>2278 issues total, up by 13.</li>
+<li>2279 issues total, up by 14.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 13 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>, <a href="lwg-active.html#2750">2750</a>, <a href="lwg-active.html#2751">2751</a>, <a href="lwg-active.html#2752">2752</a>, <a href="lwg-active.html#2753">2753</a>, <a href="lwg-active.html#2754">2754</a>, <a href="lwg-active.html#2755">2755</a>, <a href="lwg-active.html#2756">2756</a>.</li>
+<li>Added the following 14 New issues: <a href="lwg-active.html#2744">2744</a>, <a href="lwg-active.html#2745">2745</a>, <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2747">2747</a>, <a href="lwg-active.html#2748">2748</a>, <a href="lwg-active.html#2749">2749</a>, <a href="lwg-active.html#2750">2750</a>, <a href="lwg-active.html#2751">2751</a>, <a href="lwg-active.html#2752">2752</a>, <a href="lwg-active.html#2753">2753</a>, <a href="lwg-active.html#2754">2754</a>, <a href="lwg-active.html#2755">2755</a>, <a href="lwg-active.html#2756">2756</a>, <a href="lwg-active.html#2757">2757</a>.</li>
 <li>Changed the following issue to NAD (from New): <a href="lwg-closed.html#2535">2535</a>.</li>
 </ul></li>
 </ul>
@@ -31587,6 +31587,158 @@ exception safety guarantee of <tt>T</tt>'s constructor. If an exception is throw
 assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s 
 assignment. The function shall not participate in overload resolution unless
 <tt>is_same_v&lt;decay_t&lt;U&gt;, T&gt;</tt> is <tt>false</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2757" href="#2757">2757.</a> <tt>std::string{}.insert(3, "ABCDE", 0, 1)</tt> is ambiguous</h3>
+<p><b>Section:</b> 21.3.1.6.4 [string::insert] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-07-30 <b>Last modified:</b> 2016-07-30</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#string::insert">issues</a> in [string::insert].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Before C++17, we had the following signature to <tt>std::basic_string</tt>:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  insert(size_type pos1, const basic_string&amp; str, size_type pos2, size_type n = npos);
+</pre></blockquote>
+<p>
+Unlike most of the other member functions on <tt>std::basic_string</tt>, there were not corresponding
+versions that take a <tt>CharT*</tt> or <tt>(CharT *, size)</tt>.
+<p/>
+In <a href="http://wg21.link/p0254r2">p0254r2</a>, we added:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  insert(size_type pos1, basic_string_view sv, size_type pos2, size_type n = npos);
+</pre></blockquote>
+<p>
+which made the code above ambiguous. There are two conversions from "<tt>const CharT*</tt>", 
+one to <tt>basic_string</tt>, and the other to <tt>basic_string_view</tt>, and they're both equally 
+good (in the view of the compiler).
+<p/>
+This ambiguity also occurs with the calls
+</p>
+<blockquote><pre>
+assign(const basic_string&amp; str, size_type pos, size_type n = npos);
+assign(basic_string_view    sv, size_type pos, size_type n = npos);
+</pre></blockquote>
+<p>
+but I will file a separate issue for that.
+<p/>
+The solution is to add <em>even more</em> overloads to <tt>insert</tt>, to make it match all the other member
+functions of <tt>basic_string</tt>, which come in fours (<tt>string</tt>, <tt>pointer</tt>, <tt>pointer + size</tt>, 
+<tt>string_view</tt>).
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+<blockquote class="note">
+<p>
+[Note to the editor: If you want to re-order these functions to group them better, feel free]
+</p>
+</blockquote>
+
+<ol>
+<li><p>After 21.3.1.6.4 [string::insert]/4 add the following:</p>
+
+<blockquote class="note">
+<p>
+[Note: Alternative wording for the first <i>Effects</i> clause:
+</p>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return insert(pos1, s + pos2, min(n, len - pos2));</tt></ins>
+</p>
+</blockquote>
+<p>
+]
+</p>
+</blockquote>
+<blockquote>
+<pre>
+<ins>basic_string&amp;
+  insert(size_type pos1, const charT* s, size_type len, size_type pos2, size_type n = npos);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>s</tt> points to an array of at least <tt>len</tt> elements of <tt>charT</tt>.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; len</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Determines the effective length <tt>rlen</tt> of the string to insert as the smaller of 
+<tt>n</tt> and <tt>len - pos2</tt> and calls <tt>insert(pos1, s + pos2, rlen)</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>basic_string&amp;
+  insert(size_type pos1, const charT* s, size_type pos2, size_type n = npos);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>s</tt> points to an array of at least <tt>traits::length(s) + 1</tt> elements of <tt>charT</tt>.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; traits::length(s)</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return insert(pos1, s, traits::length(s), pos2, n);</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 21.3.1.6.4 [string::insert]/3 and /4 as follows:</p>
+
+<blockquote>
+<pre>
+basic_string&amp;
+  insert(size_type pos1,
+         const basic_string&amp; str,
+         size_type pos2, size_type n = npos);
+</pre>
+<blockquote>
+<p>
+-2- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; str.size()</tt>.
+<p/>
+-3- <i>Effects:</i> <ins><ins>Equivalent to: <tt>return insert(pos1, str.data(), str.size(), pos2, n);</tt></ins></ins><del>Determines 
+the effective length <tt>rlen</tt> of the string to insert as the smaller of <tt>n</tt> and 
+<tt>str.size() - pos2</tt> and calls <tt>insert(pos1, str.data() + pos2, rlen)</tt>.</del>
+<p/>
+<del>-4- <i>Returns:</i> <tt>*this</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 21.3.1.6.4 [string::insert]/7 and /8 as follows:</p>
+
+<blockquote>
+<pre>
+basic_string&amp; insert(size_type pos1, basic_string_view&lt;charT, traits&gt; sv,
+                     size_type pos2, size_type n = npos);
+</pre>
+<blockquote>
+<p>
+-6- <i>Throws:</i> <tt>out_of_range</tt> if <tt>pos1 &gt; size()</tt> or <tt>pos2 &gt; sv.size()</tt>.
+<p/>
+-7- <i>Effects:</i> <ins><ins>Equivalent to: <tt>return insert(pos1, sv.data(), sv.size(), pos2, n);</tt></ins></ins><del>Determines 
+the effective length <tt>rlen</tt> of the string to assign as the smaller of <tt>n</tt> and 
+<tt>sv.size() - pos2</tt> and calls <tt>insert(pos1, sv.data() + pos2, rlen)</tt>.</del>
+<p/>
+<del>-8- <i>Returns:</i> <tt>*this</tt>.</del>
 </p>
 </blockquote>
 </blockquote>
