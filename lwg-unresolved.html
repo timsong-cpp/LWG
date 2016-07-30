@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-07-30 at 16:07:30 UTC</p>
+<p><p>Revised 2016-07-30 at 16:07:25 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -23078,27 +23078,27 @@ basic_string&amp;
 </pre></blockquote>
 <p>
 Unlike most of the other member functions on <tt>std::basic_string</tt>, there were not corresponding
-versions that take a <tt>CharT*</tt> or <tt>(CharT *, size)</tt>.
+versions that take a <tt>charT*</tt> or <tt>(charT *, size)</tt>.
 <p/>
 In <a href="http://wg21.link/p0254r2">p0254r2</a>, we added:
 </p>
 <blockquote><pre>
 basic_string&amp;
-  insert(size_type pos1, basic_string_view sv, size_type pos2, size_type n = npos);
+  insert(size_type pos1, basic_string_view&lt;charT, traits&gt; sv, size_type pos2, size_type n = npos);
 </pre></blockquote>
 <p>
-which made the code above ambiguous. There are two conversions from "<tt>const CharT*</tt>", 
+which made the code above ambiguous. There are two conversions from "<tt>const charT*</tt>", 
 one to <tt>basic_string</tt>, and the other to <tt>basic_string_view</tt>, and they're both equally 
 good (in the view of the compiler).
 <p/>
 This ambiguity also occurs with the calls
 </p>
 <blockquote><pre>
-assign(const basic_string&amp; str, size_type pos, size_type n = npos);
-assign(basic_string_view    sv, size_type pos, size_type n = npos);
+assign(const basic_string&amp; str,             size_type pos, size_type n = npos);
+assign(basic_string_view&lt;charT, traits&gt; sv, size_type pos, size_type n = npos);
 </pre></blockquote>
 <p>
-but I will file a separate issue for that.
+but I will file a separate issue (<a href="lwg-active.html#2758">2758</a>) for that.
 <p/>
 The solution is to add <em>even more</em> overloads to <tt>insert</tt>, to make it match all the other member
 functions of <tt>basic_string</tt>, which come in fours (<tt>string</tt>, <tt>pointer</tt>, <tt>pointer + size</tt>, 
@@ -23207,6 +23207,58 @@ the effective length <tt>rlen</tt> of the string to assign as the smaller of <tt
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2758" href="#2758">2758.</a> <tt>std::string{}.assign("ABCDE", 0, 1)</tt> is ambiguous</h3>
+<p><b>Section:</b> 21.3.1.6.3 [string::assign] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-07-30 <b>Last modified:</b> 2016-07-30</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#string::assign">issues</a> in [string::assign].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Before C++17, we had the following signature to <tt>std::basic_string</tt>:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  assign(const basic_string&amp; str, size_type pos, size_type n = npos);
+</pre></blockquote>
+<p>
+Unlike most of the other member functions on <tt>std::basic_string</tt>, there were not corresponding
+versions that take a <tt>charT*</tt> or <tt>(charT *, size)</tt>.
+<p/>
+In <a href="http://wg21.link/p0254r2">p0254r2</a>, we (I) added:
+</p>
+<blockquote><pre>
+basic_string&amp;
+  assign(basic_string_view&lt;charT, traits&gt; sv, size_type pos, size_type n = npos);
+</pre></blockquote>
+<p>
+which made the code above ambiguous. There are two conversions from "<tt>const charT*</tt>", 
+one to <tt>basic_string</tt>, and the other to <tt>basic_string_view</tt>, and they're both equally 
+good (in the view of the compiler).
+<p/>
+This ambiguity also occurs with the calls
+</p>
+<blockquote><pre>
+insert(size_type pos1, const basic_string&amp; str,             size_type pos2, size_type n = npos);
+insert(size_type pos1, basic_string_view&lt;charT, traits&gt; sv, size_type pos2, size_type n = npos);
+</pre></blockquote>
+<p>
+but I will file a separate issue (<a href="lwg-active.html#2757">2757</a>) for that.
+<p/>
+The solution is to add <em>even more</em> overloads to <tt>assign</tt>, to make it match all the other member
+functions of <tt>basic_string</tt>, which come in fours (<tt>string</tt>, <tt>pointer</tt>, <tt>pointer + size</tt>, 
+<tt>string_view</tt>).
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
