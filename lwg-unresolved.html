@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-02 at 19:08:09 UTC</p>
+<p><p>Revised 2016-08-02 at 20:08:38 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -1287,7 +1287,7 @@ Agree with Daniel, this will be handled by the resolution of <a href="lwg-active
 <hr>
 <h3><a name="2062" href="#2062">2062.</a> Effect contradictions w&#47;o no-throw guarantee of <tt>std::function</tt> swaps</h3>
 <p><b>Section:</b> 20.14.12.2 [func.wrap.func], 20.14.12.2.2 [func.wrap.func.mod] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2016-08-02</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
@@ -1432,10 +1432,9 @@ issues with type erased allocators. Suggest we move it to open.
 (which may be multiple issues) and write up findings.
 </p>
 
-<p><i>[
-<b>Original resolution</b>:
-]</i></p>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
 
+<blockquote class="note">
 <p>This wording is relative to the FDIS.</p>
 <ol>
 <li><p>Modify the header <tt>&lt;functional&gt;</tt> synopsis in 20.14 [function.objects] as indicated:</p>
@@ -1473,8 +1472,8 @@ void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;
 -1- <i>Effects</i>: <tt>f1.swap(f2);</tt>
 </p></blockquote></blockquote>
 </li>
-
 </ol>
+</blockquote>
 
 <p><i>[2014-02-28 (Post Issaquah), Pablo provides more information]</i></p>
 
@@ -1537,10 +1536,70 @@ It is not clear what other implementation restrictions might be
 </li>
 </ol>
 
+<p><i>[2016-08-02, Ville, Billy, and Billy comment and reinstantiate the original P/R]</i></p>
+
+<p>
+We (Ville, Billy, and Billy) propose to require that <tt>function</tt>'s <tt>swap</tt> is <tt>noexcept</tt> 
+in all cases.
+</p>
+<ul>
+<li><p>libstdc++ does not throw in their <tt>swap</tt>. It is not <tt>noexcept</tt> today, but the small functor 
+optimization only engages for trivially copyable types.</p></li>
+<li><p>msvc++ checks <tt>is_nothrow_move_constructible</tt> before engaging the small functor optimization and marks 
+its <tt>swap</tt> <tt>noexcept</tt></p></li>
+<li><p>libc++ marks <tt>swap</tt> <tt>noexcept</tt> (though I have not looked at its implementation)</p></li>
+</ul>
+<p>
+Moreover, many of the concerns that were raised by providing this guarantee are no longer applicable now that 
+<a href="http://wg21.link/p0302r1">P0302</a> has been accepted, which removes allocator support from <tt>std::function</tt>.
+<p/>
+Therefore we are re-proposing the original resolution above.
+</p>
 
 
 
 <p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Modify the header <tt>&lt;functional&gt;</tt> synopsis in 20.14 [function.objects] as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify the class template <tt>function</tt> synopsis in 20.14.12.2 [func.wrap.func] as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  <i>// [func.wrap.func.alg], specialized algorithms:</i>
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify 20.14.12.2.7 [func.wrap.func.alg] as indicated:</p>
+<blockquote><pre>
+template&lt;class R, class... ArgTypes&gt;
+void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;&amp; f2) <ins>noexcept</ins>;
+</pre><blockquote><p>
+-1- <i>Effects</i>: As if by: <tt>f1.swap(f2);</tt>
+</p></blockquote></blockquote>
+</li>
+</ol>
 
 
 
@@ -10965,7 +11024,7 @@ to <tt>strtold</tt>) by saying:</p>
   if c is allowed as the next character of an input field of the
   conversion specifier returned by Stage 1.</p>
 
-<p>So a confirming C++11 <tt>num_get</tt> is supposed to magically
+<p>So a conforming C++11 <tt>num_get</tt> is supposed to magically
 accept an hexfloat without an exponent</p>
 
 <p>  0x3.AB</p>
