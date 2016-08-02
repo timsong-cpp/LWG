@@ -146,9 +146,9 @@ issues with type erased allocators. Suggest we move it to open.
 (which may be multiple issues) and write up findings.
 </p>
 
-<note>
-<b>Original resolution</b>:
-</note>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+
+<blockquote class="note">
 <p>This wording is relative to the FDIS.</p>
 <ol>
 <li><p>Modify the header <tt>&lt;functional&gt;</tt> synopsis in <sref ref="[function.objects]"/> as indicated:</p>
@@ -186,8 +186,8 @@ void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;
 -1- <i>Effects</i>: <tt>f1.swap(f2);</tt>
 </p></blockquote></blockquote>
 </li>
-
 </ol>
+</blockquote>
 
 <note>2014-02-28 (Post Issaquah), Pablo provides more information</note>
 
@@ -249,10 +249,69 @@ It is not clear what other implementation restrictions might be
 </li>
 </ol>
 
+<note>2016-08-02, Ville, Billy, and Billy comment and reinstantiate the original P/R</note>
+<p>
+We (Ville, Billy, and Billy) propose to require that <tt>function</tt>'s <tt>swap</tt> is <tt>noexcept</tt> 
+in all cases.
+</p>
+<ul>
+<li><p>libstdc++ does not throw in their <tt>swap</tt>. It is not <tt>noexcept</tt> today, but the small functor 
+optimization only engages for trivially copyable types.</p></li>
+<li><p>msvc++ checks <tt>is_nothrow_move_constructible</tt> before engaging the small functor optimization and marks 
+its <tt>swap</tt> <tt>noexcept</tt></p></li>
+<li><p>libc++ marks <tt>swap</tt> <tt>noexcept</tt> (though I have not looked at its implementation)</p></li>
+</ul>
+<p>
+Moreover, many of the concerns that were raised by providing this guarantee are no longer applicable now that 
+<a href="http://wg21.link/p0302r1">P0302</a> has been accepted, which removes allocator support from <tt>std::function</tt>.
+<p/>
+Therefore we are re-proposing the original resolution above.
+</p>
 </discussion>
 
 
 <resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Modify the header <tt>&lt;functional&gt;</tt> synopsis in <sref ref="[function.objects]"/> as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify the class template <tt>function</tt> synopsis in <sref ref="[func.wrap.func]"/> as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  <i>// [func.wrap.func.alg], specialized algorithms:</i>
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[func.wrap.func.alg]"/> as indicated:</p>
+<blockquote><pre>
+template&lt;class R, class... ArgTypes&gt;
+void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;&amp; f2) <ins>noexcept</ins>;
+</pre><blockquote><p>
+-1- <i>Effects</i>: As if by: <tt>f1.swap(f2);</tt>
+</p></blockquote></blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
