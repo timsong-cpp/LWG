@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-02 at 16:08:48 UTC</p>
+<p><p>Revised 2016-08-02 at 17:08:21 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
@@ -253,6 +253,362 @@ adopted at Jacksonville, 2016.
 
 
 <hr>
+<h3><a name="2223" href="#2223">2223.</a> <tt>shrink_to_fit</tt> effect on iterator validity</h3>
+<p><b>Section:</b> 23.3.11.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Juan Soulie <b>Opened:</b> 2012-12-17 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
+<p><b>View all other</b> <a href="lwg-index.html#vector.capacity">issues</a> in [vector.capacity].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+After the additions by <a href="lwg-defects.html#2033">2033</a>, it appears clear that the intended effect includes a reallocation and 
+thus the potential effect on iterators should be explicitly added to the text in order to not contradict 
+23.2.1 [container.requirements.general]/11, or at the very least, explicitly state that a reallocation may 
+happen.
+<p/>
+Taking consistency with "reserve" into consideration, I propose:
+</p>
+<ul>
+<li><p>
+that the current "Remarks" are made its "Effect" instead, inserting "Reallocation happens at this point if and only 
+if the function effectively reduces the capacity." after the note on non-bindingness.
+</p>
+</li>
+<li><p>
+adding a "Remarks" paragraph, similar to that of reserve: "Reallocation invalidates all the references, pointers, 
+and iterators referring to the elements in the sequence."
+</p></li>
+</ul>
+<p>
+BTW, while we are at it, I believe the effect on iterators should also be explicitly stated in the other instance 
+a reallocation may happen: 23.3.11.5 [vector.modifiers]/1 &mdash; even if obvious, it only contradicts 
+23.2.1 [container.requirements.general]/11 implicitly. 
+<p/>
+I propose to also insert "Reallocation invalidates all the references, pointers, and iterators referring to the 
+elements in the sequence." at the appropriate location in its "Remarks".
+</p>
+
+<p><i>[2012-12-19: Jonathan Wakely comments]</i></p>
+
+
+<p>
+The described problem also affects <tt>std::basic_string</tt> and <tt>std::deque</tt>.
+</p>
+
+<p><i>[2013-03-15 Issues Teleconference]</i></p>
+
+<p>
+Moved to Review.
+</p>
+
+<p><i>[2013-04-18, Bristol]</i></p>
+ 
+
+<p>Daniel extends the P/R.</p>
+
+<p>Rationale:</p>
+
+<p>The wording in 21.3.1.4 [string.capacity] combined with 21.3.1.1 [string.require]
+seems to say the necessary things. We cannot impose all requirements as we do for <tt>vector</tt>, because
+we want to allow the short-string-optimization.</p>
+
+
+<p><i>[2014-02-15 post-Issaquah session]</i></p>
+
+<p>
+STL: I think that <tt>shrink_to_fit</tt> should be a no-op when called twice.
+</p>
+<p>
+STL: Do we ever define reallocation for <tt>deque</tt>? Nope, all mentions of "reallocation" are in <tt>vector</tt>.
+     We define what it means in <tt>vector::reserve()</tt>, but not for <tt>deque</tt>.
+</p>
+<p>
+STL: Oh duh, they define reallocate in the PR. But I think we can do better here.
+</p>
+<p>
+STL: Optimally, deque shrinking just allocates a new map of pointers, and drops empty blocks, but preserves pointers/references to elements.
+</p>
+<p>
+Alisdair: That's like unordered containers, invalidating only iterators.
+</p>
+<p>
+Pablo: It doesn't make sense to reduce <tt>capacity()</tt> to <tt>size()</tt>, because <tt>deque</tt> doesn't have capacity!
+</p>
+<p>
+STL: For <tt>vector</tt>, "effectively reduces the capacity" is unnecessary, the capacity there is observable.
+</p>
+<p>
+STL: There is a strong reason to provide an optimal shrink to fit for <tt>deque</tt>, since only the library implementer can do this.
+</p>
+<p>
+STL: The other thing I don't like the repeated definition of reallocation for <tt>vector</tt>, we define it once and use it in a bunch of places.
+     At most we can lift it up to the <tt>vector</tt> synopsis.
+</p>
+<p>
+STL: I'll write new wording.
+</p>
+
+<p><i>[2014-10-01, STL adds discussion and provides new wording]</i></p>
+
+<p>
+Compared to the previous proposed resolution:
+</p>
+<ul>
+<li><p>
+I'm changing <tt>basic_string</tt>'s wording because (1) we should guarantee that capacity won't increase, (2) we should mention 
+that it's linear complexity, and (3) we can provide a better invalidation guarantee than 21.3.1.1 [string.require]/5.  
+(As previously noted, we already have the strong exception guarantee.) This introduces the term "reallocation" into 
+<tt>basic_string</tt>, but immediately explains what it means for iterator validity. As far as I can tell, the Small String 
+Optimization doesn't complicate the wording here; it's a reason why an implementation might not honor the request, but if 
+the capacity is reduced, we are definitely reallocating buffers and will invalidate everything (including when the destination 
+is the small buffer).
+</p></li>
+<li><p>
+Between N3485 and N3936, <tt>deque</tt>'s wording was updated to avoid talking about <tt>capacity()</tt> which it doesn't have.  
+Since the container's capacity is unobservable, I'm saying that invalidation is unconditional.
+</p></li>
+<li><p>
+In <tt>vector</tt>'s wording, I'm also guaranteeing that capacity won't increase, and that iterators/etc. remain valid if the 
+capacity is unchanged.
+</p></li>
+</ul>
+<p>
+My wording doesn't directly say that <tt>shrink_to_fit()</tt> should be a no-op when called twice in a row. (Indirectly, 
+if the first call reduces <tt>capacity()</tt> to <tt>size()</tt>, the second call must preserve iterators/etc.) I considered 
+rewording the complexity to say "linear if reallocation happens", but that's potentially problematic (what if we copy almost 
+all <tt>N</tt> elements, then one throws and we have to unwind? There are no effects, so reallocation didn't happen, yet we 
+took longer than constant time). Implementers can always do better than the stated complexity bounds.
+<p/>
+I chose not to modify <tt>deque</tt>'s requirements, so implementations remain free to reallocate the elements themselves.
+<p/>
+I didn't attempt to centralize vector's reallocation wording. That can be done editorially, if someone is sufficiently motivated.
+</p>
+
+<p><strong>Previous resolution from Juan Soulie/Daniel [SUPERSEDED]:</strong></p>
+
+<blockquote class="note">
+<p>This wording is relative to N3485.</p>
+
+<ol>
+<li><p>Keep 21.3.1.4 [string.capacity] around p14 <em>unchanged</em>, because we don't speak about
+reallocations and we give the strong exception guarantee in 21.3.1.1 [string.require] (Invalidation
+specification also at that place):</p>
+<blockquote><pre>
+void shrink_to_fit();
+</pre>
+<p>
+-14- <i>Remarks</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ].
+</p>
+</blockquote>
+</li>
+
+<li><p>Edit 23.3.8.3 [deque.capacity] around p7 as indicated:</p>
+<blockquote><pre>
+void shrink_to_fit();
+</pre>
+<p>
+-5- <i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Effects</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] Reallocation happens at this point if and only 
+if the function effectively reduces the capacity. If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</ins> 
+<p/>
+-6- <i>Complexity</i>: Linear in the size of the sequence.
+<p/>
+-7- <i>Remarks</i>: <del><tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</del><ins>Reallocation invalidates all 
+the references, pointers, and iterators referring to the elements in the sequence.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Edit 23.3.11.3 [vector.capacity] around p7 as indicated:</p>
+<blockquote><pre>
+void shrink_to_fit();
+</pre>
+<p>
+-7- <i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Effects</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] Reallocation happens at this point if and only 
+if the function effectively reduces the capacity. If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</ins> 
+<p/>
+-8- <i>Complexity</i>: Linear in the size of the sequence.
+<p/>
+-9- <i>Remarks</i>: <del><tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to 
+<tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i> ] If an exception is thrown other than by the move constructor 
+of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</del><ins>Reallocation invalidates all 
+the references, pointers, and iterators referring to the elements in the sequence.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Edit 23.3.11.5 [vector.modifiers] p1 as indicated:</p>
+<blockquote><pre>
+iterator insert(const_iterator position, const T&amp; x);
+iterator insert(const_iterator position, T&amp;&amp; x);
+iterator insert(const_iterator position, size_type n, const T&amp; x);
+template &lt;class InputIterator&gt;
+iterator insert(const_iterator position, InputIterator first, InputIterator last);
+iterator insert(const_iterator position, initializer_list&lt;T&gt;);
+template &lt;class... Args&gt; void emplace_back(Args&amp;&amp;... args);
+template &lt;class... Args&gt; iterator emplace(const_iterator position, Args&amp;&amp;... args);
+void push_back(const T&amp; x);
+void push_back(T&amp;&amp; x);
+</pre>
+<p>
+-1- <i>Remarks</i>: Causes reallocation if the new size is greater than the old capacity. <ins>Reallocation 
+invalidates all the references, pointers, and iterators referring to the elements in the sequence.</ins> If 
+no reallocation happens, all the iterators and references before the insertion point remain valid. If an 
+exception is thrown other than by the copy constructor, move constructor, assignment operator, or move 
+assignment operator of <tt>T</tt> or by any <tt>InputIterator</tt> operation there are no effects. If an 
+exception is thrown by the move constructor of a non-<tt>CopyInsertable</tt> <tt>T</tt>, the effects are unspecified.
+</p>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[2015-02, Cologne]</i></p>
+
+<p>
+GR: I'm concerned that <tt>shrink_to_fit</tt> may cause reallocation without changing the capacity. [&hellip;] 
+It's about correctness. The statement about invalidation is useless if I cannot detect whether reallocation has happened?
+<p/>
+AM: It seems like the logic goes the other way round: It's the capacity change that causes reallocation, so if 
+there's no capacity change, there's no reallocation. But that's not quite how I'd like to say it... maybe this, : 
+"If capacity does not change, no reallocation occurs."
+<p/>
+GR: Where does it actually say that <tt>reserve()</tt> invalidates? AM: It should say that in the container requirements. 
+VV: vector specifies in <tt>reserve</tt> that there's reallocation if and only if the capacity changes. GR: I can't find
+anything in the container requirements about <tt>reserve</tt>. DK: No, it's specified for every container separately. 
+GR: It isn't specified for string.
+<p/>
+GR: I'm noticing that the issue touches on <tt>shrink_to_fit</tt> for a bunch of containers. Anyway, I think the 
+reserve issue [re string] is in scope for this issue. This change is touching on a lot of members.
+<p/>
+AM: Landing this change will provide clarity for what we should do with <tt>basic_string</tt>. GR: We're already asking 
+for changes; we should fix string as well. AM: If one of the changes is ready before the other, I'd like to land the 
+finished part first, but if both are ready for Lenexa, I'm equally happy to fix them in one go.
+<p/>
+DK will reword this. 
+<p/>
+<b>Conclusion</b>: Update wording, revisit in Lenexa. 
+</p>
+<p><i>[2016-08, Chicago]</i></p>
+
+<p>Monday PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N3936.
+</p>
+
+<ol>
+<li><p>Change 21.3.1.4 [string.capacity] p14 as depicted:</p>
+
+<blockquote>
+<pre>
+void shrink_to_fit();
+</pre>
+<blockquote>
+<p>
+-14- <i><del>Remarks</del><ins>Effects</ins></i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce 
+<tt>capacity()</tt> to <tt>size()</tt>. [<i>Note</i>: The request is non-binding to allow latitude for 
+implementation-specific optimizations. &mdash; <i>end note</i>] <ins>It does not increase <tt>capacity()</tt>, 
+but may reduce <tt>capacity()</tt> by causing reallocation.</ins>
+<p/>
+<ins>-?- <i>Complexity</i>: Linear in the size of the sequence.</ins>
+<p/>
+<ins>-?- <i>Remarks</i>: Reallocation invalidates all the references, pointers, and iterators referring to the 
+elements in the sequence. If no reallocation happens, they remain valid.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 23.3.8.3 [deque.capacity] p5-p7 as depicted:</p>
+<blockquote>
+<pre>
+void shrink_to_fit();
+</pre>
+<blockquote>
+<p>
+-5- <i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Effects</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce memory use but does not change 
+the size of the sequence. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific 
+optimizations. &mdash; <i>end note</i>] If an exception is thrown other than by the move constructor of a 
+non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</ins>
+<p/>
+-6- <i>Complexity</i>: Linear in the size of the sequence.
+<p/>
+-7- <i>Remarks</i>: <del><tt>shrink_to_fit</tt> is a non-binding request to reduce memory use but does not change the
+size of the sequence. [<i>Note</i>: The request is non-binding to allow latitude for implementation-specific
+optimizations. &mdash; <i>end note</i>]</del><ins><tt>shrink_to_fit</tt> invalidates all the references, pointers, 
+and iterators referring to the elements in the sequence.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 23.3.11.3 [vector.capacity] p7-p9 as depicted:</p>
+<blockquote>
+<pre>
+void shrink_to_fit();
+</pre>
+<blockquote>
+<p>
+-7- <i>Requires</i>: <tt>T</tt> shall be <tt>MoveInsertable</tt> into <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Effects</i>: <tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to <tt>size()</tt>. 
+[<i>Note</i>: The request is non-binding to allow latitude for implementation-specific optimizations. &mdash; <i>end note</i>] 
+It does not increase <tt>capacity()</tt>, but may reduce <tt>capacity()</tt> by causing reallocation. If an exception is 
+thrown other than by the move constructor of a non-<tt>CopyInsertable</tt> <tt>T</tt> there are no effects.</ins>
+<p/>
+-8- <i>Complexity</i>: Linear in the size of the sequence.
+<p/>
+-9- <i>Remarks</i>: <del><tt>shrink_to_fit</tt> is a non-binding request to reduce <tt>capacity()</tt> to <tt>size()</tt>. 
+[<i>Note</i>: The request is non-binding to allow latitude for implementation-specific optimizations. &mdash; <i>end 
+note</i>] If an exception is thrown other than by the move constructor of a non-<tt>CopyInsertable</tt> <tt>T</tt> there 
+are no effects.</del><ins>Reallocation invalidates all the references, pointers, and iterators referring to the elements 
+in the sequence. If no reallocation happens, they remain valid.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 23.3.11.5 [vector.modifiers] p1 as depicted:</p>
+
+<blockquote>
+<p>
+-1- <i>Remarks</i>: Causes reallocation if the new size is greater than the old capacity. <ins>Reallocation invalidates all 
+the references, pointers, and iterators referring to the elements in the sequence.</ins> If no reallocation happens,
+all the iterators and references before the insertion point remain valid. [&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2241" href="#2241">2241.</a> <tt>&lt;cstdalign&gt;</tt> and <tt>#define</tt> of <tt>alignof</tt></h3>
 <p><b>Section:</b> 18.10 [support.runtime] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
  <b>Submitter:</b> Richard Smith <b>Opened:</b> 2013-02-14 <b>Last modified:</b> 2016-06-28</p>
@@ -466,6 +822,108 @@ However, there are preconditions on the atomic access functions, so these should
 
 
 <hr>
+<h3><a name="2343" href="#2343">2343.</a> Is the value of the ECMA-262 RegExp object's multiline property really false?</h3>
+<p><b>Section:</b> 28.13 [re.grammar] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Nayuta Taga <b>Opened:</b> 2013-10-30 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.grammar">active issues</a> in [re.grammar].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.grammar">issues</a> in [re.grammar].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In the following "Multiline" is the value of the ECMA-262 RegExp object's multiline property.
+<p/>
+In <a href="http://www.ecma-international.org/publications/files/ECMA-ST-ARCH/ECMA-262,%203rd%20edition,%20December%201999.pdf">ECMA-262</a>, 
+there are some definitions that relate to Multiline:
+</p>
+<ul>
+<li><p>
+ECMA-262 15.10.2.6:
+</p>
+<blockquote>
+<p>
+If Multiline is true, ^ matches just after LineTerminator.
+<p/>
+If Multiline is false, ^ does not match just after LineTerminator.
+<p/>
+If Multiline is true, $ matches just before LineTerminator.
+<p/>
+If Multiline is false, $ does not match just before LineTerminator.
+</p>
+</blockquote>
+</li>
+<li>
+<p>
+ECMA-262 15.10.4.1, 15.10.7.4:
+</p>
+<blockquote><p>
+By default, Multiline is false.
+</p></blockquote>
+</li>
+</ul>
+<p>
+So, the C++11 standard says that Multiline is false. As it is false,
+^ matches only the beginning of the string, and $ matches only the end
+of the string.
+<p/>
+However, two flags are defined in 28.5.2 [re.matchflag] Table 139:
+</p>
+<blockquote>
+<p>
+<tt>match_not_bol</tt>: the character ^ in the regular expression shall not match <tt>[first,first)</tt>.
+<p/>
+<tt>match_not_eol</tt>: the character "$" in the regular expression shall not match <tt>[last,last)</tt>.
+</p>
+</blockquote>
+<p>
+As Multiline is false, the <tt>match_not_bol</tt> and the <tt>match_not_eol</tt> are
+meaningless because they only make ^ and $ match none.
+<p/>
+In my opinion, Multiline should be true.
+<p/>
+FYI, Multiline of the existing implementations are as follows:
+<p/>
+<em>Multiline=false:</em>
+</p>
+<ul>
+<li><p>
+libstdc++ r206594
+</p></li>
+<li><p>
+libc++ r199174
+</p></li>
+</ul>
+<p>
+<em>Multiline=true:</em>
+</p>
+<ul>
+<li><p>
+Visual Studio Express 2013
+</p></li>
+<li><p>
+boost 1.55
+</p></li>
+</ul>
+
+<p><i>[2015-05-22, Daniel comments]</i></p>
+
+<p>
+This issue interacts with LWG <a href="lwg-active.html#2503">2503</a>.
+</p>
+
+<p><i>[2016-08 Chicago]</i></p>
+
+<p>Resolving <a href="lwg-active.html#2503">2503</a> will resolve this as well.</p>
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
 <h3><a name="2391" href="#2391">2391.</a> <tt>basic_string</tt> is missing non-<tt>const</tt> <tt>data()</tt></h3>
 <p><b>Section:</b> 21.3.1 [basic.string] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
  <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-22</p>
@@ -556,6 +1014,619 @@ namespace std {
 
 
 <hr>
+<h3><a name="2503" href="#2503">2503.</a> multiline option should be added to <tt>syntax_option_type</tt></h3>
+<p><b>Section:</b> 28.5.1 [re.synopt] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Nozomu Kat&#x14d; <b>Opened:</b> 2015-05-22 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.synopt">active issues</a> in [re.synopt].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.synopt">issues</a> in [re.synopt].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The specification of ECMAScript defines the Multiline property for its
+RegExp and the regular expressions ^ and $ behave differently according
+to the value of this property. Thus, this property should be available
+also in the ECMAScript compatible engine in <tt>std::regex</tt>.
+</p>
+
+<p><i>[2015-05-22, Daniel comments]</i></p>
+
+<p>
+This issue interacts somewhat with LWG <a href="lwg-active.html#2343">2343</a>.
+</p>
+
+<p><i>[Telecom 2015-07]</i></p>
+
+<p>
+Set the priority to match LWG <a href="lwg-active.html#2343">2343</a>.
+</p>
+
+<p><i>[2016-08, Chicago]</i></p>
+
+<p>Monday PM: Moved to Tentatively Ready. This also resolves <a href="lwg-active.html#2343">2343</a></p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4431.</p>
+
+<ol>
+<li><p>Change 28.5.1 [re.synopt] as indicated:</p>
+
+<blockquote><pre>
+namespace std::regex_constants {
+  typedef T1 syntax_option_type;
+  constexpr syntax_option_type icase = <i>unspecified</i> ;
+  constexpr syntax_option_type nosubs = <i>unspecified</i> ;
+  constexpr syntax_option_type optimize = <i>unspecified</i> ;
+  constexpr syntax_option_type collate = <i>unspecified</i> ;
+  constexpr syntax_option_type ECMAScript = <i>unspecified</i> ;
+  constexpr syntax_option_type basic = <i>unspecified</i> ;
+  constexpr syntax_option_type extended = <i>unspecified</i> ;
+  constexpr syntax_option_type awk = <i>unspecified</i> ;
+  constexpr syntax_option_type grep = <i>unspecified</i> ;
+  constexpr syntax_option_type egrep = <i>unspecified</i> ;
+  <ins>constexpr syntax_option_type multiline = <i>unspecified</i> ;</ins>
+}
+</pre></blockquote>
+</li>
+
+<li><p>Change 28.5.2 [re.matchflag], Table 138 &mdash; "<tt>syntax_option_type</tt> effects" as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 138 &mdash; <tt>syntax_option_type</tt> effects</caption>
+<tr>
+<th align="center">Element</th>
+<th align="center">Effect(s) if set</th>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>multiline</tt></ins>
+</td>
+<td>
+<ins>Specifies that <tt>^</tt> shall match the beginning of a line
+and <tt>$</tt> shall match the end of a line, if the ECMAScript engine is
+selected.</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2510" href="#2510">2510.</a> Tag types should not be <tt>DefaultConstructible</tt></h3>
+<p><b>Section:</b> 18.6 [support.dynamic], 20.2 [utility], 20.4.5 [pair.piecewise], 20.10.2 [memory.syn], 20.10.6 [allocator.tag], 30.4 [thread.mutex] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-06-13 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#support.dynamic">issues</a> in [support.dynamic].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>std::experimental::optional</tt>, for certain reasons, specifies its <tt>nullopt</tt> type
+to not be <tt>DefaultConstructible</tt>. It doesn't do so for its tag type <tt>in_place_t</tt>
+and neither does the standard proper for any of its tag types. That turns
+out to be very unfortunate, consider the following:
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+#include &lt;array&gt;
+
+void f(std::array&lt;int, 1&gt;, int) {} // #1
+void f(std::allocator_arg_t, int) {} // #2
+
+int main()
+{
+  f({}, 666); // #3
+}
+</pre></blockquote>
+<p>
+The call at #3 is ambiguous. What's even worse is that if the overload #1
+is removed, the call works just fine. The whole point of a tag type is that
+it either needs to mentioned in a call or it needs to be a forwarded argument,
+so being able to construct a tag type like that makes no sense.
+<p/>
+Making the types have an <em>explicit default constructor</em> might have helped, but 
+<a href="http://open-std.org/JTC1/SC22/WG21/docs/cwg_active.html#1518">CWG 1518</a>
+is going against that idea.
+<p/>
+[optional.nullopt]/3 solves this problem for <tt>nullopt</tt>:
+</p>
+<blockquote>
+<p>
+Type <tt>nullopt_t</tt> shall not have a default constructor. It shall be a
+literal type. Constant <tt>nullopt</tt> shall be initialized with an argument
+of literal type.
+</p>
+</blockquote>
+
+<p><i>[2015-06, Telecom]</i></p>
+
+<p>
+Move to Tentatively Ready.
+</p>
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>Move back to Open</p>
+<p>JW: The linked Core issue (CWG 1518) gives us a better tool to solve this (explicit default constructors). [The CWG Issue means that an explicit default constructor will no longer match "{}".] JW explains that it's important that tag types cannot be constructed from "{}" (e.g. the allocator tag in the tuple constructors).</p>
+<p>WEB: Should we now go back and update our constructors? JW: For tag types, yes.</p>
+<p>VV: The guideline is that anything that does not mention the type name explicitly should not invoke an explicit constructor.</p>
+<p>Ville will provide wording.</p>
+<p>Discussion about pair/tuple's default constructor - should they now be explicit?</p>
+
+<p><i>[2016-01-31]</i></p>
+
+<p>
+Ville provides revised wording.
+</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>In 18.6 [support.dynamic]/1, change the header <tt>&lt;new&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct nothrow_t <del>{}</del>; <ins><i>see below</i></ins>
+extern const nothrow_t nothrow;
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after 18.6 [support.dynamic]/1 (<em>following</em> the header <tt>&lt;new&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>nothrow_t</tt> shall not have a default constructor.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In 20.2 [utility]/2, change the header <tt>&lt;utility&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.3.5, pair piecewise construction</i>
+struct piecewise_construct_t <del>{ }</del>; <ins><i>see below</i></ins>
+constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after 20.2 [utility]/2 (<em>following</em> the header <tt>&lt;utility&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>piecewise_construct_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>piecewise_construct</tt> shall be initialized with an argument of literal type.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In 20.4.5 [pair.piecewise], apply the following edits:</p>
+
+<blockquote><pre>
+struct piecewise_construct_t <del>{ }</del>;
+constexpr piecewise_construct_t piecewise_construct{ <ins><i>unspecified</i></ins> };
+</pre></blockquote>
+</li>
+<li><p>In 20.10.2 [memory.syn]/1, change the header <tt>&lt;memory&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.7.6, allocator argument tag</i>
+struct allocator_arg_t <del>{ }</del>; <ins><i>see below</i></ins>
+constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add a new paragraph after 20.10.2 [memory.syn]/1 (<em>following</em> the header <tt>&lt;memory&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>allocator_arg_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>allocator_arg</tt> shall be initialized with an
+argument of literal type.</ins>
+</p>
+</blockquote>
+</li>
+<li><p>In 20.10.6 [allocator.tag], apply the following edits:</p>
+
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t <del>{ }</del>;
+  constexpr allocator_arg_t allocator_arg{ <ins><i>unspecified</i></ins> };
+}
+</pre></blockquote>
+<blockquote class="note">
+<p>
+Editorial drive-by: <tt>piecewise_construct_t</tt> is written, in 20.4.5 [pair.piecewise] like
+</p>
+<blockquote><pre>
+struct piecewise_construct_t { };
+constexpr piecewise_construct_t piecewise_construct{};
+</pre></blockquote>
+<p>
+whereas other tag types such as <tt>allocator_construct_t</tt> are, in e.g.
+20.10.6 [allocator.tag], written like
+</p>
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t { };
+  constexpr allocator_arg_t allocator_arg{};
+}
+</pre></blockquote>
+<p>
+We should decide whether or not to write out the <tt>std</tt> namespace in such
+paragraphs. I would suggest not to write it out.
+</p>
+</blockquote>
+
+</li>
+<li><p>In 30.4 [thread.mutex]/1, change the header <tt>&lt;mutex&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct defer_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+struct try_to_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+struct adopt_lock_t <del>{ }</del>; <ins><i>see below</i></ins>
+
+constexpr defer_lock_t defer_lock { <ins><i>unspecified </i></ins> };
+constexpr try_to_lock_t try_to_lock { <ins><i>unspecified </i></ins> };
+constexpr adopt_lock_t adopt_lock { <ins><i>unspecified </i></ins> };
+[&hellip;]
+</pre></blockquote>
+</li>
+<li><p>Add three new paragraphs after [thread.mutex]/1 (<em>following</em> the header <tt>&lt;mutex&gt;</tt> synopsis):</p>
+
+<blockquote>
+<p>
+<ins>-?- Type <tt>defer_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>defer_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+<p/>
+<ins>-?- Type <tt>try_to_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>try_to_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+<p/>
+<ins>-?- Type <tt>adopt_lock_t</tt> shall not have a default constructor. It shall
+be a literal type. Constant <tt>adopt_lock</tt> shall be initialized with an
+argument of literal type.</ins>
+</p>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-03 Jacksonville]</i></p>
+
+<p>
+AM: should have note about compatibility in Annex C<br/>
+HH: like this idiom well enough that I've started using it in my own code<br/>
+AM: why are pair and tuple involved here?<br/>
+GR: they are the only types which forward explicitness with EXPLICIT<br/>
+AM: British spelling of behaviour<br/>
+AM: happy to drop my issue about Annex C<br/>
+</p>
+
+<p><i>[Oulu, 2016-06]</i></p>
+
+<p>This is waiting on Core issue 1518</p>
+<p>Saturday: Core 1518 was resolved in Oulu</p>
+
+<p><i>[07-16 - Chicago]</i></p>
+
+<p>This is related to <a href="lwg-active.html#2736">2736</a></p>
+<p>Monday PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>In 18.6 [support.dynamic]/1, change the header <tt>&lt;new&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct nothrow_t { <ins>explicit nothrow_t() = default;</ins> };
+extern const nothrow_t nothrow;
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>In 20.2 [utility]/2, change the header <tt>&lt;utility&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.3.5, pair piecewise construction</i>
+struct piecewise_construct_t { <ins>explicit piecewise_construct_t() = default;</ins> };
+constexpr piecewise_construct_t piecewise_construct{};
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>In 20.4.2 [pairs.pair], change the class template <tt>pair</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+pair(pair&amp;&amp;) = default;
+<ins><i>EXPLICIT</i></ins> constexpr pair();
+<i>EXPLICIT</i> constexpr pair(const T1&amp; x, const T2&amp; y);
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>Around 20.4.2 [pairs.pair] p3, apply the following edits:</p>
+
+<blockquote>
+<pre>
+<ins><i>EXPLICIT</i></ins> constexpr pair();
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Value-initializes <tt>first</tt> and <tt>second</tt>.
+<p/>
+-4- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<tt>is_default_constructible&lt;first_type&gt;::value</tt> is <tt>true</tt> and 
+<tt>is_default_constructible&lt;second_type&gt;::value</tt> is <tt>true</tt>. 
+[<i>Note</i>: This
+behaviour can be implemented by a constructor template with default template arguments. &mdash; 
+<i>end note</i>]
+<ins>The constructor is explicit if and only if either <tt>first_type</tt> or <tt>second_type</tt> 
+is not implicitly default-constructible. 
+[<i>Note</i>: This behaviour can be implemented with a trait 
+that checks whether a <tt>const first_type&amp;</tt> or a <tt>const second_type&amp;</tt> can be 
+initialized with <tt>{}</tt>. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>In 20.4.5 [pair.piecewise], apply the following edits:</p>
+
+<blockquote><pre>
+struct piecewise_construct_t { <ins>explicit piecewise_construct_t() = default;</ins> };
+constexpr piecewise_construct_t piecewise_construct{};
+</pre></blockquote>
+</li>
+
+<li><p>In 20.5.2 [tuple.tuple], change the class template <tt>tuple</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+<i>// 20.4.2.1, tuple construction</i>
+<ins><i>EXPLICIT</i></ins> constexpr tuple();
+<i>EXPLICIT</i> constexpr tuple(const Types&amp;...); <i>// only if sizeof...(Types) &gt;= 1</i>
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>Around 20.5.2.1 [tuple.cnstr] p4, apply the following edits:</p>
+
+<blockquote>
+<pre>
+<ins><i>EXPLICIT</i></ins> constexpr tuple();
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects</i>: Value initializes each element.
+<p/>
+-5- <i>Remarks</i>: This constructor shall not participate in overload resolution unless 
+<tt>is_default_constructible&lt;<i>T<sub>i</sub></i>&gt;::value</tt> is <tt>true</tt> for all <i>i</i>. 
+[<i>Note</i>: This
+behaviour can be implemented by a constructor template with default template arguments. &mdash; 
+<i>end note</i>]
+<ins>The constructor is explicit if and only if <tt><i>T<sub>i</sub></i></tt> 
+is not implicitly default-constructible for at least one <i>i</i>.
+[<i>Note</i>: This behaviour can be implemented with a trait that checks whether
+a <tt>const Ti&amp;</tt> can be initialized with <tt>{}</tt>. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>In 20.10.2 [memory.syn]/1, change the header <tt>&lt;memory&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+// <i>20.7.6, allocator argument tag</i>
+struct allocator_arg_t { <ins>explicit allocator_arg_t() = default;</ins> };
+constexpr allocator_arg_t allocator_arg{};
+[&hellip;]
+</pre></blockquote>
+</li>
+
+<li><p>In 20.10.6 [allocator.tag], apply the following edits:</p>
+
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t { <ins>explicit allocator_arg_t() = default;</ins> };
+  constexpr allocator_arg_t allocator_arg{};
+}
+</pre></blockquote>
+<blockquote class="note">
+<p>
+Editorial drive-by: <tt>piecewise_construct_t</tt> is written, in 20.4.5 [pair.piecewise] like
+</p>
+<blockquote><pre>
+struct piecewise_construct_t { };
+constexpr piecewise_construct_t piecewise_construct{};
+</pre></blockquote>
+<p>
+whereas other tag types such as <tt>allocator_construct_t</tt> are, in e.g.
+20.10.6 [allocator.tag], written like
+</p>
+<blockquote><pre>
+namespace std {
+  struct allocator_arg_t { };
+  constexpr allocator_arg_t allocator_arg{};
+}
+</pre></blockquote>
+<p>
+We should decide whether or not to write out the <tt>std</tt> namespace in such
+paragraphs. I would suggest not to write it out.
+</p>
+</blockquote>
+</li>
+
+<li><p>In 30.4 [thread.mutex]/1, change the header <tt>&lt;mutex&gt;</tt> synopsis:</p>
+
+<blockquote><pre>
+[&hellip;]
+struct defer_lock_t { <ins>explicit defer_lock_t() = default;</ins> };
+struct try_to_lock_t { <ins>explicit try_to_lock_t() = default;</ins> };
+struct adopt_lock_t { <ins>explicit adopt_lock_t() = default;</ins> };
+
+constexpr defer_lock_t defer_lock { };
+constexpr try_to_lock_t try_to_lock { };
+constexpr adopt_lock_t adopt_lock { };
+[&hellip;]
+</pre></blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2519" href="#2519">2519.</a> Iterator <tt>operator-=</tt> has gratuitous undefined behaviour</h3>
+<p><b>Section:</b> 24.2.7 [random.access.iterators] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Hubert Tong  <b>Opened:</b> 2015-07-15 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#random.access.iterators">issues</a> in [random.access.iterators].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In subclause 24.2.7 [random.access.iterators], Table 110, the operational semantics for the expression "<tt>r -= n</tt>" 
+are defined as
+</p>
+<blockquote><pre>
+return r += -n;
+</pre></blockquote>
+<p>
+Given a <tt>difference_type</tt> of a type <tt>int</tt> with range [-32768, 32767], if the value of <tt>n</tt> is -32768, 
+then the evaluation of <tt>-n</tt> causes undefined behaviour (Clause 5 [expr] paragraph 4).
+<p/>
+The operational semantics may be changed such that the undefined behaviour is avoided.
+<p/>
+<b>Suggested wording:</b>
+<p/>
+Replace the operational semantics for "<tt>r -= n</tt>" with:
+</p>
+<blockquote><pre>
+{ 
+  difference_type m = n;
+  if (m >= 0)
+    while (m--)
+      --r;
+  else
+    while (m++)
+      ++r;
+  return r; 
+}
+</pre></blockquote>
+<p>
+Jonathan Wakely:
+<p/>
+I'm now convinced we <em>don't</em> want to change the definition of <tt>-=</tt> and
+instead we should explicitly state the (currently implicit)
+precondition that <tt>n != numeric_limits&lt;difference_type&gt;::min()</tt>.
+</p>
+
+<p><i>[2016-08, Chicago]</i></p>
+
+<p>Monday PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>Change Table 110 "Random access iterator requirements (in addition to
+bidirectional iterator)" as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 110 &mdash; Random access iterator requirements (in addition to
+bidirectional iterator)</caption>
+<tr>
+<th align="center">Expression</th>
+<th align="center">Return type</th>
+<th align="center">Operational<br/>semantics</th>
+<th align="center">Assertion&#47;note<br/>pre-&#47;post-condition</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>r -= n</tt>
+</td>
+
+<td>
+<tt>X&amp;</tt>
+</td>
+
+<td>
+<tt>return r += -n;</tt>
+</td>
+
+<td>
+<ins>pre: the absolute value of <tt>n</tt> is in the range of representable values of <tt>difference_type</tt>.</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2529" href="#2529">2529.</a> Assigning to <tt>enable_shared_from_this::__weak_this</tt> twice</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-17</p>
@@ -628,6 +1699,135 @@ This issues should be closed as <tt>Resolved</tt> by paper p0033r1 at Jacksonvil
 
 
 <hr>
+<h3><a name="2584" href="#2584">2584.</a> <tt>&lt;regex&gt;</tt> ECMAScript <tt>IdentityEscape</tt> is ambiguous</h3>
+<p><b>Section:</b> 28.13 [re.grammar] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Billy O'Neal III <b>Opened:</b> 2016-01-13 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.grammar">active issues</a> in [re.grammar].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.grammar">issues</a> in [re.grammar].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Stephan and I are seeing differences in implementation for how non-special characters should be handled in the 
+<tt>IdentityEscape</tt> part of the ECMAScript grammar. For example:
+</p>
+<blockquote><pre>
+#include &lt;stdio.h&gt;
+#include &lt;iostream&gt;
+#ifdef USE_BOOST
+#include &lt;boost/regex.hpp&gt;
+using namespace boost;
+#else
+#include &lt;regex&gt;
+#endif
+using namespace std;
+
+int main() {
+  try {
+    const regex r("\\z");
+    cout &lt;&lt; "Constructed \\z." &lt;&lt; endl;
+    if (regex_match("z", r))
+      cout &lt;&lt; "Matches z" &lt;&lt; endl;
+  } catch (const regex_error&amp; e) {
+      cout &lt;&lt; e.what() &lt;&lt; endl;
+  }
+}
+</pre></blockquote>
+<p>
+libstdc++, boost, and browsers I tested with (Microsoft Edge, Google Chrome) all happily interpret <tt>\z</tt>, which 
+otherwise has no meaning, as an identity character escape for the letter <tt>z</tt>.
+libc++ and msvc++ say that this is invalid, and throw <tt>regex_error</tt> with <tt>error_escape</tt>.
+<p/>
+ECMAScript 3 (which is what C++ currently points to) seems to agree with libc++ and msvc++:
+</p>
+<blockquote>
+<pre>
+IdentityEscape ::
+  SourceCharacter <b>but not</b> IdentifierPart
+
+IdentifierPart ::
+  IdentifierStart
+  UnicodeCombiningMark
+  UnicodeDigit
+  UnicodeConnectorPunctuation
+  \ UnicodeEscapeSequence
+
+IdentifierStart ::
+  UnicodeLetter
+  $
+  _
+  \ UnicodeEscapeSequence
+</pre>
+</blockquote>
+<p>
+But this doesn't make any sense &mdash; it prohibits things like <tt>\$</tt> which users absolutely need to be able to escape. 
+So let's look at ECMAScript 6. I believe this says much the same thing, but updates the spec to better handle Unicode by 
+referencing what the Unicode standard says is an identifier character:
+</p>
+<blockquote>
+<pre>
+IdentityEscape ::
+  SyntaxCharacter
+  /
+  SourceCharacter <b>but not</b> UnicodeIDContinue
+  
+UnicodeIDContinue ::
+  any Unicode code point with the Unicode property "ID_Continue", "Other_ID_Continue", or "Other_ID_Start"
+</pre>
+</blockquote>
+<p>
+However, ECMAScript 6 has an appendix B defining "additional features for web browsers" which says:
+</p>
+<blockquote>
+<pre>
+IdentityEscape ::
+  SourceCharacter <b>but not</b> c
+</pre>
+</blockquote>
+<p>
+which appears to agree with what libstdc++, boost, and browsers are doing.
+<p/>
+What should be the correct behavior here?
+</p>
+
+<p><i>[2016-08, Chicago]</i></p>
+
+<p>Monday PM: Move to tentatively ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 28.13 [re.grammar]/3 as indicated:</p>
+
+<blockquote>
+<p>
+-3- The following productions within the ECMAScript grammar are modified as follows:
+</p>
+<blockquote><pre>
+ClassAtom ::
+  -
+  ClassAtomNoDash
+  ClassAtomExClass
+  ClassAtomCollatingElement
+  ClassAtomEquivalence
+  
+<ins>IdentityEscape ::
+  SourceCharacter <b>but not</b> c</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2692" href="#2692">2692.</a> Overspecification of lvalueness of bitmask elements</h3>
 <p><b>Section:</b> 17.5.2.1.3 [bitmask.types] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
  <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-22</p>
@@ -655,6 +1855,79 @@ Jonathan will provide more precise references.
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2696" href="#2696">2696.</a> Interaction between <tt>make_shared</tt> and <tt>enable_shared_from_this</tt> is underspecified</h3>
+<p><b>Section:</b> 20.11.2.2.6 [util.smartptr.shared.create] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Joe Gottman <b>Opened:</b> 2016-04-02 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.create">active issues</a> in [util.smartptr.shared.create].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.create">issues</a> in [util.smartptr.shared.create].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+For each public constructor of <tt>std::shared_ptr</tt>, the standard says that constructor <i>enables 
+<tt>shared_from_this</tt></i> if that constructor is expected to initialize the internal <tt>weak_ptr</tt> 
+of a contained <tt>enable_shared_from_this&lt;X&gt;</tt> object. But there are other ways to construct 
+a <tt>shared_ptr</tt> than by using a public constructor. The template functions <tt>make_shared</tt> 
+and <tt>allocate_shared</tt> both require calling a private constructor, since no public constructor 
+can fulfill the requirement that at most one allocation is made. The standard does not specify that 
+that private constructor enables <tt>shared_from_this</tt>; therefore in the following code:
+</p>
+<blockquote><pre>
+struct Foo : public std::enable_shared_from_this&lt;Foo&gt; {};
+
+int main() {
+  auto p = std::make_shared&lt;Foo&gt;();
+  assert(p == p-&gt;shared_from_this());
+  return 0;
+}
+</pre></blockquote>
+<p>
+it is unspecified whether the assertion will fail.
+</p>
+
+<p><i>[2016-05 Issues Telecom]</i></p>
+
+<p>
+Jonathan Wakely to provide updated wording.
+</p>
+
+<p><i>[2016-08 Chicago]</i></p>
+
+<p>Monday PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4582.
+</p>
+<ol>
+<li><p>Change 20.11.2.2.6 [util.smartptr.shared.create] indicated:</p>
+
+<blockquote><pre>
+template&lt;class T, class... Args&gt; shared_ptr&lt;T&gt; make_shared(Args&amp;&amp;... args);
+template&lt;class T, class A, class... Args&gt;
+  shared_ptr&lt;T&gt; allocate_shared(const A&amp; a, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- <i>Remarks</i>: <ins>The <tt>shared_ptr</tt> constructor called by this function enables <tt>shared_from_this</tt> 
+with the address of the newly constructed object of type <tt>T</tt>.</ins> Implementations should perform no more than 
+one memory allocation. [<i>Note</i>: This provides efficiency equivalent to an intrusive smart 
+pointer. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
@@ -702,6 +1975,80 @@ forward_as_tuple(std::<del>forward</del><ins>move</ins>&lt;V&gt;(x.second)))</tt
 <p>
 Withdrawn by the submitter, since the prerequisites were incorrect.
 </p>
+
+
+
+
+
+<hr>
+<h3><a name="2733" href="#2733">2733.</a> [fund.ts.v2] <tt>gcd</tt> / <tt>lcm</tt> and <tt>bool</tt></h3>
+<p><b>Section:</b> 99 [fund.ts.v2::numeric.ops.gcd], 99 [fund.ts.v2::numeric.ops.lcm] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2016-06-15 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+According to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html">N4562</a>, <tt>gcd</tt> and 
+<tt>lcm</tt> support <tt>bool</tt> as the operand type. The wording doesn't appear to cover the behavior for that case, 
+since <tt>bool</tt> does not have a zero value and <tt>gcd</tt> / <tt>lcm</tt> are not normally mathematically defined 
+over <tt>{false, true}</tt>.
+<p/>
+Presumably <tt>gcd</tt> and <tt>lcm</tt> shouldn't accept arguments of type <tt>bool</tt>.
+</p>
+
+<p><i>[2016-08-01, Walter Brown suggests wording]</i></p>
+
+<p>
+A corresponding issue has been added addressing the WP, see LWG <a href="lwg-active.html#2759">2759</a>.
+</p>
+
+<p><i>[2016-08, Chicago]</i></p>
+
+<p>Monday PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4600.html">N4600</a>.</p>
+
+<ol>
+<li><p>Adjust 99 [numeric.ops.gcd] p3 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class M, class N&gt;
+  constexpr common_type_t&lt;M, N&gt; gcd(M m, N n);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- <i>Remarks:</i> If either <tt>M</tt> or <tt>N</tt> is not an integer type, <ins>or if either is (possibly <i>cv</i>-qualified) 
+<tt>bool</tt>,</ins> the program is ill-formed. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Adjust 99 [numeric.ops.lcm] p3 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class M, class N&gt;
+  constexpr common_type_t&lt;M, N&gt; lcm(M m, N n);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- <i>Remarks:</i> If either <tt>M</tt> or <tt>N</tt> is not an integer type, <ins>or if either is (possibly <i>cv</i>-qualified) 
+<tt>bool</tt>,</ins> the program is ill-formed. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
@@ -1562,6 +2909,69 @@ inserts <tt>seq</tt> as if by calling <tt>os.rdbuf()-&gt;sputn(seq, n)</tt>, whe
 <tt>os.width()</tt> and <tt>str.size()</tt>; then calls <tt>os.width(0)</tt>.</ins>
 <p/>
 <ins>-?- <i>Returns:</i> <tt>os</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2759" href="#2759">2759.</a> <tt>gcd</tt> / <tt>lcm</tt> and <tt>bool</tt> for the WP</h3>
+<p><b>Section:</b> 26.8.13 [numeric.ops.gcd], 26.8.14 [numeric.ops.lcm] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Walter Brown <b>Opened:</b> 2016-08-01 <b>Last modified:</b> 2016-08-02</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+With the acceptance of <tt>gcd</tt> and <tt>lcm</tt> in the working draft, the same problem as pointed out by
+LWG <a href="lwg-active.html#2733">2733</a> exists here as well and should be fixed accordingly.
+</p>
+
+<p><i>[2016-08, Chicago]</i></p>
+
+<p>Monday PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Adjust 26.8.13 [numeric.ops.gcd] p2 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class M, class N&gt;
+  constexpr common_type_t&lt;M, N&gt; gcd(M m, N n);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Remarks:</i> If either <tt>M</tt> or <tt>N</tt> is not an integer type, <ins>or if either is (possibly <i>cv</i>-qualified) 
+<tt>bool</tt>,</ins> the program is ill-formed. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Adjust 26.8.14 [numeric.ops.lcm] p2 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class M, class N&gt;
+  constexpr common_type_t&lt;M, N&gt; lcm(M m, N n);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Remarks:</i> If either <tt>M</tt> or <tt>N</tt> is not an integer type, <ins>or if either is (possibly <i>cv</i>-qualified) 
+<tt>bool</tt>,</ins> the program is ill-formed. 
 </p>
 </blockquote>
 </blockquote>
