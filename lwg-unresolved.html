@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-02 at 13:08:17 UTC</p>
+<p><p>Revised 2016-08-02 at 15:08:56 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -10831,7 +10831,7 @@ length 0</del>, no virtual member functions, no virtual base classes, and no bas
 <p><b>Proposed resolution:</b></p>
 <p>Modify Table 38 — Type property predicates for <tt>is_empty</tt> as follows:</p>
 <blockquote><p>
-<tt>T</tt> is a class type, but not a union type, with no non-static data members <del>other than</del><ins>, no unnamed</ins> bit-fields of <ins>non-zero</ins> length <del>0</del>, no virtual member functions, no virtual base classes, and no base class <tt>B</tt> for which <del>is_empty&lt;B&gt;::value</del><ins><tt>is_empty_v&lt;B&gt;</tt></ins> is false.</p>
+<tt>T</tt> is a non-union class type with no non-static data members <del>other than</del><ins>, no unnamed</ins> bit-fields of <ins>non-zero</ins> length <del>0</del>, no virtual member functions, no virtual base classes, and no base class <tt>B</tt> for which <tt>is_empty_v&lt;B&gt;</tt> is false.</p>
 </blockquote>
 
 
@@ -12690,7 +12690,7 @@ namespace std {
 <hr>
 <h3><a name="2460" href="#2460">2460.</a> LWG issue 2408 and value categories</h3>
 <p><b>Section:</b> 20.15.7.6 [meta.trans.other], 24.4.1 [iterator.traits] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2015-04-08</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2016-08-02</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
@@ -12737,8 +12737,20 @@ conforming extension). Perhaps this should instead require that the class doesn'
 of those five names? That's what <a href="lwg-defects.html#2408">2408</a> does for <tt>common_type</tt>'s type member.
 </p>
 
+<p><i>[08-2016 - Chicago]</i></p>
+
+<p>This issue has two parts, one dealing with <tt>common_type</tt>, the other with <tt>iterator_traits</tt>. 
+The first of these is resolved by <a href="lwg-active.html#2465">2465</a>.  See below for the proposed resolution for the other one.</p>
+
 
 <p><b>Proposed resolution:</b></p>
+<p>Change [iterator.traits] p.2:</p>
+
+<p>... as publicly accessible members <del>and no other members</del>:</p>
+
+<p>...</p>
+
+<p>Otherwise, <tt>iterator_traits&lt;Iterator&gt;</tt> shall have no members <ins>by any of the above names</ins>.</p>
 
 
 
@@ -13297,7 +13309,7 @@ struct common_type&lt;T, U, Vs...&gt;
 
 
 <p><b>Proposed resolution:</b></p>
-<p><i>[This also resolves the first part of <ref iref="2460"/>]</i></p>
+<p><i>[This also resolves the first part of <a href="lwg-active.html#2460">2460</a>]</i></p>
 
 
 <p>In Table 46 of N4604, entry for <tt>common_type</tt>:</p>
@@ -16803,8 +16815,8 @@ specialization of <tt>conjunction</tt> or <tt>disjunction</tt> derives may conta
 
 <p>Ville provided wording for both <a href="lwg-active.html#2567">2567</a> and <a href="lwg-active.html#2568">2568</a></p>
 
-
-<p><b>Proposed resolution:</b></p>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>In [meta.logical]/3, edit as follows:</p>
 
 <p>The <del>BaseCharacteristic of a</del> specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt>
@@ -16827,6 +16839,38 @@ which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
 <ins>aforementioned base</ins><del>BaseCharacteristic</del> is
 the last type in the list.
 [ Note: This means a specialization of disjunction does
+not necessarily <del>have a BaseCharacteristic
+of</del> <ins>derive from</ins> either true_type or
+false_type. — end note ]</p>
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>In [meta.logical]/3, edit as follows:</p>
+
+<p>The <del>BaseCharacteristic of a</del> specialization <tt>conjunction&lt;B1, ..., BN&gt;</tt>
+<ins>has a public and unambiguous base that is either<br/>
+* the first type <tt>Bi</tt> in the list <tt>true_type, B1, ..., BN</tt> for
+which <tt>Bi::value == false</tt>, or<br/>
+* if there is no such <tt>Bi</tt>, the last type in the list.</ins><br/>
+<del>is the first type <tt>Bi</tt> in the list <tt>true_type, B1, ..., BN</tt> for
+which <tt>Bi::value == false</tt>, or if every <tt>Bi::value != false</tt>, the
+BaseCharacteristic is the last type in the list.</del><br/>
+[ Note: This means a specialization of <tt>conjunction</tt> does
+not necessarily <del>have a BaseCharacteristic
+of</del> <ins>derive from</ins> either true_type or
+false_type. — end note ]</p>
+
+<p>In [meta.logical]/6, edit as follows:</p>
+<p>The <del>BaseCharacteristic of a</del> specialization <tt>disjunction&lt;B1, ..., BN&gt;</tt>
+<ins>has a public and unambiguous base that is either<br/>
+* the first type <tt>Bi</tt> in the list <tt>true_type, B1, ..., BN</tt> for
+which <tt>Bi::value != false</tt>, or<br/>
+* if there is no such <tt>Bi</tt>, the last type in the list.</ins><br/>
+<del>is the first type <tt>Bi</tt> in the list <tt>true_type, B1, ..., BN</tt> for
+which <tt>Bi::value != false</tt>, or if every <tt>Bi::value == false</tt>, the
+BaseCharacteristic is the last type in the list.</del><br/>
+[ Note: This means a specialization of <tt>disjunction</tt> does
 not necessarily <del>have a BaseCharacteristic
 of</del> <ins>derive from</ins> either true_type or
 false_type. — end note ]</p>
