@@ -29,34 +29,77 @@ general location, in order to avoid repeating that requirement all over the plac
 </discussion>
 
 <resolution>
-<note>Drafting note: this p/r doesn't turn the Requires-clauses into Remarks-clauses.
+<blockquote class="note">
+<p>
+Drafting note: this P/R doesn't turn the <i>Requires</i>-clauses into <i>Remarks</i>-clauses.
 We might want to do that separately, because SFINAEing the constructors
-allows users to query for is_constructible and get the right answer. Failing
-to mandate the SFINAE will lead to non-portable answers for is_constructible.
+allows users to query for <tt>is_constructible</tt> and get the right answer. Failing
+to mandate the SFINAE will lead to non-portable answers for <tt>is_constructible</tt>.
 Currently, libstdc++ SFINAEs. That should be done as a separate issue,
-as this issue is an urgent bug-fix but the mandated SFINAE is not.</note>
+as this issue is an urgent bug-fix but the mandated SFINAE is not.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Change <sref ref="[any.cons]"/> as indicated:</p>
 
 <blockquote>
-<p>In [any.cons]/11, edit the Requires-clause as follows:</p>
-
-<p><I>Requires:</I> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and</ins>
-<tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</p>
-
-<p>In [any.cons]/15, edit the Requires-clause as follows:</p>
-
-<p><I>Requires:</I> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and</ins>
-<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&, Args...&gt;</tt> is <tt>true</tt>.</p>
-
-<p>In [any.modifiers]/1, edit the Requires-clause as follows:</p>
-
-<p><I>Requires:</I> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and</ins>
-<tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</p>
-
-<p>Before [any.modifiers]/6, add a Requires-clause:</p>
-
-<p><ins><I>Requires</I>: <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and
-<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&, Args...&gt;</tt> is <tt>true</tt>.</ins></p>
+<pre>
+template &lt;class T, class... Args&gt;
+  explicit any(in_place_type_t&lt;T&gt;, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-11- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and</ins>
+<tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
 </blockquote>
+<pre>
+template &lt;class T, class U, class... Args&gt;
+  explicit any(in_place_type_t&lt;T&gt;, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-15- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and</ins>
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[any.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, class... Args&gt;
+  void emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and</ins>
+<tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+template &lt;class T, class U, class... Args&gt;
+  void emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements and
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-6- <i>Effects:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
