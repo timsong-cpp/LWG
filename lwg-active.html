@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-08-02 at 16:08:52 UTC</p>
+<p><p>Revised 2016-08-02 at 16:08:25 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -31735,7 +31735,7 @@ inserts <tt>seq</tt> as if by calling <tt>os.rdbuf()-&gt;sputn(seq, n)</tt>, whe
 <hr>
 <h3><a name="2756" href="#2756">2756.</a> C++ WP <tt>optional&lt;T&gt;</tt> should 'forward' <tt>T</tt>'s implicit conversions</h3>
 <p><b>Section:</b> 20.6.3 [optional.object] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-01</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-02</p>
 <p><b>Priority: </b>1
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#optional.object">active issues</a> in [optional.object].</p>
@@ -31760,6 +31760,34 @@ to the specification of <tt>optional</tt> in the C++ WP.
 <p><i>[07-16 - Chicago]</i></p>
 
 <p>Monday: Priority set to 1; will re-review later in the week</p>
+
+<p><i>[Tomaz comments]</i></p>
+
+<p>1) Value forwarding constructor (<tt>template&lt;typename U&gt; optional(U&&)</tt>) is underspecified.</p>
+<p>For the following use code:</p>
+<p><pre>
+optional&lt;T&gt; o1;
+optional&lt;T&gt; o2(o1);
+</pre></p>
+<p>The second constructor will invoke value forwarding <tt>(U = optional&lt;T&gt;&)</tt> constructor (better match) instead of the <tt>optional&lt;T&gt;</tt> copy constructor, in case if T can be constructed from <tt>optional&lt;T&gt;</tt>. This happens for any type T that has unconstrained perfect forwarding constructor, especially <tt>optional&lt;any&gt;</tt>.</p>
+
+<p>2) As pointed several times by Andrzej Krzeminski, the introduction of the value forwarding constructors causes problems in case of the class that can be constructed both from value and optional. For example:</p>
+<p><pre>struct Widget
+{
+   Widget(optional&lt;int&gt;);
+   Widget(int);
+};
+</pre></p>
+
+<p>
+<tt>optional&lt;Widget&gt; w1(10); // calls Widget(int);</tt><br/>
+<tt>optional&lt;Widget&gt; w2(make_optional(10)); // call Widget(int)</tt>, because <tt>optional&lt;T&gt;&& (with T = int)</tt> is more specialized than <tt>U&&</tt> (with <tt>U = optional&lt;int&gt;</tt>)
+</p>
+
+<p>
+<tt>optional&lt;int&gt; oi(10);</tt><br/>
+<tt>optional&lt;Widget&gt; w3(oi); // call Widget(optional&lt;int&gt;)</tt>, because <tt>U&& (with U = optional&lt;int&gt;&)</tt> is better match than <tt>optional&lt;T&gt;</tt> const& (with <tt>T = int</tt>)
+</p>
 
 
 <p><b>Proposed resolution:</b></p>
