@@ -44,9 +44,9 @@ the <tt>emplace</tt> overloads were.
 </p>
 
 <note>2016-08-02: Ville adjusts the P/R to cope with the problems pointed out by Daniel's and Agust&iacute;n's comments</note>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to N4606.
 </p>
@@ -213,6 +213,196 @@ template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
 not contain a value, and any previously contained object has been destroyed. The function shall not participate in overload
 resolution unless <ins><tt>is_reference_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_array_v&lt;T&gt;</tt> is <tt>false</tt>,
 <tt>is_function_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and</ins> 
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2016-08-03: Ville comments and revises his proposed wording</note>
+<p>
+After discussing the latest P/R, here's an update. What this update does is that:
+</p>
+<ol>
+<li><p>It strikes the <i>Requires</i>-clauses and does <em>not</em> add
+<tt>CopyConstructible</tt> to the <i>Requires</i>-clauses.
+<p/>
+Rationale: <tt>any</tt> doesn't care whether the type it holds satisfies the
+semantic requirements of the <tt>CopyConstructible</tt> concept. The syntactic 
+requirements are now SFINAE constraints in <i>Requires</i>-clauses.</p></li>
+<li><p>It reverts back towards <tt>decay_t</tt> rather than <tt>remove_cv_t</tt>, and does
+<em>not</em> add the suggested SFINAE constraints for <tt>is_reference</tt>/<tt>is_array</tt>/<tt>is_function</tt>.
+<p/>
+Rationale:
+</p>
+<ol style="list-style-type:lower-alpha">
+<li><p><tt>any</tt> decays by design. It's to some extent inconsistent
+to not protect against decay in the <tt>ValueType</tt> constructor/assignment operator, but to protect
+against decay in the <tt>in_place_t</tt> constructors and <tt>emplace</tt> functions</p></li>
+<li><p>I think it's saner to just decay than to potentially run into
+situations where I need to <tt>remove_reference</tt> inside <tt>in_place_t</tt>.</p></li>
+</ol>
+</li>
+</ol>
+<p>
+Based on that, this P/R should supersede the previous one. We want to
+look at this new P/R in LWG and potentially send it to LEWG for verification. 
+Personally, I think this P/R is the more conservative one, doesn't add 
+significant new functionality, and is consistent, and is
+thus not really Library-Evolutionary.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[any.class]"/>, class <tt>any</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+class any {
+public:
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
+    
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    void emplace(Args&amp;&amp; ...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    void emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[any.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any(ValueType&amp;&amp; value);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+<del>-7- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. 
+If <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> This constructor shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt>decay_t&lt;ValueType&gt;</tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<del>-11- <i>Requires:</i> <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in overload resolution
+unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<del>-15- <i>Requires:</i> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-19- <i>Remarks:</i> The function shall not participate in overload resolution unless 
+<ins><tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and</ins> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[any.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any&amp; operator=(ValueType&amp;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-7- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+<del>-8- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. If 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-11- <i>Remarks:</i> This operator shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt>decay_t&lt;ValueType&gt;</tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[any.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  void emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<del>-1- <i>Requires:</i> <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does not 
+contain a value, and any previously contained object has been destroyed. <ins>This function shall not participate 
+in overload resolution unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is 
+<tt>true</tt> and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  void emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-6- <i>Effects:</i> [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does 
+not contain a value, and any previously contained object has been destroyed. The function shall not participate in overload
+resolution unless <ins><tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and</ins> 
 <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
 </p>
 </blockquote>
