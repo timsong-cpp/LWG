@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-03 at 20:08:36 UTC</p>
+<p><p>Revised 2016-08-03 at 20:08:49 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -12142,11 +12142,11 @@ struct common_type&lt;T, U, Vs...&gt;
 </p></blockquote>
 </blockquote>
 
-<p><i>[2016-08-2, Chicago: Walt, Nevin, Rob, and Hal provide revised wording]</i></p>
+<p><i>[2016-08-02, Chicago: Walt, Nevin, Rob, and Hal provide revised wording]</i></p>
 
 
-
-<p><b>Proposed resolution:</b></p>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to N4606.
 </p>
@@ -12247,7 +12247,111 @@ be no member <tt>type</tt>.</p></li>
 </blockquote>
 </li>
 </ol>
+</blockquote>
 
+<p><i>[2016-08-03 Chicago LWG]</i></p>
+
+<p>
+LWG asks for minor wording tweaks and for an added Note.
+Walter revises the Proposed Resolution accordingly.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<p><i>[This also resolves the first part of LWG <a href="lwg-active.html#2460">2460</a>]</i></p>
+
+
+<ol>
+<li><p>In Table 46 &mdash; "Other transformations" edit the entry for <tt>common_type</tt>:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 46 &mdash; Other transformations</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Comments</th>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class... T&gt;<br/>
+struct common_type;</tt>
+</td>
+
+<td>
+The member typedef <tt>type</tt> shall be defined or omitted as specified below.<br/>
+If it is omitted, there shall be no member <tt>type</tt>. All types in the<br/>
+parameter pack <tt>T</tt> shall be complete or (possibly <i>cv</i>) <tt>void</tt>.<br/> 
+A program may specialize this trait <ins>for two <i>cv</i>-unqualified non-reference types</ins><br/> 
+if at least one <del>template parameter in the specialization</del><ins>of them</ins><br/> 
+is a user-defined type. [<i>Note:</i> Such specializations are<br/>
+needed when only explicit conversions are desired among the template<br/>
+arguments. &mdash; <i>end note</i>]
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Edit 20.15.7.6 [meta.trans.other] p3 (and its subbullets) as shown below</p>
+
+<blockquote>
+<p>
+For the <tt>common_type</tt> trait applied to a parameter pack <tt>T</tt> of types, the member <tt>type</tt> 
+shall be either defined or not present as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; If <tt>sizeof...(T)</tt> is zero, there shall be no member <tt>type</tt>.</p></li>
+<li><p>(3.2) &mdash; If <tt>sizeof...(T)</tt> is one, let <tt>T0</tt> denote the sole type in the pack <tt>T</tt>. 
+The member typedef <tt>type</tt> shall denote the same type as <tt>decay_t&lt;T0&gt;</tt>.</p></li>
+<li><p>(3.3) &mdash; <ins>If <tt>sizeof...(T)</tt> is two, let <code>T1</code> and <code>T2</code>, respectively,
+denote the first and second types comprising <code>T</code>, and let <code>D1</code> and <code>D2</code>, 
+respectively, denote <code>decay_t&lt;T1&gt;</code> and <code>decay_t&lt;T2&gt;</code>.</ins></p>
+<ol style="list-style-type: none">
+<li><p>(3.3.1) &mdash; <ins>If <code>is_same_v&lt;T1, D1&gt;</code> and <code>is_same_v&lt;T2, D2&gt;</code>,
+let <code>C</code> denote the type of an unevaluated conditional expression (5.16 [expr.cond])
+whose first operand is an arbitrary value of type <code>bool</code>,
+whose second operand is an xvalue of type <code>D1</code>,
+and whose third operand is an xvalue of type <code>D2</code>.
+[<i>Note:</i> This will not apply if there is a specialization <code>common_type&lt;D1, D2&gt;</code>. &mdash; 
+<i>end note</i>]</ins></p></li>
+<li><p>(3.3.2) &mdash; <ins>Otherwise, let <code>C</code> denote the type
+<code>common_type_t&lt;D1, D2&gt;</code>.</ins></p></li>
+</ol>
+<p><ins> In either case, if there is such a type <code>C</code>,
+the member typedef <code>type</code> shall denote <code>C</code>.
+Otherwise, there shall be no member <code>type</code>.</ins></p>
+</li>
+<li><p>(3.4) &mdash; If <tt>sizeof...(T)</tt> is greater than <del>one</del><ins>two</ins>, let <tt>T1</tt>, <tt>T2</tt>, and <tt>R</tt>, 
+respectively, denote the first, second, and (pack of) remaining types comprising <tt>T</tt>. 
+<del>[<i>Note:</i> <tt>sizeof...(R)</tt> may be zero. &mdash; <i>end note</i>] Let <tt>C</tt> denote the
+type, if any, of an unevaluated conditional expression (5.16 [expr.cond]) whose first operand is an arbitrary value
+of type <tt>bool</tt>, whose second operand is an xvalue of type <tt>T1</tt>, and whose third operand is 
+an xvalue of type <tt>T2</tt>.</del> <ins>Let <code>C</code> denote <code>common_type_t&lt;T1, T2&gt;</code>.</ins> 
+If there is such a type <tt>C</tt>, the member typedef <tt>type</tt> 
+shall denote the same type, if any, as <tt>common_type_t&lt;C, R...&gt;</tt>. Otherwise, there shall 
+be no member <tt>type</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
 
 
 
@@ -15899,7 +16003,7 @@ This will be resolved by <a href="http://wg21.link/p0317r1">P0317R1</a>, Directo
 <hr>
 <h3><a name="2664" href="#2664">2664.</a> <code>operator/</code> (and other append) semantics not useful if argument has root</h3>
 <p><b>Section:</b> 27.10.8.4.3 [path.append], 27.10.8.6 [path.non-member] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Peter Dimov <b>Opened:</b> 2014-05-30 <b>Last modified:</b> 2016-07-03</p>
+ <b>Submitter:</b> Peter Dimov <b>Opened:</b> 2014-05-30 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#path.append">active issues</a> in [path.append].</p>
@@ -15962,9 +16066,8 @@ be used instead for corner cases.
 The same wording area is touched by LWG <a href="lwg-active.html#2732">2732</a>.
 </p>
 
-
-
-<p><b>Proposed resolution:</b></p>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to N4594.</p>
 <ol>
 <li><p><i>Change 27.10.8.4.3 [path.append] path appends as indicated:</i></p>
@@ -16025,6 +16128,35 @@ Then appends the effective range of <code>source</code> (27.10.8.3 [path.req]) o
 </blockquote>
 </li>
 </ol>
+</blockquote>
+
+<p><i>[2016-08-03 Chicago]</i></p>
+
+<p>After discussion on <a href="lwg-active.html#2732">2732</a>, it was determined that the PR for that issue should be
+applied to this issue before it is accepted. That PR changes all the path appends to go through
+operator/=, so only one requires element remains necessary.</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606, and assumes that the PR for <a href="lwg-active.html#2732">2732</a> is applied.</p>
+<p><i>Change 27.10.8.4.3 [path.append] path operator/= as indicated:</i></p>
+
+<blockquote>
+<code>path&amp; operator/=(const path&amp; p);</code>
+<blockquote>
+  <p><ins>-?- <i>Requires:</i> <code>!p.has_root_name()</code>.</ins></p>
+  <p>-2- <i>Effects:</i> Appends <code>path::preferred_separator</code> to <tt>pathname</tt> unless:</p>
+  <ul>
+  <li><p>an added <i>directory-separator</i> would be redundant, or</p></li>
+  <li><p>an added <i>directory-separator</i> would change a relative path to an absolute path
+  [<i>Note:</i> An empty path is relative. &mdash; <i>end note</i>], or</p></li>
+  <li><p><code>p.empty()</code> is <tt>true</tt>, or</p></li>
+  <li><p><code>*p.native().cbegin()</code> is a <i>directory-separator</i>.</p></li>
+  </ul>
+  <p>Then appends <code>p.native()</code> to <tt>pathname</tt>.</p>
+  <p>-3- <i>Returns:</i> <code>*this</code>.</p>
+</blockquote>
+</blockquote>
 
 
 
