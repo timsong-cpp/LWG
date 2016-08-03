@@ -21,12 +21,12 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-02 at 22:08:10 UTC</p>
+<p><p>Revised 2016-08-03 at 12:08:44 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
 <p><b>Section:</b> 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-02-12</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements">active issues</a> in [container.requirements].</p>
@@ -116,9 +116,334 @@ elements of the container. No diagnostic required.
 
 
 <hr>
+<h3><a name="2062" href="#2062">2062.</a> Effect contradictions w&#47;o no-throw guarantee of <tt>std::function</tt> swaps</h3>
+<p><b>Section:</b> 20.14.12.2 [func.wrap.func], 20.14.12.2.2 [func.wrap.func.mod] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2011-05-28 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Howard Hinnant observed in reflector message c++std-lib-30841 that 20.14.12.2 [func.wrap.func] 
+makes the member swap <tt>noexcept</tt>, even though the non-member swap is not <tt>noexcept</tt>. 
+<p/>
+The latter was an outcome of the discussions during the Batavia meeting and the Madrid meeting 
+involving LWG <a href="lwg-defects.html#1349">1349</a>, which seems to indicate that the remaining <tt>noexcept</tt> 
+specifier at the member swap is incorrect and should be removed.
+<p/>
+But if we allow for a potentially throwing member swap of <tt>std::function</tt>, this causes 
+another conflict with the exception specification for the following member function:
+</p>
+<blockquote><pre>
+template&lt;class F&gt; function&amp; operator=(reference_wrapper&lt;F&gt; f) <span style="color:#C80000;font-weight:bolder">noexcept</span>;
+</pre><blockquote><p>
+<i>Effects</i>: <tt>function(f).<span style="color:#C80000;font-weight:bolder">swap</span>(*this);</tt>
+</p>
+</blockquote></blockquote>
+<p>
+Note that in this example the sub-expression <tt>function(f)</tt> does not cause any problems,
+because of the nothrow-guarantee given in 20.14.12.2.1 [func.wrap.func.con] p. 10. The problem
+is located in the usage of the swap which could potentially throw given the general latitude. 
+<p/>
+So, either the Madrid meeting decision need to be revised (and both member and free swap of 
+<tt>std::function</tt> should be noexcept), or this function needs to be adapted as well,
+e.g. by taking the exception-specification away or by changing the semantics.
+<p/>
+One argument for "swap-may-throw" would be to allow for small-object optimization techniques
+where the copy of the target may throw. But given the fact that the swap function has been guaranteed 
+to be "Throws: Nothing" from TR1 on, it seems to me that that there would still be opportunities to 
+perform small-object optimizations just restricted to the set of target copies that cannot throw. 
+<p/>
+In my opinion member swap of <tt>std::function</tt> has always been intended to be no-throw, because
+otherwise there would be no good technical reason to specify the effects of several member 
+functions in terms of the "construct-swap" idiom (There are three functions that are defined
+this way), which provides the strong exception safety in this case. I suggest to enforce that both 
+member swap and non-member swap of <tt>std::function</tt> are nothrow functions as it had been guaranteed 
+since TR1 on.
+</p>
+
+<p><i>[
+2011 Bloomington
+]</i></p>
+
+<p>
+Dietmar: May not be swappable in the first place.
+</p>
+<p>
+Alisdair: This is wide contact. Then we should be taking noexcept off instead of putting it on. This is preferred resolution.
+</p>
+<p>
+Pablo: This is bigger issue. Specification of assignment in terms of swap is suspect to begin with. It is over specification.
+How this was applied to string is a better example to work from.
+</p>
+<p>
+Pablo: Two problems: inconsistency that should be fixed (neither should have noexcept), the other issues is that assignment
+should not be specified in terms of swap. There are cases where assignment should succeed where swap would fail. This is easier
+with string as it should follow container rules.
+</p>
+<p>
+<b>Action Item</b> (Alisdair): There are a few more issues found to file.
+</p>
+<p>
+Dave: This is because of allocators? The allocator makes this not work.
+</p>
+<p>
+Howard: There is a type erased allocator in shared_ptr. There is a noexcept allocator in shared_ptr.
+</p>
+<p>
+Pablo: shared_ptr is a different case. There are shared semantics and the allocator does move around.
+A function does not have shared semantics.
+</p>
+<p>
+Alisdair: Function objects think they have unique ownership.
+</p>
+<p>
+Howard: In function we specify semantics with copy construction and swap.
+</p>
+<p>
+<b>Action Item</b> (Pablo): Write this up better (why assignment should not be defined in terms of swap)
+</p>
+<p>
+Howard: Not having trouble making function constructor no throw.
+</p>
+<p>
+Dietmar: Function must allocate memory.
+</p>
+<p>
+Howard: Does not put stuff that will throw on copy or swap in small object optimization. Put those on heap.
+Storing allocator, but has to be no throw copy constructable.
+</p>
+<p>
+Pablo: Are you allowed to or required to swap or move allocators in case or swap or move.
+</p>
+<p>
+Dave: An allocator that is type erased should be different...
+</p>
+<p>
+Pablo: it is
+</p>
+<p>
+Dave: Do you need to know something about allocator types? But only at construction time.
+</p>
+<p>
+Pablo: You could have allocators that are different types.
+</p>
+<p>
+Dave: Swap is two ended operation.
+</p>
+<p>
+Pablo: Opinion is that both have to say propagate on swap for them to swap.
+</p>
+<p>
+John: It is not arbitrary. If one person says no. No is no.
+</p>
+<p>
+Howard: Find noexcept swap to be very useful. Would like to move in that direction and bring container design along.
+</p>
+<p>
+Dave: If you have something were allocator must not propagate you can detect that at construction time.
+</p>
+<p>
+...
+</p>
+<p>
+Pablo: Need to leave this open and discuss in smaller group.
+</p>
+<p>
+Alisdair: Tried to add boost::any as TR2 proposal and ran into this issue. Only the first place where we run into
+issues with type erased allocators. Suggest we move it to open.
+</p>
+<p>
+<b>Action Item</b>: Move to open.
+</p>
+<p>
+<b>Action Item</b> (Pablo works with Howard and Daniel): Address the more fundamental issue
+(which may be multiple issues) and write up findings.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+
+<blockquote class="note">
+<p>This wording is relative to the FDIS.</p>
+<ol>
+<li><p>Modify the header <tt>&lt;functional&gt;</tt> synopsis in 20.14 [function.objects] as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify the class template <tt>function</tt> synopsis in 20.14.12.2 [func.wrap.func] as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  <i>// [func.wrap.func.alg], specialized algorithms:</i>
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify 20.14.12.2.7 [func.wrap.func.alg] as indicated:</p>
+<blockquote><pre>
+template&lt;class R, class... ArgTypes&gt;
+void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;&amp; f2) <ins>noexcept</ins>;
+</pre><blockquote><p>
+-1- <i>Effects</i>: <tt>f1.swap(f2);</tt>
+</p></blockquote></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2014-02-28 (Post Issaquah), Pablo provides more information]</i></p>
+
+
+<p>
+For cross-referencing purposes: The resolution of this issue should be
+harmonized with any resolution to LWG <a href="lwg-active.html#2370">2370</a>, which addresses
+inappropriate <tt>noexcept</tt>s in some function constructors.
+</p>
+
+<p>We have the following choices:</p>
+
+<ol>
+<li>
+<p><tt>swap()</tt> does not throw</p>
+
+<blockquote><p>
+<i>Discussion</i>: This definition is desirable, and allows assignment
+   to be implemented with the strong exception guarantee, but it does have
+   consequences: The implementation cannot use the small-object optimization
+   for a function-object <tt>F</tt> unless <tt>F</tt> is <tt>NothrowMovable</tt> 
+   (nothrow-swappable is unimportant because <tt>F</tt> is not swapped with another <tt>F</tt>). 
+   Note that many functors written before C++11 will not have move constructors decorated
+   with <tt>noexcept</tt>, so this limitation could affect a lot of code.
+</p>
+<p>
+It is not clear what other implementation restrictions might be
+   needed. Allocators are required not to throw on move or copy. Is that
+   sufficient?
+</p>
+</blockquote>
+</li>
+
+<li>
+<p><tt>swap()</tt> can throw</p>
+
+<blockquote>
+<p>
+<i>Discussion</i>: This definition gives maximum latitude to implementation to
+   use small-object optimization. However, the strong guarantee on assignment
+   is difficult to achieve.  Should we consider giving up on the strong
+   guarantee? How much are we willing to pessimize code for exceptions?
+</p>
+</blockquote>
+</li>
+<li>
+<p><tt>swap()</tt> will not throw if both functions have <tt>NoThrowMoveable</tt> functors</p>
+
+<blockquote>
+<p>
+<i>Discussion</i>: This definition is similar to option 2, but gives slightly
+  stronger guarantees.  Here, <tt>swap()</tt> can throw, but the programmer can
+  theoretically prevent that from happening. This should be straight-forward
+  to implement and gives the implementation a lot of latitude for
+  optimization. However, because this is a dynamic decision, the program is
+  not as easy to reason about. Also, the strong guarantee for assignment is
+  compromized as in option 2.
+</p>
+</blockquote>
+</li>
+</ol>
+
+<p><i>[2016-08-02, Ville, Billy, and Billy comment and reinstantiate the original P/R]</i></p>
+
+<p>
+We (Ville, Billy, and Billy) propose to require that <tt>function</tt>'s <tt>swap</tt> is <tt>noexcept</tt> 
+in all cases.
+</p>
+<ul>
+<li><p>libstdc++ does not throw in their <tt>swap</tt>. It is not <tt>noexcept</tt> today, but the small functor 
+optimization only engages for trivially copyable types.</p></li>
+<li><p>msvc++ checks <tt>is_nothrow_move_constructible</tt> before engaging the small functor optimization and marks 
+its <tt>swap</tt> <tt>noexcept</tt></p></li>
+<li><p>libc++ marks <tt>swap</tt> <tt>noexcept</tt> (though I have not looked at its implementation)</p></li>
+</ul>
+<p>
+Moreover, many of the concerns that were raised by providing this guarantee are no longer applicable now that 
+<a href="http://wg21.link/p0302r1">P0302</a> has been accepted, which removes allocator support from <tt>std::function</tt>.
+<p/>
+Therefore we are re-proposing the original resolution above.
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Tues PM: Move to Tentatively Ready</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Modify the header <tt>&lt;functional&gt;</tt> synopsis in 20.14 [function.objects] as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify the class template <tt>function</tt> synopsis in 20.14.12.2 [func.wrap.func] as indicated:</p>
+<blockquote><pre>
+namespace std {
+  [&hellip;]
+
+  <i>// [func.wrap.func.alg], specialized algorithms:</i>
+  template&lt;class R, class... ArgTypes&gt;
+  void swap(function&lt;R(ArgTypes...)&gt;&amp;, function&lt;R(ArgTypes...)&gt;&amp;) <ins>noexcept</ins>;
+
+  [&hellip;]
+}
+</pre></blockquote>
+</li>
+
+<li><p>Modify 20.14.12.2.7 [func.wrap.func.alg] as indicated:</p>
+<blockquote><pre>
+template&lt;class R, class... ArgTypes&gt;
+void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;&amp; f2) <ins>noexcept</ins>;
+</pre><blockquote><p>
+-1- <i>Effects</i>: As if by: <tt>f1.swap(f2);</tt>
+</p></blockquote></blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2179" href="#2179">2179.</a> <tt>enable_shared_from_this</tt> and construction from raw pointers</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab], 20.11.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
@@ -221,7 +546,7 @@ This issues should be closed as <tt>Resolved</tt> by paper p0033r1 at Jacksonvil
 <hr>
 <h3><a name="2208" href="#2208">2208.</a> <tt>std::reverse_iterator</tt> should be a literal type</h3>
 <p><b>Section:</b> 24.5.1 [reverse.iterators] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#reverse.iterators">issues</a> in [reverse.iterators].</p>
@@ -680,7 +1005,7 @@ Room: tentatively resolved; revisit after C11 paper: <a href="http://wg21.link/P
 <hr>
 <h3><a name="2337" href="#2337">2337.</a> <tt>shared_ptr operator*()</tt> should not be <tt>noexcept</tt></h3>
 <p><b>Section:</b> 20.11.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-02-12</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.obs">issues</a> in [util.smartptr.shared.obs].</p>
@@ -990,9 +1315,246 @@ length 0</del>, no virtual member functions, no virtual base classes, and no bas
 
 
 <hr>
+<h3><a name="2370" href="#2370">2370.</a> Operations involving type-erased allocators should not be <tt>noexcept</tt> in <tt>std::function</tt></h3>
+<p><b>Section:</b> 20.14.12.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
+ <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2014-02-27 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Resolved">Tentatively Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The following constructors in 20.14.12.2 [func.wrap.func] are declared <tt>noexcept</tt>, even
+though it is not possible for an implementation to guarantee that they will not throw:
+</p>
+
+<blockquote><pre>
+template &lt;class A&gt; function(allocator_arg_t, const A&amp;) noexcept;
+template &lt;class A&gt; function(allocator_arg_t, const A&amp;, nullptr_t) noexcept;
+</pre></blockquote>
+
+<p>
+In addition, the following functions are guaranteed not to throw if the target
+is a function pointer or a <tt>reference_wrapper</tt>:
+</p>
+
+<blockquote><pre>
+template &lt;class A&gt; function(allocator_arg_t, const A&amp; a, const function&amp; f);
+template &lt;class F, class A&gt; function(allocator_arg_t, const A&amp; a, F f);
+</pre></blockquote>
+
+<p>
+In all of the above cases, the function object might need to allocate memory
+(an operation that can throw) in order to hold a copy of the type-erased
+allocator itself. The first two constructors produce an empty function
+object, but the allocator is still needed in case the object is later assigned
+to. In this case, we note that the propagation of allocators on assignment is
+underspecified for <tt>std::function</tt>. There are three possibilities:
+</p>
+
+<ol>
+<li><p>The allocator is never copied on copy-assignment, moved on move-assignment, or swapped on swap.</p>
+</li>
+
+<li><p>The allocator is always copied on copy-assignment, moved on move-assignment, and swapped on swap.</p>
+</li>
+
+<li><p>Whether or not the allocator is copied, moved, or swapped is determined at
+   run-time based on the <tt>propagate_on_container_copy_assignment</tt> and
+   <tt>propagate_on_container_move_assignment</tt> traits of the allocators at
+   construction of the source function, the target function, or both.</p>
+</li>
+</ol>
+
+<p>
+Although the third option seems to be the most consistent with existing
+wording in the containers section of the standard, it is problematic in a
+number of respects. To begin with, the propagation behavior is determined at
+run time based on a pair of type-erased allocators, instead of at compile
+time. Such run-time logic is <em>not</em> consistent with the rest of the standard
+and is hard to reason about. Additionally, there are two allocator types
+involved, rather than one. Any set of rules that attempts to rationally
+interpret the propagation traits of both allocators is likely to be arcane
+at best, and subtly wrong for some set of codes at worst.
+</p>
+
+<p>
+The second option is a non-starter. Historically, and in the vast majority of
+existing code, an allocator does not change after an object is constructed.
+The second option, if adopted, would undermine the programmer's ability to
+construct, e.g., an array of function objects, all using the same allocator.
+</p>
+
+<p>
+The first option is (in Pablo's opinion) the simplest and best. It is
+consistent with historical use of allocators, is easy to understand, and
+requires minimal wording. It is also consistent with the wording in N3916,
+which formalizes type-erased allocators.
+</p>
+
+<p>
+For cross-referencing purposes: The resolution of this issue should be
+harmonized with any resolution to LWG <a href="lwg-active.html#2062">2062</a>, which questions the <tt>noexcept</tt>
+specification on the following member functions of std::function:
+</p>
+
+<blockquote><pre>
+template &lt;class F&gt; function&amp; operator=(reference_wrapper&lt;F&gt;) noexcept;
+void swap(function&amp;) noexcept;
+</pre></blockquote>
+
+<p><i>[2015-05, Lenexa]</i></p>
+
+<p>
+MC: change to P3 and status to open.
+<p/>
+STL: note that <tt>noexcept</tt> is an issue and large chunks of allocator should be destroyed.
+</p>
+
+<p><i>[2015-12-16, Daniel comments]</i></p>
+
+<p>
+See <a href="lwg-active.html#2564">2564</a> for a corresponding issue addressing library fundamentals v2.
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Tues PM: Resolved by P0302R1</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N3936.</p>
+
+<ol>
+<li><p>Change 20.14.12.2 [func.wrap.func], class template <tt>function</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+template &lt;class A&gt; function(allocator_arg_t, const A&amp;) <del>noexcept</del>;
+template &lt;class A&gt; function(allocator_arg_t, const A&amp;, nullptr_t) <del>noexcept</del>;
+</pre></blockquote>
+</li>
+
+<li><p>Change 20.14.12.2.1 [func.wrap.func.con] as indicated:</p>
+
+<blockquote>
+<p>
+-1- When any function constructor that takes a first argument of type <tt>allocator_arg_t</tt> is invoked, the second
+argument shall have a type that conforms to the requirements for <tt>Allocator</tt> (Table 17.6.3.5). A copy of the
+allocator argument is used to allocate memory, if necessary, for the internal data structures of the constructed
+function object. <ins> For the remaining constructors, an instance of <tt>allocator&lt;T&gt;</tt>, for some suitable type
+<tt>T</tt>, is used to allocate memory, if necessary, for the internal data structures of the constructed function object.</ins>
+</p>
+
+<pre>
+function() noexcept;
+template &lt;class A&gt; function(allocator_arg_t, const A&amp;) <del>noexcept</del>;
+</pre>
+
+<blockquote>
+<p>
+-2- <i>Postconditions</i>: <tt>!*this</tt>.
+</p>
+</blockquote>
+
+<pre>
+function(nullptr_t) noexcept;
+template &lt;class A&gt; function(allocator_arg_t, const A&amp;, nullptr_t) <del>noexcept</del>;
+</pre>
+
+<blockquote><p>
+-3- <i>Postconditions</i>: <tt>!*this</tt>.
+</p></blockquote>
+
+<pre>
+function(const function&amp; f);
+<del>template &lt;class A&gt; function(allocator_arg_t, const A&amp; a, const function&amp; f);</del>
+</pre>
+
+<blockquote><p>
+-4- <i>Postconditions</i>: <tt>!*this</tt> if <tt>!f</tt>; otherwise, <tt>*this</tt> targets a copy of <tt>f.target()</tt>.
+</p>
+
+<p>
+-5- <i>Throws</i>: shall not throw exceptions if <tt>f</tt>'s target is a callable object passed
+via <tt>reference_wrapper</tt> or a function pointer. Otherwise, may throw <tt>bad_alloc</tt>
+or any exception thrown by the copy constructor of the stored callable
+object. [<i>Note</i>: Implementations are encouraged to avoid the use of
+dynamically allocated memory for small callable objects, for example, where
+<tt>f</tt>'s target is an object holding only a pointer or reference to an object and
+a member function pointer. &mdash; <i>end note</i>]
+</p></blockquote>
+
+<pre>
+<ins>template &lt;class A&gt; function(allocator_arg_t, const A&amp; a, const function&amp; f);</ins>
+</pre>
+
+<blockquote><p>
+<ins>-?- <i>Postconditions</i>: <tt>!*this</tt> if <tt>!f</tt>; otherwise, <tt>*this</tt> targets a copy of <tt>f.target()</tt>.</ins>
+</p></blockquote>
+
+<pre>
+function(function&amp;&amp; f);
+template &lt;class A&gt; function(allocator_arg_t, const A&amp; a, function&amp;&amp; f);
+</pre>
+
+<blockquote><p>
+-6- <i>Effects</i>: If <tt>!f</tt>, <tt>*this</tt> has no target; otherwise, move-constructs the target
+of <tt>f</tt> into the target of <tt>*this</tt>, leaving <tt>f</tt> in a valid state with an
+unspecified value. <ins>If an allocator is not specified, the constructed function will use the same allocator as <tt>f</tt>.</ins>
+</p></blockquote>
+
+<pre>
+template&lt;class F&gt; function(F f);
+template &lt;class F, class A> function(allocator_arg_t, const A&amp; a, F f);
+</pre>
+
+<blockquote>
+<p>
+-7- <i>Requires</i>: <tt>F</tt> shall be <tt>CopyConstructible</tt>. 
+<p/>
+-8- <i>Remarks</i>: These constructors shall not participate in overload resolution unless <tt>f</tt> is Callable (20.9.11.2)
+for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt>.
+</p>
+
+<p>
+-9- <i>Postconditions</i>: <tt>!*this</tt> if any of the following hold:
+</p>
+<ul>
+<li><p><tt>f</tt> is a null function pointer value.</p></li>
+<li><p><tt>f</tt> is a null member pointer value.</p></li>
+<li><p><tt>F</tt> is an instance of the function class template, and <tt>!f</tt></p></li>
+</ul>
+
+<p>
+-10- Otherwise, <tt>*this</tt> targets a copy of <tt>f</tt> initialized with <tt>std::move(f)</tt>.
+[<i>Note</i>: Implementations are encouraged to avoid the use of dynamically
+allocated memory for small callable objects, for example, where <tt>f</tt>'s target
+is an object holding only a pointer or reference to an object and a member
+function pointer. &mdash; <i>end note</i>]
+</p>
+
+<p>
+-11- <i>Throws</i>: shall not throw exceptions when <ins>an allocator is not specified
+and</ins> <tt>f</tt> is a function pointer or a <tt>reference_wrapper&lt;T&gt;</tt> for some
+<tt>T</tt>. Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by <tt>F</tt>'s copy or
+move constructor<ins> or by <tt>A</tt>'s allocate function</ins>.
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2391" href="#2391">2391.</a> <tt>basic_string</tt> is missing non-<tt>const</tt> <tt>data()</tt></h3>
 <p><b>Section:</b> 21.3.1 [basic.string] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-23</p>
+ <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-22</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
@@ -1194,6 +1756,142 @@ operations listed in those requirements must work as specified whether
 
 </blockquote>
 
+
+
+
+
+
+<hr>
+<h3><a name="2501" href="#2501">2501.</a> <tt>std::function</tt> requires POCMA/POCCA</h3>
+<p><b>Section:</b> 20.14.12.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2015-05-20 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Resolved">Tentatively Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The idea behind <tt>propagate_on_container_move_assignment</tt> is that you can keep an allocator attached to a container. 
+But it's not really designed to work with polymorphism, which introduces the condition where the current allocator is non-POCMA 
+and the RHS of assignment, being POCMA, wants to replace it. If function were to respect the literal meaning, any would-be 
+attached allocator is at the mercy of every assignment operation. So, <tt>std::function</tt> is inherently POCMA, and passing 
+a non-POCMA allocator should be ill-formed.
+<p/>
+The other alternative, and the status quo, is to ignore POCMA and assume it is true. This seems just dangerous enough to outlaw. 
+It is, in theory, possible to properly support POCMA as far as I can see, albeit with difficulty and brittle results. It would 
+require function to keep a throwing move constructor, which otherwise can be <tt>noexcept</tt>.
+<p/>
+The same applies to <tt>propagate_on_container_copy_assignment</tt>. This presents more difficulty because <tt>std::allocator</tt> 
+does not set this to true. Perhaps it should. For function to respect this would require inspecting the POCCA of the source allocator, 
+slicing the target from the erasure of the source, slicing the allocation from the erasure of the destination, and performing a 
+copy with the destination's allocator with the source's target. This comes out of the blue for the destination allocator, which 
+might not support the new type anyway. Theoretically possible, but brittle and not very practical. Again, current implementations 
+quietly ignore the issue but this isn't very clean.
+<p/>
+The following code example is intended to demonstrate the issue here:
+</p>
+<blockquote><pre>
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+template &lt;typename T&gt;
+struct diag_alloc 
+{
+  std::string name;
+
+  T* allocate(std::size_t n) const 
+  {
+    std::cout &lt;&lt; '+' &lt;&lt; name &lt;&lt; '\n';
+    return static_cast&lt;T*&gt;(::operator new(n * sizeof(T)));
+  }
+  
+  void deallocate(T* p, std::size_t) const 
+  {
+    std::cout &lt;&lt; '-' &lt;&lt; name &lt;&lt; '\n';
+    return ::operator delete(p);
+  }
+
+  template &lt;typename U&gt;
+  operator diag_alloc&lt;U&gt;() const { return {name}; }
+
+  friend bool operator==(const diag_alloc&amp; a, const diag_alloc&amp; b)
+  { return a.name == b.name; }
+  
+  friend bool operator!=(const diag_alloc&amp; a, const diag_alloc&amp; b)
+  { return a.name != b.name; }
+
+  typedef T value_type;
+  
+  template &lt;typename U&gt;
+  struct rebind { typedef diag_alloc&lt;U&gt; other; };
+};
+
+int main() {
+  std::cout &lt;&lt; "VECTOR\n";
+  std::vector&lt;int, diag_alloc&lt;int&gt;&gt; foo({1, 2}, {"foo"}); // +foo
+  std::vector&lt;int, diag_alloc&lt;int&gt;&gt; bar({3, 4}, {"bar"}); // +bar
+
+  std::cout &lt;&lt; "move\n";
+  foo = std::move(bar); // no message
+
+  std::cout &lt;&lt; "more foo\n";
+  foo.reserve(40); // +foo -foo
+  std::cout &lt;&lt; "more bar\n";
+  bar.reserve(40); // +bar -bar
+
+  std::cout &lt;&lt; "\nFUNCTION\n";
+  int bigdata[100];
+  auto bigfun = [bigdata]{};
+  typedef decltype(bigfun) ft;
+  std::cout &lt;&lt; "make fizz\n";
+  std::function&lt;void()&gt; fizz(std::allocator_arg, diag_alloc&lt;ft&gt;{"fizz"}, bigfun); // +fizz
+  std::cout &lt;&lt; "another fizz\n";
+  std::function&lt;void()&gt; fizz2;
+  fizz2 = fizz; // +fizz as if POCCA
+  std::cout &lt;&lt; "make buzz\n";
+  std::function&lt;void()&gt; buzz(std::allocator_arg, diag_alloc&lt;ft&gt;{"buzz"}, bigfun); // +buzz
+  std::cout &lt;&lt; "move\n";
+  buzz = std::move(fizz); // -buzz as if POCMA
+
+  std::cout &lt;&lt; "\nCLEANUP\n";
+}
+</pre></blockquote>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Tues PM: Resolved by P0302R1</p>
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2502" href="#2502">2502.</a> <tt>std::function</tt> does not use <tt>allocator::construct</tt></h3>
+<p><b>Section:</b> 20.14.12.2 [func.wrap.func] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2015-05-20 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func">active issues</a> in [func.wrap.func].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func">issues</a> in [func.wrap.func].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Resolved">Tentatively Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+It is impossible for <tt>std::function</tt> to construct its target object using the <tt>construct</tt> method of a type-erased 
+allocator. More confusingly, it is possible when the allocator and the target are created at the same time. The means 
+of target construction should be specified.
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Tues PM: Resolved by P0302R1</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
@@ -1815,7 +2513,7 @@ bidirectional iterator)</caption>
 <hr>
 <h3><a name="2529" href="#2529">2529.</a> Assigning to <tt>enable_shared_from_this::__weak_this</tt> twice</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
@@ -1955,7 +2653,7 @@ convertible to <tt>bool</tt>, is not hidden, and is unambiguously available in t
 <hr>
 <h3><a name="2570" href="#2570">2570.</a> [fund.ts.v2] <tt>conjunction</tt> and <tt>disjunction</tt> requirements are too strict</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::meta.logical] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#fund.ts.v2::meta.logical">active issues</a> in [fund.ts.v2::meta.logical].</p>
@@ -2123,9 +2821,255 @@ ClassAtom ::
 
 
 <hr>
+<h3><a name="2591" href="#2591">2591.</a> <tt>std::function</tt>'s member template <tt>target()</tt> should not lead to undefined behaviour</h3>
+<p><b>Section:</b> 20.14.12.2.5 [func.wrap.func.targ] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2016-01-31 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.targ">issues</a> in [func.wrap.func.targ].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This issue is a spin-off of LWG <a href="lwg-defects.html#2393">2393</a>, it solely focuses on the pre-condition of 20.14.12.2.5 [func.wrap.func.targ] p2:
+</p>
+<blockquote class="note"><p>
+<i>Requires</i>: <tt>T</tt> shall be a type that is Callable (20.9.12.2) for parameter types <tt>ArgTypes</tt> and return type
+<tt>R</tt>.
+</p></blockquote>
+<p>
+Originally, the author of this issue here had assumed that simply removing the precondition as a side-step of fixing LWG
+<a href="lwg-defects.html#2393">2393</a> would be uncontroversial. Discussions on the 
+<a href="http://accu.org/cgi-bin/wg21/message?wg=lib&amp;msg=38356">library reflector</a> indicated that this is not the case, 
+although it seemed that there was agreement on removing the undefined behaviour edge-case.
+<p/>
+There exist basically the following positions:
+</p>
+<ol>
+<li><p>The constraint should be removed completely, the function is considered as having a 
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3279.pdf">wide contract</a>.</p>
+</li>
+<li><p>The pre-condition should be replaced by a <i>Remarks</i> element, that has the effect of making the code ill-formed,
+if <tt>T</tt> is a type that is not Lvalue-Callable (20.9.11.2) for parameter types <tt>ArgTypes</tt> and return type <tt>R</tt>.
+Technically this approach is still conforming with a wide contract function, because the definition of this contract form
+depends on runtime constraints.</p></li>
+</ol>
+<p>
+Not yet explicitly discussed, but a possible variant of bullet (2) could be:
+</p>
+<ol start="3">
+<li><p>The pre-condition should be replaced by a <i>Remarks</i> element, that has the effect of SFINAE-constraining
+this member: "This function shall not participate in overload resolution unless  <tt>T</tt> is a type that is 
+Lvalue-Callable (20.9.11.2) for parameter types <tt>ArgTypes</tt> and return type <tt>R</tt>".
+</p></li>
+</ol>
+<p>
+The following describes a list of some selected arguments that have been provided for one or the other position
+using corresponding list items. Unless explicitly denoted, no difference has been accounted for option (3) over 
+option (2).
+</p>
+<ol>
+<li>
+<ol style="list-style-type:lower-alpha">
+<li>
+<p>It reflects existing implementation practice, Visual Studio 2015 SR1, gcc 6 libstdc++, and clang 3.8.0 libc++ do accept 
+the following code:</p>
+<blockquote><pre>
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;typeinfo&gt;
+#include "boost/function.hpp"
+
+void foo(int) {}
+
+int main() {
+  std::function&lt;void(int)&gt; f(foo);
+  std::cout &lt;&lt; f.target&lt;void(*)()&gt;() &lt;&lt; std::endl;
+  boost::function&lt;void(int)&gt; f2(foo);
+  std::cout &lt;&lt; f2.target&lt;void(*)()&gt;() &lt;&lt; std::endl;
+}
+</pre></blockquote>
+<p>
+and consistently output the implementation-specific result for <b>two null pointer</b> values.
+</p>
+</li>
+<li>
+<p>
+The current
+<a href="http://www.boost.org/doc/libs/1_60_0/doc/html/boost/function_base.html">Boost documentation</a>
+does not indicate <em>any</em> precondition for calling the <tt>target</tt> function, so it is natural
+that programmers would expect similar specification and behaviour for the corresponding standard component.
+</p>
+</li>
+<li>
+<p>
+There is a consistency argument in regard to the free function template <tt>get_deleter</tt>
+</p>
+<blockquote><pre>
+template&lt;class D, class T&gt; 
+D* get_deleter(const shared_ptr&lt;T&gt;&amp; p) noexcept;
+</pre></blockquote>
+<p>
+This function also does not impose any pre-conditions on its template argument <tt>D</tt>.
+</p>
+</li>
+</ol>
+</li>
+<li>
+<ol style="list-style-type:lower-alpha">
+<li>
+<p>
+Programmers have control over the type they're passing to <tt>target&lt;T&gt;()</tt>. Passing a non-callable type 
+can't possibly retrieve a non-null target, so it seems highly likely to be programmer error. Diagnosing that at 
+compile time seems highly preferable to allowing this to return null, always, at runtime.
+</p>
+</li>
+<li>
+<p>
+If <tt>T</tt> is a reference type then the return type <tt>T*</tt> is ill-formed anyway. This implies that one can't 
+blindly call <tt>target&lt;T&gt;</tt> without knowing what <tt>T</tt> is.
+</p>
+</li>
+<li>
+<p>
+It has been pointed out that some real world code, boiling down to
+</p>
+<blockquote><pre>
+void foo() {}
+
+int main() {
+  std::function&lt;void()&gt; f = foo;
+  if (f.target&lt;decltype(foo)&gt;()) {
+    <i>// fast path</i>
+  } else {
+    <i>// slow path</i>
+  }
+}
+</pre></blockquote>
+<p>
+had manifested as a performance issue and preparing a patch that made the library <tt>static_assert</tt> in that
+case solved this problem (Note that <tt>decltype(foo)</tt> evaluates to <tt>void()</tt>, but a proper argument of
+<tt>target()</tt> would have been the function <em>pointer</em> type <tt>void(*)()</tt>, because a function type 
+<tt>void()</tt> is not any <i>Callable</i> type).
+</p>
+</li>
+</ol>
+</li>
+</ol>
+<p>
+It might be worth adding that if use case (2 c) is indeed an often occurring idiom, it would make sense to consider
+to provide an explicit conversion to a function pointer (w/o template parameters that could be provided incorrectly), 
+if the <tt>std::function</tt> object at runtime conditions contains a pointer to a real function, e.g.
+</p>
+<blockquote><pre>
+R(*)(ArgTypes...) target_func_ptr() const noexcept;
+</pre></blockquote>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Tues PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Change 20.14.12.2.5 [func.wrap.func.targ] p2 as indicated:</p>
+
+<blockquote><pre>
+template&lt;class T&gt; T* target() noexcept;
+template&lt;class T&gt; const T* target() const noexcept;
+</pre>
+<blockquote>
+<p>
+<del>-2- <i>Requires</i>: <tt>T</tt> shall be a type that is <tt>Callable</tt> (20.14.12.2 [func.wrap.func]) for parameter types 
+<tt>ArgTypes</tt> and return type <tt>R</tt>.</del>
+<p/>
+-3- <i>Returns</i>: If <tt>target_type() == typeid(T)</tt> a pointer to the stored function target; otherwise a null
+pointer.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2598" href="#2598">2598.</a> <tt>addressof</tt> works on temporaries</h3>
+<p><b>Section:</b> 20.10.10.1 [specialized.addressof] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Brent Friedman <b>Opened:</b> 2016-03-06 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#specialized.addressof">issues</a> in [specialized.addressof].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+LWG issue <a href="lwg-defects.html#970">970</a> removed the rvalue reference overload for <tt>addressof</tt>. This allows const prvalues to 
+bind to a call to <tt>addressof</tt>, which is dissimilar from the behavior of <tt>operator&amp;</tt>.
+</p>
+<blockquote><pre>
+const vector&lt;int&gt; a();
+
+void b()
+{
+  auto x = addressof(a()); // "ok"
+  auto y = addressof&lt;const int&gt;(0); // "ok"
+  auto z = &amp;a(); //error: cannot take address of a temporary
+}
+</pre></blockquote>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Tues PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4582.
+</p>
+
+<ol>
+<li><p>Change 20.10.2 [memory.syn], header <tt>&lt;memory&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 20.9.12, specialized algorithms:</i>
+template &lt;class T&gt; constexpr T* addressof(T&amp; r) noexcept;
+<ins>template &lt;class T&gt; const T* addressof(const T&amp;&amp; elem) = delete;</ins>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.10.10.1 [specialized.addressof] p1 as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T&gt; constexpr T* addressof(T&amp; r) noexcept;
+<ins>template &lt;class T&gt; const T* addressof(const T&amp;&amp; elem) = delete;</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: The actual address of the object or function referenced by <tt>r</tt>, even in the presence of an
+overloaded <tt>operator&amp;</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2692" href="#2692">2692.</a> Overspecification of lvalueness of bitmask elements</h3>
 <p><b>Section:</b> 17.5.2.1.3 [bitmask.types] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-23</p>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-22</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#bitmask.types">issues</a> in [bitmask.types].</p>
@@ -2231,7 +3175,7 @@ pointer. &mdash; <i>end note</i>]
 <hr>
 <h3><a name="2717" href="#2717">2717.</a> <tt>scoped_allocator_adaptor</tt> uses <tt>forward</tt> to do <tt>move</tt>'s job</h3>
 <p><b>Section:</b> 20.13.4 [allocator.adaptor.members] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-06-05</p>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-06-08</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.adaptor.members">active issues</a> in [allocator.adaptor.members].</p>
@@ -2352,7 +3296,7 @@ template&lt;class M, class N&gt;
 <hr>
 <h3><a name="2739" href="#2739">2739.</a> Issue with <tt>time_point</tt> non-member subtraction with an unsigned duration</h3>
 <p><b>Section:</b> 20.17.6.5 [time.point.nonmember] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Michael Winterberg <b>Opened:</b> 2016-06-23 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Michael Winterberg <b>Opened:</b> 2016-06-23 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#time.point.nonmember">issues</a> in [time.point.nonmember].</p>
@@ -2477,7 +3421,7 @@ template &lt;class Clock, class Duration1, class Rep2, class Period2&gt;
 <hr>
 <h3><a name="2740" href="#2740">2740.</a> <tt>constexpr optional&lt;T&gt;::operator-&gt;</tt></h3>
 <p><b>Section:</b> 20.6.3.5 [optional.object.observe] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-02 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-02 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -2530,7 +3474,7 @@ t</del><ins>T</ins>hese functions shall be <tt>constexpr</tt> functions.
 <hr>
 <h3><a name="2744" href="#2744">2744.</a> <tt>any</tt>'s <tt>in_place</tt> constructors</h3>
 <p><b>Section:</b> 20.8.3.1 [any.cons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#any.cons">active issues</a> in [any.cons].</p>
@@ -2620,7 +3564,7 @@ template &lt;class T, class U, class... Args&gt;
 <hr>
 <h3><a name="2745" href="#2745">2745.</a> [fund.ts.v2] Implementability of LWG 2451</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::optional.object] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#fund.ts.v2::optional.object">issues</a> in [fund.ts.v2::optional.object].</p>
@@ -2727,7 +3671,7 @@ unless [&hellip;]
 <hr>
 <h3><a name="2747" href="#2747">2747.</a> Possibly redundant <tt>std::move</tt> in [alg.foreach]</h3>
 <p><b>Section:</b> 25.3.4 [alg.foreach] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-15 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-15 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.foreach">issues</a> in [alg.foreach].</p>
@@ -2777,7 +3721,7 @@ template&lt;class InputIterator, class Function&gt;
 <hr>
 <h3><a name="2748" href="#2748">2748.</a> <tt>swappable</tt> traits for <tt>optional</tt>s</h3>
 <p><b>Section:</b> 20.6.3.4 [optional.object.swap], 20.6.9 [optional.specalg] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -2841,7 +3785,7 @@ template &lt;class T&gt; void swap(optional&lt;T&gt;&amp; x, optional&lt;T&gt;&a
 <hr>
 <h3><a name="2750" href="#2750">2750.</a> [fund.ts.v2] LWG 2451 conversion constructor constraint</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::optional.object.ctor] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-20 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-20 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -2910,7 +3854,7 @@ is <tt>false</tt>.
 <hr>
 <h3><a name="2753" href="#2753">2753.</a> Optional's constructors and assignments need constraints</h3>
 <p><b>Section:</b> 20.6.3.1 [optional.object.ctor], 20.6.3.3 [optional.object.assign] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -3140,7 +4084,7 @@ T&gt;<ins> &amp;&amp; is_constructible_v&lt;T, U&gt; &amp;&amp; is_assignable_v&
 <hr>
 <h3><a name="2755" href="#2755">2755.</a> string.view.io uses non-existent <tt>basic_string_view::to_string</tt> function</h3>
 <p><b>Section:</b> 21.4.4 [string.view.io], 21.3.2.9 [string.io] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
