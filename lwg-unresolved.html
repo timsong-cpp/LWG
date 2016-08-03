@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-03 at 19:08:05 UTC</p>
+<p><p>Revised 2016-08-03 at 20:08:36 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -14119,17 +14119,17 @@ libstdc++ makes it so that <tt>H&lt;T&gt;</tt> is destructible.]
 <p/>
 <ins>-?- For any type <tt>T</tt> that is not of integral or enumeration type, or for
 which neither the library nor the user provides an explicit or partial specialization of the class
-template hash, the specialization of <tt>hash H&lt;T&gt;</tt> has the following properties:
+template hash, the specialization of <tt>hash&lt;T&gt;</tt> has the following properties:
 </ins>
 </p>
 <ul>
-<li><ins><tt>is_default_constructible_v&lt;H&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
-<li><ins><tt>is_copy_constructible_v&lt;H&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
-<li><ins><tt>is_move_constructible_v&lt;H&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
-<li><ins><tt>is_copy_assignable_v&lt;H&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
-<li><ins><tt>is_move_assignable_v&lt;H&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
-<li><ins><tt>is_callable_v&lt;H&lt;T&gt;, T&amp;&gt;</tt> is <tt>false</tt></ins></li>
-<li><ins><tt>is_callable_v&lt;H&lt;T&gt;, const T&amp;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_default_constructible_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_copy_constructible_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_move_constructible_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_copy_assignable_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_move_assignable_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_callable_v&lt;hash&lt;T&gt;, T&amp;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_callable_v&lt;hash&lt;T&gt;, const T&amp;&gt;</tt> is <tt>false</tt></ins></li>
 </ul>
 <p>
 <ins>[<i>Note:</i> this means that the specialization of <tt>hash</tt> exists, but any
@@ -16166,147 +16166,6 @@ but since <code>path += path2</code> works then it seems reasonable to expect
   <code>basic_string_view</code>, may allow reduction of the complexity of the class path
   interface. The LWG may wish to reconsider this issue at that time.</p>
   </blockquote>
-
-
-
-
-
-<hr>
-<h3><a name="2672" href="#2672">2672.</a> Should is_empty use error_code in its specification?</h3>
-<p><b>Section:</b> 27.10.15.19 [fs.op.is_empty] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-08-01 <b>Last modified:</b> 2016-05-10</p>
-<p><b>Priority: </b>3
-</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-The descriptions of most functions are explicit about the use of the <code>ec</code> argument,
-  either saying something like "<code>foo(p)</code> or <code>foo(p, ec)</code>, respectively" or using the
-  <code>ec</code> argument like <code>foo(p[, ec])</code>, but <code>is_empty</code> does not.
-</p>
-<p>
-27.10.15.19 [fs.op.is_empty]/2 refers to <code>ec</code> unconditionally, but more importantly
-  27.10.15.19 [fs.op.is_empty]/3 doesn't pass <code>ec</code> to the <code>directory_iterator</code>
-  constructor or the <code>file_size</code> function.
-</p>
-
-  <p><i>[
-    9 Oct 2014 Beman supplies proposed wording.
-  ]</i></p>
-
-
-<p><i>[<b>Apr 2016 Issue updated to address the C++ Working Paper. Previously addressed File System TS</b>]</i></p>
- 
-
-
-
-<p><b>Proposed resolution:</b></p>
-<ol>
-<li>
-  <blockquote>
-  <pre>
-    bool is_empty(const path&amp; p);
-    bool is_empty(const path&amp; p, error_code&amp; ec) noexcept;
-  </pre>
-  <blockquote>
-    <p>
-      <i>Effects:</i>
-    </p>
-    <ul>
-      <li>
-        Determine <code>file_status s</code>, as if by
-        <ins>
-          <code>status(p)</code> or
-        </ins> <code>status(p, ec)</code><ins>, respectively</ins>.
-      </li>
-      <li>
-        <ins>
-          For the signature with argument <code>ec</code>, return <code>false</code> if
-          an error occurred.
-        </ins>
-      </li>
-      <li>
-        <ins>
-          Otherwise, if <code>is_directory(s)</code>:
-        </ins>
-        <ul>
-          <li>
-            <ins>
-              Create <code>directory_iterator itr</code>, as if by
-              <code>directory_iterator(p)</code>
-              or <code>directory_iterator(p, ec)</code>, respectively.
-            </ins>
-          </li>
-          <li>
-            <ins>
-              For the signature with argument <code>ec</code>, return <code>false</code> if
-              an error occurred.
-            </ins>
-          </li>
-          <li>
-            <ins>
-              Otherwise, return <code>itr == directory_iterator()</code>.
-            </ins>
-          </li>
-        </ul>
-      </li>
-      <li>
-        <ins>Otherwise:</ins>
-        <ul>
-          <li>
-            <ins>
-              Determine <code>uintmax_t sz</code>, as if by <code>
-                file_size(p)
-              </code> or<code> file_size(p, ec)</code>, respectively
-            </ins>.
-          </li>
-          <li>
-            <ins>
-              For the signature with argument <code>ec</code>, return <code>false</code> if
-              an error occurred.
-            </ins>
-          </li>
-          <li>
-            <ins>
-              Otherwise, return <code>sz == 0</code>.
-            </ins>
-          </li>
-        </ul>
-      </li>
-    </ul>
-    <p>
-      <ins>
-        <i>Remarks:</i> The temporary objects described in <i>Effects</i>
-        are for exposition only. Implementations are not required to create them.
-      </ins>
-    </p>
-    <p>
-      <i>Returns:</i>
-      <del>
-        <code>
-          is_directory(s) ? directory_iterator(p) == directory_iterator()
-          : file_size(p) == 0;
-        </code>
-      </del>
-      <ins>
-        See <i>Effects</i>.
-      </ins>
-    </p>
-    <blockquote>
-      <p>
-        <del>
-          The signature with argument <code>ec</code> returns <code>false</code> if
-          an error occurs.
-        </del>
-      </p>
-    </blockquote>
-    <p>
-      <i>Throws:</i> As specified in Error reporting (7).
-    </p>
-  </blockquote>
-  </blockquote>
-</li>
-</ol>
 
 
 
@@ -20035,9 +19894,10 @@ to the specification of <tt>optional</tt> in the C++ WP.
 
 <p>Monday: Priority set to 1; will re-review later in the week</p>
 
-<p><i>[2016-08-01, Tomasz comments]</i></p>
+<p><i>[2016-08-03, Tomasz comments]</i></p>
 
-<p>1) Value forwarding constructor (<tt>template&lt;typename U&gt; optional(U&amp;&amp;)</tt>) is underspecified.</p>
+<ol>
+<li><p>Value forwarding constructor (<tt>template&lt;typename U&gt; optional(U&amp;&amp;)</tt>) is underspecified.</p>
 <p>For the following use code:</p>
 
 <blockquote><pre>
@@ -20051,27 +19911,126 @@ instead of the <tt>optional&lt;T&gt;</tt> copy constructor, in case if <tt>T</tt
 <tt>optional&lt;T&gt;</tt>. This happens for any type <tt>T</tt> that has unconstrained perfect forwarding constructor, 
 especially <tt>optional&lt;any&gt;</tt>.
 </p>
-
-<p>2) As pointed several times by Andrzej Krzeminski, the introduction of the value forwarding constructors causes 
-problems in case of the class that can be constructed both from value and <tt>optional</tt>. For example:
+</li>
+<li>
+<p>The behavior of the construction of the <tt>optional&lt;T&gt; ot</tt> from <tt>optional&lt;U&gt; ou</tt> is 
+inconsistent for classes <tt>T</tt> than can be constructed both from <tt>optional&lt;U&gt;</tt> and <tt>U</tt>. 
+There are two possible semantics for such operation:
+</p>
+<ul>
+<li><em>unwrapping:</em> if <tt>ou</tt> is initialized (<tt>bool(ou)</tt>), initialize contained value of <tt>ot</tt> 
+from <tt>*ou</tt>, otherwise make <tt>ot</tt> uninitialized (<tt>!bool(ot)</tt>)</li>
+<li><em>value forwarding:</em> initialize contained value of <tt>ot</tt> from <tt>ou</tt>, <tt>ot</tt> is always 
+initialized (<tt>bool(ot)</tt>) With the proposed resolution, construction is preferring <em>value forwarding</em>, 
+while assignment is always using <em>unwrapping</em>.</li>
+</ul>
+<p>
+For example, if we consider following class:
 </p>
 <blockquote>
 <pre>
 struct Widget
 {
-  Widget(optional&lt;int&gt;);
   Widget(int);
+  Widget(optional&lt;int&gt;);
 };
-
-optional&lt;Widget&gt; w1(10); // calls Widget(int);
-optional&lt;Widget&gt; w2(make_optional(10)); // call Widget(int), because optional&lt;T&gt;&amp;&amp; 
-  // (with T = int) is more specialized than U&amp;&amp; (with U = optional&lt;int&gt;)
-
-optional&lt;int&gt; oi(10);
-optional&lt;Widget&gt; w3(oi); // call Widget(optional&lt;int&gt;), because U&amp;&amp; 
-  // (with U = optional&lt;int&gt;&amp;) is better match than optional&lt;T&gt; const&amp; (with T = int)
 </pre>
 </blockquote>
+<p>
+Notice, that such set of constructor, is an result of pretty common in situation when the construction of the 
+<tt>Widget</tt> from known value is common and usage of <tt>optional</tt> version is rare. In such situation, 
+presence of <tt>Widget(int)</tt> construction is an optimization used to avoid unnecessary empty checks and 
+construction <tt>optional int</tt>.
+<p/>
+For the following declarations:
+</p>
+<blockquote>
+<pre>
+optional&lt;Widget&gt; w1(make_optional(10));
+optional&lt;Widget&gt; w2;
+w2 = make_optional(10);
+</pre>
+</blockquote>
+<p>
+The <tt>w1</tt> will contain a value constructed created using <tt>Widget(optional&lt;int&gt;)</tt> constructor, 
+as corresponding unwrapping constructor (<tt>optional&lt;U&gt; const&amp;</tt>) is eliminated by 
+<tt>is_constructible_v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> 
+(<tt>is_constructible_v&lt;Widget, const optional&lt;int&gt;&amp;&gt;</tt>) having a true value.
+In contrast <tt>w2</tt> will contain a value created using <tt>Widget(int)</tt> constructor, as corresponding 
+value forwarding assignment (<tt>U&amp;&amp;</tt>) is eliminated by the fact that 
+<tt>std::decay_t&lt;U&gt;</tt> (<tt>optional&lt;int&gt;</tt>) is specialization of <tt>optional</tt>.
+<p/>
+In addition, the construction is having a preference for <em>value forwarding</em> and assignment is always using 
+<em>unwrapping</em>. That means that for the following class:
+</p>
+<blockquote><pre>
+struct Thingy
+{
+   Thingy(optional&lt;string&gt;);
+};
+
+optional&lt;Thingy&gt; t1(optional&lt;string&gt;("test"));
+</pre></blockquote>
+<p>
+The <tt>t1</tt> has a contained value constructed from using <tt>Thingy(optional&lt;std::string&gt;)</tt>, 
+as unwrapping constructor (<tt>optional&lt;U&gt; const&amp;</tt>) are eliminated by the 
+<tt>is_constructible&lt;T, U const&amp;&gt;</tt> (<tt>is_constructible&lt;Thingy, std::string const&amp;&gt;</tt>) 
+being <tt>false</tt>. However the following:
+</p>
+<blockquote><pre>
+t1 = optional&lt;std::string&gt;("test2");
+</pre></blockquote>
+<p>
+will not compile, because, the <em>value forwarding</em> assignment (<tt>U&amp;&amp;</tt>) is eliminated by 
+<tt>std::decay_t&lt;U&gt;</tt> (<tt>optional&lt;std::string&gt;</tt>) being optional specialization and the 
+<em>unwrapping</em> assignment (<tt>optional&lt;U&gt; const&amp;</tt>) is ill-formed because 
+<tt>is_constructible&lt;T, U const&amp;&gt;</tt> (<tt>is_constructible&lt;Thingy, std::string const&amp;&gt;</tt>) 
+is <tt>false</tt>.
+</p>
+</li>
+<li>
+<p>
+The semantics of construction and assignment, of <tt>optional&lt;optional&lt;V&gt;&gt;</tt> from 
+<tt>optional&lt;U&gt;</tt> where <tt>U</tt> is convertible to/ same as <tt>T</tt> is also inconsistent. Firstly, 
+in this situation the <tt>optional&lt;V&gt;</tt> is a type that can be constructed both from 
+<tt>optional&lt;U&gt;</tt> and <tt>U</tt> so it fails into set of problem described above. However in 
+addition we have following non-template constructor in <tt>optional&lt;T&gt;</tt>:
+</p>
+<blockquote><pre>
+optional(T const&amp;);
+</pre></blockquote>
+<p>
+Which for <tt>optional&lt;optional&lt;V&gt;&gt;</tt> is equivalent to:
+</p>
+<blockquote><pre>
+optional(optional&lt;V&gt; const&amp;);
+</pre></blockquote>
+<p>
+While there is no corresponding non-template assignment from <tt>T const&amp;</tt>, to make sure that 
+<tt>o = {};</tt> always clear an <tt>optional o</tt>.
+<p/>
+So for the following declarations:
+</p>
+<blockquote><pre>
+optional&lt;int&gt; oi;
+optional&lt;short&gt; os;
+
+optional&lt;optional&lt;int&gt;&gt; ooi1(oi);
+optional&lt;optional&lt;int&gt;&gt; ooi2(os);
+</pre></blockquote>
+<p>
+The <tt>ooi1</tt> uses <em>from-<tt>T</tt></em> constructor, while <tt>ooi2</tt> uses <em>value forwarding</em> constructor. 
+In this case both <tt>ooi1</tt> and <tt>ooi2</tt> are initialized and their contained values <tt>*ooi1</tt>, 
+<tt>*ooi2</tt> are uninitialized <tt>optional</tt>s. However, if we will attempt to make construction consistent 
+with assignment, by preferring <em>unwrapping</em> (<tt>optional&lt;U&gt; const&amp;</tt>), then <tt>ooi2</tt> 
+will end up being uninitialized.
+<p/>
+In summary, I believe that relation between <em>unwrapping</em>, <em>value forwarding</em> and 
+<em>from-<tt>T</tt></em> construction/assignment is to subtle to being handled as defect report and requires 
+a full paper analyzing possible design and their pros/cons.
+</p>
+</li>
+</ol>
 
 <p>Tuesday PM: Ville and Eric to implement and report back in Issaquah. Moved to Open</p>
 
