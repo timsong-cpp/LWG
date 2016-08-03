@@ -1,7 +1,5 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY nbsp "&#160;">
-] >
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2465" status="New">
 <title>SFINAE-friendly <tt>common_type</tt> is nearly impossible to specialize
@@ -188,10 +186,10 @@ struct common_type&lt;T, U, Vs...&gt;
 </p></blockquote>
 </blockquote>
 
-<note>2016-08-2, Chicago: Walt, Nevin, Rob, and Hal provide revised wording</note>
-</discussion>
+<note>2016-08-02, Chicago: Walt, Nevin, Rob, and Hal provide revised wording</note>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to N4606.
 </p>
@@ -291,7 +289,109 @@ be no member <tt>type</tt>.</p></li>
 </blockquote>
 </li>
 </ol>
+</blockquote>
 
+<note>2016-08-03 Chicago LWG</note>
+<p>
+LWG asks for minor wording tweaks and for an added Note.
+Walter revises the Proposed Resolution accordingly.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<note>This also resolves the first part of LWG <iref ref="2460"/></note>
+
+<ol>
+<li><p>In Table 46 &mdash; "Other transformations" edit the entry for <tt>common_type</tt>:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 46 &mdash; Other transformations</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Comments</th>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class... T&gt;<br/>
+struct common_type;</tt>
+</td>
+
+<td>
+The member typedef <tt>type</tt> shall be defined or omitted as specified below.<br/>
+If it is omitted, there shall be no member <tt>type</tt>. All types in the<br/>
+parameter pack <tt>T</tt> shall be complete or (possibly <i>cv</i>) <tt>void</tt>.<br/> 
+A program may specialize this trait <ins>for two <i>cv</i>-unqualified non-reference types</ins><br/> 
+if at least one <del>template parameter in the specialization</del><ins>of them</ins><br/> 
+is a user-defined type. [<i>Note:</i> Such specializations are<br/>
+needed when only explicit conversions are desired among the template<br/>
+arguments. &mdash; <i>end note</i>]
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[meta.trans.other]"/> p3 (and its subbullets) as shown below</p>
+
+<blockquote>
+<p>
+For the <tt>common_type</tt> trait applied to a parameter pack <tt>T</tt> of types, the member <tt>type</tt> 
+shall be either defined or not present as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; If <tt>sizeof...(T)</tt> is zero, there shall be no member <tt>type</tt>.</p></li>
+<li><p>(3.2) &mdash; If <tt>sizeof...(T)</tt> is one, let <tt>T0</tt> denote the sole type in the pack <tt>T</tt>. 
+The member typedef <tt>type</tt> shall denote the same type as <tt>decay_t&lt;T0&gt;</tt>.</p></li>
+<li><p>(3.3) &mdash; <ins>If <tt>sizeof...(T)</tt> is two, let <code>T1</code> and <code>T2</code>, respectively,
+denote the first and second types comprising <code>T</code>, and let <code>D1</code> and <code>D2</code>, 
+respectively, denote <code>decay_t&lt;T1&gt;</code> and <code>decay_t&lt;T2&gt;</code>.</ins></p>
+<ol style="list-style-type: none">
+<li><p>(3.3.1) &mdash; <ins>If <code>is_same_v&lt;T1, D1&gt;</code> and <code>is_same_v&lt;T2, D2&gt;</code>,
+let <code>C</code> denote the type of an unevaluated conditional expression (<sref ref="[expr.cond]"/>)
+whose first operand is an arbitrary value of type <code>bool</code>,
+whose second operand is an xvalue of type <code>D1</code>,
+and whose third operand is an xvalue of type <code>D2</code>.
+[<i>Note:</i> This will not apply if there is a specialization <code>common_type&lt;D1, D2&gt;</code>. &mdash; 
+<i>end note</i>]</ins></p></li>
+<li><p>(3.3.2) &mdash; <ins>Otherwise, let <code>C</code> denote the type
+<code>common_type_t&lt;D1, D2&gt;</code>.</ins></p></li>
+</ol>
+<p><ins> In either case, if there is such a type <code>C</code>,
+the member typedef <code>type</code> shall denote <code>C</code>.
+Otherwise, there shall be no member <code>type</code>.</ins></p>
+</li>
+<li><p>(3.4) &mdash; If <tt>sizeof...(T)</tt> is greater than <del>one</del><ins>two</ins>, let <tt>T1</tt>, <tt>T2</tt>, and <tt>R</tt>, 
+respectively, denote the first, second, and (pack of) remaining types comprising <tt>T</tt>. 
+<del>[<i>Note:</i> <tt>sizeof...(R)</tt> may be zero. &mdash; <i>end note</i>] Let <tt>C</tt> denote the
+type, if any, of an unevaluated conditional expression (<sref ref="[expr.cond]"/>) whose first operand is an arbitrary value
+of type <tt>bool</tt>, whose second operand is an xvalue of type <tt>T1</tt>, and whose third operand is 
+an xvalue of type <tt>T2</tt>.</del> <ins>Let <code>C</code> denote <code>common_type_t&lt;T1, T2&gt;</code>.</ins> 
+If there is such a type <tt>C</tt>, the member typedef <tt>type</tt> 
+shall denote the same type, if any, as <tt>common_type_t&lt;C, R...&gt;</tt>. Otherwise, there shall 
+be no member <tt>type</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
