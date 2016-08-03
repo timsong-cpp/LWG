@@ -27,8 +27,9 @@ to the specification of <tt>optional</tt> in the C++ WP.
 <note>2016-07 &mdash; Chicago</note>
 <p>Monday: Priority set to 1; will re-review later in the week</p>
 
-<note>2016-08-01, Tomasz comments</note>
-<p>1) Value forwarding constructor (<tt>template&lt;typename U&gt; optional(U&amp;&amp;)</tt>) is underspecified.</p>
+<note>2016-08-03, Tomasz comments</note>
+<ol>
+<li><p>Value forwarding constructor (<tt>template&lt;typename U&gt; optional(U&amp;&amp;)</tt>) is underspecified.</p>
 <p>For the following use code:</p>
 
 <blockquote><pre>
@@ -42,27 +43,126 @@ instead of the <tt>optional&lt;T&gt;</tt> copy constructor, in case if <tt>T</tt
 <tt>optional&lt;T&gt;</tt>. This happens for any type <tt>T</tt> that has unconstrained perfect forwarding constructor, 
 especially <tt>optional&lt;any&gt;</tt>.
 </p>
-
-<p>2) As pointed several times by Andrzej Krzeminski, the introduction of the value forwarding constructors causes 
-problems in case of the class that can be constructed both from value and <tt>optional</tt>. For example:
+</li>
+<li>
+<p>The behavior of the construction of the <tt>optional&lt;T&gt; ot</tt> from <tt>optional&lt;U&gt; ou</tt> is 
+inconsistent for classes <tt>T</tt> than can be constructed both from <tt>optional&lt;U&gt;</tt> and <tt>U</tt>. 
+There are two possible semantics for such operation:
+</p>
+<ul>
+<li><em>unwrapping:</em> if <tt>ou</tt> is initialized (<tt>bool(ou)</tt>), initialize contained value of <tt>ot</tt> 
+from <tt>*ou</tt>, otherwise make <tt>ot</tt> uninitialized (<tt>!bool(ot)</tt>)</li>
+<li><em>value forwarding:</em> initialize contained value of <tt>ot</tt> from <tt>ou</tt>, <tt>ot</tt> is always 
+initialized (<tt>bool(ot)</tt>) With the proposed resolution, construction is preferring <em>value forwarding</em>, 
+while assignment is always using <em>unwrapping</em>.</li>
+</ul>
+<p>
+For example, if we consider following class:
 </p>
 <blockquote>
 <pre>
 struct Widget
 {
-  Widget(optional&lt;int&gt;);
   Widget(int);
+  Widget(optional&lt;int&gt;);
 };
-
-optional&lt;Widget&gt; w1(10); // calls Widget(int);
-optional&lt;Widget&gt; w2(make_optional(10)); // call Widget(int), because optional&lt;T&gt;&amp;&amp; 
-  // (with T = int) is more specialized than U&amp;&amp; (with U = optional&lt;int&gt;)
-
-optional&lt;int&gt; oi(10);
-optional&lt;Widget&gt; w3(oi); // call Widget(optional&lt;int&gt;), because U&amp;&amp; 
-  // (with U = optional&lt;int&gt;&amp;) is better match than optional&lt;T&gt; const&amp; (with T = int)
 </pre>
 </blockquote>
+<p>
+Notice, that such set of constructor, is an result of pretty common in situation when the construction of the 
+<tt>Widget</tt> from known value is common and usage of <tt>optional</tt> version is rare. In such situation, 
+presence of <tt>Widget(int)</tt> construction is an optimization used to avoid unnecessary empty checks and 
+construction <tt>optional int</tt>.
+<p/>
+For the following declarations:
+</p>
+<blockquote>
+<pre>
+optional&lt;Widget&gt; w1(make_optional(10));
+optional&lt;Widget&gt; w2;
+w2 = make_optional(10);
+</pre>
+</blockquote>
+<p>
+The <tt>w1</tt> will contain a value constructed created using <tt>Widget(optional&lt;int&gt;)</tt> constructor, 
+as corresponding unwrapping constructor (<tt>optional&lt;U&gt; const&amp;</tt>) is eliminated by 
+<tt>is_constructible_v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> 
+(<tt>is_constructible_v&lt;Widget, const optional&lt;int&gt;&amp;&gt;</tt>) having a true value.
+In contrast <tt>w2</tt> will contain a value created using <tt>Widget(int)</tt> constructor, as corresponding 
+value forwarding assignment (<tt>U&amp;&amp;</tt>) is eliminated by the fact that 
+<tt>std::decay_t&lt;U&gt;</tt> (<tt>optional&lt;int&gt;</tt>) is specialization of <tt>optional</tt>.
+<p/>
+In addition, the construction is having a preference for <em>value forwarding</em> and assignment is always using 
+<em>unwrapping</em>. That means that for the following class:
+</p>
+<blockquote><pre>
+struct Thingy
+{
+   Thingy(optional&lt;string&gt;);
+};
+
+optional&lt;Thingy&gt; t1(optional&lt;string&gt;("test"));
+</pre></blockquote>
+<p>
+The <tt>t1</tt> has a contained value constructed from using <tt>Thingy(optional&lt;std::string&gt;)</tt>, 
+as unwrapping constructor (<tt>optional&lt;U&gt; const&amp;</tt>) are eliminated by the 
+<tt>is_constructible&lt;T, U const&amp;&gt;</tt> (<tt>is_constructible&lt;Thingy, std::string const&amp;&gt;</tt>) 
+being <tt>false</tt>. However the following:
+</p>
+<blockquote><pre>
+t1 = optional&lt;std::string&gt;("test2");
+</pre></blockquote>
+<p>
+will not compile, because, the <em>value forwarding</em> assignment (<tt>U&amp;&amp;</tt>) is eliminated by 
+<tt>std::decay_t&lt;U&gt;</tt> (<tt>optional&lt;std::string&gt;</tt>) being optional specialization and the 
+<em>unwrapping</em> assignment (<tt>optional&lt;U&gt; const&amp;</tt>) is ill-formed because 
+<tt>is_constructible&lt;T, U const&amp;&gt;</tt> (<tt>is_constructible&lt;Thingy, std::string const&amp;&gt;</tt>) 
+is <tt>false</tt>.
+</p>
+</li>
+<li>
+<p>
+The semantics of construction and assignment, of <tt>optional&lt;optional&lt;V&gt;&gt;</tt> from 
+<tt>optional&lt;U&gt;</tt> where <tt>U</tt> is convertible to/ same as <tt>T</tt> is also inconsistent. Firstly, 
+in this situation the <tt>optional&lt;V&gt;</tt> is a type that can be constructed both from 
+<tt>optional&lt;U&gt;</tt> and <tt>U</tt> so it fails into set of problem described above. However in 
+addition we have following non-template constructor in <tt>optional&lt;T&gt;</tt>:
+</p>
+<blockquote><pre>
+optional(T const&amp;);
+</pre></blockquote>
+<p>
+Which for <tt>optional&lt;optional&lt;V&gt;&gt;</tt> is equivalent to:
+</p>
+<blockquote><pre>
+optional(optional&lt;V&gt; const&amp;);
+</pre></blockquote>
+<p>
+While there is no corresponding non-template assignment from <tt>T const&amp;</tt>, to make sure that 
+<tt>o = {};</tt> always clear an <tt>optional o</tt>.
+<p/>
+So for the following declarations:
+</p>
+<blockquote><pre>
+optional&lt;int&gt; oi;
+optional&lt;short&gt; os;
+
+optional&lt;optional&lt;int&gt;&gt; ooi1(oi);
+optional&lt;optional&lt;int&gt;&gt; ooi2(os);
+</pre></blockquote>
+<p>
+The <tt>ooi1</tt> uses <em>from-<tt>T</tt></em> constructor, while <tt>ooi2</tt> uses <em>value forwarding</em> constructor. 
+In this case both <tt>ooi1</tt> and <tt>ooi2</tt> are initialized and their contained values <tt>*ooi1</tt>, 
+<tt>*ooi2</tt> are uninitialized <tt>optional</tt>s. However, if we will attempt to make construction consistent 
+with assignment, by preferring <em>unwrapping</em> (<tt>optional&lt;U&gt; const&amp;</tt>), then <tt>ooi2</tt> 
+will end up being uninitialized.
+<p/>
+In summary, I believe that relation between <em>unwrapping</em>, <em>value forwarding</em> and 
+<em>from-<tt>T</tt></em> construction/assignment is to subtle to being handled as defect report and requires 
+a full paper analyzing possible design and their pros/cons.
+</p>
+</li>
+</ol>
 
 <p>Tuesday PM: Ville and Eric to implement and report back in Issaquah. Moved to Open</p>
 </discussion>
