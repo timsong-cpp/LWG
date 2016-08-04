@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-08-04 at 19:08:38 UTC</p>
+<p><p>Revised 2016-08-04 at 20:08:03 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -24739,7 +24739,7 @@ type and return value of the member function <tt>get</tt>.
 <hr>
 <h3><a name="2532" href="#2532">2532.</a> Satisfying a <tt>promise</tt> at thread exit</h3>
 <p><b>Section:</b> 30.6.5 [futures.promise] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2015-09-03 <b>Last modified:</b> 2015-10-21</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2015-09-03 <b>Last modified:</b> 2016-08-04</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#futures.promise">active issues</a> in [futures.promise].</p>
@@ -24761,8 +24761,50 @@ error condition should be stored in the shared state. Implementations diverge, t
 dereferencing an invalid pointer, or keep the shared state around until thread exit.
 </p>
 
+<p><i>[2016-08-03, Billy O'Neal suggests concrete wording]</i></p>
+
+
 
 <p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change 30.6.4 [futures.state] p7 as indicated:</p>
+
+<blockquote>
+<p>
+-7- When an asynchronous provider is said to abandon its shared state, it means:
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; first, if that state is not ready <ins>or scheduled to be made ready at thread exit</ins>, the provider</p>
+<ol style="list-style-type: none">
+<li><p>(7.1.1) &mdash; stores an exception object of type <tt>future_error</tt> with an error condition of 
+<tt>broken_promise</tt> within its shared state; and then</p></li>
+<li><p>(7.1.2) &mdash; makes its shared state ready;</p></li>
+</ol>
+</li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Change 30.6.4 [futures.state] p10 as indicated:</p>
+
+<blockquote>
+<p>
+-10- Some functions (e.g., <tt>promise::set_value_at_thread_exit</tt>) <del>delay making the shared state ready 
+until</del><ins>schedule the shared state to be made ready when</ins> the
+calling thread exits. <ins>This associates a reference to the shared state with the calling thread.</ins> The 
+destruction of each of that thread's objects with thread storage duration 
+(3.7.2 [basic.stc.thread]) is sequenced before making that shared state ready. <ins>When the calling 
+thread makes the shared state ready, if the thread holds the last reference to the shared state, the shared state 
+is destroyed. [<i>Note:</i> This means that the shared state may not become ready until after the <em>asynchronous 
+provider</em> has been destroyed. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</li>
+</ol>
 
 
 
