@@ -21,12 +21,12 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-03 at 21:08:15 UTC</p>
+<p><p>Revised 2016-08-04 at 03:08:39 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
 <p><b>Section:</b> 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-02-12</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements">active issues</a> in [container.requirements].</p>
@@ -443,7 +443,7 @@ void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;
 <hr>
 <h3><a name="2179" href="#2179">2179.</a> <tt>enable_shared_from_this</tt> and construction from raw pointers</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab], 20.11.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
@@ -546,7 +546,7 @@ This issues should be closed as <tt>Resolved</tt> by paper p0033r1 at Jacksonvil
 <hr>
 <h3><a name="2208" href="#2208">2208.</a> <tt>std::reverse_iterator</tt> should be a literal type</h3>
 <p><b>Section:</b> 24.5.1 [reverse.iterators] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#reverse.iterators">issues</a> in [reverse.iterators].</p>
@@ -1003,6 +1003,107 @@ Room: tentatively resolved; revisit after C11 paper: <a href="http://wg21.link/P
 
 
 <hr>
+<h3><a name="2245" href="#2245">2245.</a> <tt>packaged_task::reset()</tt> memory allocation</h3>
+<p><b>Section:</b> 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-03-05 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.task.members">issues</a> in [futures.task.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+The effects of <tt>packaged_task::reset()</tt> result in memory allocation, but
+don't allow a user to provide an allocator.
+<p/>
+<tt>packaged_task::reset()</tt> needs to be overloaded like so:
+</p>
+
+<blockquote><pre>
+template&lt;class Alloc&gt;  
+void reset(const Alloc&amp;);
+</pre></blockquote>
+
+<p>
+Alternatively, the effects of <tt>reset()</tt> need to require the same allocator is used 
+as at construction, which would require the constructor to store the allocator for later use.
+<p/>
+I like to remark that GCC at the moment uses the second option, i.e. the allocator passed to the constructor 
+(if any) is used to create the new shared state, because this didn't require any change to the
+interface.
+</p>
+
+<p><i>[2015-02 Cologne]</i></p>
+
+<p>
+Handed over to SG1.
+</p>
+
+<p><i>[2015-05 Lenexa, SG1 response]</i></p>
+
+<p>
+No strong opinions in SG1, and this is really an LWG issue.  Back to you.
+</p>
+
+<p><i>[2016-08-02 Chicago, Billy O'Neal comments and suggests concrete wording]</i></p>
+
+<p>
+Talked this over with Alasdair, who says there's little desire to allow the <tt>packaged_task</tt> to 
+be change allocators after initial construction, making what libstdc++ does already the "right thing." 
+A clarification note is still necessary to indicate that the allocator supplied to the 
+<tt>allocator_arg_t</tt> constructor is to be used.
+</p>
+<p>Wed PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606
+</p>
+
+<ol>
+<li><p>Change 30.6.9.1 [futures.task.members] as indicated:</p>
+
+<blockquote>
+<pre>
+void reset();
+</pre>
+<blockquote>
+<p>
+-22- <i>Effects:</i> 
+</p>
+<ul>
+<li><p><ins>if the shared state associated with <tt>*this</tt> was created via the <tt>packaged_task(F&amp;&amp; f)</tt> 
+constructor, a</ins><del>A</del>s if <tt>*this = packaged_task(std::move(f))</tt>, where <tt>f</tt> is the task stored in 
+<tt>*this</tt>.</p></li>
+<li><p><ins>if the shared state associated with <tt>*this</tt> was created via the 
+<tt>packaged_task(allocator_arg_t, Allocator&amp; a, F&amp;&amp;)</tt> constructor, as if 
+<tt>*this = packaged_task(allocator_arg, a, std::move(f))</tt>, where <tt>a</tt> is the allocator used to allocate 
+the shared state associated with <tt>*this</tt>, and <tt>f</tt> is the task stored in <tt>*this</tt>.</ins></p></li>
+</ul>
+<p>
+[<i>Note:</i> This constructs a new shared state for <tt>*this</tt>. The old state is abandoned 
+(30.6.4). &mdash; <i>end note</i>]
+<p/>
+-23- <i>Throws:</i>
+</p>
+<ul>
+<li><p><ins>if no allocator was used,</ins> <tt>bad_alloc</tt> if memory for the new shared state could not be allocated.</p></li>
+<li><p><ins>if an allocator was used, any exception thrown by <tt>std::allocator_traits&lt;Allocator&gt;::template 
+rebind_traits&lt;<i>unspecified</i>&gt;::allocate</tt>.</ins></p></li>
+<li><p>any exception thrown by the move constructor of the task stored in the shared state.</p></li>
+<li><p><tt>future_error</tt> with an error condition of <tt>no_state</tt> if <tt>*this</tt> has no shared state.</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2294" href="#2294">2294.</a> <tt>&lt;cstdlib&gt;</tt> should declare <tt>abs(double)</tt></h3>
 <p><b>Section:</b> 26.9 [c.math] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
  <b>Submitter:</b> Pete Becker <b>Opened:</b> 2013-09-04 <b>Last modified:</b> 2016-08-03</p>
@@ -1134,7 +1235,7 @@ See proposed resolution of LWG <a href="lwg-defects.html#2192">2192</a>.
 <hr>
 <h3><a name="2337" href="#2337">2337.</a> <tt>shared_ptr operator*()</tt> should not be <tt>noexcept</tt></h3>
 <p><b>Section:</b> 20.11.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-02-12</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.obs">issues</a> in [util.smartptr.shared.obs].</p>
@@ -1683,7 +1784,7 @@ move constructor<ins> or by <tt>A</tt>'s allocate function</ins>.
 <hr>
 <h3><a name="2391" href="#2391">2391.</a> <tt>basic_string</tt> is missing non-<tt>const</tt> <tt>data()</tt></h3>
 <p><b>Section:</b> 21.3.1 [basic.string] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-23</p>
+ <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-22</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
@@ -1877,6 +1978,76 @@ types (3.9 [basic.types]).</ins>
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+<hr>
+<h3><a name="2460" href="#2460">2460.</a> LWG issue 2408 and value categories</h3>
+<p><b>Section:</b> 20.15.7.6 [meta.trans.other], 24.4.1 [iterator.traits] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+LWG issue <a href="lwg-defects.html#2408">2408</a> changes the meat of the specification of <tt>common_type</tt> to compute:
+</p>
+<blockquote><p>
+[..] the type, if any, of an unevaluated conditional expression (5.16) whose first operand is an 
+arbitrary value of type <tt>bool</tt>, whose second operand is an <tt>xvalue</tt> of type <tt>T1</tt>, 
+and whose third operand is an xvalue of type <tt>T2</tt>.
+</p></blockquote>
+<p>
+This has an effect on the specification that I think was unintended. It used to be the case that 
+<tt>common_type&lt;T&amp;, U&amp;&amp;&gt;</tt> would consider the type of a conditional between an 
+lvalue of type <tt>T</tt> and an xvalue of type <tt>U</tt>. It's now either invalid (because there is 
+no such thing as an xvalue of reference type) or considers the type of a conditional between an xvalue 
+of type <tt>T</tt> and an xvalue of type <tt>U</tt>, depending on how you choose to read it.
+<p/>
+Put another way, this has the effect of changing the usual definition from:
+</p>
+<blockquote><pre>
+typedef decay_t&lt;decltype(true ? declval&lt;T&gt;() : declval&lt;U&gt;())&gt; type;
+</pre></blockquote>
+<p>
+to:
+</p>
+<blockquote><pre>
+typedef decay_t&lt;decltype(true ? declval&lt;remove_reference_t&lt;T&gt;&gt;() : declval&lt;remove_reference_t&lt;U&gt;&gt;())&gt; type;
+</pre></blockquote>
+<p>
+It also makes <tt>common_type</tt> underspecified in the case where one of the operands is of type <tt>void</tt>; 
+in that case, the resulting type depends on whether the expression is a throw-expression, which is not 
+specified (but used to be).
+<p/>
+Also on the subject of this wording: the changes to 24.4.1 [iterator.traits] say that 
+<tt>iterator_traits&lt;T&gt;</tt> "shall have no members" in some cases. That's wrong. It's a class type; 
+it always has at least a copy constructor, a copy assignment operator, and a destructor. Plus this 
+removes the usual library liberty to add additional members with names that don't collide with normal 
+usage (for instance, if a later version of the standard adds members, they can't be present here as a 
+conforming extension). Perhaps this should instead require that the class doesn't have members with any 
+of those five names? That's what <a href="lwg-defects.html#2408">2408</a> does for <tt>common_type</tt>'s type member.
+</p>
+
+<p><i>[08-2016 - Chicago]</i></p>
+
+<p>This issue has two parts, one dealing with <tt>common_type</tt>, the other with <tt>iterator_traits</tt>. 
+The first of these is resolved by <a href="lwg-active.html#2465">2465</a>.  See below for the proposed resolution for the other one.</p>
+<p>Wed PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>Change [iterator.traits] p.2:</p>
+
+<p>... as publicly accessible members <del>and no other members</del>:</p>
+
+<p>...</p>
+
+<p>Otherwise, <tt>iterator_traits&lt;Iterator&gt;</tt> shall have no members <ins>by any of the above names</ins>.</p>
 
 
 
@@ -2754,7 +2925,7 @@ bidirectional iterator)</caption>
 <hr>
 <h3><a name="2529" href="#2529">2529.</a> Assigning to <tt>enable_shared_from_this::__weak_this</tt> twice</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
@@ -2894,7 +3065,7 @@ convertible to <tt>bool</tt>, is not hidden, and is unambiguously available in t
 <hr>
 <h3><a name="2570" href="#2570">2570.</a> [fund.ts.v2] <tt>conjunction</tt> and <tt>disjunction</tt> requirements are too strict</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::meta.logical] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#fund.ts.v2::meta.logical">active issues</a> in [fund.ts.v2::meta.logical].</p>
@@ -3308,6 +3479,103 @@ overloaded <tt>operator&amp;</tt>.
 
 
 <hr>
+<h3><a name="2665" href="#2665">2665.</a> <code>remove_filename()</code> post condition is incorrect</h3>
+<p><b>Section:</b> 27.10.8.4.5 [path.modifiers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2014-06-07 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+  <code>remove_filename()</code> specifies <code>!has_filename()</code> as the post condition.
+This post condition is not correct. For example the path <code>"/foo"</code>
+has a filename of <code>"foo"</code>. If we remove the filename we get <code>"/"</code>,
+and <code>"/"</code> has a filename of <code>"/"</code>.</p>
+
+  <p><i>[2014-06-08 Beman supplies an <i>Effects:</i> element.]</i></p>
+
+
+  <p><i>[17 Jun 2014 Rapperswil LWG will investigate issue at a subsequent meeting.]</i></p>
+
+
+<p><i>[<b>Apr 2016 Issue updated to address the C++ Working Paper. Previously addressed File System TS</b>]</i></p>
+ 
+
+<p><i>[2016-04, Issues Telecon]</i></p>
+
+<p>
+There was concern that the effects wording is not right.  Jonathan provided updated wording.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+  <pre>
+    path&amp; <a name="path-remove_filename">remove_filename</a>();
+  </pre>
+  <blockquote>
+    <p>
+      <del><i>Postcondition:</i> <code>!has_filename()</code>.</del>
+    </p>
+    <p>
+    <ins>
+      <i>Effects:</i> <code>*this = parent_path()</code>, except that if <code>parent_path() == root_path()</code>, <code>clear()</code>.
+    </ins>
+    </p>
+    <p>
+      <i>Returns: </i> <code>*this</code>.
+    </p>
+    <p>
+      [<i>Example:</i>
+    </p>
+    <blockquote>
+      <pre>
+        <code>std::cout &lt;&lt; path(&quot;/foo&quot;).remove_filename();</code>  // outputs &quot;<code>/</code>&quot;
+        std::cout &lt;&lt; path(&quot;/&quot;).<code>remove_</code>filename();     // outputs &quot;&quot;
+      </pre>
+    </blockquote>
+    <p>
+      <i>&mdash;end example</i>]
+    </p>
+  </blockquote>
+</blockquote>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<pre>
+  path&amp; <a name="path-remove_filename">remove_filename</a>();
+</pre>
+<blockquote>
+  <p>
+    <del>Postcondition: !has_filename().</del>
+  </p>
+  <p>
+    <ins>Effects: If <code>*this == root_path()</code>, then <code>clear()</code>. Otherwise, <code>*this = parent_path()</code>.</ins>
+  </p>
+  <p>
+    <i>Returns: </i> <code>*this</code>.
+  </p>
+  <p>
+    [<i>Example:</i><br/>
+  <blockquote>
+    <pre>
+      <code>std::cout &lt;&lt; path(&quot;/foo&quot;).remove_filename();</code>  // outputs &quot;<code>/</code>&quot;
+      std::cout &lt;&lt; path(&quot;/&quot;).<code>remove_</code>filename();     // outputs &quot;&quot;
+    </pre>
+  </blockquote><br/>
+    <i>&mdash;end example</i>]
+  </p>
+  </blockquote>
+
+
+
+
+
+
+<hr>
 <h3><a name="2672" href="#2672">2672.</a> Should is_empty use error_code in its specification?</h3>
 <p><b>Section:</b> 27.10.15.19 [fs.op.is_empty] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-08-01 <b>Last modified:</b> 2016-08-03</p>
@@ -3553,9 +3821,341 @@ The descriptions of most functions are explicit about the use of the <code>ec</c
 
 
 <hr>
+<h3><a name="2678" href="#2678">2678.</a> <tt>std::filesystem</tt> enum classes overspecified</h3>
+<p><b>Section:</b> 27.10.10.1 [enum.file_type], 27.10.10.2 [enum.copy_options], 27.10.10.4 [enum.directory_options] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2016-03-19 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The enum class <tt>std::filesystem::file_type</tt> specifies a collection of enumerators for describing the type of 
+a file, but also specifies (1) the numeric values of the enumerators, and (2) that an implementation cannot extend the 
+list with additional types known to it (and by extension, the standard cannot extend the list in future versions without 
+breakage).
+</p>
+<p>
+These both seem like mistakes in the design. I would suggest we remove the 
+specification of numerical values, and maybe also
+</p>
+<ul>
+  <li><p>we allow implementations to add new implementation-defined value</p></li>
+  <li><p>we replace <tt>std::filesystem::file_type::unknown</tt> with a value that <em>only</em> 
+  means &quot;exists but type could not be determined&quot; and use 
+  implementation-specific values for other possibilities.</p></li>
+</ul>
+ <p>
+ Similar overspecification exists for <tt>std::filesystem::copy_options</tt> and 
+ <tt>std::filesystem::directory_options</tt>, where again precise numerical values are specified.
+ </p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<ol>
+<li>
+<p>
+Strike the "Value" column from:
+</p>
+<ul>
+  <li><p>27.10.10.1 [enum.file_type], Table 145 Enum class <code>file_type</code> </p></li>
+  <li><p>27.10.10.2 [enum.copy_options], Table 146 Enum class <code>copy_options</code> </p></li>
+  <li><p>27.10.10.4 [enum.directory_options], Table 148 Enum class <code>enum.directory_options</code>.</p></li>
+</ul>
+</li>
+
+<li><p>Change 27.10.10.1 [enum.file_type] Table 145 Enum class <code>file_type</code> as indicated:</p>
+
+<blockquote>
+ <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse">
+    <tr>
+      <td><b>Constant</b></td>
+      <td><b>Meaning</b></td>
+    </tr>
+    <tr>
+      <td><code>none</code></td>
+      <td>The type of the file has not been determined or an error occurred 
+      while trying to determine the type.</td>
+    </tr>
+    <tr>
+      <td><code>not_found</code></td>
+      <td>Pseudo-type indicating the file was not found. [ <i>Note:</i>
+      The file not being
+      found is not considered an error while determining the type of a file. 
+      <i>—end note</i> ]</td>
+    </tr>
+    <tr>
+      <td><code>regular</code></td>
+      <td>Regular file</td>
+    </tr>
+    <tr>
+      <td><code>directory</code></td>
+      <td>Directory file</td>
+    </tr>
+    <tr>
+      <td><code>symlink</code></td>
+      <td>Symbolic link file</td>
+    </tr>
+    <tr>
+      <td><code>block</code></td>
+      <td>Block special file</td>
+    </tr>
+    <tr>
+      <td><code>character</code></td>
+      <td>Character special file</td>
+    </tr>
+    <tr>
+      <td><code>fifo</code></td>
+      <td>FIFO or pipe file</td>
+    </tr>
+    <tr>
+      <td><code>socket</code></td>
+      <td>Socket file</td>
+    </tr>
+    <tr>
+      <td><ins>implementation-<br/>defined</ins></td>
+      <td><ins>Implementations that support file systems having file types
+      in addition to the above file_type types shall supply
+      implementation-defined <code>file_type</code> 
+      constants to separately identify each of those additional
+      file types</ins></td>
+    </tr>
+    <tr>
+      <td><code>unknown</code></td>
+      <td><del>The file does exist, but is of an operating system dependent type not 
+      covered by any of the other cases or the process does not have permission to query
+      the file type</del> <ins>The file exists but the type could not be determined</ins></td>
+    </tr>
+  </table>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2680" href="#2680">2680.</a> Add "Equivalent to" to filesystem</h3>
+<p><b>Section:</b> 27.10 [filesystems] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Beman Dawes <b>Opened:</b> 2016-04-15 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>The IS project editors have requested that filesystem <i>Effects</i> elements specified purely as C++ code 
+include the phrase "Equivalent to" if this is the intent. They do not consider this change to be editorial.</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+</p>
+
+<p><i><section>27.10.8.4.5 [path.modifiers]</section></i></p>
+<blockquote>
+<pre>path&amp; replace_filename(const path&amp; replacement);</pre>
+<blockquote>
+<p><i>Effects:</i> <ins>Equivalent to:</ins></p>
+<pre>remove_filename();
+operator/=(replacement);</pre>
+</blockquote>
+</blockquote>
+
+<p><i><section>27.10.8.6 [path.non-member]</section></i></p>
+<blockquote>
+<pre>void swap(path&amp; lhs, path&amp; rhs) noexcept;</pre>
+<blockquote>
+<p><i>Effects:</i> <ins>Equivalent to:</ins> <code>lhs.swap(rhs)</code></p>
+</blockquote>
+</blockquote>
+
+<p><i><section>27.10.8.6.1 [path.io]</section></i></p>
+<blockquote>
+<pre>template &lt;class charT, class traits&gt;
+basic_ostream&lt;charT, traits&gt;&amp;
+operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const path&amp; p);</pre>
+<blockquote>
+<p><i>Effects:</i> <ins>Equivalent to:</ins> <code>os &lt;&lt; quoted(p.string&lt;charT, traits&gt;())</code>.</p>
+<pre></pre>
+</blockquote>
+</blockquote>
+
+<p><i><section>27.10.8.6.1 [path.io]</section></i></p>
+<blockquote>
+<pre>template &lt;class charT, class traits&gt;
+basic_istream&lt;charT, traits&gt;&amp;
+operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp; is, path&amp; p);</pre>
+<blockquote>
+<p><i>Effects:</i> <ins>Equivalent to:</ins></p>
+<pre>basic_string&lt;charT, traits&gt; tmp;
+is &gt;&gt; quoted(tmp);
+p = tmp;</pre>
+</blockquote>
+</blockquote>
+
+<p><i><section>27.10.15.3 [fs.op.copy]</section></i></p>
+<blockquote>
+<pre>void copy(const path&amp; from, const path&amp; to);
+void copy(const path&amp; from, const path&amp; to, error_code&amp; ec) noexcept;</pre>
+<blockquote>
+<p><i>Effects:</i> <ins>Equivalent to:</ins> <code>copy(from, to, copy_options::none)</code> or <code>copy(from, to, 
+copy_options::none, ec)</code>, respectively.</p>
+</blockquote>
+</blockquote>
+
+<p><i><section>27.10.15.5 [fs.op.copy_symlink]</section></i></p>
+<blockquote>
+<pre>void copy_symlink(const path&amp; existing_symlink, const path&amp; new_symlink);
+void copy_symlink(const path&amp; existing_symlink, const path&amp; new_symlink,
+  error_code&amp; ec) noexcept;</pre>
+<blockquote>
+<p><i>Effects:</i> <ins>Equivalent to:</ins> <code><i>function</i>(read_symlink(existing_symlink), new_symlink)</code> or
+<code><i>function</i>(read_symlink(existing_symlink, ec), new_symlink, ec)</code>, respectively, 
+where <code><i>function</i></code>
+is <code>create_symlink</code> or <code>create_directory_symlink</code>, as appropriate.</p>
+</blockquote>
+</blockquote>
+
+
+
+
+
+
+
+<hr>
+<h3><a name="2681" href="#2681">2681.</a> <code>filesystem::copy()</code> cannot copy symlinks</h3>
+<p><b>Section:</b> 27.10.15.3 [fs.op.copy] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#fs.op.copy">active issues</a> in [fs.op.copy].</p>
+<p><b>View all other</b> <a href="lwg-index.html#fs.op.copy">issues</a> in [fs.op.copy].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>27.10.15.3 [fs.op.copy] paragraph 3 bullet (3.4) says that if <code>is_symlink(f)</code> and
+<code>copy_options</code> is set in options then it should copy a symlink, but that
+case cannot be reached.</p>
+
+<p><code>is_symlink(f)</code> can only be true if f was set using
+<code>symlink_status(from)</code>, but that doesn't happen unless one of
+<code>create_symlinks</code> or <code>skip_symlinks</code> is set in options. It should depend
+on <code>copy_symlinks</code> too.</p>
+
+<p>I'm not sure what the correct behaviour is, but I don't think we
+want to simply add a check for <code>copy_symlinks</code> in bullet (3.1) because
+that would mean that <code>t = symlink_status(to)</code>, and I don't think we want
+that. Consider <code>'touch file; mkdir dir; ln -s dir link;'</code> and then
+<code>filesystem::copy("file", "link",
+filesystem::copy_options::copy_symlinks)</code>. If <code>t = symlink_status(to)</code>
+then <code>is_directory(t) == false</code>, and we don't use bullet (3.5.4) but go
+to (3.5.5) instead and fail. So when <code>copy_symlinks</code> is set we still
+need to use <code>t = status(to)</code> as specified today.</p>
+
+<p><i>[2016-05 Issues Telecom]</i></p>
+
+<p>
+This is related to <a href="lwg-active.html#2682">2682</a>; and should be considered together.
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>Modify paragraph 3 of 27.10.15.3 [fs.op.copy] as shown:</p>
+
+<blockquote>
+<p><i>Effects:</i> Before the first use of <code>f</code> and <code>t</code>:<br/><br/>
+ — If <code>(options &amp; copy_options::create_symlinks) != copy_options::none ||
+(options &amp; copy_options::skip_symlinks) != copy_options::none</code>
+then <code>auto f = symlink_status(from)</code> and if needed <code>auto t = symlink_status(to)</code>.<br/><br/>
+<ins>
+ — Otherwise, if <code>(options &amp; copy_options::copy_symlinks) != copy_options::none</code>
+then <code>auto f = symlink_status(from)</code> and if needed <code>auto t = status(to)</code>.
+</ins><br/>
+ — Otherwise, <code>auto f = status(from)</code> and if needed <code>auto t = status(to)</code>.
+</p>
+</blockquote>
+
+
+
+
+
+<hr>
+<h3><a name="2682" href="#2682">2682.</a> <code>filesystem::copy()</code> won't create a symlink to a directory</h3>
+<p><b>Section:</b> 27.10.15.3 [fs.op.copy] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#fs.op.copy">active issues</a> in [fs.op.copy].</p>
+<p><b>View all other</b> <a href="lwg-index.html#fs.op.copy">issues</a> in [fs.op.copy].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>(First raised in c++std-lib-38544)</p>
+
+<p><code>filesystem::copy</code> doesn't create a symlink to a directory in this case:</p>
+
+<blockquote>
+<code>copy("/", "root", copy_options::create_symlinks);</code>
+</blockquote>
+
+<p>If the first path is a file then a symlink is created, but I think my
+implementation is correct to do nothing for a directory. We get to
+bullet 27.10.15.3 [fs.op.copy] (3.6) where <code>is_directory(f)</code> is true, but <code>options
+== create_symlinks</code>, so we go to the next bullet (3.7) which says
+"Otherwise, no effects."</p>
+
+<p>I think the case above should either create a symlink, or should
+report an error. GNU cp -s gives an error in this case, printing
+"omitting directory '/'". An error seems reasonable, you can use
+<code>create_symlink</code> to create a symlink to a directory.
+</p>
+
+<p><i>[2016-05 Issues Telecom]</i></p>
+
+<p>
+This is related to <a href="lwg-active.html#2681">2681</a>; and should be considered together.
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>Add a new bullet following (3.6) in 27.10.15.3 [fs.op.copy] as shown:</p>
+
+<blockquote>
+<ul>
+<li><p>If <code>!exists(t)</code>, then <code>create_directory(to, from)</code>.</p></li>
+<li><p>Then, iterate over the files in <code>from</code>, as if by <code>for (directory_entry&amp; x :
+ directory_iterator(from))</code>, and for each iteration
+  <code>copy(x.path(), to/x.path().filename(), options | copy_options::unspecified )</code></p></li>
+<li><p><ins>Otherwise, if <code>is_directory(f) &amp;&amp; (options &amp;
+copy_options::create_symlinks) != copy_options::none</code>, then report an
+error with an <code>error_code</code> argument equal to
+<code>make_error_code(errc::is_a_directory)</code>.</ins></p></li>
+<li><p>Otherwise, no effects.</p></li>
+</ul>
+</blockquote>
+
+
+
+
+
+<hr>
 <h3><a name="2692" href="#2692">2692.</a> Overspecification of lvalueness of bitmask elements</h3>
 <p><b>Section:</b> 17.5.2.1.3 [bitmask.types] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-23</p>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-22</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#bitmask.types">issues</a> in [bitmask.types].</p>
@@ -3659,9 +4259,78 @@ pointer. &mdash; <i>end note</i>]
 
 
 <hr>
+<h3><a name="2712" href="#2712">2712.</a> <tt>copy_file(from, to, ...)</tt> has a number of unspecified error conditions</h3>
+<p><b>Section:</b> 27.10.15.4 [fs.op.copy_file] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-10 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+There are a number of error cases that <tt>copy_file(from, to, ...)</tt> does not take into account.
+Specifically the cases where:
+</p>
+<ol style="list-style-type:upper-alpha">
+<li><tt>from</tt> does not exist</li>
+<li><tt>from</tt> is not a regular file</li>
+<li><tt>to</tt> exists and is not a regular file</li>
+</ol>
+<p>
+These error cases should be specified as such.
+</p>
+
+<p><i>[2016-05 Issues Telecom]</i></p>
+
+<p>
+Eric to provide wording.
+</p>
+
+<p><i>[2016-05-28, Eric Fiselier provides wording]</i></p>
+
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4582.</p>
+<ol>
+<li><p>Modify 27.10.15.4 [fs.op.copy_file] as indicated:</p>
+
+<blockquote>
+<pre>
+bool copy_file(const path&amp; from, const path&amp; to, copy_options options);
+bool copy_file(const path&amp; from, const path&amp; to, copy_options options,
+               error_code&amp; ec) noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Requires:</i> At most one constant from each <tt>copy_options</tt> option group (27.10.10.2) is present in
+<tt>options</tt>.
+<p/>
+-4- <i>Effects:</i> Report a file already exists error as specified in Error reporting (27.5.6.5) if:
+</p>
+<ul>
+<li><ins><tt>!is_regular_file(from)</tt>, or</ins></li>
+<li><ins><tt>exists(to)</tt> and <tt>!is_regular_file(to)</tt>, or</ins></li>
+<li><tt>exists(to)</tt> and <tt>equivalent(from, to)</tt>, or</li>
+<li><tt>exists(to)</tt> and <tt>(options &amp; (copy_options::skip_existing | copy_options::overwrite_existing | 
+copy_options::update_existing)) == copy_options::none</tt>.</li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2717" href="#2717">2717.</a> <tt>scoped_allocator_adaptor</tt> uses <tt>forward</tt> to do <tt>move</tt>'s job</h3>
 <p><b>Section:</b> 20.13.4 [allocator.adaptor.members] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-06-05</p>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-06-08</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.adaptor.members">active issues</a> in [allocator.adaptor.members].</p>
@@ -3700,6 +4369,196 @@ forward_as_tuple(std::<del>forward</del><ins>move</ins>&lt;V&gt;(x.second)))</tt
 <p>
 Withdrawn by the submitter, since the prerequisites were incorrect.
 </p>
+
+
+
+
+
+<hr>
+<h3><a name="2722" href="#2722">2722.</a> <tt>equivalent</tt> incorrectly specifies throws clause</h3>
+<p><b>Section:</b> 27.10.15.13 [fs.op.equivalent] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-28 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The spec for <tt>equivalent</tt> has a throws clause which reads: [fs.op.equivalent]/5
+</p>
+<blockquote>
+<p>
+<i>Throws:</i> <tt>filesystem_error</tt> if <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) 
+&amp;&amp; is_other(s2))</tt>, otherwise as specified in Error reporting (27.10.7).
+</p>
+</blockquote>
+<p>
+This explicit requirement to throw is incorrect for the <tt>equivalent</tt> overload which takes an <tt>error_code</tt>.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to N4582.</p>
+<ol>
+<li><p>Modify 27.10.15.13 [fs.op.equivalent] as follows:</p>
+
+<blockquote>
+<pre>
+bool equivalent(const path&amp; p1, const path&amp; p2);
+bool equivalent(const path&amp; p1, const path&amp; p2, error_code&amp; ec) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Determines <tt>file_status s1</tt> and <tt>s2</tt>, as if by <tt>status(p1)</tt> and 
+<tt>status(p2)</tt>, respectively.
+<p/>
+-2- <i>Returns:</i> <ins>If <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) &amp;&amp; is_other(s2))</tt> 
+an error is reported (27.10.7 [fs.err.report]). Otherwise</ins> <tt>true</tt>, if <tt>s1 == s2</tt> and 
+<tt>p1</tt> and <tt>p2</tt> resolve to the same file system entity, else <tt>false</tt>. The signature with argument 
+<tt>ec</tt> returns <tt>false</tt> if an error occurs.
+<p/>
+-3- Two paths are considered to resolve to the same file system entity if two candidate entities reside on the
+same device at the same location. This is determined as if by the values of the POSIX <tt>stat</tt> structure,
+obtained as if by <tt>stat()</tt> for the two paths, having equal <tt>st_dev</tt> values and equal <tt>st_ino</tt> values.
+<p/>
+-4- <i>Throws:</i> <del><tt>filesystem_error</tt> if <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) &amp;&amp; 
+is_other(s2))</tt>, otherwise a</del><ins>A</ins>s specified in <del>E</del><ins>e</ins>rror reporting 
+(27.10.7 [fs.err.report]).
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-06, Oulu &mdash; Daniel provides wording improvements]</i></p>
+
+<p>
+mc: do we have an error reporting clause?<br/>
+jw: there is no such clause<br/>
+gr: it should go into the effects clause<br/>
+dk: we have the same issue for <tt>file_size</tt><br/>
+dk: the right place is the effects clause
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4594.</p>
+<ol>
+<li><p>Modify 27.10.15.13 [fs.op.equivalent] as follows:</p>
+
+<blockquote>
+<pre>
+bool equivalent(const path&amp; p1, const path&amp; p2);
+bool equivalent(const path&amp; p1, const path&amp; p2, error_code&amp; ec) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- Let <tt>s1</tt> and <tt>s2</tt> be <tt>file_status</tt>s, determined as if by <tt>status(p1)</tt> and <tt>status(p2)</tt>, respectively.
+<p/>
+-2- <i>Effects:</i> Determines <tt>s1</tt> and <tt>s2</tt>. <ins>If <tt>(!exists(s1) &amp;&amp; !exists(s2)) || 
+(is_other(s1) &amp;&amp; is_other(s2))</tt> an error is reported (27.10.7 [fs.err.report]).</ins>
+<p/>
+-3- <i>Returns:</i> <tt>true</tt>, if <tt>s1 == s2</tt> and 
+<tt>p1</tt> and <tt>p2</tt> resolve to the same file system entity, else <tt>false</tt>. The signature with argument 
+<tt>ec</tt> returns <tt>false</tt> if an error occurs.
+<p/>
+-4- Two paths are considered to resolve to the same file system entity if two candidate entities reside on the
+same device at the same location. This is determined as if by the values of the POSIX <tt>stat</tt> structure,
+obtained as if by <tt>stat()</tt> for the two paths, having equal <tt>st_dev</tt> values and equal <tt>st_ino</tt> values.
+<p/>
+-5- <i>Throws:</i> <del><tt>filesystem_error</tt> if <tt>(!exists(s1) &amp;&amp; !exists(s2)) || (is_other(s1) &amp;&amp; 
+is_other(s2))</tt>, otherwise a</del><ins>A</ins>s specified in <del>E</del><ins>e</ins>rror reporting 
+(27.10.7 [fs.err.report]).
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2732" href="#2732">2732.</a> Questionable specification of <tt>path::operator/=</tt> and <tt>path::append</tt></h3>
+<p><b>Section:</b> 27.10.8.4.3 [path.append] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-14 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#path.append">active issues</a> in [path.append].</p>
+<p><b>View all other</b> <a href="lwg-index.html#path.append">issues</a> in [path.append].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The current specification of <tt>operator/=</tt> taking a <tt>const Source&amp;</tt> parameter, and of 
+<tt>path::append</tt> in 27.10.8.4.3 [path.append] appears to require <tt>Source</tt> to have a <tt>native()</tt> 
+and an <tt>empty()</tt> member, and seemingly requires different behavior for <tt>append(<i>empty_range</i>)</tt> 
+and <tt>append(first, last)</tt> when <tt>first == last</tt> (the last two bullet points being specified with 
+<tt>source</tt> alone), which doesn't make any sense.
+<p/>
+It appears that these overloads can just be specified using the <tt>operator/=(const path&amp;)</tt> overload.
+</p>
+
+<p><i>[2016-07-03, Daniel comments]</i></p>
+
+<p>
+The same wording area is affected by LWG <a href="lwg-active.html#2664">2664</a>.
+</p>
+
+<p><i>[08-2016, Chicago]</i></p>
+
+<p>Wed AM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4594.</p>
+<ol>
+<li><p>Edit 27.10.8.4.3 [path.append]/4-5 as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class Source&gt;
+  path&amp; operator/=(const Source&amp; source);
+template &lt;class Source&gt;
+  path&amp; append(const Source&amp; source);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> <tt>operator/=(path(source))</tt></ins>
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class InputIterator&gt;
+  path&amp; append(InputIterator first, InputIterator last);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> <del>Appends <tt>path::preferred_separator</tt> to <tt>pathname</tt>, converting format and encoding 
+if required (27.10.8.2 [path.cvt]), unless:</del>
+</p>
+<ul>
+<li><p><del>an added <i>directory-separator</i> would be redundant, or</del></p></li>
+<li><p><del>an added <i>directory-separator</i> would change an relative path to an absolute path, or</del></p></li>
+<li><p><del><tt>source.empty()</tt> is <tt>true</tt>, or</del></p></li>
+<li><p><del><tt>*source.native().cbegin()</tt> is a <i>directory-separator</i>.</del></p></li>
+</ul>
+<p>
+<del>Then appends the effective range of <tt>source</tt> (27.10.8.3 [path.req]) or the range <tt>[first, last)</tt> to 
+<tt>pathname</tt>, converting format and encoding if required 
+(27.10.8.2 [path.cvt])</del><ins><tt>operator/=(path(first, last))</tt></ins>.
+<p/>
+-5- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
@@ -3780,9 +4639,93 @@ template&lt;class M, class N&gt;
 
 
 <hr>
+<h3><a name="2738" href="#2738">2738.</a> <tt>is_constructible</tt> with <tt>void</tt> types</h3>
+<p><b>Section:</b> 20.15.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2016-06-22 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+LWG <a href="lwg-defects.html#2560">2560</a> mention that there is no variable of function type. There's also no variable of <tt>void</tt> type, 
+so should 20.15.4.3 [meta.unary.prop] also explicitly say that for a <tt>void</tt> type <tt>T</tt>, 
+<tt>is_constructible&lt;T, Args...&gt;::value</tt> is <tt>false</tt>?
+</p>
+
+<p><i>[2016-07-03, Daniel provides wording]</i></p>
+
+
+<p><i>[08-2016 - Chicago]</i></p>
+
+<p>Wed PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4594.</p>
+
+<ol>
+<li><p>Change 20.15.4.3 [meta.unary.prop], Table 52 &mdash; "Type property predicates", as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 52 &mdash; Type property predicates</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Preconditions</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template &lt;class T, class... Args&gt;<br/>
+struct is_constructible;</tt>
+</td>
+
+<td>
+For a function type <tt>T</tt><br/> 
+<ins>or for a (possibly <i>cv</i>-qualified) <tt>void</tt> type <tt>T</tt></ins>,<br/> 
+<tt>is_constructible&lt;T, Args...&gt;::value</tt><br/>
+is <tt>false</tt>, otherwise <i>see below</i>
+</td>
+
+<td align="center">
+<tt>T</tt> and all types in the<br/>
+parameter pack <tt>Args</tt> shall<br/>
+be complete types,<br/>
+(possibly <i>cv</i>-qualified)<br/>
+<tt>void</tt>, or arrays of<br/>
+unknown bound.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
 <h3><a name="2739" href="#2739">2739.</a> Issue with <tt>time_point</tt> non-member subtraction with an unsigned duration</h3>
 <p><b>Section:</b> 20.17.6.5 [time.point.nonmember] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Michael Winterberg <b>Opened:</b> 2016-06-23 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Michael Winterberg <b>Opened:</b> 2016-06-23 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#time.point.nonmember">issues</a> in [time.point.nonmember].</p>
@@ -3907,7 +4850,7 @@ template &lt;class Clock, class Duration1, class Rep2, class Period2&gt;
 <hr>
 <h3><a name="2740" href="#2740">2740.</a> <tt>constexpr optional&lt;T&gt;::operator-&gt;</tt></h3>
 <p><b>Section:</b> 20.6.3.5 [optional.object.observe] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-02 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-02 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -3960,7 +4903,7 @@ t</del><ins>T</ins>hese functions shall be <tt>constexpr</tt> functions.
 <hr>
 <h3><a name="2744" href="#2744">2744.</a> <tt>any</tt>'s <tt>in_place</tt> constructors</h3>
 <p><b>Section:</b> 20.8.3.1 [any.cons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#any.cons">active issues</a> in [any.cons].</p>
@@ -4050,7 +4993,7 @@ template &lt;class T, class U, class... Args&gt;
 <hr>
 <h3><a name="2745" href="#2745">2745.</a> [fund.ts.v2] Implementability of LWG 2451</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::optional.object] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#fund.ts.v2::optional.object">issues</a> in [fund.ts.v2::optional.object].</p>
@@ -4157,7 +5100,7 @@ unless [&hellip;]
 <hr>
 <h3><a name="2747" href="#2747">2747.</a> Possibly redundant <tt>std::move</tt> in [alg.foreach]</h3>
 <p><b>Section:</b> 25.3.4 [alg.foreach] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-15 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-15 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.foreach">issues</a> in [alg.foreach].</p>
@@ -4207,7 +5150,7 @@ template&lt;class InputIterator, class Function&gt;
 <hr>
 <h3><a name="2748" href="#2748">2748.</a> <tt>swappable</tt> traits for <tt>optional</tt>s</h3>
 <p><b>Section:</b> 20.6.3.4 [optional.object.swap], 20.6.9 [optional.specalg] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4271,7 +5214,7 @@ template &lt;class T&gt; void swap(optional&lt;T&gt;&amp; x, optional&lt;T&gt;&a
 <hr>
 <h3><a name="2750" href="#2750">2750.</a> [fund.ts.v2] LWG 2451 conversion constructor constraint</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::optional.object.ctor] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-20 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-20 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4338,9 +5281,130 @@ is <tt>false</tt>.
 
 
 <hr>
+<h3><a name="2752" href="#2752">2752.</a> &quot;Throws:&quot; clauses of <tt>async</tt> and <tt>packaged_task</tt> are unimplementable</h3>
+<p><b>Section:</b> 30.6.8 [futures.async], 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-07-07 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.async">issues</a> in [futures.async].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>std::async</tt> is a request from the user for type erasure; as any given function gets passed to <tt>async</tt>
+which returns only <tt>future&lt;ReturnType&gt;</tt>. Therefore, it needs to be able to allocate memory, as other issues
+(e.g. LWG <a href="lwg-active.html#2202">2202</a>) indicate. However, async's <em>Throws</em> clause doesn't allow an implementation to do
+this, as it permits only <tt>future_error</tt>.
+<p/>
+<tt>std::packaged_task</tt>'s constructor allocates memory using a user supplied allocator. An implementation needs to
+call the user's <tt>allocate</tt> to allocate such memory. The user's allocate function is not constrained to throwing
+only <tt>bad_alloc</tt>; it can raise whatever it wants, but <tt>packaged_task</tt>'s constructor prohibits this.
+</p>
+<p><i>[07-16 - Chicago]</i></p>
+
+<p>Alisdair thinks the third bullet is not quite right.</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<ol>
+<li><p>Change 30.6.8 [futures.async] p6 to:</p>
+
+<blockquote>
+<p>
+<em>Throws:</em> <tt>system_error</tt> if <tt>policy == launch::async</tt> and the implementation is unable to start a
+new thread<ins>, or <tt>std::bad_alloc</tt> if memory for the internal data structures could not be allocated</ins>.
+</p>
+</blockquote>
+</li>
+<li><p>Change 30.6.9.1 [futures.task.members] p5 to:</p>
+
+<blockquote>
+<pre>
+template &lt;class F&gt;
+  packaged_task(F&amp;&amp; f);
+template &lt;class F, class Allocator&gt;
+  packaged_task(allocator_arg_t, const Allocator&amp; a, F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+<em>Throws:</em>
+</p>
+<ol style="list-style-type: none">
+<li>
+<ins>(?) &mdash; A</ins><del>a</del>ny exceptions thrown by the copy or move constructor of <tt>f</tt><ins>.</ins><del>, or </del>
+</li>
+<li>
+<ins>(?) &mdash; For the first version,</ins> <tt>std::bad_alloc</tt> if memory for the internal data structures
+could not be allocated<ins>.</ins>
+</li>
+<li>
+<ins>(?) &mdash; For the second version, any exceptions thrown by
+<tt>std::allocator_traits&lt;Allocator&gt;::template rebind&lt;<em>unspecified</em>&gt;::allocate</tt></ins>.
+</li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[08-2016 - Chicago]</i></p>
+
+<p>Wed PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 30.6.8 [futures.async] p6 to:</p>
+
+<blockquote>
+<p>
+<em>Throws:</em> <tt>system_error</tt> if <tt>policy == launch::async</tt> and the implementation is unable to start a
+new thread<ins>, or <tt>std::bad_alloc</tt> if memory for the internal data structures could not be allocated</ins>.
+</p>
+</blockquote>
+</li>
+<li><p>Change 30.6.9.1 [futures.task.members] p5 to:</p>
+
+<blockquote>
+<pre>
+template &lt;class F&gt;
+  packaged_task(F&amp;&amp; f);
+template &lt;class F, class Allocator&gt;
+  packaged_task(allocator_arg_t, const Allocator&amp; a, F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+<em>Throws:</em>
+</p>
+<ol style="list-style-type: none">
+<li>
+<ins>(?) &mdash; A</ins><del>a</del>ny exceptions thrown by the copy or move constructor of <tt>f</tt><ins>.</ins><del>, or </del>
+</li>
+<li>
+<ins>(?) &mdash; For the first version,</ins> <tt>std::bad_alloc</tt> if memory for the internal data structures
+could not be allocated<ins>.</ins>
+</li>
+<li>
+<ins>(?) &mdash; For the second version, any exceptions thrown by
+<tt>std::allocator_traits&lt;Allocator&gt;::template rebind_traits&lt;<em>unspecified</em>&gt;::allocate</tt></ins>.
+</li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2753" href="#2753">2753.</a> Optional's constructors and assignments need constraints</h3>
 <p><b>Section:</b> 20.6.3.1 [optional.object.ctor], 20.6.3.3 [optional.object.assign] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4570,7 +5634,7 @@ T&gt;<ins> &amp;&amp; is_constructible_v&lt;T, U&gt; &amp;&amp; is_assignable_v&
 <hr>
 <h3><a name="2755" href="#2755">2755.</a> string.view.io uses non-existent <tt>basic_string_view::to_string</tt> function</h3>
 <p><b>Section:</b> 21.4.4 [string.view.io], 21.3.2.9 [string.io] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4699,6 +5763,52 @@ template&lt;class M, class N&gt;
 <tt>bool</tt>,</ins> the program is ill-formed. 
 </p>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2760" href="#2760">2760.</a> non-const <tt>basic_string::data</tt> should not invalidate iterators</h3>
+<p><b>Section:</b> 21.3.1.1 [string.require] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-08-03 <b>Last modified:</b> 2016-08-03</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#string.require">active issues</a> in [string.require].</p>
+<p><b>View all other</b> <a href="lwg-index.html#string.require">issues</a> in [string.require].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+21.3.1.1 [string.require]/4 does not list non-const <tt>basic_string::data()</tt> as being a 
+function that may be called with the guarantee that it will not invalidate references, pointers, and 
+iterators to elements of a <tt>basic_string</tt> object.
+</p>
+
+<p><i>[08-2016 - Chicago]</i></p>
+
+<p>Wed PM: Move to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 21.3.1.1 [string.require]/4 as indicated:</p>
+
+<blockquote>
+<p>
+-4- References, pointers, and iterators referring to the elements of a <tt>basic_string</tt> sequence 
+may be invalidated by the following uses of that <tt>basic_string</tt> object:
+</p>
+<ul>
+<li><p>as an argument to any standard library function taking a reference to non-const <tt>basic_string</tt> as an
+argument.(footnote 230)</p></li>
+<li><p>Calling non-const member functions, except <tt>operator[]</tt>, <tt>at</tt>, <ins>data,</ins> <tt>front</tt>, 
+<tt>back</tt>, <tt>begin</tt>, <tt>rbegin</tt>, <tt>end</tt>, and <tt>rend</tt>.</p></li>
+</ul>
 </blockquote>
 </li>
 </ol>
