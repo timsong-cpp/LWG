@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-08-04 at 20:08:03 UTC</p>
+<p><p>Revised 2016-08-04 at 20:08:55 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -12018,7 +12018,7 @@ Conclusion: Update wording, revisit later.
 <hr>
 <h3><a name="2158" href="#2158">2158.</a> Conditional copy&#47;move in <tt>std::vector</tt></h3>
 <p><b>Section:</b> 23.3.11.3 [vector.capacity] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Nikolay Ivchenkov <b>Opened:</b> 2012-05-08 <b>Last modified:</b> 2016-08-04</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
@@ -12061,9 +12061,116 @@ Maybe it would be useful to introduce a new name for such conditional requiremen
 "<tt>CopyInsertable</tt>" and "<tt>MoveInsertable</tt>").
 </p>
 
+<p><i>[2016-08 Chicago]</i></p>
+
+<p>
+The problem does not appear to be as severe as described. The <tt>MoveInsertable</tt>
+requirements are consistently correct, but an issue may arise on the
+exception-safety guarantees when we check for
+<tt>is_copy_constructible_v&lt;T&gt;</tt>.  The problem, as described, is
+typically for templates that appear to have a copy constructor, but one that
+fails to compile once instantiated, and so gives a misleading result for the
+trait.
+</p>
+<p>
+In general, users should not provide such types, and the standard would not
+serve users well by trying to address support for such types.  However, the
+standard should not be providing such types either, such as
+<tt>vector&lt;unique_ptr&lt;T&gt;&gt;</tt>.  A possible resolution would be
+to tighten the constraints in Table 80 &mdash; Container Requirements, so that if
+the Requirements for the copy constructor/assingment operator of a container
+are not satisfied, that operation shall be deleted.
+</p>
+<p>
+A futher problem highlighted by this approach is that there are no constraints on
+the copy-assignment operator, so that <tt>vector&lt;unique_ptr&lt;T&gt;&gt;</tt>
+should be <tt>CopyAssignable</tt>! However, we can lift the equivalent constraints from
+the Allocator-aware container requirements.
+</p>
+
 
 
 <p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<p>
+<table border="1">
+<caption> 23.2.1 [container.requirements.general] Table 80 &mdash; Container requirements </caption>
+<tr>
+  <td><b>Expression</b></td>
+  <td><b>Return type</b></td>
+  <td><b>Operational semantics</b></td>
+  <td><b>Assertion/note/pre-/post-condition</b></td>
+  <td><b>Complexity</b></td>
+</tr>
+<tr>
+  <td><tt>X(a)</tt></td>
+  <td></td>
+  <td></td>
+  <td>
+    <i>Requires:</i> <tt>T</tt> is <tt>CopyInsertable</tt> into
+    <tt>X</tt> (see below)<del>.</del><ins>, otherwise this expression shall be ill-formed.</ins><br/>
+    post: <tt>a == X(a)</tt>.
+  </td>
+  <td>linear</td>
+</tr>
+<tr>
+  <td><tt>X u(a)</tt><br/><tt>X u = a;</tt></td>
+  <td></td>
+  <td></td>
+  <td>
+    <i>Requires:</i> <tt>T</tt> is <tt>CopyInsertable</tt> into
+    <tt>X</tt> (see below)<del>.</del><ins>, otherwise this expression shall be ill-formed.</ins><br/>
+    post: <tt>u == a</tt>.
+  </td>
+  <td>linear</td>
+</tr>
+<tr>
+  <td>...</td>
+  <td>...</td>
+  <td>...</td>
+  <td>...</td>
+  <td>...</td>
+</tr>
+<tr>
+  <td><tt>r = a</tt></td>
+  <td><tt>X&amp;</tt></td>
+  <td></td>
+  <td>
+    <ins><i>Requires:</i> <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt>
+    and <tt>CopyAssignable</tt>, otherwise this expression shall be ill-formed.</ins><br/>
+    post: <tt>r == a</tt>.</td>
+  <td>linear</td>
+</tr>
+</table>
+</p>
+
+<p>
+<table border="1">
+<caption> 23.2.1 [container.requirements.general] Table 83 &mdash; Allocator-aware container requirements </caption>
+<tr>
+  <td><b>Expression</b></td>
+  <td><b>Return type</b></td>
+  <td><b>Operational semantics</b></td>
+  <td><b>Assertion/note/pre-/post-condition</b></td>
+  <td><b>Complexity</b></td>
+</tr>
+<tr>
+  <td><tt>a = t</tt></td>
+  <td><tt>X&amp;</tt></td>
+  <td></td>
+  <td>
+    <i>Requires:</i> <tt>T</tt> is <tt>CopyInsertable</tt> into <tt>X</tt> and
+    <tt>CopyAssignable</tt><del>.</del><ins>, otherwise this  expression shall
+    be ill-formed</ins><br/>
+    post: <tt>r == a</tt>.</td>
+  <td>linear</td>
+</tr>
+</table>
+</p>
+
 
 
 
