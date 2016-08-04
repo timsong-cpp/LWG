@@ -23,9 +23,50 @@ Arguably, since the <tt>promise</tt> abandons its shared state without actually 
 error condition should be stored in the shared state. Implementations diverge, they either crash at thread exit by 
 dereferencing an invalid pointer, or keep the shared state around until thread exit.
 </p>
+
+<note>2016-08-03, Billy O'Neal suggests concrete wording</note>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[futures.state]"/> p7 as indicated:</p>
+
+<blockquote>
+<p>
+-7- When an asynchronous provider is said to abandon its shared state, it means:
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; first, if that state is not ready <ins>or scheduled to be made ready at thread exit</ins>, the provider</p>
+<ol style="list-style-type: none">
+<li><p>(7.1.1) &mdash; stores an exception object of type <tt>future_error</tt> with an error condition of 
+<tt>broken_promise</tt> within its shared state; and then</p></li>
+<li><p>(7.1.2) &mdash; makes its shared state ready;</p></li>
+</ol>
+</li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[futures.state]"/> p10 as indicated:</p>
+
+<blockquote>
+<p>
+-10- Some functions (e.g., <tt>promise::set_value_at_thread_exit</tt>) <del>delay making the shared state ready 
+until</del><ins>schedule the shared state to be made ready when</ins> the
+calling thread exits. <ins>This associates a reference to the shared state with the calling thread.</ins> The 
+destruction of each of that thread's objects with thread storage duration 
+(<sref ref="[basic.stc.thread]"/>) is sequenced before making that shared state ready. <ins>When the calling 
+thread makes the shared state ready, if the thread holds the last reference to the shared state, the shared state 
+is destroyed. [<i>Note:</i> This means that the shared state may not become ready until after the <em>asynchronous 
+provider</em> has been destroyed. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
