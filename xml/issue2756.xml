@@ -452,9 +452,9 @@ public:
   template &lt;class... Args&gt; constexpr explicit optional(in_place_t, Args &amp;&amp;...);
   template &lt;class U, class... Args&gt;
     constexpr explicit optional(in_place_t, initializer_list&lt;U&gt;, Args &amp;&amp;...);
-  <ins>template &lt;class U&gt; constexpr optional(U &amp;&amp;);
-  template &lt;class U&gt; optional(const optional&lt;U&gt; &amp;);
-  template &lt;class U&gt; optional(optional&lt;U&gt; &amp;&amp;);</ins>
+  <ins>template &lt;class U&gt; <em>EXPLICIT</em> constexpr optional(U &amp;&amp;);
+  template &lt;class U&gt; <em>EXPLICIT</em> optional(const optional&lt;U&gt; &amp;);
+  template &lt;class U&gt; <em>EXPLICIT</em> optional(optional&lt;U&gt; &amp;&amp;);</ins>
   
   [&hellip;]
   
@@ -572,7 +572,7 @@ resolution. &mdash; <i>end note</i>]</ins>
 </p>
 <pre>
 <ins>template &lt;class U&gt;
-  constexpr optional(U&amp;&amp; v);</ins>
+  <em>EXPLICIT</em> constexpr optional(U&amp;&amp; v);</ins>
 </pre>
 <blockquote>
 <p>
@@ -595,7 +595,7 @@ constructor is explicit if and only if <tt>is_convertible_v&lt;U&amp;&amp;, T&gt
 </blockquote>
 <pre>
 <ins>template &lt;class U&gt;
-  optional(const optional&lt;U&gt;&amp; rhs);</ins>
+  <em>EXPLICIT</em> optional(const optional&lt;U&gt;&amp; rhs);</ins>
 </pre>
 <blockquote>
 <p>
@@ -615,7 +615,7 @@ explicit if and only if <tt>is_convertible_v&lt;const U&amp;, T&gt;</tt> is <tt>
 </blockquote>
 <pre>
 <ins>template &lt;class U&gt;
-  optional(optional&lt;U&gt;&amp;&amp; rhs);</ins>
+  <em>EXPLICIT</em> optional(optional&lt;U&gt;&amp;&amp; rhs);</ins>
 </pre>
 <blockquote>
 <p>
@@ -699,10 +699,103 @@ of <tt>v</tt> is determined by the exception safety guarantee of <tt>T</tt>'s co
 exception is thrown during the call to <tt>T</tt>'s assignment, the state of <tt>*val</tt> and <tt>v</tt> 
 is determined by the exception safety guarantee of <tt>T</tt>'s assignment. <del>The</del><ins>This</ins> function
 shall not participate in overload resolution unless <del><tt>is_same_v&lt;decay_t&lt;U&gt;, T&gt;</tt></del> 
-<ins><tt>is_constructible_v&lt;T, U&gt;</tt> is <tt>true</tt> and <tt>is_assignable_v&lt;T&amp;, 
+<ins><tt>decay_t&lt;U&gt;</tt> is not <tt>nullopt_t</tt>, <tt>decay_t&lt;U&gt;</tt> is not a specialization of 
+<tt>optional</tt>, <tt>is_constructible_v&lt;T, U&gt;</tt> is <tt>true</tt> and <tt>is_assignable_v&lt;T&amp;, 
 U&gt;</tt></ins> is <tt>true</tt>.
+<p/>
+<del>-20- <i>Notes:</i> The reason for providing such generic assignment and then constraining it so that effectively 
+<tt>T == U</tt> is to guarantee that assignment of the form <tt>o = {}</tt> is unambiguous.</del>
 </p>
 </blockquote>
+<pre>
+<ins>template &lt;class U&gt; optional&lt;T&gt;&amp; operator=(const optional&lt;U&gt;&amp; rhs);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>:</ins>
+</p>
+<table border="1">
+<caption><ins>Table ? &mdash; <tt>optional::operator=(const optional&lt;U&gt;&amp;)</tt> effects</ins></caption>
+
+<tr>
+<th></th>
+<th><ins><b><tt>*this</tt> contains a value</b></ins></th>
+<th><ins><b><tt>*this</tt> does not contain a value</b></ins></th>
+</tr>
+
+<tr>
+<td><ins><b><tt>rhs</tt> contains a value</b></ins></td>
+<td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
+<td><ins>initializes the contained value as if direct-non-list-initializing an object of type 
+<tt>T</tt> with <tt>*rhs</tt></ins></td>
+</tr>
+
+<tr>
+<td><ins><b><tt>rhs</tt> does not contain a value</b></ins></td>
+<td><ins>destroys the contained value by calling <tt>val-&gt;T::~T()</tt></ins></td>
+<td><ins>no effect</ins></td>
+</tr>
+
+</table> 
+<p>
+<ins>-?- <i>Returns</i>: <tt>*this</tt>.</ins>
+<p/>
+<ins>-?- <i>Postconditions</i>: <tt>bool(rhs) == bool(*this)</tt>.</ins>
+<p/>
+<ins>-?- <i>Remarks</i>: If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
+If an exception is thrown during the call to <tt>T</tt>'s constructor, the state of <tt>*rhs.val</tt> is determined by the 
+exception safety guarantee of <tt>T</tt>'s constructor. If an exception is thrown during the call to <tt>T</tt>'s assignment, 
+the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s assignment. 
+The function shall not participate in overload resolution unless <tt>is_constructible_v&lt;T, const U&amp;&gt;</tt> is 
+<tt>true</tt> and <tt>is_assignable_v&lt;T&amp;, const U&amp;&gt;</tt> is <tt>true</tt> and <tt>is_same_v&lt;U, T&gt;</tt> 
+is <tt>false</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template &lt;class U&gt; optional&lt;T&gt;&amp; operator=(optional&lt;U&gt;&amp;&amp; rhs);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: The result of the expression <tt>bool(rhs)</tt> remains unchanged. </ins>
+</p>
+<table border="1">
+<caption><ins>Table ? &mdash; <tt>optional::operator=(optional&lt;U&gt;&amp;&amp;)</tt> effects</ins></caption>
+
+<tr>
+<th></th>
+<th><ins><b><tt>*this</tt> contains a value</b></ins></th>
+<th><ins><b><tt>*this</tt> does not contain a value</b></ins></th>
+</tr>
+
+<tr>
+<td><ins><b><tt>rhs</tt> contains a value</b></ins></td>
+<td><ins>assigns <tt>std::move(*rhs)</tt> to the contained value</ins></td>
+<td><ins>initializes the contained value as if direct-non-list-initializing an object of type 
+<tt>T</tt> with <tt>std::move(*rhs)</tt></ins></td>
+</tr>
+
+<tr>
+<td><ins><b><tt>rhs</tt> does not contain a value</b></ins></td>
+<td><ins>destroys the contained value by calling <tt>val-&gt;T::~T()</tt></ins></td>
+<td><ins>no effect</ins></td>
+</tr>
+
+</table> 
+<p>
+<ins>-?- <i>Returns</i>: <tt>*this</tt>.</ins>
+<p/>
+<ins>-?- <i>Postconditions</i>: <tt>bool(rhs) == bool(*this)</tt>.</ins>
+<p/>
+<ins>-?- <i>Remarks</i>: If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
+If an exception is thrown during the call to <tt>T</tt>'s constructor, the state of <tt>*rhs.val</tt> is determined by the 
+exception safety guarantee of <tt>T</tt>'s constructor. If an exception is thrown during the call to <tt>T</tt>'s 
+assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s 
+assignment. The function shall not participate in overload resolution unless <tt>is_constructible_v&lt;T, U&gt;</tt> is 
+<tt>true</tt> and <tt>is_assignable_v&lt;T&amp;, U&gt;</tt> is <tt>true</tt> and <tt>is_same_v&lt;U, T&gt;</tt> is 
+<tt>false</tt>.</ins>
+</p>
+</blockquote>
+
 </blockquote>
 </li>
 </ol>
