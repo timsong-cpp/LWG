@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-05 at 21:08:47 UTC</p>
+<p><p>Revised 2016-08-05 at 21:08:16 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="1173" href="#1173">1173.</a> "Equivalence" wishy-washiness</h3>
@@ -15405,6 +15405,7 @@ operator/=, so only one requires element remains necessary.</p>
 </blockquote>
 </li>
 <li>Change 27.10.8.6 [path.non-member] p13 as indicated:
+<pre>path operator/(const path&amp; lhs, const path&amp; rhs);</pre>
 <blockquote>
 <p>-13- <em><del>Returns</del><ins>Effects</ins>:</em> <ins>Equivalent to </ins><code>
 <ins>return </ins>path(lhs) /= rhs;</code>.</p>
@@ -17752,6 +17753,33 @@ this by adding an <tt>assign(basic_string_view, size_type pos, size_type n = npo
 
 <p>
 Robert Douglas provides initial wording.
+<p/>
+We decided against another constructor overload to avoid the semantic confusion between:
+</p>
+<blockquote><pre>
+basic_string(char const*, size_type length, Allocator = Allocator())
+</pre></blockquote>
+<p>
+and
+</p>
+<blockquote><pre>
+template&lt;class T, class Foo = is_convertible_v&lt;T const&amp;, basic_string_view&lt;charT, traits&gt;&gt;
+basic_string(T const&amp;, size_type pos, Allocator = Allocator())
+</pre></blockquote>
+<p>
+where someone might call:
+</p>
+<blockquote><pre>
+basic_string("HelloWorld", 5, 5);
+</pre></blockquote>
+<p>
+and get "World", but then call
+</p>
+<blockquote><pre>
+basic_string("HelloWorld", 5);
+</pre></blockquote>
+<p>
+and instead get "Hello". The second parameter changes between length and position. 
 </p>
 
 
@@ -17782,11 +17810,20 @@ explicit basic_string(basic_string_view&lt;charT, traits&gt; sv,
 <blockquote>
 <pre>
 <ins>template&lt;class T&gt;
-basic_string(T t, size_type pos, size_type n, const Allocator&amp; a = Allocator());</ins>
+basic_string(const T&amp; t, size_type pos, size_type n, const Allocator&amp; a = Allocator());</ins>
 </pre>
 <blockquote>
 <p>
-<ins>-?- <i>Effects:</i> Same as <tt>basic_string(basic_string_view&lt;charT, traits&gt;(t).substr(pos, n), a)</tt>.</ins>
+<ins>-?- <i>Effects:</i> Creates a variable, <tt>sv</tt>, as if by <tt>basic_string_view&lt;charT, traits&gt; sv = t;</tt> 
+and then behaves the same as:</ins>
+<blockquote>
+<pre>
+<ins>basic_string(sv.substr(pos, n), a)</ins>
+</pre>
+</blockquote>
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in overload resolution unless 
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
 </p>
 </blockquote>
 </blockquote>
