@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D100)</h1>
-<p><p>Revised 2016-08-05 at 21:08:16 UTC</p>
+<p><p>Revised 2016-08-05 at 21:08:41 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -34998,6 +34998,21 @@ by reference to avoid copying <tt>T</tt>, which can be arbitrarily expensive. Bo
 succeed yet <tt>basic_string_view sv(t);</tt> fail.</p></li>
 </ol>
 
+<p><i>[2016-08-05, Chicago LWG]</i></p>
+
+<ol>
+<li>breaking ABI was a non-starter</li>
+<li>we want to convert <tt>char const*</tt> to <tt>basic_string_view</tt> if possible</li>
+<li>we want to take the original type by reference, to avoid new user string types from being copied</li>
+<li>it is unfortunate that each length of string literal will generate a new entry in the symbol table</li>
+</ol>
+<p>Given feedback from discussion, we wish to go with the <tt>is_convertible_v</tt> method, but change:</p>
+<ol>
+<li>the function parameter type to <tt>T const&amp;</tt> for each overload</li>
+<li>the parameter type in <tt>is_convertible_v</tt> to <tt>T const&amp;</tt></li>
+<li>the initialization of <tt>sv(t)</tt> to <tt>sv = t</tt></li>
+</ol>
+
 
 <p><b>Proposed resolution:</b></p>
 <p>This wording is relative to N4606.</p>
@@ -35014,25 +35029,25 @@ namespace std {
   public:
     [&hellip;]
     <ins>template&lt;class T&gt;</ins>
-    basic_string&amp; append(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+    basic_string&amp; append(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                          size_type pos, size_type n = npos);
     [&hellip;]
     <ins>template&lt;class T&gt;</ins>
-    basic_string&amp; assign(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+    basic_string&amp; assign(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                          size_type pos, size_type n = npos);
     [&hellip;]
     <ins>template&lt;class T&gt;</ins>
-    basic_string&amp; insert(size_type pos1, <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+    basic_string&amp; insert(size_type pos1, <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                          size_type pos2, size_type n = npos);
     [&hellip;]
     <ins>template&lt;class T&gt;</ins>
     basic_string&amp; replace(size_type pos1, size_type n1,
-                          <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+                          <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                           size_type pos2, size_type n2 = npos);
     [&hellip;]
     <ins>template&lt;class T&gt;</ins>
     int compare(size_type pos1, size_type n1,
-                <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+                <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                 size_type pos2, size_type n2 = npos) const;
     [&hellip;]
   };
@@ -35046,7 +35061,7 @@ namespace std {
 <blockquote>
 <pre>
 <ins>template&lt;class T&gt;</ins>
-basic_string&amp; append(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+basic_string&amp; append(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                      size_type pos, size_type n = npos);
 </pre>
 <blockquote>
@@ -35059,7 +35074,7 @@ basic_string&amp; append(<del>basic_string_view&lt;charT, traits&gt; sv</del><in
 and calls <tt>append(sv.data() + pos, rlen)</tt>.
 <p/>
 <ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless
-<tt>is_convertible_v&lt;T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
 <p/>
 -9- <i>Returns:</i> <tt>*this</tt>.
 </p>
@@ -35072,7 +35087,7 @@ and calls <tt>append(sv.data() + pos, rlen)</tt>.
 <blockquote>
 <pre>
 <ins>template&lt;class T&gt;</ins>
-basic_string&amp; assign(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+basic_string&amp; assign(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                      size_type pos, size_type n = npos);
 </pre>
 <blockquote>
@@ -35085,7 +35100,7 @@ basic_string&amp; assign(<del>basic_string_view&lt;charT, traits&gt; sv</del><in
 and calls <tt>assign(sv.data() + pos, rlen)</tt>.
 <p/>
 <ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless
-<tt>is_convertible_v&lt;T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
 <p/>
 -11- <i>Returns:</i> <tt>*this</tt>.
 </p>
@@ -35099,7 +35114,7 @@ and calls <tt>assign(sv.data() + pos, rlen)</tt>.
 <blockquote>
 <pre>
 <ins>template&lt;class T&gt;</ins>
-basic_string&amp; insert(size_type pos1, <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+basic_string&amp; insert(size_type pos1, <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                      size_type pos2, size_type n = npos);
 </pre>
 <blockquote>
@@ -35112,7 +35127,7 @@ of the string to assign as the smaller of <tt>n</tt> and <tt>sv.size() - pos2</t
 <tt>insert(pos1, sv.data() + pos2, rlen)</tt>.
 <p/>
 <ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless
-<tt>is_convertible_v&lt;T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
 <p/>
 -8- <i>Returns:</i> <tt>*this</tt>.
 </p>
@@ -35126,7 +35141,7 @@ of the string to assign as the smaller of <tt>n</tt> and <tt>sv.size() - pos2</t
 <pre>
 <ins>template&lt;class T&gt;</ins>
 basic_string&amp; replace(size_type pos1, size_type n1, 
-                     <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+                     <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
                      size_type pos2, size_type n2 = npos);
 </pre>
 <blockquote>
@@ -35139,7 +35154,7 @@ of the string to be inserted as the smaller of <tt>n2</tt> and <tt>sv.size() - p
 <tt>replace(pos1, n1, sv.data() + pos2, rlen)</tt>.
 <p/>
 <ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless
-<tt>is_convertible_v&lt;T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
 <p/>
 -8- <i>Returns:</i> <tt>*this</tt>.
 </p>
@@ -35153,7 +35168,7 @@ of the string to be inserted as the smaller of <tt>n2</tt> and <tt>sv.size() - p
 <pre>
 <ins>template&lt;class T&gt;</ins>
 int compare(size_type pos1, size_type n1,
-            <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>T t</ins>,
+            <del>basic_string_view&lt;charT, traits&gt; sv</del><ins>const T&amp; t</ins>,
             size_type pos2, size_type n2 = npos) const;
 </pre>
 <blockquote>
@@ -35161,11 +35176,14 @@ int compare(size_type pos1, size_type n1,
 -4- <i>Effects:</i> Equivalent to:
 </p>
 <blockquote><pre>
-return basic_string_view&lt;charT, traits&gt;(this.data(), pos1, n1).compare(<del>sv</del><ins>basic_string_view&lt;charT, traits&gt;(t)</ins>, pos2, n2);
+<ins>{</ins>
+  <ins>basic_string_view&lt;charT, traits&gt; sv = t;</ins>
+  return basic_string_view&lt;charT, traits&gt;(this.data(), pos1, n1).compare(sv, pos2, n2);
+<ins>}</ins>
 </pre></blockquote>
 <p>
 <ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless
-<tt>is_convertible_v&lt;T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</ins>
 </p>
 </blockquote>
 </blockquote>
