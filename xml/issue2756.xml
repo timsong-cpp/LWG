@@ -168,9 +168,9 @@ a full paper analyzing possible design and their pros/cons.
 
 <p>Tuesday PM: Ville and Eric to implement and report back in Issaquah. Moved to Open</p>
 <p>Ville notes that <iref ref="2746"/>, <iref ref="2754"/> and <iref ref="2756"/> all go together.</p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to N4606.</p>
 
 <ol>
@@ -399,6 +399,308 @@ exception safety guarantee of <tt>T</tt>'s constructor. If an exception is throw
 assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s 
 assignment. The function shall not participate in overload resolution unless
 <tt>is_same_v&lt;decay_t&lt;U&gt;, T&gt;</tt> is <tt>false</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2016-08-05 Chicago LWG</note>
+<p>
+Ville provides revised wording, that also fixes LWG <iref ref="2753"/>.
+<p/>
+Rationale:
+</p>
+<ol>
+<li><p>The resolution of LWG <iref ref="2753"/> makes special
+member functions defined as deleted in case the desired
+constraints aren't met.</p></li>
+<li><p>There is no decay for the converting
+constructor <tt>optional(U&amp;&amp;)</tt>, there is a <tt>remove_reference</tt> instead.
+The target type may hold a <i>cv</i>-qualified type, and the incoming
+type may hold a <i>cv</i>-qualified type, but neither can hold a reference.
+Thus, <tt>remove_reference</tt> is what we need, <tt>remove_cv</tt> would
+be wrong, and <tt>decay</tt> would be wrong.</p></li>
+<li><p>There is no <tt>decay</tt> or <tt>remove_reference</tt> for converting constructors like
+<tt>optional(optional&lt;U&gt;)</tt>, because none is needed.</p></li>
+<li><p>For <tt>optional(U&amp;&amp;)</tt>, an added constraint is that <tt>U</tt> is
+not a specialization of <tt>optional</tt></p></li>
+</ol>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.object]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T&gt; class optional
+{
+public:
+  using value_type = T;
+  
+  <i>// 20.6.3.1, Constructors</i>
+  constexpr optional() noexcept;
+  constexpr optional(nullopt_t) noexcept;
+  optional(const optional &amp;);
+  optional(optional &amp;&amp;) noexcept(<i>see below</i>);
+  constexpr optional(const T &amp;);
+  constexpr optional(T &amp;&amp;);
+  template &lt;class... Args&gt; constexpr explicit optional(in_place_t, Args &amp;&amp;...);
+  template &lt;class U, class... Args&gt;
+    constexpr explicit optional(in_place_t, initializer_list&lt;U&gt;, Args &amp;&amp;...);
+  <ins>template &lt;class U&gt; constexpr optional(U &amp;&amp;);
+  template &lt;class U&gt; optional(const optional&lt;U&gt; &amp;);
+  template &lt;class U&gt; optional(optional&lt;U&gt; &amp;&amp;);</ins>
+  
+  [&hellip;]
+  
+  <i>// 20.6.3.3, Assignment</i>
+  optional &amp;operator=(nullopt_t) noexcept;
+  optional &amp;operator=(const optional &amp;);
+  optional &amp;operator=(optional &amp;&amp;) noexcept(<i>see below</i>);
+  template &lt;class U&gt; optional &amp;operator=(U &amp;&amp;);
+  <ins>template &lt;class U&gt; optional&amp; operator=(const optional&lt;U&gt; &amp;);
+  template &lt;class U&gt; optional&amp; operator=(optional&lt;U&gt; &amp;&amp;);</ins>
+  template &lt;class... Args&gt; void emplace(Args &amp;&amp;...);
+  template &lt;class U, class... Args&gt;
+    void emplace(initializer_list&lt;U&gt;, Args &amp;&amp;...);
+
+  [&hellip;]
+  
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[optional.object.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+optional(const optional&lt;T&gt;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Requires:</i> <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall be defined as deleted
+unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+optional(optional&lt;T&gt;&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+<del>-7- <i>Requires:</i> <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-11- <i>Remarks:</i> The expression inside <tt>noexcept</tt> is equivalent to <tt>is_nothrow_move_constructible_v&lt;T&gt;</tt>.
+<ins>This constructor shall be defined as deleted unless <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+constexpr optional(const T&amp; v);
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Requires:</i> <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-16- <i>Remarks:</i> If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, this constructor shall be 
+a <tt>constexpr</tt> constructor. <ins>This constructor shall not participate in overload
+resolution unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+constexpr optional(T&amp;&amp; v);
+</pre>
+<blockquote>
+<p>
+<del>-17- <i>Requires:</i> <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-21- <i>Remarks:</i> If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt> constructor, this constructor shall be 
+a <tt>constexpr</tt> constructor. <ins>This constructor shall not participate in overload
+resolution unless <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class... Args&gt; constexpr explicit optional(in_place_t, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<del>-22- <i>Requires:</i> <tt>is_constructible_v&lt;T, Args&amp;&amp;...&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-26- <i>Remarks:</i> If <tt>T</tt>'s constructor selected for the initialization is a <tt>constexpr</tt> constructor, 
+this constructor shall be a <tt>constexpr</tt> constructor. <ins>This constructor shall not participate in overload
+resolution unless <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class U, class... Args&gt;
+  constexpr explicit optional(in_place_t, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<del>-27- <i>Requires:</i> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args&amp;&amp;...&gt;</tt> is 
+<tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-31- <i>Remarks:</i> The <del>function</del><ins>constructor</ins> shall not participate in overload resolution unless 
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args&amp;&amp;...&gt;</tt> is <tt>true</tt>. 
+If <tt>T</tt>'s constructor selected for the initialization is a <tt>constexpr</tt> constructor, this constructor 
+shall be a <tt>constexpr</tt> constructor.
+</p>
+</blockquote>
+<p>
+<ins>[<i>Note:</i> The following constructors are conditionally specified
+as explicit. This is typically implemented by declaring two such
+constructors, of which at most one participates in overload
+resolution. &mdash; <i>end note</i>]</ins>
+</p>
+<pre>
+<ins>template &lt;class U&gt;
+  constexpr optional(U&amp;&amp; v);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Initializes the contained value as if
+direct-non-list-initializing an object of type <tt>T</tt> with the expression
+<tt>std::forward&lt;U&gt;(v)</tt>.</ins>
+<p/>
+<ins>-?- <i>Postconditions:</i> <tt>*this</tt> contains a value.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.</ins>
+<p/>
+<ins>-?- <i>Remarks:</i> If <tt>T</tt>'s selected constructor is a <tt>constexpr</tt>
+constructor, this constructor shall be a <tt>constexpr</tt> constructor. This
+constructor shall not participate in overload resolution unless
+<tt>is_constructible_v&lt;T, U&amp;&amp;&gt;</tt> is <tt>true</tt>, <tt>remove_reference_t&lt;U&gt;</tt> 
+is not the same type as <tt>T</tt>, and <tt>U</tt> is not a specialization of <tt>optional</tt>. The
+constructor is explicit if and only if <tt>is_convertible_v&lt;U&amp;&amp;, T&gt;</tt> is
+<tt>false</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template &lt;class U&gt;
+  optional(const optional&lt;U&gt;&amp; rhs);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> If <tt>rhs</tt> contains a value, initializes the
+contained value as if direct-non-list-initializing an object of type <tt>T</tt>
+with the expression <tt>*rhs</tt>.</ins>
+<p/>
+<ins>-?- <i>Postconditions:</i> <tt>bool(rhs) == bool(*this)</tt>.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.</ins>
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in
+overload resolution unless <tt>is_constructible_v&lt;T, const U&amp;&gt;</tt> is 
+<tt>true</tt> and <tt>is_same_v&lt;U, T&gt;</tt> is <tt>false</tt>. The constructor is 
+explicit if and only if <tt>is_convertible_v&lt;const U&amp;, T&gt;</tt> is <tt>false</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template &lt;class U&gt;
+  optional(optional&lt;U&gt;&amp;&amp; rhs);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> If <tt>rhs</tt> contains a value, initializes the
+contained value as if direct-non-list-initializing an object of type <tt>T</tt>
+with the expression <tt>std::move(*rhs)</tt>. <tt>bool(rhs)</tt> is unchanged.</ins>
+<p/>
+<ins>-?- <i>Postconditions:</i> <tt>bool(rhs) == bool(*this)</tt>.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.</ins>
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in
+overload resolution unless <tt>is_constructible_v&lt;T, U&amp;&amp;&gt;</tt> is 
+<tt>true</tt> and <tt>is_same_v&lt;U, T&gt;</tt> is <tt>false</tt>. The constructor is 
+explicit if and only if <tt>is_convertible_v&lt;U&amp;&amp;, T&gt;</tt> is <tt>false</tt>.</ins>
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[optional.object.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+optional&lt;T&gt;&amp; operator=(const optional&lt;T&gt;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+<del>-4- <i>Requires:</i> <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and 
+<tt>is_copy_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-8- <i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s copy constructor, no effect. If an exception is thrown
+during the call to <tt>T</tt>'s copy assignment, the state of its contained value is as defined by the exception
+safety guarantee of <tt>T</tt>'s copy assignment. <ins>This operator shall be defined as deleted unless
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and <tt>is_copy_assignable_v&lt;T&gt;</tt> is
+<tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+optional&lt;T&gt;&amp; operator=(optional&lt;T&gt;&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+<del>-9- <i>Requires:</i> <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and 
+<tt>is_move_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-13- <i>Remarks:</i> The expression inside <tt>noexcept</tt> is equivalent to:
+</p>
+<blockquote><pre>
+is_nothrow_move_assignable_v&lt;T&gt; &amp;&amp; is_nothrow_move_constructible_v&lt;T&gt;
+</pre></blockquote>
+<p>
+-14- If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
+If an exception is thrown during the call to <tt>T</tt>'s move constructor, the state of <tt>*rhs.val</tt> 
+is determined by the exception safety guarantee of <tt>T</tt>'s move constructor. If an exception is 
+thrown during the call to <tt>T</tt>'s move assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> 
+is determined by the exception safety guarantee of <tt>T</tt>'s move assignment. <ins>This operator 
+shall be defined as deleted unless <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and 
+<tt>is_move_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class U&gt; optional&lt;T&gt;&amp; operator=(U&amp;&amp; v);
+</pre>
+<blockquote>
+<p>
+<del>-15- <i>Requires:</i> <tt>is_constructible_v&lt;T, U&gt;</tt> is <tt>true</tt> and 
+<tt>is_assignable_v&lt;T&amp;, U&gt;</tt> is <tt>true</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-19- <i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> 
+remains unchanged. If an exception is thrown during the call to <tt>T</tt>'s constructor, the state 
+of <tt>v</tt> is determined by the exception safety guarantee of <tt>T</tt>'s constructor. If an 
+exception is thrown during the call to <tt>T</tt>'s assignment, the state of <tt>*val</tt> and <tt>v</tt> 
+is determined by the exception safety guarantee of <tt>T</tt>'s assignment. <del>The</del><ins>This</ins> function
+shall not participate in overload resolution unless <del><tt>is_same_v&lt;decay_t&lt;U&gt;, T&gt;</tt></del> 
+<ins><tt>is_constructible_v&lt;T, U&gt;</tt> is <tt>true</tt> and <tt>is_assignable_v&lt;T&amp;, 
+U&gt;</tt></ins> is <tt>true</tt>.
 </p>
 </blockquote>
 </blockquote>
