@@ -21,12 +21,12 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-08-04 at 21:08:51 UTC</p>
+<p><p>Revised 2016-08-05 at 03:08:25 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
 <p><b>Section:</b> 23.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-02-12</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#container.requirements">active issues</a> in [container.requirements].</p>
@@ -441,9 +441,159 @@ void swap(function&lt;R(ArgTypes...)&gt;&amp; f1, function&lt;R(ArgTypes...)&gt;
 
 
 <hr>
+<h3><a name="2166" href="#2166">2166.</a> Heap property underspecified?</h3>
+<p><b>Section:</b> 25.5.6 [alg.heap.operations] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Peter Sommerlad <b>Opened:</b> 2012-07-09 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.heap.operations">issues</a> in [alg.heap.operations].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+
+<p>
+Another similar issue to the <tt>operator&lt;</tt> vs greater in <tt>nth_element</tt> but not as direct occurs 
+in 25.5.6 [alg.heap.operations]:
+</p>
+<blockquote><p>
+-1- A <em>heap</em> is a particular organization of elements in a range between two random access iterators 
+<tt>[a,b)</tt>. Its two key properties are:
+</p>
+<ol>
+<li>There is no element greater than <tt>*a</tt> in the range and
+</li>
+<li><tt>*a</tt> may be removed by <tt>pop_heap()</tt>, or a new element added by <tt>push_heap()</tt>, in 
+O(log(<tt>N</tt>)) time.
+</li>
+</ol>
+</blockquote>
+<p>
+As noted by Richard Smith, it seems that the first bullet should read:
+</p>
+<blockquote><p>
+<tt>*a</tt> is not less than any element in the range
+</p></blockquote>
+<p>
+Even better the heap condition could be stated here directly, instead of leaving it unspecified, i.e.,
+</p>
+<blockquote><p>
+Each element at <tt>(a+2*i+1)</tt> and <tt>(a+2*i+2)</tt> is less than the element at <tt>(a+i)</tt>, 
+if those elements exist, for <tt>i&gt;=0</tt>.
+</p></blockquote>
+<p>
+But may be that was may be intentional to allow other heap organizations?
+<p/>
+See also follow-up discussion of c++std-lib-32780.
+<p/>
+
+</p>
+<p><i>[2016-08 &mdash; Chicago]</i></p>
+
+<p>Walter provided wording</p>
+<p>Tues PM: Alisdair &amp; Billy(MS) to improve the wording.</p>
+
+<p><i>[2016-08-02 Chicago LWG]</i></p>
+
+<p>
+Walter provides initial Proposed Resolution. Alisdair objects to perceived
+complexity of the mathematical phrasing.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p><i>[Note to editor: As a drive-by editorial adjustment, please replace the current
+enumerated list format by the numbered bullet items shown below.]</i></p>
+
+
+<p>Change [alg.heap.operations]:</p>
+
+<p>1 A heap is a particular organization of elements in a range between two
+random access iterators [a, b)<del>. Its two key properties are</del><ins>such
+that</ins>:</p>
+
+<p>(1.1) -- <del>There is no element greater than <tt>*a</tt> in the range and</del><br/>
+         <ins>For all <tt>i >= 0</tt>,<br/>
+         <tt>comp(a[i], a[L])</tt> is false whenever L = 2*i+1 &lt; b-a,<br/>
+         and<br/>
+         <tt>comp(a[i], a[R])</tt> is false whenever R = 2*i+2 &lt; b-a.</ins><br/>
+</p>
+<p>(1.2) -- <tt>*a</tt> may be removed by <tt>pop_heap()</tt>, or a new element added by <tt>push_heap()</tt>, in O(log(N)) time.</p>
+</blockquote>
+
+<p><i>[2016-08-03 Chicago LWG]</i></p>
+
+<p>Walter and Billy O'Neal provide revised Proposed Resolution, superseding yesterday's.</p>
+<p>Thurs PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change 25.5.6 [alg.heap.operations] as indicated:</p>
+
+<blockquote class="note">
+<p>
+Note to project editor: As a drive-by editorial adjustment, please replace the
+current enumerated list format by numbered bullet items.
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-1- A <em>heap</em> is a particular organization of elements in a range between two random access iterators 
+<tt>[a, b)</tt><del>. Its two key properties are</del><ins>such that</ins>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; <del>There is no element greater than <tt>*a</tt> in the range and</del>
+<ins>With <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mi>N</mi><mo>=</mo><mi>b</mi><mo>-</mo><mi>a</mi>
+</math>, for all <math xmlns="http://www.w3.org/1998/Math/MathML"><mi>i</mi></math>,
+<math xmlns="http://www.w3.org/1998/Math/MathML"><mn>0</mn><mo>&lt;</mo><mi>i</mi><mo>&lt;</mo><mi>N</mi></math>,
+<code>comp(a[</code><math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow>
+	<mo form="prefix">&#x0230A;</mo>
+	<mrow>
+		<mfrac linethickness="1">
+			<mrow>
+				<mo form="prefix">(</mo>
+				<mi>i</mi>
+				<mo>-</mo>
+				<mn>1</mn>
+				<mo form="postfix">)</mo>
+			</mrow>
+			<mn>2</mn>
+		</mfrac>
+	</mrow>
+	<mo form="postfix">&#x0230B;</mo>
+</mrow>
+</math><code>, a[<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>i</mi></math>])</code> is <tt>false</tt>.</ins>
+</p>
+<blockquote class="note">
+<p>
+[Drafting note for the project editor: In LaTeX the above insertion should be expressed as follows:
+<p/>
+With $N$ = <code>b</code>-<code>a</code>$, for all $i$, $0 &lt; i &lt; N$,
+<code>comp(a[$\left \lfloor{\frac{(i-1)}{2}}\right \rfloor$], a[$i$])</code> is <code>false</code>.]
+</p>
+</blockquote>
+</li>
+<li><p>(1.2) &mdash; <tt>*a</tt> may be removed by <tt>pop_heap()</tt>, or a new element added by <tt>push_heap()</tt>, in 
+<math xmlns="http://www.w3.org/1998/Math/MathML"><mo>O(</mo><mo>log(</mo><mi>N</mi><mo>)</mo><mo>)</mo></math> time.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2179" href="#2179">2179.</a> <tt>enable_shared_from_this</tt> and construction from raw pointers</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab], 20.11.2.2.1 [util.smartptr.shared.const] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Daniel Kr&uuml;gler <b>Opened:</b> 2012-08-16 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
@@ -546,7 +696,7 @@ This issues should be closed as <tt>Resolved</tt> by paper p0033r1 at Jacksonvil
 <hr>
 <h3><a name="2208" href="#2208">2208.</a> <tt>std::reverse_iterator</tt> should be a literal type</h3>
 <p><b>Section:</b> 24.5.1 [reverse.iterators] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Jeffrey Yasskin <b>Opened:</b> 2012-10-30 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#reverse.iterators">issues</a> in [reverse.iterators].</p>
@@ -1005,7 +1155,7 @@ Room: tentatively resolved; revisit after C11 paper: <a href="http://wg21.link/P
 <hr>
 <h3><a name="2245" href="#2245">2245.</a> <tt>packaged_task::reset()</tt> memory allocation</h3>
 <p><b>Section:</b> 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-03-05 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2013-03-05 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#futures.task.members">issues</a> in [futures.task.members].</p>
@@ -1235,7 +1385,7 @@ See proposed resolution of LWG <a href="lwg-defects.html#2192">2192</a>.
 <hr>
 <h3><a name="2337" href="#2337">2337.</a> <tt>shared_ptr operator*()</tt> should not be <tt>noexcept</tt></h3>
 <p><b>Section:</b> 20.11.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-02-10</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-02-12</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.obs">issues</a> in [util.smartptr.shared.obs].</p>
@@ -1784,7 +1934,7 @@ move constructor<ins> or by <tt>A</tt>'s allocate function</ins>.
 <hr>
 <h3><a name="2391" href="#2391">2391.</a> <tt>basic_string</tt> is missing non-<tt>const</tt> <tt>data()</tt></h3>
 <p><b>Section:</b> 21.3.1 [basic.string] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-23</p>
+ <b>Submitter:</b> Michael Bradshaw <b>Opened:</b> 2014-05-27 <b>Last modified:</b> 2016-05-22</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#basic.string">active issues</a> in [basic.string].</p>
@@ -1861,6 +2011,70 @@ namespace std {
 <ins>-?- <i>Complexity</i>: Constant time.</ins>
 <p/>
 <ins>-?- <i>Requires</i>: The program shall not alter the value stored at <tt>p + size()</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2394" href="#2394">2394.</a> <tt>locale::name</tt> specification unclear &mdash; what is implementation-defined?</h3>
+<p><b>Section:</b> 22.3.1.3 [locale.members] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-06-09 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#locale.members">issues</a> in [locale.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+22.3.1.3 [locale.members] p5 says:
+</p>
+<blockquote><p>
+<i>Returns</i>: The name of <tt>*this</tt>, if it has one; otherwise, the string <tt>"*"</tt>. If <tt>*this</tt> has a name, then
+<tt>locale(name().c_str())</tt> is equivalent to <tt>*this</tt>. Details of the contents of the resulting string are
+otherwise implementation-defined.
+</p></blockquote>
+<p>
+So&hellip; what is implementation-defined here, exactly? The first sentence <em>completely</em> defines the behavior of this function 
+in all cases.
+<p/>
+Also, the second sentence says (effectively) that all locales with the same name are equivalent: given <tt>L1</tt> and <tt>L2</tt> 
+that have the same name <tt>N</tt>, they are both equivalent to <tt>locale(N)</tt>, and since there is no definition of 
+"equivalent" specific to <tt>locale</tt>, I assume it's the normal transitive equivalence property, which would imply that 
+<tt>L1</tt> is equivalent to <tt>L2</tt>. I'm not sure why this central fact is in the description of <tt>locale::name</tt>, nor 
+why it's written in this roundabout way.
+</p>
+
+<p><i>[2016-08-03 Chicago LWG]</i></p>
+
+<p>
+Walter, Nevin, and Jason provide initial Proposed Resolution.
+</p>
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 22.3.1.3 [locale.members] as indicated:</p>
+
+<blockquote>
+<pre>
+basic_string&lt;char&gt; name() const;
+</pre>
+<blockquote>
+<p>
+-5- <i>Returns:</i> The name of <tt>*this</tt>, if it has one; otherwise, the string <tt>"*"</tt>. 
+<del>If <tt>*this</tt> has a name, then <tt>locale(name().c_str())</tt> is equivalent to <tt>*this</tt>. 
+Details of the contents of the resulting string are
+otherwise implementation-defined.</del>
 </p>
 </blockquote>
 </blockquote>
@@ -1986,7 +2200,7 @@ types (3.9 [basic.types]).</ins>
 <hr>
 <h3><a name="2460" href="#2460">2460.</a> LWG issue 2408 and value categories</h3>
 <p><b>Section:</b> 20.15.7.6 [meta.trans.other], 24.4.1 [iterator.traits] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2014-11-19 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.trans.other">active issues</a> in [meta.trans.other].</p>
@@ -2411,6 +2625,125 @@ selected.</ins>
 
 
 <hr>
+<h3><a name="2505" href="#2505">2505.</a> <tt>auto_ptr_ref</tt> creation requirements underspecified</h3>
+<p><b>Section:</b> 99 [auto.ptr.conv] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2015-05-28 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#auto.ptr.conv">issues</a> in [auto.ptr.conv].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Resolved">Tentatively Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In C++14 sub-clause 99 [auto.ptr.conv], there appears to be no requirement that the formation of an 
+<tt>auto_ptr_ref&lt;Y&gt;</tt> from an <tt>auto_ptr&lt;X&gt;</tt> is done only when <tt>X*</tt> can be implicitly 
+converted to <tt>Y*</tt>.
+<p/>
+For example, I expect formation of the <tt>auto_ptr_ref&lt;A&gt;</tt> from the prvalue of type <tt>auto_ptr&lt;B&gt;</tt> 
+to be invalid in the case below (but the wording does not seem to be there):
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+
+struct A { };
+struct B { } b;
+
+std::auto_ptr&lt;B&gt; apB() { return std::auto_ptr&lt;B&gt;(&amp;b); }
+int main() {
+  std::auto_ptr&lt;A&gt; apA(apB());
+  apA.release();
+}
+</pre></blockquote>
+<p>
+The behaviour of the implementation in question on the case presented above is to compile and execute it successfully 
+(which is what the C++14 wording implies). The returned value from <tt>apA.release()</tt> is essentially 
+<tt>reinterpret_cast&lt;A*&gt;(&amp;b)</tt>.
+<p/>
+There is nothing in the specification of
+</p>
+<blockquote><pre>
+template &lt;class X&gt;
+template &lt;class Y&gt; operator auto_ptr&lt;X&gt;::auto_ptr_ref&lt;Y&gt;() throw();
+</pre></blockquote>
+<p>
+which implies that <tt>X*</tt> should be implicitly convertible to <tt>Y*</tt>.
+<p/>
+The implementation in question uses the <tt>reinterpret_cast</tt> interpretation even when <tt>Y</tt> is an accessible, 
+unambiguous base class of <tt>X</tt>; the result thereof is that no offset adjustment is performed.
+</p>
+
+<p><i>[2015-07, Telecon]</i></p>
+
+<p>
+Marshall to resolve.
+</p>
+
+<p><i>[2016-03-16, Alisdair Meredith comments]</i></p>
+
+<p>
+This issue is a defect in a component we have actively removed
+from the standard. I can't think of a clearer example of something
+that is no longer a defect!
+</p>
+
+<p><i>[2016-08-03, Alisdair Meredith comments]</i></p>
+
+<p>
+As C++17 removes <tt>auto_ptr</tt>, I suggest closing this issue as closed by paper 
+<a href="http://wg21.link/n4190">N4190</a>.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Resolved</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to ISO/IEC 14882:2014(E).
+</p>
+
+<ol>
+<li><p>Change 99 [auto.ptr.conv] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Y&gt; operator auto_ptr_ref&lt;Y&gt;() throw();
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: <tt>X*</tt> can be implicitly converted to <tt>Y*</tt>.</ins>
+<p/>
+-3- <i>Returns</i>: An <tt>auto_ptr_ref&lt;Y&gt;</tt> that holds <tt>*this</tt>.
+<p/>
+<ins>-?- <i>Notes</i>: Because <tt>auto_ptr_ref</tt> is present for exposition only, the only way to invoke this function 
+is by calling one of the <tt>auto_ptr</tt> conversions which take an <tt>auto_ptr_ref</tt> as an argument. Since all 
+such conversions will call <tt>release()</tt> on <tt>*this</tt> (in the form of the <tt>auto_ptr</tt> that the 
+<tt>auto_ptr_ref</tt> holds a reference to), an implementation of this function may cause instantiation of said 
+<tt>release()</tt> function without changing the semantics of the program.</ins>
+</p>
+</blockquote>
+<pre>
+template&lt;class Y&gt; operator auto_ptr&lt;Y&gt;() throw();
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires</i>: <tt>X*</tt> can be implicitly converted to <tt>Y*</tt>.</ins>
+<p/>
+-4- <i>Effects</i>: Calls <tt>release()</tt>.
+<p/>
+-5- <i>Returns</i>: An <tt>auto_ptr&lt;Y&gt;</tt> that holds the pointer returned from <tt>release()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
 <h3><a name="2510" href="#2510">2510.</a> Tag types should not be <tt>DefaultConstructible</tt></h3>
 <p><b>Section:</b> 18.6 [support.dynamic], 20.2 [utility], 20.4.5 [pair.piecewise], 20.10.2 [memory.syn], 20.10.6 [allocator.tag], 30.4 [thread.mutex] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-06-13 <b>Last modified:</b> 2016-08-02</p>
@@ -2814,6 +3147,87 @@ constexpr adopt_lock_t adopt_lock { };
 
 
 <hr>
+<h3><a name="2514" href="#2514">2514.</a> Type traits must not be <tt>final</tt></h3>
+<p><b>Section:</b> 20.15.1 [meta.rqmts] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-07-03 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+We should make it clear that all standard <tt>UnaryTypeTraits</tt>,
+<tt>BinaryTypeTraits</tt> and <tt>TransformationTraits</tt> are not <tt>final</tt>.
+<p/>
+Otherwise it is not safe to use them as arguments to a template like this:
+</p>
+<blockquote><pre>
+template&lt;typename C1, typename C2&gt;
+struct conjunction
+  : conditional_t&lt;C1::value, C2, C1&gt;
+{ };
+</pre></blockquote>
+
+<p><i>[2016-08-03 Chicago LWG]</i></p>
+
+<p>
+Walter, Nevin, and Jason provide initial Proposed Resolution.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 20.15.1 [meta.rqmts] as indicated:</p>
+
+<blockquote>
+<p>
+-1- A <em>UnaryTypeTrait</em> describes a property of a type. It shall be a <ins>non-<code>final</code></ins> 
+class template [&hellip;]
+<p/>
+-2- A <em>BinaryTypeTrait</em> describes a relationship between two types. It shall be a 
+<ins>non-<code>final</code></ins> class template [&hellip;]
+<p/>
+-3- A <em>TransformationTrait</em> modifies a property of a type. It shall be a 
+<ins>non-<code>final</code></ins> class template [&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-08-04 Chicago LWG]</i></p>
+
+<p>
+LWG discusses and expresses preference for a more general, Library-wide, resolution. Walter and Nevin 
+provide a new Proposed Resolution consistent with such guidance.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Add a new paragraph add the end of 17.6.5.11 [derivation] as indicated:</p>
+
+<blockquote>
+<p>
+<ins>-?- All types specified in the C++ standard library shall be non-<code>final</code>
+types unless otherwise specified.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2519" href="#2519">2519.</a> Iterator <tt>operator-=</tt> has gratuitous undefined behaviour</h3>
 <p><b>Section:</b> 24.2.7 [random.access.iterators] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
  <b>Submitter:</b> Hubert Tong  <b>Opened:</b> 2015-07-15 <b>Last modified:</b> 2016-08-02</p>
@@ -2925,7 +3339,7 @@ bidirectional iterator)</caption>
 <hr>
 <h3><a name="2529" href="#2529">2529.</a> Assigning to <tt>enable_shared_from_this::__weak_this</tt> twice</h3>
 <p><b>Section:</b> 20.11.2.5 [util.smartptr.enab] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-06</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2015-08-26 <b>Last modified:</b> 2016-05-17</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.enab">active issues</a> in [util.smartptr.enab].</p>
@@ -2989,6 +3403,585 @@ This issues should be closed as <tt>Resolved</tt> by paper p0033r1 at Jacksonvil
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2531" href="#2531">2531.</a> <tt>future::get</tt> should explicitly state that the shared state is released</h3>
+<p><b>Section:</b> 30.6.6 [futures.unique_future] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2015-09-03 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.unique_future">active issues</a> in [futures.unique_future].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.unique_future">issues</a> in [futures.unique_future].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The standard is usually very explicit on when a shared state is released, except for <tt>future::get</tt> 
+for which it only states <tt>valid() == false</tt> as a postcondition.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>Modify 30.6.6 [futures.unique_future] as indicated:</p>
+<blockquote><pre>
+R future::get();
+R&amp; future&lt;R&amp;&gt;::get();
+void future&lt;void&gt;::get();
+</pre>
+<blockquote>
+<p>
+-14- <i>Note</i>: as described above, the template and its two required specializations differ only in the return
+type and return value of the member function <tt>get</tt>.
+<p/>
+-15- <i>Effects</i>:
+</p>
+<ul>
+<li><p><tt>wait()</tt>s until the shared state is ready, then retrieves the value stored in the shared state<del>.</del><ins>;</ins></p></li>
+<li><p><ins>releases any shared state (30.6.4 [futures.state]).</ins></p></li>
+</ul>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2534" href="#2534">2534.</a> Constrain rvalue stream operators</h3>
+<p><b>Section:</b> 27.7.3.9 [ostream.rvalue], 27.7.2.6 [istream.rvalue] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Robert Haberlach <b>Opened:</b> 2015-09-08 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#ostream.rvalue">active issues</a> in [ostream.rvalue].</p>
+<p><b>View all other</b> <a href="lwg-index.html#ostream.rvalue">issues</a> in [ostream.rvalue].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The rvalue stream insertion and extraction operators should be constrained to not participate in overload 
+resolution unless the expression they evaluate is well-formed. Programming code that tests the validity of 
+stream insertions (or extractions) using SFINAE can result in false positives, as the present 
+declarations accept virtually any right-hand side argument. Moreover, there is no need for pollution of 
+the candidate set with ill-formed specializations.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4527.
+</p>
+
+<ol>
+<li><p>Modify 27.7.3.9 [ostream.rvalue] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class charT, class traits, class T&gt;
+  basic_ostream&lt;charT, traits&gt;&amp;
+  operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp;&amp; os, const T&amp; x);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: <tt>os &lt;&lt; x</tt>
+<p/>
+-2- <i>Returns</i>: <tt>os</tt>
+<p/>
+<ins>-?- <i>Remarks</i>: This function shall not participate in overload resolution unless the expression 
+<tt>os &lt;&lt; x</tt> is well-formed.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 27.7.2.6 [istream.rvalue] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class charT, class traits, class T&gt;
+  basic_istream&lt;charT, traits&gt;&amp;
+  operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp;&amp; is, T&amp; x);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: <tt>is &gt;&gt; x</tt>
+<p/>
+-2- <i>Returns</i>: <tt>is</tt>
+<p/>
+<ins>-?- <i>Remarks</i>: This function shall not participate in overload resolution unless the expression 
+<tt>is &gt;&gt; x</tt> is well-formed.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2540" href="#2540">2540.</a> <tt>unordered_multimap::insert</tt> hint iterator</h3>
+<p><b>Section:</b> 23.2.5 [unord.req] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Isaac Hier <b>Opened:</b> 2015-09-16 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+I have been wondering about the C++ standard requirements regarding the hint iterator for insertion into an 
+<tt>unordered_multimap</tt> (and I imagine a similar question could be asked of <tt>unordered_map</tt>, but 
+I have not researched that topic). As far as I can tell, it seems perfectly valid for an implementation to 
+allow only valid dereferencable iterators to be used as the hint argument for this member function. If that 
+is correct, it means that one could not expect the end iterator to be used as a valid hint nor could one use 
+the begin iterator of an empty <tt>unordered_multimap</tt> as the hint. However, this essentially precludes 
+all uses of inserter on an empty <tt>unordered_multimap</tt> seeing as the inserter functor requires that a 
+hint iterator be passed to its constructor.
+<p/>
+Howard Hinnant:
+</p>
+<blockquote class="note">
+<p>
+The intent of the standard is that the iterator produced from container <tt>c</tt> by <tt>c.end()</tt> is a 
+valid (but non-dereferenceable) iterator into container <tt>c</tt>. It is reachable by every other iterator 
+into <tt>c</tt>.
+<p/>
+It appears to me that you and the Bloomberg implementation have fallen victim to a type-o in the Unordered 
+associative container requirements, Table 102.  The row containing:
+</p>
+<blockquote><pre>
+a.insert(q, t);
+</pre></blockquote>
+<p>
+should read instead:
+</p>
+<blockquote><pre>
+a.insert(p, t);
+</pre></blockquote>
+<p>
+The distinction is that <tt>p</tt> is valid, and <tt>q</tt> is both valid and dereferenceable.
+The correction of this type-o would make unordered container <tt>insert</tt> consistent with unordered <tt>emplace_hint</tt>, 
+associative <tt>insert</tt>, and associative <tt>emplace_hint</tt>.
+</p>
+</blockquote>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+Change the insert-with-hint row in Table 102
+Unordered associative container requirements like so:
+</p>
+<blockquote>
+<table border="1" cellpadding="4"><tr>
+<td><tt>a.insert(<del>q</del><ins>p</ins>, t);</tt><br/></td>
+<td><tt>iterator</tt><br/></td>
+<td><i>Requires:</i> If <tt>t</tt> is a non-const<br/>...</td>
+<td>Average Case<br/>...</td>
+</tr></table>
+</blockquote>
+
+
+
+
+
+<hr>
+<h3><a name="2543" href="#2543">2543.</a> LWG 2148 (hash support for enum types) seems under-specified</h3>
+<p><b>Section:</b> 20.14.14 [unord.hash] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2015-09-27 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unord.hash">active issues</a> in [unord.hash].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord.hash">issues</a> in [unord.hash].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The rationale in issue <a href="lwg-defects.html#2148">2148</a> says:
+</p>
+<blockquote class="note"><p>
+This proposed resolution doesn't specify anything else about the
+primary template, allowing implementations to do whatever they want
+for non-enums: <tt>static_assert</tt> nicely, explode horribly at compiletime
+or runtime, etc.
+</p></blockquote>
+<p>
+libc++ seems to implement it by defining the primary template and
+<tt>static_assert</tt>ing <tt>is_enum</tt> inside it. However, that brings forth
+a problem; there are reasonable SFINAE uses broken by it:
+</p>
+<blockquote><pre>
+#include &lt;type_traits&gt;
+#include &lt;functional&gt;
+
+class S{}; // No hash specialization
+
+template&lt;class T&gt;
+auto f(int) -&gt; decltype(std::hash&lt;T&gt;(), std::true_type());
+
+template&lt;class T&gt;
+auto f(...) -&gt; decltype(std::false_type());
+
+static_assert(!decltype(f&lt;S&gt;(0))::value, "");
+</pre></blockquote>
+<p>
+MSVC doesn't seem to accept that code either.
+<p/>
+There <em>is</em> a way to implement LWG <a href="lwg-defects.html#2148">2148</a> so that <tt>hash</tt> for enums is supported
+without breaking that sort of SFINAE uses:
+</p>
+<ol>
+<li><p>Derive the main <tt>hash</tt> template from a library-internal uglified-named
+base template that takes a type and a <tt>bool</tt>, pass as argument for the base
+the result of <tt>is_enum</tt>.</p></li>
+<li><p>Partially specialize that base template so that the false-case has
+a suitable set of private special member function declarations so that it's not
+an aggregate nor usable in almost any expression.</p></li>
+</ol>
+
+<p><i>[2015-10, Kona Saturday afternoon]</i></p>
+
+<p>EricWF to come back with wording; move to Open</p>
+
+<p><i>[2016-05-08, Eric Fiselier &amp; Ville provide wording]</i></p>
+
+
+<p><i>[2016-05-25, Tim Song comments]</i></p>
+
+<p>
+I see two issues with this P/R:
+</p>
+<ol>
+<li><p>
+"for which neither the library nor the user provides an explicit specialization" should probably be "for which neither 
+the library nor the user provides an explicit or partial specialization".
+</p></li>
+<li><p>
+Saying that the specialization "is not <tt>DefaultConstructible</tt> nor <tt>MoveAssignable</tt>" is not enough to 
+guarantee that common SFINAE uses will work. Both of those requirements have several parts, and it's not too hard 
+to fail only some of them. For instance, not meeting the assignment postcondition breaks <tt>MoveAssignable</tt>, 
+but is usually not SFINAE-detectible. And for <tt>DefaultConstructible</tt>, it's easy to write something in a way 
+that breaks <tt>T()</tt> but not <tt>T{}</tt> (due to aggregate initialization in the latter case).
+</p></li>
+</ol>
+
+<p><i>[2016-06-14, Daniel comments]</i></p>
+
+<p>
+The problematic part of the P/R is that it describes constraints that would be suitable if they were constraints 
+for user-code, but they are not suitable as requirements imposed on implementations to provide certain guarantees 
+for clients of the Library. The guarantees should be written in terms of testable compile-time expressions, e.g. based on 
+negative results of <tt>is_default_constructible&lt;hash&lt;X&gt;&gt;::value</tt>, 
+<tt>std::is_copy_constructible&lt;hash&lt;X&gt;&gt;::value</tt>, and possibly also 
+<tt>std::is_destructible&lt;hash&lt;X&gt;&gt;::value</tt>. <em>How</em> an implementation realizes these negative 
+results shouldn't be specified, though, but the expressions need to be well-formed and well-defined.
+
+<p><i>[2016-08-03, Ville provides revised wording as response to Daniel's previous comment]</i></p>
+
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>
+This wording is relative to N4582.
+</p>
+
+<ol>
+<li><p>Insert a new paragraph after 20.14.14 [unord.hash]/2</p>
+
+<blockquote>
+<p>
+-2- The template specializations shall meet the requirements of class template <tt>hash</tt> (20.12.14).
+<p/>
+<ins>-?- For any type that is not of integral or enumeration type, or for
+which neither the library nor the user provides an explicit
+specialization of the class template <tt>hash</tt>, the specialization of <tt>hash</tt> does not meet
+any of the <tt>Hash</tt> requirements, and is not <tt>DefaultConstructible</tt> nor
+<tt>MoveAssignable</tt>.
+[<i>Note</i>: this means that the specialization of <tt>hash</tt> exists, but any
+attempts to use it as a Hash will be ill-formed. &mdash; <i>end note</i>]
+</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Insert a new paragraph after 20.14.14 [unord.hash]/2</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> I see no reason to specify whether <tt>H&lt;T&gt;</tt> is
+destructible. There's no practical use case for which that would need to be covered. 
+libstdc++ makes it so that <tt>H&lt;T&gt;</tt> is destructible.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-2- The template specializations shall meet the requirements of class template <tt>hash</tt> (20.12.14).
+<p/>
+<ins>-?- For any type <tt>T</tt> that is not of integral or enumeration type, or for
+which neither the library nor the user provides an explicit or partial specialization of the class
+template hash, the specialization of <tt>hash&lt;T&gt;</tt> has the following properties:
+</ins>
+</p>
+<ul>
+<li><ins><tt>is_default_constructible_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_copy_constructible_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_move_constructible_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_copy_assignable_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_move_assignable_v&lt;hash&lt;T&gt;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_callable_v&lt;hash&lt;T&gt;, T&amp;&gt;</tt> is <tt>false</tt></ins></li>
+<li><ins><tt>is_callable_v&lt;hash&lt;T&gt;, const T&amp;&gt;</tt> is <tt>false</tt></ins></li>
+</ul>
+<p>
+<ins>[<i>Note:</i> this means that the specialization of <tt>hash</tt> exists, but any
+attempts to use it as a <tt>Hash</tt> will be ill-formed. &mdash; end note]</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2548" href="#2548">2548.</a> Missing <tt>vfscanf</tt> from <tt>&lt;cstdio&gt;</tt></h3>
+<p><b>Section:</b> 27.11 [c.files] <b>Status:</b> <a href="lwg-active.html#Resolved">Tentatively Resolved</a>
+ <b>Submitter:</b> Richard Smith  <b>Opened:</b> 2015-10-09 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#c.files">issues</a> in [c.files].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Resolved">Tentatively Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+C's <tt>vfscanf</tt> function is not present in C++'s <tt>&lt;cstdio&gt;</tt>, and presumably should be. 
+It looks like this is the only missing member of C's <tt>[v]{f,s,sn}[w]{printf,scanf}</tt> family.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Resolved by P0175R1</p>
+<p>Thurs AM: Moved to Tentatively Resolved</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4527.</p>
+
+<p>Modify Table 133 as follows:</p>
+<p>
+<tt>ungetc</tt><br/>
+<tt>vfprintf</tt><br/>
+<ins><tt>vfscanf</tt></ins><br/>
+<tt>vprintf</tt><br/>
+<tt>vscanf</tt><br/>
+</p>
+
+
+
+
+
+<hr>
+<h3><a name="2562" href="#2562">2562.</a> Consistent total ordering of pointers by comparison functors</h3>
+<p><b>Section:</b> 20.14.6 [comparisons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2015-11-18 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#comparisons">active issues</a> in [comparisons].</p>
+<p><b>View all other</b> <a href="lwg-index.html#comparisons">issues</a> in [comparisons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+N4567 20.14.6 [comparisons]/14 specifies that the comparison functors provide a total ordering for pointer types:
+</p>
+<blockquote><p>
+For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the specializations for 
+any pointer type yield a total order, even if the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, <tt>&gt;=</tt> 
+do not.
+</p></blockquote>
+<p>
+It notably does not specify:
+</p>
+<ul>
+<li><p>whether the specializations of all of the named templates for a given pointer type yield the <em>same</em> total order</p></li>
+<li><p>whether the total order imposed respects the partial order imposed by the built-in operators</p></li>
+<li><p>whether the total order imposed is consistent with the partition induced by <tt>==</tt></p></li>
+</ul>
+<p>
+All of which are important for sane semantics and provided by common implementations, since the built-in operators provide 
+a total order and the comparison functors yield that same order.
+<p/>
+It would be extremely confusing &mdash; if not outright insane &mdash; for e.g.:
+</p>
+<ul>
+<li><p><tt>less&lt;int*&gt;</tt> and <tt>greater&lt;int*&gt;</tt> to yield different orders</p></li>
+<li><p><tt>less&lt;int*&gt;</tt> to disagree with <tt>&lt;</tt> on the relative order of two pointers for which <tt>&lt;</tt> 
+is defined</p></li>
+<li><p><tt>less&lt;int*&gt;</tt> to order <tt>a</tt> before <tt>b</tt> when <tt>a == b</tt>, i.e., not preserve equality.</p></li>
+</ul>
+<p>
+Consistent semantics for the various comparison functors and the built-in operators is so intuitive as to be assumed by most programmers.
+<p/>
+Related issues: <a href="lwg-defects.html#2450">2450</a>, <a href="lwg-active.html#2547">2547</a>.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to N4567.</p>
+
+<ol>
+<li><p>Alter 20.14.6 [comparisons]/14 to read:</p>
+<blockquote><p>
+For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the specializations for any pointer type
+yield <del>a</del><ins>the same</ins> total order, even if the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, 
+<tt>&gt;=</tt> do not. <ins>The total order shall respect the partial order imposed by the built-in operators.</ins>
+</p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-05-20, Casey Carter comments and suggests revised wording]</i></p>
+
+<p>
+The new proposed wording is attempting to address the issue raised in the 2016-02-04 telecon.
+<p/>
+The real issue I'm trying to address here is ensure that "weird" implementations provide the same kind of consistency 
+for pointer orderings as "normal" implementations that use a flat address spaces and have totally ordered <tt>&lt;</tt>. 
+If <tt>a &lt; b</tt> is true for <tt>int</tt> pointers <tt>a</tt> and <tt>b</tt>, then <tt>less&lt;int*&gt;(a, b)</tt>, 
+<tt>less_equal&lt;int*&gt;(a, b)</tt>, <tt>less&lt;char*&gt;(a, b)</tt>, <tt>less&lt;void*&gt;(a, b)</tt>, and 
+<tt>greater&lt;int*&gt;(b, a)</tt> should all hold. I <em>think</em> this wording is sufficient to provide that.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to N4582.</p>
+
+<ol>
+<li><p>Alter 20.14.6 [comparisons] to read:</p>
+<blockquote><p>
+-14- For templates <tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and <tt>less_equal</tt>, the 
+specializations for any pointer type yield <del>a</del><ins>the same</ins> total order<ins>. That total order is 
+consistent with the partial order imposed by</ins><del>, even if</del> the built-in operators <tt>&lt;</tt>, <tt>&gt;</tt>, 
+<tt>&le;</tt>, <ins>and</ins> <tt>&gt;</tt> <del>do not</del>. <ins>[<i>Note</i>: When <tt>a &lt; b</tt> is 
+well-defined for pointers <tt>a</tt> and <tt>b</tt> of type <tt>P</tt>, this implies <tt>(a &lt; b) == 
+less&lt;P&gt;(a, b)</tt>, <tt>(a &gt; b) == greater&lt;P&gt;(a, b)</tt>, and so forth. &mdash; <i>end note</i>]</ins> 
+For template specializations <tt>greater&lt;void&gt;</tt>, <tt>less&lt;void&gt;</tt>, <tt>greater_equal&lt;void&gt;</tt>, 
+and <tt>less_equal&lt;void&gt;</tt>, if the call operator calls a built-in operator comparing pointers, the 
+call operator yields a total order.
+</p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-08-04 Chicago LWG]</i></p>
+
+<p>
+LWG discusses and concludes that we are trying to accomplish the following:
+</p>
+<ol>
+<li>
+<blockquote><pre>
+T* a = /* ... */;
+T* b = /* ... */;
+</pre></blockquote>
+<p>
+ if <tt>a &lt; b</tt> is valid, <tt>a &lt; b == less&lt;T*&gt;(a, b)</tt>, and analogously for <tt>&gt;</tt>, 
+ <tt>&lt;=</tt>, <tt>&gt;=</tt>.
+</p>
+</li>
+<li>
+<blockquote><pre>
+less&lt;void&gt;(a, b) == less&lt;T*&gt;(a, b);
+less&lt;T*&gt;(a, b) == greater&lt;T*&gt;(b, a);
+</pre></blockquote>
+<p>
+etc.
+</p>
+</li>
+<li><p>
+<tt>less&lt;T*&gt;</tt> produces a strict total ordering with which the other three
+function objects are consistent
+</p></li>
+<li><p>
+<tt>less&lt;void&gt;</tt> when applied to pointers produces a strict total ordering with
+which the other three are consistent
+</p></li>
+<li><p>
+<tt>less&lt;void&gt;</tt> when applied to pointers of the same type produces the same
+strict total ordering as <tt>less&lt;T*&gt;</tt>, and analogously for the other three
+</p></li>
+<li><p>
+we are not addressing <tt>less&lt;void&gt;</tt> (and the other three) when applied to
+pointers of differing types
+</p></li>
+</ol>
+<p>
+Walter and Nevin revise Proposed Wording accordingly.
+</p>
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 20.14.6 [comparisons] p14 as indicated:</p>
+<blockquote><p>
+-14- For templates <del><tt>greater</tt>, <tt>less</tt>, <tt>greater_equal</tt>, and 
+<tt>less_equal</tt></del><ins><ins><tt>less</tt>, <tt>greater</tt>, <tt>less_equal</tt>,
+and <tt>greater_equal</tt></ins></ins>, 
+the specializations for any pointer type yield a <ins>strict</ins> total order<ins>
+that is consistent among those specializations and is also consistent with the partial order imposed by</ins>
+<del>, even if</del> the built-in operators 
+<tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, <tt>&gt;=</tt> <del>do not</del><ins>[<i>Note:</i>
+When <tt>a &lt; b</tt> is well-defined for pointers <tt>a</tt> and <tt>b</tt> of type <tt>P</tt>,
+this implies <tt>(a &lt; b) == less&lt;P&gt;(a, b)</tt>, <tt>(a &gt; b) == greater&lt;P&gt;(a, b)</tt>,
+and so forth. &mdash; <i>end note</i>]</ins>. For template specializations 
+<del><tt>greater&lt;void&gt;</tt>, <tt>less&lt;void&gt;</tt>, <tt>greater_equal&lt;void&gt;</tt>, and 
+<tt>less_equal&lt;void&gt;</tt></del><ins><tt>less&lt;void&gt;</tt>, <tt>greater&lt;void&gt;</tt>,
+<tt>less_equal&lt;void&gt;</tt>, and <tt>greater_equal&lt;void&gt;</tt></ins>, if the call operator 
+calls a built-in operator comparing pointers, the call operator yields a <ins>strict</ins> total 
+order <ins>that is consistent among those specializations and is also consistent
+with the partial order imposed by those built-in operators</ins>.
+</p></blockquote>
+</li>
+</ol>
 
 
 
@@ -3065,7 +4058,7 @@ convertible to <tt>bool</tt>, is not hidden, and is unambiguously available in t
 <hr>
 <h3><a name="2570" href="#2570">2570.</a> [fund.ts.v2] <tt>conjunction</tt> and <tt>disjunction</tt> requirements are too strict</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::meta.logical] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-12-11 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#fund.ts.v2::meta.logical">active issues</a> in [fund.ts.v2::meta.logical].</p>
@@ -3225,6 +4218,112 @@ ClassAtom ::
   SourceCharacter <b>but not</b> c</ins>
 </pre></blockquote>
 </blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2589" href="#2589">2589.</a> <tt>match_results</tt> can't satisfy the requirements of a container</h3>
+<p><b>Section:</b> 28.10 [re.results] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2016-01-24 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#re.results">active issues</a> in [re.results].</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.results">issues</a> in [re.results].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+N4567 28.10 [re.results] p2 mentions
+</p>
+<blockquote>
+<p>
+The class template <tt>match_results</tt> shall satisfy the requirements of an allocator-aware container and of a
+sequence container, as specifed in 23.2.3, except that only operations defined for const-qualified sequence
+containers are supported.
+</p>
+</blockquote>
+<p>
+However, this is impossible because <tt>match_results</tt> has a <tt>operator==</tt> whose semantics differs from the one 
+required in Table 95 &mdash; "Container requirements".
+<p/>
+Table 95 requires that <tt>a == b</tt> is an equivalence relation and means <tt>equal(a.begin(), a.end(), b.begin(), b.end())</tt>. 
+But for <tt>match_results</tt>, <tt>a == b</tt> and <tt>equal(a.begin(), a.end(), b.begin(), b.end())</tt> can give different 
+results. For example:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;regex&gt;
+#include &lt;string&gt;
+#include &lt;algorithm&gt;
+
+int main()
+{
+  std::regex re("a*");
+  std::string target("baaab");
+  std::smatch a;
+
+  std::regex_search(target, a, re);
+
+  std::string target2("raaau");
+  std::smatch b;
+
+  std::regex_search(target2, b, re);
+
+  std::cout &lt;&lt; std::boolalpha;
+  std::cout &lt;&lt; (a == b) &lt;&lt; '\n'; // false
+  std::cout &lt;&lt; std::equal(a.begin(), a.end(), b.begin(), b.end()) &lt;&lt; '\n'; // true
+}
+</pre></blockquote>
+<p><i>[2016-02, Issues Telecon]</i></p>
+
+Marshall: The submitter is absolutely right, but the proposed resolution is insufficient. We should avoid "shall", for once.<br/>
+Jonathan: This is NAD, because the container comparison functions say "unless otherwise stated", 23.3.1p14 and table 97.<br/>
+Ville: wrong, table 95 is relevant for ==.<br/>
+Jonathan: good point<br/>
+
+<p>2016-05: Marshall cleans up the wording around the change</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 28.10 [re.results] p2 as indicated:</p>
+<blockquote><p>
+-2- The class template <tt>match_results</tt> shall satisfy the requirements of an allocator-aware container and of a
+sequence container, as specified in 23.2.3, except that only operations defined for const-qualified sequence
+containers are supported <ins>and that the semantics of comparison functions are different from those required for a 
+container</ins>.
+</p></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 28.10 [re.results] p2 as indicated:</p>
+<blockquote><p>
+-2- The class template <tt>match_results</tt> <del>shall satisfy</del><ins>satisfies</ins> the requirements of an allocator-aware container and of a
+sequence container, <del>as specified in </del><ins>(</ins>23.2.3<ins>)</ins>, except that only operations defined for const-qualified sequence
+containers are supported <ins>and the semantics of comparison functions are different from those required for a 
+container</ins>.
+</p></blockquote>
 </li>
 </ol>
 
@@ -3481,7 +4580,7 @@ overloaded <tt>operator&amp;</tt>.
 <hr>
 <h3><a name="2665" href="#2665">2665.</a> <code>remove_filename()</code> post condition is incorrect</h3>
 <p><b>Section:</b> 27.10.8.4.5 [path.modifiers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2014-06-07 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2014-06-07 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -3823,7 +4922,7 @@ The descriptions of most functions are explicit about the use of the <code>ec</c
 <hr>
 <h3><a name="2678" href="#2678">2678.</a> <tt>std::filesystem</tt> enum classes overspecified</h3>
 <p><b>Section:</b> 27.10.10.1 [enum.file_type], 27.10.10.2 [enum.copy_options], 27.10.10.4 [enum.directory_options] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Richard Smith <b>Opened:</b> 2016-03-19 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2016-03-19 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -3942,7 +5041,7 @@ Strike the "Value" column from:
 <hr>
 <h3><a name="2680" href="#2680">2680.</a> Add "Equivalent to" to filesystem</h3>
 <p><b>Section:</b> 27.10 [filesystems] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Beman Dawes <b>Opened:</b> 2016-04-15 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Beman Dawes <b>Opened:</b> 2016-04-15 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4033,7 +5132,7 @@ is <code>create_symlink</code> or <code>create_directory_symlink</code>, as appr
 <hr>
 <h3><a name="2681" href="#2681">2681.</a> <code>filesystem::copy()</code> cannot copy symlinks</h3>
 <p><b>Section:</b> 27.10.15.3 [fs.op.copy] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#fs.op.copy">active issues</a> in [fs.op.copy].</p>
@@ -4093,7 +5192,7 @@ then <code>auto f = symlink_status(from)</code> and if needed <code>auto t = sta
 <hr>
 <h3><a name="2682" href="#2682">2682.</a> <code>filesystem::copy()</code> won't create a symlink to a directory</h3>
 <p><b>Section:</b> 27.10.15.3 [fs.op.copy] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#fs.op.copy">active issues</a> in [fs.op.copy].</p>
@@ -4153,9 +5252,72 @@ error with an <code>error_code</code> argument equal to
 
 
 <hr>
+<h3><a name="2686" href="#2686">2686.</a> Why is <tt>std::hash</tt> specialized for <tt>error_code</tt>, but not <tt>error_condition</tt>?</h3>
+<p><b>Section:</b> 19.5.1 [system_error.syn] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-05-03 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Both <tt>error_code</tt> and <tt>error_condition</tt> have an <tt>operator&lt;</tt> overload, 
+enabling their use in associative containers without having to write a custom comparator. 
+</p>
+<p>
+However, only <tt>error_code</tt> has a <tt>std::hash</tt>
+specialization. So it's possible to have a
+<tt>set&lt;error_code&gt;</tt>, a <tt>set&lt;error_condition&gt;</tt>,
+an <tt>unordered_set&lt;error_code&gt;</tt>, but not an
+<tt>unordered_set&lt;error_condition&gt;</tt>. This seems...odd.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4582.
+</p>
+<ol>
+<li><p>Edit 19.5.1 [system_error.syn], header <tt>&lt;system_error&gt;</tt> synopsis, as indicated: </p>
+
+<blockquote><pre>
+namespace std {
+    // ...
+
+    // 19.5.6 Hash support
+    template&lt;class T&gt; struct hash;
+    template&lt;&gt; struct hash&lt;error_code&gt;;
+    <ins>template&lt;&gt; struct hash&lt;error_condition&gt;;</ins>
+
+   // ...
+}
+</pre></blockquote>
+</li>
+<li> <p> Edit 19.5.6 [syserr.hash] as indicated: </p>
+
+<blockquote><pre>
+template &lt;&gt; struct hash&lt;error_code&gt;;
+<ins>template &lt;&gt; struct hash&lt;error_condition&gt;;</ins>
+</pre>
+
+<blockquote>
+<p>-1- The template specialization<ins>s</ins> shall meet the requirements of class template <tt>hash</tt> (20.12.14).</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2692" href="#2692">2692.</a> Overspecification of lvalueness of bitmask elements</h3>
 <p><b>Section:</b> 17.5.2.1.3 [bitmask.types] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-23</p>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2016-05-22</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#bitmask.types">issues</a> in [bitmask.types].</p>
@@ -4261,7 +5423,7 @@ pointer. &mdash; <i>end note</i>]
 <hr>
 <h3><a name="2712" href="#2712">2712.</a> <tt>copy_file(from, to, ...)</tt> has a number of unspecified error conditions</h3>
 <p><b>Section:</b> 27.10.15.4 [fs.op.copy_file] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-10 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-10 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4330,7 +5492,7 @@ copy_options::update_existing)) == copy_options::none</tt>.</li>
 <hr>
 <h3><a name="2717" href="#2717">2717.</a> <tt>scoped_allocator_adaptor</tt> uses <tt>forward</tt> to do <tt>move</tt>'s job</h3>
 <p><b>Section:</b> 20.13.4 [allocator.adaptor.members] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-06-05</p>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-06-08</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.adaptor.members">active issues</a> in [allocator.adaptor.members].</p>
@@ -4377,7 +5539,7 @@ Withdrawn by the submitter, since the prerequisites were incorrect.
 <hr>
 <h3><a name="2722" href="#2722">2722.</a> <tt>equivalent</tt> incorrectly specifies throws clause</h3>
 <p><b>Section:</b> 27.10.15.13 [fs.op.equivalent] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-28 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2016-05-28 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4484,9 +5646,194 @@ is_other(s2))</tt>, otherwise a</del><ins>A</ins>s specified in <del>E</del><ins
 
 
 <hr>
+<h3><a name="2729" href="#2729">2729.</a> Missing SFINAE on <tt>std::pair::operator=</tt></h3>
+<p><b>Section:</b> 20.4.2 [pairs.pair], 20.5.2.2 [tuple.assign] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2016-06-07 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#pairs.pair">active issues</a> in [pairs.pair].</p>
+<p><b>View all other</b> <a href="lwg-index.html#pairs.pair">issues</a> in [pairs.pair].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>std::is_copy_assignable&lt;std::pair&lt;int, std::unique_ptr&lt;int&gt;&gt;&gt;::value</tt> is <tt>true</tt>, and 
+should be <tt>false</tt>. We're missing a "shall not participate in overload resolution unless" for <tt>pair</tt>'s 
+<tt>operator=</tt>, and likewise for <tt>tuple</tt>.
+</p>
+
+<p><i>[2016-08-03 Chicago LWG]</i></p>
+
+<p>
+Inspired by Eric Fiselier and Ville, Walter and Nevin provide initial Proposed Resolution.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs PM: Moved to Tentatively Ready</p>
+<p>Lots of discussion, but no one had a better idea.</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 20.4.2 [pairs.pair] as indicated:</p>
+
+<blockquote>
+<pre>
+pair&amp; operator=(const pair&amp; p);
+</pre>
+<blockquote>
+<p>
+-15- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall be defined as deleted unless</ins> 
+<tt>is_copy_assignable_v&lt;first_type&gt;</tt> is <tt>true</tt> and 
+<tt>is_copy_assignable_v&lt;second_type&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class U, class V&gt; pair&amp; operator=(const pair&lt;U, V&gt;&amp; p);
+</pre>
+<blockquote>
+<p>
+-18- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall not participate in overload resolution 
+unless</ins> <tt>is_assignable_v&lt;first_type&amp;, const U&amp;&gt;</tt> is <tt>true</tt> and 
+<tt>is_assignable_v&lt;second_type&amp;, const V&amp;&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+pair&amp; operator=(pair&amp;&amp; p) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-21- <i>Remarks:</i> The expression inside <tt>noexcept</tt> is equivalent to:
+</p>
+<blockquote><pre>
+is_nothrow_move_assignable_v&lt;T1&gt; &amp;&amp; is_nothrow_move_assignable_v&lt;T2&gt;
+</pre></blockquote>
+<p>
+-22- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall be defined as deleted unless</ins> 
+<tt>is_move_assignable_v&lt;first_type&gt;</tt> is <tt>true</tt> and 
+<tt>is_move_assignable_v&lt;second_type&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class U, class V&gt; pair&amp; operator=(pair&lt;U, V&gt;&amp;&amp; p);
+</pre>
+<blockquote>
+<p>
+-25- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall not participate in overload resolution 
+unless</ins> <tt>is_assignable_v&lt;first_type&amp;, U&amp;&amp;&gt;</tt> is <tt>true</tt> and 
+<tt>is_assignable_v&lt;second_type&amp;, V&amp;&amp;&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.5.2.2 [tuple.assign] as indicated:</p>
+
+<blockquote>
+<pre>
+tuple&amp; operator=(const tuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-2- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall be defined as deleted unless</ins> 
+<tt>is_copy_assignable_v&lt;T<sub><i>i</i></sub>&gt;</tt> is <tt>true</tt> for all <tt><i>i</i></tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+tuple&amp; operator=(tuple&amp;&amp; u) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-5- <i>Remark:</i> The expression inside <tt>noexcept</tt> is equivalent to the logical AND of the following expressions:
+</p>
+<blockquote><pre>
+is_nothrow_move_assignable_v&lt;T<sub><i>i</i></sub>&gt;
+</pre></blockquote>
+<p>
+where <tt>T<sub><i>i</i></sub></tt> is the <tt><i>i<sup>th</sup></i></tt> type in <tt>Types</tt>.
+<p/>
+-6- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall be defined as deleted unless</ins>
+<tt>is_move_assignable_v&lt;T<sub><i>i</i></sub>&gt;</tt> is <tt>true</tt> for all <tt><i>i</i></tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class... UTypes&gt;
+  tuple&amp; operator=(const tuple&lt;UTypes...&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-9- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall not participate in overload resolution 
+unless</ins> <tt>sizeof...(Types) == sizeof...(UTypes)</tt> and 
+<tt>is_assignable_v&lt;T<sub><i>i</i></sub>&amp;, const U<sub><i>i</i></sub>&amp;&gt;</tt> is <tt>true</tt> 
+for all <tt><i>i</i></tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class... UTypes&gt;
+  tuple&amp; operator=(tuple&lt;UTypes...&gt;&amp;&amp; u);
+</pre>
+<blockquote>
+<p>
+-12- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall not participate in overload resolution 
+unless</ins> <tt>is_assignable_v&lt;T<sub><i>i</i></sub>&amp;, U<sub><i>i</i></sub>&amp;&amp;&gt; == true</tt> 
+for all <tt><i>i</i></tt><del>.</del> <ins>and</ins> <tt>sizeof...(Types) == sizeof...(UTypes)</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class U1, class U2&gt; tuple&amp; operator=(const pair&lt;U1, U2&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-15- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall not participate in overload resolution 
+unless</ins> <tt>sizeof...(Types) == 2</tt><del>.</del> <ins>and</ins> <tt>is_assignable_v&lt;T<sub><i>0</i></sub>&amp;, 
+const U<sub><i>1</i></sub>&amp;&gt;</tt> is <tt>true</tt> for the first type <tt>T<sub><i>0</i></sub></tt> in 
+<tt>Types</tt> and <tt>is_assignable_v&lt;T<sub><i>1</i></sub>&amp;, const U<sub><i>2</i></sub>&amp;&gt;</tt> 
+is <tt>true</tt> for the second type <tt>T<sub><i>1</i></sub></tt> in <tt>Types</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class U1, class U2&gt; tuple&amp; operator=(pair&lt;U1, U2&gt;&amp;&amp; u);
+</pre>
+<blockquote>
+<p>
+-18- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This operator shall not participate in overload resolution 
+unless</ins> <tt>sizeof...(Types) == 2</tt><del>.</del> <ins>and</ins> <tt>is_assignable_v&lt;T<sub><i>0</i></sub>&amp;, 
+U<sub><i>1</i></sub>&amp;&amp;&gt;</tt> is <tt>true</tt> for the first type <tt>T<sub><i>0</i></sub></tt> in 
+<tt>Types</tt> and <tt>is_assignable_v&lt;T<sub><i>1</i></sub>&amp;, U<sub><i>2</i></sub>&amp;&amp;&gt;</tt> 
+is <tt>true</tt> for the second type <tt>T<sub><i>1</i></sub></tt> in <tt>Types</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2732" href="#2732">2732.</a> Questionable specification of <tt>path::operator/=</tt> and <tt>path::append</tt></h3>
 <p><b>Section:</b> 27.10.8.4.3 [path.append] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-14 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-06-14 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#path.append">active issues</a> in [path.append].</p>
@@ -4641,7 +5988,7 @@ template&lt;class M, class N&gt;
 <hr>
 <h3><a name="2738" href="#2738">2738.</a> <tt>is_constructible</tt> with <tt>void</tt> types</h3>
 <p><b>Section:</b> 20.15.4.3 [meta.unary.prop] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2016-06-22 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2016-06-22 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
@@ -4725,7 +6072,7 @@ unknown bound.
 <hr>
 <h3><a name="2739" href="#2739">2739.</a> Issue with <tt>time_point</tt> non-member subtraction with an unsigned duration</h3>
 <p><b>Section:</b> 20.17.6.5 [time.point.nonmember] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Michael Winterberg <b>Opened:</b> 2016-06-23 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Michael Winterberg <b>Opened:</b> 2016-06-23 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#time.point.nonmember">issues</a> in [time.point.nonmember].</p>
@@ -4850,7 +6197,7 @@ template &lt;class Clock, class Duration1, class Rep2, class Period2&gt;
 <hr>
 <h3><a name="2740" href="#2740">2740.</a> <tt>constexpr optional&lt;T&gt;::operator-&gt;</tt></h3>
 <p><b>Section:</b> 20.6.3.5 [optional.object.observe] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-02 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-02 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -4903,7 +6250,7 @@ t</del><ins>T</ins>hese functions shall be <tt>constexpr</tt> functions.
 <hr>
 <h3><a name="2744" href="#2744">2744.</a> <tt>any</tt>'s <tt>in_place</tt> constructors</h3>
 <p><b>Section:</b> 20.8.3.1 [any.cons] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#any.cons">active issues</a> in [any.cons].</p>
@@ -4993,7 +6340,7 @@ template &lt;class T, class U, class... Args&gt;
 <hr>
 <h3><a name="2745" href="#2745">2745.</a> [fund.ts.v2] Implementability of LWG 2451</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::optional.object] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-10 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#fund.ts.v2::optional.object">issues</a> in [fund.ts.v2::optional.object].</p>
@@ -5100,7 +6447,7 @@ unless [&hellip;]
 <hr>
 <h3><a name="2747" href="#2747">2747.</a> Possibly redundant <tt>std::move</tt> in [alg.foreach]</h3>
 <p><b>Section:</b> 25.3.4 [alg.foreach] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-15 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-07-15 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#alg.foreach">issues</a> in [alg.foreach].</p>
@@ -5150,7 +6497,7 @@ template&lt;class InputIterator, class Function&gt;
 <hr>
 <h3><a name="2748" href="#2748">2748.</a> <tt>swappable</tt> traits for <tt>optional</tt>s</h3>
 <p><b>Section:</b> 20.6.3.4 [optional.object.swap], 20.6.9 [optional.specalg] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2016-07-19 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -5214,7 +6561,7 @@ template &lt;class T&gt; void swap(optional&lt;T&gt;&amp; x, optional&lt;T&gt;&a
 <hr>
 <h3><a name="2750" href="#2750">2750.</a> [fund.ts.v2] LWG 2451 conversion constructor constraint</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::optional.object.ctor] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-20 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-20 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -5283,7 +6630,7 @@ is <tt>false</tt>.
 <hr>
 <h3><a name="2752" href="#2752">2752.</a> &quot;Throws:&quot; clauses of <tt>async</tt> and <tt>packaged_task</tt> are unimplementable</h3>
 <p><b>Section:</b> 30.6.8 [futures.async], 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-07-07 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-07-07 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#futures.async">active issues</a> in [futures.async].</p>
@@ -5404,7 +6751,7 @@ could not be allocated<ins>.</ins>
 <hr>
 <h3><a name="2753" href="#2753">2753.</a> Optional's constructors and assignments need constraints</h3>
 <p><b>Section:</b> 20.6.3.1 [optional.object.ctor], 20.6.3.3 [optional.object.assign] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2016-07-22 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -5632,9 +6979,602 @@ T&gt;<ins> &amp;&amp; is_constructible_v&lt;T, U&gt; &amp;&amp; is_assignable_v&
 
 
 <hr>
+<h3><a name="2754" href="#2754">2754.</a> The <tt>in_place</tt> constructors and <tt>emplace</tt> functions added by P0032R3 don't require <tt>CopyConstructible</tt></h3>
+<p><b>Section:</b> 20.8.3.1 [any.cons], 20.8.3.2 [any.assign], 20.8.3.3 [any.modifiers] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2016-07-05 <b>Last modified:</b> 2016-08-04</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#any.cons">active issues</a> in [any.cons].</p>
+<p><b>View all other</b> <a href="lwg-index.html#any.cons">issues</a> in [any.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <tt>in_place</tt> constructors and <tt>emplace</tt> functions
+added by <a href="http://wg21.link/p0032r3">P0032R3</a> don't require <tt>CopyConstructible</tt>.
+<p/>
+They must. Otherwise copying an <tt>any</tt> that's made to hold a non-<tt>CopyConstructible</tt>
+type must fail with a run-time error. Since that's crazy, we want to prevent
+storing non-<tt>CopyConstructible</tt> types in an <tt>any</tt>.
+<p/>
+Previously, the requirement for <tt>CopyConstructible</tt> was just on the converting
+constructor template and the converting assignment operator template on <tt>any</tt>.
+Now that we are adding two <tt>in_place</tt> constructor overloads and two
+<tt>emplace</tt> overloads, it seems reasonable to require <tt>CopyConstructible</tt> in some more 
+general location, in order to avoid repeating that requirement all over the place.
+</p>
+
+<p><i>[2016-07 &mdash; Chicago]</i></p>
+
+<p>Monday: P1</p>
+<p>Tuesday: Ville/Billy/Billy provide wording</p>
+
+<p><i>[2016-08-02: Daniel comments]</i></p>
+
+<p>
+The P/R wording of this issue brought to my intention that the recently added <tt>emplace</tt> functions
+of <tt>std::any</tt> introduced a breakage of a previous class invariant that only a <tt>decay</tt>ed type could
+be stored as object into an <tt>any</tt>, this prevented storing arrays, references, functions, and <i>cv</i>-qualified
+types. The new constraints added my Ville do prevent some of these types (e.g. neither arrays nor functions meet
+the <tt>CopyConstructible</tt> requirements), but we need to cope with <i>cv</i>-qualified types and reference types.
+</p>
+
+<p><i>[2016-08-02: Agust&iacute;n K-ballo Berg&eacute; comments]</i></p>
+
+<p>
+Presumably the constructors <tt>any(in_place_type_t&lt;T&gt;, ...)</tt> would need to be modified in the same way 
+the <tt>emplace</tt> overloads were.
+</p>
+
+<p><i>[2016-08-02: Ville adjusts the P/R to cope with the problems pointed out by Daniel's and Agust&iacute;n's comments]</i></p>
+
+<p>Ville notes that <a href="lwg-active.html#2746">2746</a>, <a href="lwg-active.html#2754">2754</a> and <a href="lwg-active.html#2756">2756</a> all go together.</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to N4606.
+</p>
+<blockquote class="note">
+<p>
+Drafting note: this P/R doesn't turn the <i>Requires</i>-clauses into <i>Remarks</i>-clauses.
+We might want to do that separately, because SFINAEing the constructors
+allows users to query for <tt>is_constructible</tt> and get the right answer. Failing
+to mandate the SFINAE will lead to non-portable answers for <tt>is_constructible</tt>.
+Currently, libstdc++ SFINAEs. That should be done as a separate issue,
+as this issue is an urgent bug-fix but the mandated SFINAE is not.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Change 20.8.3 [any.class], class <tt>any</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+class any {
+public:
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
+    
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    void emplace(Args&amp;&amp; ...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    void emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.1 [any.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any(ValueType&amp;&amp; value);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+-7- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. 
+<del>If <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> This constructor shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt>decay_t&lt;ValueType&gt;</tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>remove_cv_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-11- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements</ins>
+<del><tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in overload resolution
+unless <tt>is_reference_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_array_v&lt;T&gt;</tt> is <tt>false</tt>,
+<tt>is_function_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>remove_cv_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-15- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements</ins>
+<del><tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-19- <i>Remarks:</i> The function shall not participate in overload resolution unless 
+<ins><tt>is_reference_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_array_v&lt;T&gt;</tt> is <tt>false</tt>,
+<tt>is_function_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and</ins> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.2 [any.assign] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any&amp; operator=(ValueType&amp;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-7- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+-8- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. <del>If 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-11- <i>Remarks:</i> This operator shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt>decay_t&lt;ValueType&gt;</tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.3 [any.modifiers] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  void emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>remove_cv_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-1- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements</ins>
+<del><tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does not 
+contain a value, and any previously contained object has been destroyed. <ins>This function shall not participate 
+in overload resolution unless <tt>is_reference_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_array_v&lt;T&gt;</tt> is 
+<tt>false</tt>, <tt>is_function_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_copy_constructible_v&lt;T&gt;</tt> is 
+<tt>true</tt> and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  void emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>remove_cv_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<ins>-?- <i>Requires</i>: <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements.</ins>
+<p/>
+-6- <i>Effects:</i> [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does 
+not contain a value, and any previously contained object has been destroyed. The function shall not participate in overload
+resolution unless <ins><tt>is_reference_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_array_v&lt;T&gt;</tt> is <tt>false</tt>,
+<tt>is_function_v&lt;T&gt;</tt> is <tt>false</tt>, <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and</ins> 
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-08-03: Ville comments and revises his proposed wording]</i></p>
+
+<p>
+After discussing the latest P/R, here's an update. What this update does is that:
+</p>
+<ol>
+<li><p>It strikes the <i>Requires</i>-clauses and does <em>not</em> add
+<tt>CopyConstructible</tt> to the <i>Requires</i>-clauses.
+<p/>
+Rationale: <tt>any</tt> doesn't care whether the type it holds satisfies the
+semantic requirements of the <tt>CopyConstructible</tt> concept. The syntactic 
+requirements are now SFINAE constraints in <i>Requires</i>-clauses.</p></li>
+<li><p>It reverts back towards <tt>decay_t</tt> rather than <tt>remove_cv_t</tt>, and does
+<em>not</em> add the suggested SFINAE constraints for <tt>is_reference</tt>/<tt>is_array</tt>/<tt>is_function</tt>.
+<p/>
+Rationale:
+</p>
+<ol style="list-style-type:lower-alpha">
+<li><p><tt>any</tt> decays by design. It's to some extent inconsistent
+to not protect against decay in the <tt>ValueType</tt> constructor/assignment operator, but to protect
+against decay in the <tt>in_place_t</tt> constructors and <tt>emplace</tt> functions</p></li>
+<li><p>I think it's saner to just decay than to potentially run into
+situations where I need to <tt>remove_reference</tt> inside <tt>in_place_t</tt>.</p></li>
+</ol>
+</li>
+</ol>
+<p>
+Based on that, this P/R should supersede the previous one. We want to
+look at this new P/R in LWG and potentially send it to LEWG for verification. 
+Personally, I think this P/R is the more conservative one, doesn't add 
+significant new functionality, and is consistent, and is
+thus not really Library-Evolutionary.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change 20.8.3 [any.class], class <tt>any</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+class any {
+public:
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
+    
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    void emplace(Args&amp;&amp; ...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    void emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.1 [any.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any(ValueType&amp;&amp; value);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+<del>-7- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. 
+If <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> This constructor shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt>decay_t&lt;ValueType&gt;</tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<del>-11- <i>Requires:</i> <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in overload resolution
+unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<del>-15- <i>Requires:</i> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-19- <i>Remarks:</i> The function shall not participate in overload resolution unless 
+<ins><tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and</ins> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.2 [any.assign] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any&amp; operator=(ValueType&amp;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-7- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+<del>-8- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. If 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-11- <i>Remarks:</i> This operator shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt>decay_t&lt;ValueType&gt;</tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.3 [any.modifiers] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  void emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<del>-1- <i>Requires:</i> <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does not 
+contain a value, and any previously contained object has been destroyed. <ins>This function shall not participate 
+in overload resolution unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is 
+<tt>true</tt> and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  void emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be equal to <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-6- <i>Effects:</i> [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does 
+not contain a value, and any previously contained object has been destroyed. The function shall not participate in overload
+resolution unless <ins><tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and</ins> 
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2016-08-03: Ville comments and revises his proposed wording]</i></p>
+
+<p>
+This P/R brings back the <tt>CopyConstructible</tt> parts of the relevant
+Requires-clauses but removes the other parts of the Requires-clauses.
+</p>
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs PM: Moved to Tentatively Ready</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change 20.8.3 [any.class], class <tt>any</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+class any {
+public:
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
+    
+  [&hellip;]
+  template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+    void emplace(Args&amp;&amp; ...);
+  template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+    void emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.1 [any.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any(ValueType&amp;&amp; value);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>T</tt> be <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+-7- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. 
+<del>If <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> This constructor shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt><ins>T</ins><del>decay_t&lt;ValueType&gt;</del></tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-11- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> 
+requirements</ins><del><tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> This constructor shall not participate in overload resolution
+unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  explicit any(in_place_type_t&lt;<del>T</del><ins>ValueType</ins>&gt;, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-15- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> 
+requirements</ins><del><tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-19- <i>Remarks:</i> The function shall not participate in overload resolution unless 
+<ins><tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> 
+and</ins> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.2 [any.assign] as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  any&amp; operator=(ValueType&amp;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-7- Let <tt>T</tt> be <tt>decay_t&lt;ValueType&gt;</tt>.
+<p/>
+-8- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements. <del>If 
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed.</del>
+<p/>
+[&hellip;]
+<p/>
+-11- <i>Remarks:</i> This operator shall not participate in overload resolution <del>if</del><ins>unless</ins> 
+<tt><ins>T</ins><del>decay_t&lt;ValueType&gt;</del></tt> is <ins>not</ins> the same type as <tt>any</tt> <ins>and
+<tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change 20.8.3.3 [any.modifiers] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class... Args&gt;
+  void emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+-1- <i>Requires:</i> <ins><tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> 
+requirements</ins><del><tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt></del>.
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does not 
+contain a value, and any previously contained object has been destroyed. <ins>This function shall not participate 
+in overload resolution unless <tt>is_copy_constructible_v&lt;T&gt;</tt> is 
+<tt>true</tt> and <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.</ins>
+</p>
+</blockquote>
+
+<pre>
+template &lt;class <del>T</del><ins>ValueType</ins>, class U, class... Args&gt;
+  void emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>T</tt> be <tt>decay_t&lt;ValueType&gt;</tt>.</ins>
+<p/>
+<ins>-?- <i>Requires:</i> <tt>T</tt> shall satisfy the <tt>CopyConstructible</tt> requirements.</ins>
+<p/>
+-6- <i>Effects:</i> [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-9- <i>Remarks:</i> If an exception is thrown during the call to <tt>T</tt>'s constructor, <tt>*this</tt> does 
+not contain a value, and any previously contained object has been destroyed. The function shall not participate in overload
+resolution unless <ins><tt>is_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and</ins> 
+<tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
 <h3><a name="2755" href="#2755">2755.</a> string.view.io uses non-existent <tt>basic_string_view::to_string</tt> function</h3>
 <p><b>Section:</b> 21.4.4 [string.view.io], 21.3.2.9 [string.io] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-02</p>
+ <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-07-26 <b>Last modified:</b> 2016-08-01</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -5774,7 +7714,7 @@ template&lt;class M, class N&gt;
 <hr>
 <h3><a name="2760" href="#2760">2760.</a> non-const <tt>basic_string::data</tt> should not invalidate iterators</h3>
 <p><b>Section:</b> 21.3.1.1 [string.require] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-08-03 <b>Last modified:</b> 2016-08-04</p>
+ <b>Submitter:</b> Billy Baker <b>Opened:</b> 2016-08-03 <b>Last modified:</b> 2016-08-03</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#string.require">active issues</a> in [string.require].</p>
