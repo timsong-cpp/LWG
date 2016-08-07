@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2468" status="Tentatively Ready">
+<issue num="2468" status="Open">
 <title>Self-move-assignment of library types</title>
 <section><sref ref="[res.on.arguments]"/><sref ref="[utility.arg.requirements]"/>
 <sref ref="[lib.types.movedfrom]"/><sref ref="[container.requirements.general]"/></section>
@@ -69,14 +69,15 @@ we intended and it's consistent with what we've told users and with what impleme
 <p>JW: I'm writing wording. I care about this.</p>
 <p>Move to Open; Jonathan to provide wording</p>
 
-<note>2016-08-01, Howard provided wording.</note>
+<note>2016-08-01, Howard provided wording</note>
+
 <note>2016-08 Chicago</note>
 <p>Tuesday AM: Move to Tentatively Ready</p>
 
-</discussion>
-
-<resolution>
-
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>
 In <sref ref="[swappable.requirements]"/>, modify Table 23 &mdash; <code>MoveAssignable</code> requirements [moveassignable]:
 </p>
@@ -104,7 +105,7 @@ equivalent to the value of <tt>rv</tt> before the assignment</td>
 <td colspan="4">
 <tt>rv</tt>'s state is unspecified. [<i>Note:</i> <tt>rv</tt> must
 still meet the requirements of the library component that is using it<ins>,
-whether or not <tt><tt>addressof(t) == addressof(rv)</tt></tt></ins>. The
+whether or not <tt>addressof(t) == addressof(rv)</tt></ins>. The
 operations listed in those requirements must work as specified whether
 <tt>rv</tt> has been moved from or not. &mdash; <i>end note</i>] </td>
 </tr>
@@ -113,6 +114,68 @@ operations listed in those requirements must work as specified whether
 
 </blockquote>
 
+</blockquote>
+
+<note>2016-08-07, Daniel reopens</note>
+<p>
+With the acceptance of LWG <iref ref="2598"/>, the proposed wording is invalid code, because it attempts to
+call <code>std::addressof</code> with an rvalue argument. It should be pointed out that the new restriction 
+caused by <iref ref="2598"/> doesn't affect real code, because any identity test within a move assignment
+operator (or any comparable function) would act on the current function argument, which is an lvalue in the
+context of the function body. The existing wording form of the issue could still be kept, if a helper variable
+would be introduced such as:
+</p>
+<blockquote><p>
+<ins>Let <code>refrv</code> denote a reference initialized as if by <code>const T&amp; refrv = rv;</code>. Then 
+if <code>addressof(t) != addressof(refrv)</code>,</ins> <code>t</code> is equivalent to the value of <code>rv</code> 
+before the assignment
+</p></blockquote>
+<p>
+But it seems to me that the same effect could be much easier realized by replacing the code form by 
+a non-code English phrase that realizes the same effect.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p> In <sref ref="[swappable.requirements]"/>, modify Table 23 &mdash; <code>MoveAssignable</code> 
+requirements [moveassignable]:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 23 &mdash; <tt>MoveAssignable</tt> requirements [moveassignable]</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Return value</th>
+<th>Post-condition</th>
+</tr>
+
+<tr>
+<td><tt>t = rv</tt></td>
+<td><tt>T&amp;</tt></td>
+<td><tt>t</tt></td>
+<td><ins>If <code>t</code> and <code>rv</code> do not refer to the same object,</ins> <tt>t</tt> is
+equivalent to the value of <tt>rv</tt> before the assignment</td>
+</tr>
+
+<tr>
+<td colspan="4">
+<tt>rv</tt>'s state is unspecified. [<i>Note:</i> <tt>rv</tt> must
+still meet the requirements of the library component that is using it<ins>,
+whether or not <code>t</code> and <code>rv</code> refer to the same object</ins>. The
+operations listed in those requirements must work as specified whether
+<tt>rv</tt> has been moved from or not. &mdash; <i>end note</i>] </td>
+</tr>
+
+</table>
+
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
