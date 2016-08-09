@@ -60,6 +60,7 @@ auto is_defect(std::string const & stat) -> bool;
 auto is_closed(std::string const & stat) -> bool;
 auto is_tentative(std::string const & stat) -> bool;
 auto is_not_resolved(std::string const & stat) -> bool;
+auto is_assigned_to_another_group(std::string const & stat) -> bool;
 auto is_votable(std::string stat) -> bool;
 auto is_ready(std::string stat) -> bool;
 

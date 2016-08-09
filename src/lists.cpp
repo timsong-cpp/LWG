@@ -611,12 +611,16 @@ auto operator << (std::ostream & out, discover_changed_issues x) -> std::ostream
 }
 
 
-void count_issues(std::vector<std::tuple<int, std::string> > const & issues, unsigned & n_open, unsigned & n_closed) {
+void count_issues(std::vector<std::tuple<int, std::string> > const & issues, unsigned & n_open, unsigned & n_reassigned, unsigned & n_closed) {
    n_open = 0;
+   n_reassigned = 0;
    n_closed = 0;
 
    for(auto const & elem : issues) {
-      if (lwg::is_active(std::get<1>(elem))) {
+      if (lwg::is_assigned_to_another_group(std::get<1>(elem))) {
+      	++n_reassigned;
+      }
+      else if (lwg::is_active(std::get<1>(elem))) {
          ++n_open;
       }
       else {
@@ -638,10 +642,12 @@ auto operator << (std::ostream & out, write_summary const & x) -> std::ostream &
 
    unsigned n_open_new = 0;
    unsigned n_open_old = 0;
+   unsigned n_reassigned_new = 0;
+   unsigned n_reassigned_old = 0;
    unsigned n_closed_new = 0;
    unsigned n_closed_old = 0;
-   count_issues(old_issues, n_open_old, n_closed_old);
-   count_issues(new_issues, n_open_new, n_closed_new);
+   count_issues(old_issues, n_open_old, n_reassigned_old, n_closed_old);
+   count_issues(new_issues, n_open_new, n_reassigned_new, n_closed_new);
 
    out << "<li>" << n_open_new << " open issues, ";
    if (n_open_new >= n_open_old) {
@@ -661,8 +667,17 @@ auto operator << (std::ostream & out, write_summary const & x) -> std::ostream &
    }
    out << ".</li>\n";
 
-   unsigned n_total_new = n_open_new + n_closed_new;
-   unsigned n_total_old = n_open_old + n_closed_old;
+   out << "<li>" << n_reassigned_new << " reassigned issues, ";
+   if (n_reassigned_new >= n_reassigned_old) {
+      out << "up by " << n_reassigned_new - n_reassigned_old;
+   }
+   else {
+      out << "down by " << n_reassigned_new - n_reassigned_old;
+   }
+   out << ".</li>\n";
+
+   unsigned n_total_new = n_open_new + n_reassigned_new + n_closed_new;
+   unsigned n_total_old = n_open_old + n_reassigned_old + n_closed_old;
    out << "<li>" << n_total_new << " issues total, ";
    if (n_total_new >= n_total_old) {
       out << "up by " << n_total_new - n_total_old;

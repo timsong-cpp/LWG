@@ -131,8 +131,14 @@ auto lwg::is_tentative(std::string const & stat) -> bool {
    return 0 == stat.find("Tentatively");
 }
 
+auto lwg::is_assigned_to_another_group(std::string const & stat) -> bool {
+   for( auto s : {"Core", "EWG", "LEWG", "SG1" }) { if(s == stat) return true; }
+   return false;
+}
+
 auto lwg::is_not_resolved(std::string const & stat) -> bool {
-   for( auto s : {"Core", "Deferred", "EWG", "New", "Open", "Review"}) { if(s == stat) return true; }
+   if (is_assigned_to_another_group(stat)) return true;
+   for( auto s : {"Deferred", "New", "Open", "Review"}) { if(s == stat) return true; }
    return false;
 }
 
