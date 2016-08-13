@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2749" status="Tentatively Ready">
+<issue num="2749" status="Open">
 <title><tt>swappable</tt> traits for <tt>variant</tt>s</title>
 <section><sref ref="[variant.swap]"/><sref ref="[variant.specalg]"/></section>
 <submitter>Agust&iacute;n K-ballo Berg&eacute;</submitter>
@@ -22,9 +22,9 @@ all alternatives are swappable (as defined by <sref ref="[swappable.requirements
 <note>2016-07 Chicago</note>
 <p>Monday: P1 - review later in the week</p>
 <p>Fri PM: Move to Tentatively Ready</p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to N4606.</p>
 
 <ol>
@@ -71,6 +71,75 @@ template &lt;class... Types&gt; void swap(variant&lt;Types...&gt;&amp; v, varian
 <tt>is_move_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp; is_move_assignable_v&lt;T<sub><i>i</i></sub>&gt; 
 &amp;&amp; is_swappable_v&lt;T<sub><i>i</i></sub>&gt;</tt> is <tt>true</tt> for all <tt><i>i</i></tt>.</ins> The 
 expression inside <tt>noexcept</tt> is equivalent to <tt>noexcept(v.swap(w))</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2016-08-13, Reopened by Casey Carter</note>
+<p>
+It is possible to exchange the value of two variants using only move construction on the alternative types, as if by
+<pre>
+auto tmp = move(x);
+x.emplace&lt;<i>i</i>&gt;(move(y));
+y.emplace&lt;<i>j</i>&gt;(move(tmp));
+</pre> 
+where <i>i</i> is <tt>y.index()</tt> and <i>j</i> is <tt>tmp.index()</tt>. Consequently, <tt>variant</tt>'s member swap
+need not require move assignable alternatives.
+</p></discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Modify <sref ref="[variant.swap]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void swap(variant&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p/>
+<ins>-?- <i>Requires:</i> Lvalues of type <tt>T<sub><i>i</i></sub></tt> shall be swappable and 
+<tt>is_move_constructible_v&lt;T<sub><i>i</i></sub>&gt;</tt> shall be <tt>true</tt> for all <tt><i>i</i></tt>.</ins>
+<p/>
+[&hellip;]
+<p/>
+-2- <i>Throws:</i> <ins>If <tt>index() == rhs.index()</tt>, a</ins><del>A</del>ny exception thrown by
+<tt>swap(get&lt;<i>i</i>&gt;(*this), get&lt;<i>i</i>&gt;(rhs))</tt> with <i>i</i> being <tt>index()</tt><del> and
+<tt>variant</tt>'s move constructor and assignment operator</del>. <ins>Otherwise, any exception thrown by the move
+constructor of <tt>T<sub><i>i</i></sub></tt> or <tt>T<sub><i>j</i></sub></tt> with <tt><i>i</i></tt> being
+<tt>index()</tt> and <tt><i>j</i></tt> being <tt>rhs.index()</tt>.</ins>
+<p/>
+-3- <i>Remarks:</i> <del>This function shall not participate in overload resolution unless <tt>is_swappable_v&lt;Ti&gt;</tt> 
+is <tt>true</tt> for all <tt><i>i</i></tt>.</del> If an exception is thrown during the call to function
+<tt>swap(get&lt;<i>i</i>&gt;(*this), get&lt;<i>i</i>&gt;(rhs))</tt>, the states of the contained values of
+<tt>*this</tt> and of <tt>rhs</tt> are determined by the exception safety guarantee of swap for lvalues of
+<tt>T<sub><i>i</i></sub></tt> with <tt><i>i</i></tt> being <tt>index()</tt>. If an exception is thrown during the 
+exchange of the values of <tt>*this</tt> and <tt>rhs</tt>, the states of the values of <tt>*this</tt> and of <tt>rhs</tt> 
+are determined by the exception safety guarantee of <tt>variant</tt>'s move constructor <del>and move assignment operator</del>. 
+The expression inside <tt>noexcept</tt> is equivalent to the logical AND of 
+<tt>is_nothrow_move_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp; 
+is_nothrow_swappable_v&lt;T<sub><i>i</i></sub>&gt;</tt> for all <tt><i>i</i></tt>.
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[variant.specalg]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class... Types&gt; void swap(variant&lt;Types...&gt;&amp; v, variant&lt;Types...&gt;&amp; w) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to <tt>v.swap(w)</tt>.
+<p/>
+-2- <i>Remarks:</i> <ins>This function shall not participate in overload resolution unless 
+<tt>is_move_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp; is_swappable_v&lt;T<sub><i>i</i></sub>&gt;</tt> is
+<tt>true</tt> for all <tt><i>i</i></tt>.</ins> The expression inside <tt>noexcept</tt> is equivalent to <tt>noexcept(v.swap(w))</tt>.
 </p>
 </blockquote>
 </blockquote>
