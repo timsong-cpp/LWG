@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2758" status="Tentatively Ready">
+<issue num="2758" status="Open">
 <title><tt>std::string{}.assign("ABCDE", 0, 1)</tt> is ambiguous</title>
 <section><sref ref="[string::assign]"/></section>
 <submitter>Marshall Clow</submitter>
@@ -75,8 +75,79 @@ succeed yet <tt>basic_string_view sv(t);</tt> fail.</p></li>
 <li>the initialization of <tt>sv(t)</tt> to <tt>sv = t</tt></li>
 </ol>
 
-<note>08-2016, Chicago</note>
+<note>2016-08, Chicago</note>
 <p>Fri PM: Move to Tentatively Ready</p>
+
+<note>2016-08-16, Jonathan Wakeley reopens</note>
+<p>
+The P/R is not correct, the new overloads get chosen in preference to
+the overloads taking <tt>const char*</tt> when passed a <tt>char*</tt>:
+</p>
+<blockquote><pre>
+#include &lt;string&gt;
+
+int main () {
+  std::string str("a");
+  char c = 'b';
+  str.replace(0, 1, &amp;c, 1);
+  if (str[0] != 'b')
+    __builtin_abort();
+}
+</pre></blockquote>
+<p>
+With the resolution of 2758 this is now equivalent to:
+</p>
+<blockquote><pre>
+str.replace(0, 1, string_view{&amp;c, 1}, 1);
+</pre></blockquote>
+<p>
+which replaces the character with <tt>string_view{"b", 1}.substr(1, npos)</tt>
+i.e. an empty string.
+<p/>
+The SFINAE constraints need to disable the new overloads for (at
+least) the case of non-const <tt>value_type*</tt> arguments.
+<p/>
+I've implemented an alternative resolution, which would be specified as:
+</p>
+<blockquote><p>
+<i>Remarks:</i> This function shall not participate in overload resolution
+unless <tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is
+<tt>true</tt> <ins>and <tt>is_convertible_v&lt;const T&amp;, const charT*&gt;</tt> is <tt>false</tt></ins>.
+</p></blockquote>
+<p>
+All the overloads have the same problem.
+<p/>
+This program prints no output in C++14, and we should make sure it prints no output in C++17 too:
+</p>
+<blockquote><pre>
+#include &lt;string&gt;
+
+int main()
+{
+  std::string str("a");
+  char c[1] = { 'b' };
+  str.append(c, 1);
+  if (str != "ab")
+    puts("bad append");
+  str.assign(c, 1);
+  if (str != "b")
+    puts("bad assign");
+  str.insert(0, c, 1);
+  if (str != "bb")
+    puts("bad insert");
+  str.replace(0, 2, c, 1);
+  if (str != "b")
+    puts("bad replace");
+  if (str.compare(0, 1, c, 1))
+    puts("bad compare");
+}
+</pre></blockquote>
+<p>
+Ville and I considered "<tt>is_same_v&lt;decay_t&lt;T&gt;, char*&gt;</tt> is <tt>false</tt>" but
+that would still select the wrong overload for an array of const <tt>char</tt>,
+because the new function template would be preferred to doing an array-to-pointer conversion to 
+call the old overload.
+</p>
 </discussion>
 
 <resolution>
