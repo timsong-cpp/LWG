@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2767" status="New">
+<title><tt>not_fn <i>call_wrapper</i></tt> can form invalid types</title>
+<section><sref ref="[func.not_fn]"/></section>
+<submitter>Jonathan Wakely </submitter>
+<date>19 Aug 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The definition of the <tt><i>call_wrapper</i></tt> type in the C++17 CD means this
+fails to compile:
+</p>
+<blockquote><pre>
+#include &lt;functional&gt;
+
+struct abc { virtual void f() const = 0; };
+struct derived : abc{ void f() const { } };
+struct F { bool operator()(abc&amp;) { return false; } };
+bool b = std::not_fn(F{})(derived{});
+</pre></blockquote>
+<p>
+The problem is that the return types use <tt>result_of_t&lt;F(abc)&gt;</tt> and
+<tt>F(abc)</tt> is not a valid function type, because it takes an abstract
+class by value.
+<p/>
+The return types should use <tt>result_of_t&lt;F(Args<ins>&amp;&amp;</ins>...)&gt;</tt> instead.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Modify <sref ref="[func.not_fn]"/>, class <tt><i>call_wrapper</i></tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+class <i>call_wrapper</i>
+{
+  [&hellip;]
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) &amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) const&amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD const&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) &amp;&amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) const&amp;&amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD const(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());  
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify the prototype declarations of <sref ref="[func.not_fn]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) &amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) const&amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD const&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) &amp;&amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) const&amp;&amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD const(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
+
