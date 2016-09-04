@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-09-04 at 17:09:09 UTC</p>
+<p><p>Revised 2016-09-04 at 18:09:25 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -26362,6 +26362,95 @@ unless <tt>is_move_constructible_v&lt;<i>T<sub>i</sub></i>&gt; &amp;&amp; is_swa
 is <tt>true</tt> for all <tt><i>i</i></tt>. The expression inside <tt>noexcept</tt> is equivalent to <tt>noexcept(v.swap(w))</tt>.
 </p>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2767" href="#2767">2767.</a> <tt>not_fn <i>call_wrapper</i></tt> can form invalid types</h3>
+<p><b>Section:</b> 20.14.9 [func.not_fn] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely  <b>Opened:</b> 2016-08-19 <b>Last modified:</b> 2016-09-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The definition of the <tt><i>call_wrapper</i></tt> type in the C++17 CD means this
+fails to compile:
+</p>
+<blockquote><pre>
+#include &lt;functional&gt;
+
+struct abc { virtual void f() const = 0; };
+struct derived : abc{ void f() const { } };
+struct F { bool operator()(abc&amp;) { return false; } };
+bool b = std::not_fn(F{})(derived{});
+</pre></blockquote>
+<p>
+The problem is that the return types use <tt>result_of_t&lt;F(abc)&gt;</tt> and
+<tt>F(abc)</tt> is not a valid function type, because it takes an abstract
+class by value.
+<p/>
+The return types should use <tt>result_of_t&lt;F(Args<ins>&amp;&amp;</ins>...)&gt;</tt> instead.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Modify 20.14.9 [func.not_fn], class <tt><i>call_wrapper</i></tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+class <i>call_wrapper</i>
+{
+  [&hellip;]
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) &amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) const&amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD const&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) &amp;&amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+  template&lt;class... Args&gt;
+    auto operator()(Args&amp;&amp;...) const&amp;&amp;
+      -&gt; decltype(!declval&lt;result_of_t&lt;FD const(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());  
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify the prototype declarations of 20.14.9 [func.not_fn] as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) &amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) const&amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD const&amp;(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) &amp;&amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+template&lt;class... Args&gt;
+  auto operator()(Args&amp;&amp;... args) const&amp;&amp;
+    -&gt; decltype(!declval&lt;result_of_t&lt;FD const(Args<ins>&amp;&amp;</ins>...)&gt;&gt;());
+</pre>
 </blockquote>
 </li>
 </ol>
