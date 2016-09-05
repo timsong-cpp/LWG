@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2770" status="New">
+<title><tt>tuple_size&lt;const T&gt;</tt> specialization is not SFINAE compatible and breaks decomposition declarations</title>
+<section><sref ref="[tuple.helper]"/></section>
+<submitter>Richard Smith</submitter>
+<date>15 Aug 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider:
+</p>
+<blockquote><pre>
+#include &lt;utility&gt;
+
+struct X { int a, b; };
+const auto [x, y] = X();
+</pre></blockquote>
+<p>
+This is ill-formed: it triggers the instantiation of <tt>std::tuple_size&lt;const X&gt;</tt>, which hits a hard error 
+because it tries to use <tt>tuple_size&lt;X&gt;::value</tt>, which does not exist. The code compiles if 
+<tt>&lt;utility&gt;</tt> (or another header providing <tt>tuple_size</tt>) is not included.
+<p/>
+It seems that we either need a different strategy for decomposition declarations, or we need to change the library to 
+make the <tt>tuple_size</tt> partial specializations for <i>cv</i>-qualifiers SFINAE-compatible.
+<p/>
+The latter seems like the better option to me, and like a good idea regardless of decomposition declarations.
+</p>
+
+<note>2016-09-05, Daniel comments</note>
+<p>
+This is partially related to LWG <iref ref="2446"/>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
+
