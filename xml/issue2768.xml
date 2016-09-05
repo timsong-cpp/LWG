@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2768" status="New">
+<title><tt>any_cast</tt> and move semantics</title>
+<section><sref ref="[any.nonmembers]"/></section>
+<submitter>Casey Carter</submitter>
+<date>27 Aug 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="2509"/> made two changes to the specification of <tt>any</tt> in v2 of the library fundamentals TS:
+</p>
+
+<ol>
+<li>It altered the effects of the <tt>any_cast(any&amp;&amp;)</tt> overload to enable moving the value out of the <tt>any</tt> 
+object and/or obtaining an rvalue reference to the contained value.</li>
+
+<li>It made changes to support pathological copyable-but-not-movable contained values, which is madness.</li>
+</ol>
+
+<p>
+Change 1 has very desirable effects; I propose that we apply the sane part of LWG <iref ref="2509"/> to <tt>any</tt> 
+in the C++17 WP, for all of the reasons cited in the discussion of LWG <iref ref="2509"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>In <sref ref="[any.nonmembers]"/> p5, edit as follows:</p>
+<blockquote>
+<pre>
+template&lt;class ValueType&gt;
+  ValueType any_cast(const any&amp; operand);
+template&lt;class ValueType&gt;
+  ValueType any_cast(any&amp; operand);
+template&lt;class ValueType&gt;
+  ValueType any_cast(any&amp;&amp; operand);
+</pre>
+<blockquote>
+<p>
+-4- <i>Requires</i>: <tt>is_reference_v&lt;ValueType&gt;</tt> is <tt>true</tt> or <tt>is_copy_constructible_v&lt;ValueType&gt;</tt> 
+is <tt>true</tt>. Otherwise the program is ill-formed. 
+</p>
+<p>
+-5- <i>Returns</i>: For the first form, <tt>*any_cast&lt;add_const_t&lt;remove_reference_t&lt;ValueType&gt;&gt;&gt;(&amp;operand)</tt>. 
+For the second <del>and third</del> form<del>s</del>, <tt>*any_cast&lt;remove_reference_t&lt;ValueType&gt;&gt;(&amp;operand)</tt>. 
+<ins>For the third form, <tt>std::forward&lt;ValueType&gt;(*any_cast&lt;remove_reference_t&lt;ValueType&gt;&gt;(&amp;operand))</tt>.</ins>
+</p>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
+
