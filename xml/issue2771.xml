@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2771" status="New">
+<title>Broken <i>Effects</i> of some <tt>basic_string::compare</tt> functions in terms of <tt>basic_string_view</tt></title>
+<section><sref ref="[string::compare]"/></section>
+<submitter>Daniel Kr&uuml;gler</submitter>
+<date>5 Sep 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Some <tt>basic_string::compare</tt> functions are specified in terms of a non-existing <tt>basic_string_view</tt>
+constructor, namely <sref ref="[string::compare]"/> p3,
+</p>
+<blockquote><pre>
+return basic_string_view&lt;charT, traits&gt;(this.data(), pos1, n1).compare(sv);
+</pre></blockquote>
+<p>
+and <sref ref="[string::compare]"/> p4:
+</p>
+<blockquote><pre>
+return basic_string_view&lt;charT, traits&gt;(this.data(), pos1, n1).compare(sv, pos2, n2);
+</pre></blockquote>
+<p>
+because there doesn't exist a <tt>basic_string_view</tt> constructor with three arguments.
+<p/>
+Albeit this can be easily fixed by a proper combination of the existing constructor
+</p>
+<blockquote><pre>
+constexpr basic_string_view(const charT* str, size_type len);
+</pre></blockquote>
+<p>
+with the additional member function
+</p>
+<blockquote><pre>
+constexpr basic_string_view substr(size_type pos = 0, size_type n = npos) const;
+</pre></blockquote>
+<p>
+it should be decided whether adding the seemingly natural constructor
+</p>
+<blockquote><pre>
+constexpr basic_string_view(const charT* str, size_type pos, size_type n);
+</pre></blockquote>
+<p>
+could simplify matters. A counter argument for this addition might be, that <tt>basic_string</tt>
+doesn't provide this constructor either.
+<p/>
+Another problem is related to the specification of <sref ref="[string::compare]"/> p4, which attempts to
+call a non-existing <tt>basic_string_view::compare</tt> overload that would match the signature:
+</p>
+<blockquote><pre>
+constexpr int compare(basic_string_view str, size_type pos1, size_type n1) const;
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+<ol>
+<li><p>Change <sref ref="[string::compare]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+int compare(size_type pos1, size_type n1,
+            basic_string_view&lt;charT, traits&gt; sv) const;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+return basic_string_view&lt;charT, traits&gt;(<del>this.</del>data(), <ins>size()).substr(</ins>pos1, n1).compare(sv);
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+int compare(size_type pos1, size_type n1,
+            basic_string_view&lt;charT, traits&gt; sv,
+            size_type pos2, size_type n2 = npos) const;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+return basic_string_view&lt;charT, traits&gt;(<del>this.</del>data(), <ins>size()).substr(</ins>pos1, n1).compare(sv<del>,</del><ins>.substr(</ins>pos2, n2<ins>)</ins>);
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
+
