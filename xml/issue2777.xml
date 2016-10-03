@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2777" status="New">
+<title><tt>basic_string_view::copy</tt> should use <tt>char_traits::copy</tt></title>
+<section><sref ref="[string.view.ops]"/><sref ref="[string::copy]"/></section>
+<submitter>Billy Robert O'Neal III</submitter>
+<date>27 Sep 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>basic_string_view::copy</tt> is inconsistent with <tt>basic_string::copy</tt>, in that the
+former uses <tt>copy_n</tt> and the latter uses <tt>traits::copy</tt>. We should have this
+handling be consistent. 
+<p/>
+Moreover, the <tt>basic_string::copy</tt> description is excessively roundabout due to
+copy-on-write era wording.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[string::copy]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Note to project editor:</i> The current numbering of LaTeX
+output of sub-clause <sref ref="[string::copy]"/> in N4606 seems to be broken
+e.g. there seemingly doesn't exist a first paragraph.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+size_type copy(charT* s, size_type n, size_type pos = 0) const;
+</pre>
+
+</blockquote>
+<p>
+<ins>-?- Let <tt>rlen</tt> be the smaller of <tt>n</tt> and <tt>size() - pos</tt>.</ins>
+</p>
+<p>
+-2- <em>Throws: </em><tt>out_of_range</tt> if <tt>pos &gt; size()</tt>.
+</p>
+<p>
+<ins>-?- <em>Requires:</em> <tt>[s, s + rlen)</tt> is a valid range.</ins>
+</p>
+<p>
+-3- <em>Effects:</em> <del>Determines the effective length <tt>rlen</tt> of the string
+to copy as the smaller of <tt>n</tt> and <tt>size() - pos</tt>. <tt>s</tt> shall
+designate an array of at least <tt>rlen</tt> elements.</del><ins>Equivalent to: <tt>traits::copy(s, data() + pos, rlen)</tt>.
+[<em>Note:</em> This does not terminate <tt>s</tt> with a null object. &mdash; <em>end note</em>]</ins>
+</p>
+<p><del>The function then replaces the string designated by <tt>s</tt> with a string of
+length <tt>rlen</tt> whose elements are a copy of the string controlled by
+<tt>*this</tt> beginning at position <tt>pos</tt>.</del>
+</p>
+<p>
+<del>The function does not append a null object to the string designated by <tt>s</tt>.</del>
+</p>
+<p>
+-4- <em>Returns: </em><tt>rlen</tt>.
+</p>
+</li>
+
+<li><p>Change <sref ref="[string.view.ops]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+size_type copy(charT* s, size_type n, size_type pos = 0) const;
+</pre>
+
+</blockquote>
+<p>
+-1- Let <tt>rlen</tt> be the smaller of <tt>n</tt> and <tt>size() - pos</tt>.
+</p>
+<p>
+-2- <em>Throws:</em> <tt>out_of_range</tt> if <tt>pos &gt; size()</tt>.
+</p>
+<p>
+-3- <em>Requires:</em> <tt>[s, s + rlen)</tt> is a valid range.
+</p>
+<p>
+-4- <em>Effects:</em> Equivalent to: <del><tt>copy_n(begin() + pos, rlen, s)</tt></del><ins><tt>traits::copy(s, 
+data() + pos, rlen)</tt></ins>
+</p>
+<p>
+-5- <em>Returns:</em> <tt>rlen</tt>.
+</p>
+<p>
+-6- <em>Complexity:</em> &#x1d4aa;(<tt>rlen</tt>).
+</p>
+</li>
+</ol>
+</resolution>
+
+</issue>
+
