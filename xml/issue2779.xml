@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2779" status="New">
+<title>[networking.ts] Relax strict aliasing requirement for user-defined buffer sequence iterators</title>
+<section><sref ref="[buffer.reqmts.mutablebuffersequence]"/></section>
+<submitter>Vinnie Falco</submitter>
+<date>5 Oct 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4588.pdf">N4588</a>
+(Networking TS) 16.2 [buffer.reqmts] the requirements for buffer
+sequence iterators indirectly adopt the C++ standard strict aliasing
+requirements of <tt>ForwardIterator</tt>. From C++Std <sref = ref="[forward.iterators]"/>
+</p>
+
+<blockquote>
+<p>
+6. If <tt>a</tt> and <tt>b</tt> are both dereferenceable, then <tt>a == b</tt> if and
+only if <tt>*a</tt> and <tt>*b</tt> are bound to the same object.
+</p>
+</blockquote>
+
+<p>
+The strict aliasing requirement is widely recognized as a
+defect. Ample rationale for fixing it is given in
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4128.html">N4128</a>
+3.3.7 (Ranges for the Standard Library).
+</p>
+
+<p>
+Consider a user-defined function <tt>concatenate_buffer_sequences</tt> that
+returns a range which when iterated, returns sequential elements from
+each buffer sequence as if concatenated (avoiding a buffer allocation):
+</p>
+
+<blockquote><pre>
+// c is a ConstBufferSequence (N4588 16.2.2 [[buffer.reqmts.constbuffersequence])
+// m is a MutableBufferSequence (N4588 16.2.1 [buffer.reqmts.mutablebuffersequence])
+for(auto b : concatenate_buffer_sequences(c, m)) { ... };
+</pre></blockquote>
+
+<p>
+Note that <tt>c</tt> and <tt>m</tt> have different value types. The range returned
+by <tt>concatenate_buffer_sequences</tt> must transform the value types
+of the underlying sequences. This requires that the returned range
+have iterators returning rvalues when dereferenced. This is incompatible
+with the strict aliasing requirement of <tt>ForwardIterator</tt>.
+</p>
+
+<p>
+The proposed change allows iterators of user-defined buffer sequences
+to work with algorithms in
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4588.pdf">N4588</a>,
+without meeting the strict aliasing
+requirements. This enables performance optimizations using lazily-evaluated
+range adapters.
+</p>
+
+<p>
+This change will have no impact on the implementation of the Networking TS
+It guarantees that user-defined range-adapted buffer sequences will work
+with implementations of
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4588.pdf">N4588</a>.
+It does not change the standard or have any
+impact on the standard. This is a precise, minimal change which enables
+more functionality at no expense.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/n4588.pdf">N4588</a>.
+</p>
+
+<ol>
+<li>
+<p>
+Modify 16.2.1 [buffer.reqmts.mutablebuffersequence] as indicated:
+</p>
+<blockquote>
+<p>
+<del>An iterator type meeting the requirements for bidirectional
+iterators (C++Std [bidirectional.iterators]) whose value type is
+convertible to <tt>mutable_buffer</tt></del>
+</p>
+<p>
+<ins>An iterator type whose value type is convertible to
+<tt>mutable_buffer</tt>, and which satisfies all the requirements for
+bidirectional iterators (C++Std [bidirectional.iterators]) except
+that, for two user-defined dereferenceable iterators <tt>a</tt> and <tt>b</tt>
+where <tt>a == b</tt>, there is no requirement that <tt>a</tt> and <tt>b</tt> are bound
+to the same object.</ins>
+</p>
+</blockquote>
+</li>
+<li>
+<p>
+Modify 16.2.2 [buffer.reqmts.constbuffersequence] as indicated:
+</p>
+<blockquote>
+<p>
+<del>An iterator type meeting the requirements for bidirectional
+iterators (C++Std [bidirectional.iterators]) whose value type is
+convertible to <tt>const_buffer</tt>.</del>
+</p>
+
+<p>
+<ins>An iterator type whose value type is convertible to
+<tt>const_buffer</tt>, and which satisfies all the requirements for
+bidirectional iterators (C++Std [bidirectional.iterators]) except
+that, for two user-defined dereferenceable iterators <tt>a</tt> and <tt>b</tt>
+where <tt>a == b</tt>, there is no requirement that <tt>a</tt> and <tt>b</tt> are bound
+to the same object.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
+
