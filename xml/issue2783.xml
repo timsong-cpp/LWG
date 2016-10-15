@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2783" status="New">
+<title><tt>stack::emplace()</tt> and <tt>queue::emplace()</tt> should return <tt>decltype(auto)</tt></title>
+<section><sref ref="[queue.defn]"/><sref ref="[stack.defn]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>14 Oct 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>stack</tt> and <tt>queue</tt> adaptors are now defined as:
+</p>
+<blockquote><pre>
+template &lt;class... Args&gt;
+reference emplace(Args&amp;&amp;... args) { return c.emplace_back(std::forward&lt;Args&gt;(args)...); }
+</pre></blockquote>
+<p>
+This breaks any code using <tt>queue&lt;UserDefinedSequence&gt;</tt> or <tt>stack&lt;UserDefinedSequence&gt;</tt> 
+until the user-defined containers are updated to meet the new C++17 requirements.
+<p/>
+If we defined them as returning <tt>decltype(auto)</tt> then we don't break any code. When used with <tt>std::vector</tt> 
+or <tt>std::deque</tt> they will return <tt>reference</tt>, as required, but when used with C++14-conforming containers 
+they will return <tt>void</tt>, as before.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Change return type of <tt>emplace</tt> in class definition in <sref ref="[queue.defn]"/>:</p>
+
+<blockquote>
+<pre>
+template &lt;class... Args&gt;
+  <del>reference</del><ins>decltype(auto)</ins> emplace(Args&amp;&amp;... args) { return c.emplace_back(std::forward&lt;Args&gt;(args)...); }
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change return type of <tt>emplace</tt> in class definition in <sref ref="[stack.defn]"/>:</p>
+
+<blockquote>
+<pre>
+template &lt;class... Args&gt;
+  <del>reference</del><ins>decltype(auto)</ins> emplace(Args&amp;&amp;... args) { return c.emplace_back(std::forward&lt;Args&gt;(args)...); }
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
+
