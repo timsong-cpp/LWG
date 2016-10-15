@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2781" status="New">
+<title>Contradictory requirements for <tt>std::function</tt> and <tt>std::reference_wrapper</tt></title>
+<section><sref ref="[func.wrap.func.con]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>13 Oct 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>template&lt;class F&gt; function(F f)</tt> says that the effects are "<tt>*this</tt>
+targets a copy of <tt>f</tt>" which seems pretty clear that if <tt>F</tt> is
+<tt>reference_wrapper&lt;CallableType&gt;</tt> then the target is a
+<tt>reference_wrapper&lt;CallableType&gt;</tt>.
+<p/>
+But the function copy and move constructors say "shall not throw
+exceptions if <tt>f</tt>'s target is a callable object passed via
+<tt>reference_wrapper</tt> or a function pointer." From the requirement above
+it's impossible for the target to be "a callable object passed via
+<tt>reference_wrapper</tt>" because if the function was constructed with such a
+type then the target is the <tt>reference_wrapper</tt> not the callable object
+it wraps.
+<p/>
+This matters because it affects the result of <tt>function::target_type()</tt>,
+and we have implementation divergence. VC++ and libc++ store the
+<tt>reference_wrapper</tt> as the target, but libstdc++ and Boost.Function
+(both written by Doug Gregor) unwrap it, so the following fails:
+</p>
+<blockquote><pre>
+#include &lt;functional&gt;
+#include &lt;cassert&gt;
+
+int main()
+{
+ auto f = []{};
+ std::function&lt;void()&gt; fn(std::ref(f));
+ assert(fn.target&lt;std::reference_wrapper&lt;decltype(f)&gt;&gt;() != nullptr);
+}
+</pre></blockquote>
+<p>
+If <tt>std::function</tt> is intended to deviate from <tt>boost::function</tt> this way
+then the <i>Throws</i> element for the copy and move constructors is
+misleading, and should be clarified.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[func.wrap.func.con]"/> p4 and p6 the same way, as shown:</p>
+
+<blockquote>
+<pre>
+function(const function&amp; f);
+</pre>
+<blockquote>
+<p>
+-3- <i>Postconditions:</i> <tt>!*this</tt> if <tt>!f</tt>; otherwise, <tt>*this</tt> targets a copy of 
+<tt>f.target()</tt>.
+<p/>
+-4- <i>Throws:</i> shall not throw exceptions if <tt>f</tt>'s target is a <del>callable object passed 
+via</del><ins>specialization of</ins> <tt>reference_wrapper</tt> or a function pointer. Otherwise, may throw 
+<tt>bad_alloc</tt> or any exception thrown by the copy constructor of the stored callable object. 
+[<i>Note:</i> Implementations are encouraged to avoid the use of dynamically allocated memory for small 
+callable objects, for example, where <tt>f</tt>'s target is an object holding only a pointer or reference to 
+an object and a member function pointer. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+<pre>
+function(function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> If <tt>!f</tt>, <tt>*this</tt> has no target; otherwise, move constructs the target of 
+<tt>f</tt> into the target of <tt>*this</tt>, leaving <tt>f</tt> in a valid state with an unspecified value.
+<p/>
+-6- <i>Throws:</i> shall not throw exceptions if <tt>f</tt>'s target is a <del>callable object passed 
+via</del><ins>specialization of</ins> <tt>reference_wrapper</tt> or a function pointer. Otherwise, may throw 
+<tt>bad_alloc</tt> or any exception thrown by the copy or move constructor of the stored callable object. 
+[<i>Note:</i> Implementations are encouraged to avoid the use of dynamically allocated memory for small callable 
+objects, for example, where <tt>f</tt>'s target is an object holding only a pointer or reference to an object 
+and a member function pointer. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
+
