@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2682" status="Tentatively Ready">
+<issue num="2682" status="Open">
 <title><code>filesystem::copy()</code> won't create a symlink to a directory</title>
 <section><sref ref="[fs.op.copy]"/></section>
 <submitter>Jonathan Wakely</submitter>
@@ -17,13 +17,14 @@
 <code>copy("/", "root", copy_options::create_symlinks);</code>
 </blockquote>
 
-<p>If the first path is a file then a symlink is created, but I think my
+<p>
+If the first path is a file then a symlink is created, but I think my
 implementation is correct to do nothing for a directory. We get to
 bullet <sref ref="[fs.op.copy]"/> (3.6) where <code>is_directory(f)</code> is true, but <code>options
 == create_symlinks</code>, so we go to the next bullet (3.7) which says
-"Otherwise, no effects."</p>
-
-<p>I think the case above should either create a symlink, or should
+"Otherwise, no effects."
+<p/>
+I think the case above should either create a symlink, or should
 report an error. GNU cp -s gives an error in this case, printing
 "omitting directory '/'". An error seems reasonable, you can use
 <code>create_symlink</code> to create a symlink to a directory.
@@ -36,9 +37,9 @@ This is related to <iref ref="2681"/>; and should be considered together.
 
 <note>2016-08 Chicago</note>
 <p>Wed AM: Move to Tentatively Ready</p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>Add a new bullet following (3.6) in <sref ref="[fs.op.copy]"/> as shown:</p>
 
 <blockquote>
@@ -54,6 +55,75 @@ error with an <code>error_code</code> argument equal to
 <li><p>Otherwise, no effects.</p></li>
 </ul>
 </blockquote>
+</blockquote>
+
+<note>2016-10-16, Eric reopens and provides improved wording</note>
+<p>
+The current PR makes using <tt>copy(...)</tt> to copy/create a directory symlink an error. For example the following 
+is now an error "<tt>copy("/", "root", copy_options::create_symlinks)</tt>".
+<p/>
+However the current PR doesn't handle the case where both <tt>copy_options::create_symlinks</tt> and 
+<tt>copy_options::recursive</tt> are specified. This case is still incorrectly handled by bullet (3.6) [fs.op.copy].
+<p/>
+I suggest we move the PR before this bullet so that it catches the recursive copy case, since currently the conditions 
+are ordered:
+</p>
+<blockquote>
+<p>
+3.6 Otherwise if <tt>is_directory(f) &amp;&amp; (bool(options &amp; copy_options::recursive) || ...)</tt><br/>
+3.X Otherwise if <tt>is_directory(f) &amp;&amp; bool(options &amp; copy_options::create_symlinks)</tt>
+</p>
+</blockquote>
+<p>
+So 3.6 catches <tt>create_symlinks | recursive</tt> but I believe we want 3.X to handle it instead.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Add a new bullet before (3.6) in <sref ref="[fs.op.copy]"/> as shown:</p>
+
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(3.5) &mdash; Otherwise, if <tt>is_regular_file(f)</tt>, then:</p>
+<blockquote>
+[&hellip;]
+</blockquote>
+</li>
+<li><p><ins>(3.?) &mdash; Otherwise, if <code>is_directory(f) &amp;&amp; (options &amp;
+copy_options::create_symlinks) != copy_options::none</code>, then report an
+error with an <code>error_code</code> argument equal to
+<code>make_error_code(errc::is_a_directory)</code>.</ins></p></li>
+<li><p>(3.6) &mdash; Otherwise, if</p>
+<blockquote>
+<blockquote><pre>
+is_directory(f) &amp;&amp;
+((options &amp; copy_options::recursive) != copy_options::none ||
+options == copy_options::none)
+</pre></blockquote>
+<p>
+then:
+</p>
+</blockquote>
+<ol style="list-style-type: none">
+<li><p>(3.6.1) &mdash; If <code>!exists(t)</code>, then <code>create_directory(to, from)</code>.</p></li>
+<li><p>(3.6.2) &mdash; Then, iterate over the files in <code>from</code>, as if by <code>for (directory_entry&amp; x :
+ directory_iterator(from))</code>, and for each iteration</p>
+<blockquote><pre>
+copy(x.path(), to/x.path().filename(), options | copy_options::<i>unspecified</i>)
+</pre></blockquote>
+</li>
+</ol>
+</li>
+<li><p>(3.7) &mdash; Otherwise, for the signature with argument <tt>ec</tt>, <tt>ec.clear()</tt>.</p></li>
+<li><p>(3.8) &mdash; Otherwise, no effects.</p></li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
 </resolution>
 
 </issue>
