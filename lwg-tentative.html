@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-10-16 at 11:10:51 UTC</p>
+<p><p>Revised 2016-10-16 at 12:10:39 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
@@ -6912,68 +6912,6 @@ then <code>auto f = symlink_status(from)</code> and if needed <code>auto t = sta
 </ins><br/>
  — Otherwise, <code>auto f = status(from)</code> and if needed <code>auto t = status(to)</code>.
 </p>
-</blockquote>
-
-
-
-
-
-<hr>
-<h3><a name="2682" href="#2682">2682.</a> <code>filesystem::copy()</code> won't create a symlink to a directory</h3>
-<p><b>Section:</b> 27.10.15.3 [fs.op.copy] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-04-19 <b>Last modified:</b> 2016-08-06</p>
-<p><b>Priority: </b>2
-</p>
-<p><b>View other</b> <a href="lwg-index-open.html#fs.op.copy">active issues</a> in [fs.op.copy].</p>
-<p><b>View all other</b> <a href="lwg-index.html#fs.op.copy">issues</a> in [fs.op.copy].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>(First raised in c++std-lib-38544)</p>
-
-<p><code>filesystem::copy</code> doesn't create a symlink to a directory in this case:</p>
-
-<blockquote>
-<code>copy("/", "root", copy_options::create_symlinks);</code>
-</blockquote>
-
-<p>If the first path is a file then a symlink is created, but I think my
-implementation is correct to do nothing for a directory. We get to
-bullet 27.10.15.3 [fs.op.copy] (3.6) where <code>is_directory(f)</code> is true, but <code>options
-== create_symlinks</code>, so we go to the next bullet (3.7) which says
-"Otherwise, no effects."</p>
-
-<p>I think the case above should either create a symlink, or should
-report an error. GNU cp -s gives an error in this case, printing
-"omitting directory '/'". An error seems reasonable, you can use
-<code>create_symlink</code> to create a symlink to a directory.
-</p>
-
-<p><i>[2016-05 Issues Telecon]</i></p>
-
-<p>
-This is related to <a href="lwg-active.html#2681">2681</a>; and should be considered together.
-</p>
-
-<p><i>[2016-08 Chicago]</i></p>
-
-<p>Wed AM: Move to Tentatively Ready</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>Add a new bullet following (3.6) in 27.10.15.3 [fs.op.copy] as shown:</p>
-
-<blockquote>
-<ul>
-<li><p>If <code>!exists(t)</code>, then <code>create_directory(to, from)</code>.</p></li>
-<li><p>Then, iterate over the files in <code>from</code>, as if by <code>for (directory_entry&amp; x :
- directory_iterator(from))</code>, and for each iteration
-  <code>copy(x.path(), to/x.path().filename(), options | copy_options::unspecified )</code></p></li>
-<li><p><ins>Otherwise, if <code>is_directory(f) &amp;&amp; (options &amp;
-copy_options::create_symlinks) != copy_options::none</code>, then report an
-error with an <code>error_code</code> argument equal to
-<code>make_error_code(errc::is_a_directory)</code>.</ins></p></li>
-<li><p>Otherwise, no effects.</p></li>
-</ul>
 </blockquote>
 
 
