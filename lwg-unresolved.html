@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-10-31 at 21:10:13 UTC</p>
+<p><p>Revised 2016-11-01 at 19:11:52 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -17167,7 +17167,7 @@ and may differ between programs. <ins>Whether <tt>~type_info()</tt> is <tt>virtu
 <hr>
 <h3><a name="2412" href="#2412">2412.</a> <tt>promise::set_value()</tt> and <tt>promise::get_future()</tt> should not race</h3>
 <p><b>Section:</b> 30.6.5 [futures.promise], 30.6.9.1 [futures.task.members] <b>Status:</b> <a href="lwg-active.html#SG1">SG1</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-06-23 <b>Last modified:</b> 2015-09-23</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2014-06-23 <b>Last modified:</b> 2016-11-01</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#futures.promise">active issues</a> in [futures.promise].</p>
@@ -17206,6 +17206,72 @@ from data races.
 
 <p>
 Handed over to SG1.
+</p>
+
+<p><i>[2016-10-21, Nico comments]</i></p>
+
+<p>
+After creating a promise or packaged task one thread can call <tt>get_future()</tt>
+while another thread can set values/exceptions (either directly or via function call).
+This happens very easily.
+<p/>
+Consider:
+</p>
+<blockquote><pre>
+promise&lt;string&gt; p;
+thread t(doSomething, ref(p));
+cout &lt;&lt; "result: " &lt;&lt; p.get_future().get() &lt;&lt; endl;
+</pre></blockquote>
+<p>
+AFAIK, this is currently UB due to a data race (calling <tt>get_future()</tt> for the 
+promise might happen while setting the value in the promise).
+<p/>
+Yes, a fix is pretty easy:
+</p>
+<blockquote><pre>
+promise&lt;string&gt; p;
+future&lt;string&gt; f(p.get_future());
+thread t(doSomething, ref(p));
+cout &lt;&lt; "result: " &lt;&lt; f.get() &lt;&lt; endl;
+</pre></blockquote>
+<p>
+but I would like to have <tt>get_future()</tt> and setters be synchronized to avoid this UB.
+<p/>
+This would especially make the use of packaged tasks a lot easier. Consider:
+</p>
+<blockquote><pre>
+vector&lt;packaged_task&lt;int(char)&gt;&gt; tasks;
+packaged_task&lt;int(char)&gt; t1(func);
+
+// start separate thread to run all tasks:
+auto futCallTasks = async(launch::async, callTasks, ref(tasks));
+
+for (auto&amp; fut : tasksResults) {
+  cout &lt;&lt; "result: " &lt;&lt; fut.get_future().get() &lt;&lt; endl; // OOPS: UB
+}
+</pre></blockquote>
+<p>
+Again, AFAIK, this program currently is UB due to a data race.
+Instead, currently I'd have to program, which is a lot less convenient:
+</p>
+<blockquote><pre>
+vector&lt;packaged_task&lt;int(char)&gt;&gt; tasks;
+vector&lt;future&lt;int&gt;&gt; tasksResults;
+packaged_task&lt;int(char)&gt; t1(func);
+tasksResults.push_back(t1.getFuture()));
+tasks.push_back(move(t1));
+
+// start separate thread to run all tasks:
+auto futCallTasks = async(launch::async, callTasks, ref(tasks));
+
+for (auto&amp; fut : tasksResults) {
+  cout &lt;&lt; "result: " &lt;&lt; fut.get() &lt;&lt; endl;
+}
+</pre></blockquote>
+<p>
+With my naive thinking I see not reason not to guarantee
+that these calls synchronize (as <tt>get_future</tt> returns an "address/reference"
+while all setters set the values there).
 </p>
 
 
