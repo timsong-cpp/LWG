@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2789" status="New">
+<title>Equivalence of contained objects</title>
+<section><sref ref="[any.class]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>9 Nov 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Addresses US 29
+<p/>
+What does it mean for (the contained) objects to be "equivalent"?
+<p/>
+Suggested resolution:
+<p/>
+Add definition (note that using <tt>operator==()</tt> involves complicated questions of overload 
+resolution).
+</p>
+
+<note>2016-11-08, Jonathan comments and suggests wording</note>
+<p>
+We can rephrase the copy constructor in terms of equivalence to
+construction from the contained object. We need to use in-place
+construction to avoid recursion in the case where the contained object
+is itself an any.
+<p/>
+For the move constructor we don't simply want to construct from the
+contrained object, because when the contained object is stored in
+dynamic memory we don't actually construct anything, we just transfer
+ownership of a pointer.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change [any.cons] p2:</p>
+<blockquote>
+<pre>
+any(const any&amp; other);
+</pre>
+<blockquote>
+<p>
+<i>Effects:</i> <del>Constructs an object of type <tt>any</tt> with an equivalent
+state as <tt>other</tt>.</del><ins>If <tt>other.has_value()</tt> is <tt>false</tt>, 
+constructs an object that has no value. Otherwise, equivalent to 
+<tt>any(in_place&lt;T&gt;, any_cast&lt;const T&amp;&gt;(other))</tt> where <tt>T</tt> 
+is the type of the contained object.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change [any.cons] p4:</p>
+
+<blockquote>
+<pre>
+any(any&amp;&amp; other);
+</pre>
+<blockquote>
+<p>
+<i>Effects:</i> <del>Constructs an object of type <tt>any</tt> with a state equivalent
+to the original state of <tt>other</tt>.</del><ins>If <tt>other.has_value()</tt> is <tt>false</tt>, 
+constructs an object that has no value. Otherwise, constructs an object of type <tt>any</tt> that contains
+either the contained object of <tt>other</tt>, or contains an object of the same type constructed from 
+the contained object of other considering that contained object as an rvalue.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
