@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D101)</h1>
-<p><p>Revised 2016-11-10 at 05:11:53 UTC</p>
+<p><p>Revised 2016-11-10 at 18:11:56 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,13 +158,13 @@ ownership of it.
 <ul>
 <li>D101: 2016-11-21 2016 post-Issaquah mailing<ul>
 <li><b>Summary:</b><ul>
-<li>274 open issues, up by 14.</li>
+<li>275 open issues, up by 15.</li>
 <li>1978 closed issues, up by 0.</li>
 <li>68 reassigned issues, up by 0.</li>
-<li>2320 issues total, up by 14.</li>
+<li>2321 issues total, up by 15.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 14 New issues: <a href="lwg-active.html#2785">2785</a>, <a href="lwg-active.html#2786">2786</a>, <a href="lwg-active.html#2787">2787</a>, <a href="lwg-active.html#2788">2788</a>, <a href="lwg-active.html#2789">2789</a>, <a href="lwg-active.html#2790">2790</a>, <a href="lwg-active.html#2791">2791</a>, <a href="lwg-active.html#2792">2792</a>, <a href="lwg-active.html#2793">2793</a>, <a href="lwg-active.html#2794">2794</a>, <a href="lwg-active.html#2795">2795</a>, <a href="lwg-active.html#2796">2796</a>, <a href="lwg-active.html#2797">2797</a>, <a href="lwg-active.html#2798">2798</a>.</li>
+<li>Added the following 15 New issues: <a href="lwg-active.html#2785">2785</a>, <a href="lwg-active.html#2786">2786</a>, <a href="lwg-active.html#2787">2787</a>, <a href="lwg-active.html#2788">2788</a>, <a href="lwg-active.html#2789">2789</a>, <a href="lwg-active.html#2790">2790</a>, <a href="lwg-active.html#2791">2791</a>, <a href="lwg-active.html#2792">2792</a>, <a href="lwg-active.html#2793">2793</a>, <a href="lwg-active.html#2794">2794</a>, <a href="lwg-active.html#2795">2795</a>, <a href="lwg-active.html#2796">2796</a>, <a href="lwg-active.html#2797">2797</a>, <a href="lwg-active.html#2798">2798</a>, <a href="lwg-active.html#2799">2799</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -40781,6 +40781,125 @@ directly manipulates the value of <tt>native()</tt> and may not be portable betw
 <em>end note</em>]</ins>
 <p/>
 <ins>-?- <em>Returns:</em> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2799" href="#2799">2799.</a> <tt>noexcept</tt>-specifications in <tt>shared_future</tt></h3>
+<p><b>Section:</b> 30.6.7 [futures.shared_future] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2016-11-11 <b>Last modified:</b> 2016-11-10</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.shared_future">issues</a> in [futures.shared_future].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<b>Addresses GB 62</b>
+<p/>
+There is an implicit precondition on most <tt>shared_future</tt> operations that 
+<tt>valid() == true</tt>, 30.6.7p3. The list of exempted functions seems copied 
+directly from class <tt>future</tt>, and would also include copy operations for 
+<tt>shared_futures</tt>, which are copyable. Similarly, this would be a wide 
+contract that cannot throw, so those members would be marked <tt>noexcept</tt>.
+</p>
+<p>
+Suggested resolution:
+<p/>
+Revise p3:
+<p/>
+"The effect of calling any member function other than the move constructor, the copy 
+constructor, the destructor, the move-assignment operator, the copy-assignment 
+operator, or <tt>valid()</tt> on a <tt>shared_future</tt> object for which 
+<tt>valid() == false</tt> is undefined." [&hellip;]
+<p/>
+Add <tt>noexcept</tt> specification to the copy constructor and copy-assignment operator, 
+in the class definition and where those members are specified.
+</p>
+
+<p><i>[2016-11-10, Zhihao Yuan comments and provides wording]</i></p>
+
+<p>
+This resolution should close LWG <a href="lwg-active.html#2697">2697</a> as well, but that one was filed 
+against concurrent TS.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<blockquote class="note">
+<p>
+[Drafting note: This change supersedes the 1st among 3 edits in LWG <a href="lwg-active.html#2556">2556</a>, 
+please omit that edit and apply the one below.]
+</p>
+</blockquote>
+
+<ol>
+<li>
+<p>Modify 30.6.6 [futures.unique_future]/3 as follows:</p>
+
+<blockquote>
+<p>
+-3- The effect of calling <del>any member function other than the destructor, the move-assignment operator, 
+or <tt>valid</tt></del><ins>the member functions <tt>get</tt>, <tt>wait</tt>, <tt>wait_for</tt>, or 
+<tt>wait_until</tt></ins> on a <tt>future</tt> object for which <tt>valid() == false</tt> is undefined. 
+[<i>Note:</i> Implementations are encouraged to detect this case and throw an object of type 
+<tt>future_error</tt> with an error condition of <tt>future_errc::no_state</tt>. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>Change 30.6.7 [futures.shared_future] as indicated:</p>
+
+<blockquote>
+<p>
+-3- The effect of calling <del>any member function other than the destructor, the move-assignment operator, or
+<tt>valid()</tt></del><ins>the member functions <tt>get</tt>, <tt>wait</tt>, <tt>wait_for</tt>, or 
+<tt>wait_until</tt></ins> on a <tt>shared_future</tt> object for which <tt>valid() == false</tt> is undefined. 
+[<i>Note:</i> Implementations are encouraged to detect this case and throw an object of type 
+<tt>future_error</tt> with an error condition of <tt>future_errc::no_state</tt>. &mdash; <i>end note</i>]
+</p>
+<blockquote><pre>
+namespace std {
+  template &lt;class R&gt;
+  class shared_future {
+  public:
+    shared_future() noexcept;
+    shared_future(const shared_future&amp; rhs) <ins>noexcept</ins>;
+    shared_future(future&lt;R&gt;&amp;&amp;) noexcept;
+    shared_future(shared_future&amp;&amp; rhs) noexcept;
+    ~shared_future();
+    shared_future&amp; operator=(const shared_future&amp; rhs) <ins>noexcept</ins>;
+    shared_future&amp; operator=(shared_future&amp;&amp; rhs) noexcept;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre></blockquote>
+[&hellip;]
+<pre>
+shared_future(const shared_future&amp; rhs) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> [&hellip;]
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+shared_future&amp; operator=(const shared_future&amp; rhs) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-14- <i>Effects:</i> [&hellip;]
 </p>
 </blockquote>
 </blockquote>
