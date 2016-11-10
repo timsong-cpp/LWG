@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2798" status="New">
+<title>Definition of path in terms of a string</title>
+<section><sref ref="[class.path]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>10 Nov 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<b>Addresses US 44, LWG <iref ref="2734"/></b>
+<p/>
+The explicit definition of <tt>path</tt> in terms of a string 
+requires that the abstraction be leaky. Consider that 
+the meaning of the expression <tt>p += '/'</tt>  has very 
+different behavior in the case that <tt>p</tt> is empty; that a 
+<tt>path</tt> can uselessly contain null characters; and that 
+iterators must be constant to avoid having to reshuffle 
+the packed string.
+</p>
+<p>
+Suggested resolution:
+<p/>
+Define member functions to express a <tt>path</tt> as a 
+string, but define its state in terms of the abstract 
+sequence of components (including the leading 
+special components) already described by the 
+iterator interface. Remove members that rely on 
+arbitrary manipulation of a string value.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li>
+<p>Edit [path.concat] as follows:</p>
+
+<blockquote>
+<pre>
+path&amp; operator+=(const path&amp; x);
+path&amp; operator+=(const string_type&amp; x);
+path&amp; operator+=(basic_string_view&lt;value_type&gt; x);
+path&amp; operator+=(const value_type * x);
+path&amp; operator+=(value_type x);
+template &lt;class Source&gt;
+    path&amp; operator+=(const Source&amp; x);
+template &lt;class EcharT&gt;
+    path&amp; operator+=(EcharT x);
+template &lt;class Source&gt;
+    path&amp; concat(const Source&amp; x);
+<del>template &lt;class InputIterator&gt;
+    path&amp; concat(InputIterator first, InputIterator last);</del>
+</pre>
+<blockquote>
+<p>
+-1- <del><em>Postcondition:</em> <tt>native() == prior_native + <em>effective-argument</em></tt>, 
+where <tt>prior_native</tt> is <tt>native()</tt> prior to the call to <tt>operator+=</tt>, and 
+<tt><em>effective-argument</em></tt> is:</del>
+</p>
+<ul>
+    <li><del>if <tt>x</tt> is present and is <tt>const path&amp;</tt>, <tt>x.native()</tt>; otherwise,</del></li>
+    <li><del>if <tt>source</tt> is present, the effective range of <tt>source</tt> <sref ref="path.req" />; 
+    otherwise,</del></li>
+    <li><del>>if <tt>first</tt> and <tt>last</tt> are present, the range <tt>[first, last)</tt>; otherwise,</del></li>
+    <li><del><tt>x</tt>.</del></li>
+</ul>
+<p>
+<del>If the value type of <tt><em>effective-argument</em></tt> would not be <tt>path::value_type</tt>, 
+the acctual argument or argument range is first converted <sref ref="path.type.cvt" /> so 
+that <tt><em>effective-argument</em></tt> has value type <tt>path::value_type</tt>.</del>
+<ins><em>Effects:</em> Equivalent to <tt>pathname.append(path(x).native())</tt> [<em>Note:</em> 
+This directly manipulates the value of <tt>native()</tt> and may not be portable between operating systems. 
+&mdash; <em>end note</em>]</ins>
+<p/>
+-2- <em>Returns:</em> <tt>*this</tt>.
+</p>
+</blockquote>
+<pre>
+<ins>template &lt;class InputIterator&gt;
+    path&amp; concat(InputIterator first, InputIterator last);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <em>Effects:</em> Equivalent to <tt>pathname.append(path(first, last).native())</tt> [<em>Note:</em> This 
+directly manipulates the value of <tt>native()</tt> and may not be portable between operating systems. &mdash; 
+<em>end note</em>]</ins>
+<p/>
+<ins>-?- <em>Returns:</em> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
