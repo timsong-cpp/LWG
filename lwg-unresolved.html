@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-11-10 at 20:11:52 UTC</p>
+<p><p>Revised 2016-11-11 at 05:11:39 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -26604,7 +26604,7 @@ iterator (<del>24.2 [iterator.requirements]</del><ins>24.2.7 [random.access.iter
 <hr>
 <h3><a name="2795" href="#2795">2795.</a> &sect;[global.functions] provides incorrect example of ADL use</h3>
 <p><b>Section:</b> 17.6.5.4 [global.functions] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-11-09 <b>Last modified:</b> 2016-11-10</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-11-09 <b>Last modified:</b> 2016-11-11</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#global.functions">issues</a> in [global.functions].</p>
@@ -26644,8 +26644,25 @@ There is also an existing problem in that the example makes no sense anyway: the
 paragraph only applies to non-members, yet <tt>ostream_iterator::operator=</tt> is a member function.
 </p>
 
+<p><i>[2016-11-10, Tim Song and Jonathan agree on new wording]</i></p>
 
-<p><b>Proposed resolution:</b></p>
+<p>
+The new wording still doesn't quite get it right:
+</p>
+<blockquote><p>
+"calls to non-operator, non-member functions in the standard library do not use functions from another namespace 
+which are found through argument-dependent name lookup" can be interpreted as saying that if a user writes 
+"<tt>std::equal(a, b, c, d)</tt>", that call will not use ADL'd "<tt>operator==</tt>" because 
+"<tt>std::equal(a, b, c, d)</tt>" is a "call" to a "non-operator, non-member function in the standard library".
+</p></blockquote>
+<p>
+The key point here is that "in the standard library" should be modifying "calls", not "function".
+</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>This wording is relative to N4606.</p>
 
 <ol>
@@ -26655,6 +26672,43 @@ paragraph only applies to non-members, yet <tt>ostream_iterator::operator=</tt> 
 Unless otherwise specified, <ins>non-operator,</ins> non-member functions in the standard library shall not use functions from
 another namespace which are found through argument-dependent name lookup (3.4.2). [<i>Note:</i> The phrase
 "unless otherwise specified" <ins>applies to cases such as the swappable with requirements (17.6.3.2 [swappable.requirements]). 
+The exception for overloaded operators allows</ins><del>is intended to allow</del> argument-dependent lookup in cases like that of 
+<tt>ostream_iterator::operator=</tt> (24.6.2.2):
+</p>
+<blockquote>
+<p>
+<i>Effects:</i>
+</p>
+<blockquote>
+<pre>
+*out_stream &lt;&lt; value;
+if (delim != 0)
+  *out_stream &lt;&lt; delim ;
+return *this;
+</pre>
+</blockquote>
+<p>
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to N4606.</p>
+
+<ol>
+<li><p>Change 17.6.5.4 [global.functions] p4:</p>
+<blockquote>
+<p>
+Unless otherwise specified, <ins>calls made by functions in the standard library to non-operator,</ins> non-member functions 
+<del>in the standard library</del> shall not use functions from another namespace which are found through 
+argument-dependent name lookup (3.4.2). [<i>Note:</i> The phrase "unless otherwise specified" <ins>applies to 
+cases such as the swappable with requirements (17.6.3.2 [swappable.requirements]). 
 The exception for overloaded operators allows</ins><del>is intended to allow</del> argument-dependent lookup in cases like that of 
 <tt>ostream_iterator::operator=</tt> (24.6.2.2):
 </p>
