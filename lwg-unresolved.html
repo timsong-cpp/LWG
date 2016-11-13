@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-11-13 at 13:11:19 UTC</p>
+<p><p>Revised 2016-11-13 at 14:11:03 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -20309,6 +20309,7 @@ pmr::memory_resource* get_memory_resource() <ins>const noexcept</ins>;
  <b>Submitter:</b> Tim Song <b>Opened:</b> 2015-08-04 <b>Last modified:</b> 2015-10-26</p>
 <p><b>Priority: </b>3
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#fund.ts.v2::func.wrap.func.con">active issues</a> in [fund.ts.v2::func.wrap.func.con].</p>
 <p><b>View all other</b> <a href="lwg-index.html#fund.ts.v2::func.wrap.func.con">issues</a> in [fund.ts.v2::func.wrap.func.con].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -26404,7 +26405,7 @@ template&lt;&gt; struct hash&lt;wstring_view&gt;>;
 <hr>
 <h3><a name="2792" href="#2792">2792.</a> [fund.ts.v2] <tt>gcd</tt> and <tt>lcm</tt> should support a wider range of input values</h3>
 <p><b>Section:</b> 99 [fund.ts.v2::numeric.ops.gcd], 99 [fund.ts.v2::numeric.ops.lcm] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-11-09 <b>Last modified:</b> 2016-11-09</p>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2016-11-09 <b>Last modified:</b> 2016-11-13</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#fund.ts.v2::numeric.ops.gcd">active issues</a> in [fund.ts.v2::numeric.ops.gcd].</p>
@@ -26431,7 +26432,7 @@ representable as a value of <tt>common_type_t&lt;M, N&gt;</tt></ins>.
 
 
 <p><b>Proposed resolution:</b></p>
-<p>This wording is relative to <a href="http://wg21.link/n4584">N4584</a>.</p>
+<p>This wording is relative to <a href="http://wg21.link/n4600">N4600</a>.</p>
 
 <ol>
 <li><p>Edit 99 [numeric.ops.gcd] as indicated:</p>
@@ -27808,6 +27809,81 @@ int main()
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2814" href="#2814">2814.</a> [fund.ts.v2] <tt>to_array</tt> should take rvalue reference as well</h3>
+<p><b>Section:</b> 99 [fund.ts.v2::func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2016-11-07 <b>Last modified:</b> 2016-11-13</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#fund.ts.v2::func.wrap.func.con">active issues</a> in [fund.ts.v2::func.wrap.func.con].</p>
+<p><b>View all other</b> <a href="lwg-index.html#fund.ts.v2::func.wrap.func.con">issues</a> in [fund.ts.v2::func.wrap.func.con].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+C++ doesn't have a prvalue expression of array type, but
+rvalue arrays can still come from different kinds of sources:
+</p>
+<ol>
+<li><p>C99 compound literals <tt>(int[]) {2, 4}</tt>,</p></li>
+<li><p><tt>std::move(arr)</tt>,</p></li>
+<li><p>Deduction <tt>to_array&lt;int const&gt;({ 2, 4 })</tt>.</p></li>
+</ol>
+<p>
+For 3), users are "abusing" <tt>to_array</tt> to get access to uniform
+initialization to benefit from initializing elements through
+braced-init-list and/or better narrowing conversion support.
+<p/>
+We should just add rvalue reference support to <tt>to_array</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://wg21.link/n4600">N4600</a>.</p>
+
+<ol>
+<li>
+<p>Add the following signature to  [header.array.synop]:</p>
+
+<blockquote>
+<pre>
+// 9.2.2, Array creation functions
+template &lt;class D = void, class... Types&gt;
+  constexpr array&lt;VT, sizeof...(Types)&gt; make_array(Types&amp;&amp;... t);
+template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;a)[N]);
+<ins>template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;&amp;a)[N]);</ins>
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Modify  [container.array.creation] as follows:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;a)[N]);
+<ins>template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;&amp;a)[N]);</ins>
+</pre>
+<blockquote>
+<p>
+-6- <i>Returns:</i> <ins>For all <tt><i>i</i></tt>, <tt>0 &le; <i>i</i> &lt; N</tt>, a</ins><del>A</del>n 
+<tt>array&lt;remove_cv_t&lt;T&gt;, N&gt;</tt> <del>such that each element is copy-initialized 
+with the corresponding element of <tt>a</tt></del><ins>initialized with <tt>{ a[<i>i</i>]... }</tt> for 
+the first form, or <tt>{ std::move(a[<i>i</i>])... }</tt> for the second form.</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 
 
 
