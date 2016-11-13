@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2814" status="New">
+<title>[fund.ts.v2] <tt>to_array</tt> should take rvalue reference as well</title>
+<section><sref ref="[func.wrap.func.con]"/></section>
+<submitter>Zhihao Yuan</submitter>
+<date>7 Nov 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+C++ doesn't have a prvalue expression of array type, but
+rvalue arrays can still come from different kinds of sources:
+</p>
+<ol>
+<li><p>C99 compound literals <tt>(int[]) {2, 4}</tt>,</p></li>
+<li><p><tt>std::move(arr)</tt>,</p></li>
+<li><p>Deduction <tt>to_array&lt;int const&gt;({ 2, 4 })</tt>.</p></li>
+</ol>
+<p>
+For 3), users are "abusing" <tt>to_array</tt> to get access to uniform
+initialization to benefit from initializing elements through
+braced-init-list and/or better narrowing conversion support.
+<p/>
+We should just add rvalue reference support to <tt>to_array</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4600">N4600</a>.</p>
+
+<ol>
+<li>
+<p>Add the following signature to <sref ref="[header.array.synop]"/>:</p>
+
+<blockquote>
+<pre>
+// 9.2.2, Array creation functions
+template &lt;class D = void, class... Types&gt;
+  constexpr array&lt;VT, sizeof...(Types)&gt; make_array(Types&amp;&amp;... t);
+template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;a)[N]);
+<ins>template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;&amp;a)[N]);</ins>
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[container.array.creation]"/> as follows:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;a)[N]);
+<ins>template &lt;class T, size_t N&gt;
+  constexpr array&lt;remove_cv_t&lt;T&gt;, N&gt; to_array(T (&amp;&amp;a)[N]);</ins>
+</pre>
+<blockquote>
+<p>
+-6- <i>Returns:</i> <ins>For all <tt><i>i</i></tt>, <tt>0 &le; <i>i</i> &lt; N</tt>, a</ins><del>A</del>n 
+<tt>array&lt;remove_cv_t&lt;T&gt;, N&gt;</tt> <del>such that each element is copy-initialized 
+with the corresponding element of <tt>a</tt></del><ins>initialized with <tt>{ a[<i>i</i>]... }</tt> for 
+the first form, or <tt>{ std::move(a[<i>i</i>])... }</tt> for the second form.</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
