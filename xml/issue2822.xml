@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2822" status="New">
+<title>Resolution for LWG 2742 introduces ambiguities</title>
+<section><sref ref="[string.cons]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>15 Nov 2016</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The new constructor added for LWG <iref ref="2742"/> causes an ambiguity when attempting to construct from a (non-const) <tt>char*</tt>
+</p>
+<blockquote><pre>
+char s[] = "whoops"; 
+std::string str(s, 2, 4);
+</pre></blockquote>
+<p>
+This is the same problem discussed in <iref ref="2758"/>, and the fix is the same: disable that new constructor if <tt>T</tt> 
+is convertible to <tt>const_pointer</tt>, so that the old constructor is used instead.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to N4606.
+</p>
+<ol>
+<li><p>Modify the new <tt>basic_string(const T&amp; t, size_type pos, size_type n, const Allocator&amp; a = Allocator());</tt> 
+constructor in <sref ref="[string.cons]"/> as shown:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+basic_string(const T&amp; t, size_type pos, size_type n, const Allocator&amp; a = Allocator());
+</pre>
+<blockquote>
+<p>
+-?- <i>Effects:</i> Creates a variable, <tt>sv</tt>, as if by <tt>basic_string_view&lt;charT, traits&gt; sv = t;</tt> and 
+then behaves the same as:
+</p>
+<blockquote><pre>
+basic_string(sv.substr(pos, n), a)
+</pre></blockquote>
+<p>
+-?- <i>Remarks:</i> This constructor shall not participate in overload resolution unless 
+<tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt> <ins>and 
+<tt>is_convertible_v&lt;const T&amp;, const charT*&gt;</tt> is <tt>false</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
