@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D012)</h1>
-<p><p>Revised 2016-12-18 at 12:12:07 UTC</p>
+<p><p>Revised 2016-12-18 at 13:12:04 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,13 +158,13 @@ ownership of it.
 <ul>
 <li>D012: 2017-02-06 2017 pre-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>222 open issues, up by 6.</li>
+<li>223 open issues, up by 7.</li>
 <li>2070 closed issues, up by 7.</li>
 <li>69 reassigned issues, up by 1.</li>
-<li>2361 issues total, up by 14.</li>
+<li>2362 issues total, up by 15.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 13 New issues: <a href="lwg-active.html#2826">2826</a>, <a href="lwg-active.html#2827">2827</a>, <a href="lwg-active.html#2828">2828</a>, <a href="lwg-active.html#2829">2829</a>, <a href="lwg-active.html#2831">2831</a>, <a href="lwg-active.html#2832">2832</a>, <a href="lwg-active.html#2833">2833</a>, <a href="lwg-active.html#2834">2834</a>, <a href="lwg-active.html#2835">2835</a>, <a href="lwg-active.html#2836">2836</a>, <a href="lwg-active.html#2837">2837</a>, <a href="lwg-active.html#2838">2838</a>, <a href="lwg-active.html#2839">2839</a>.</li>
+<li>Added the following 14 New issues: <a href="lwg-active.html#2826">2826</a>, <a href="lwg-active.html#2827">2827</a>, <a href="lwg-active.html#2828">2828</a>, <a href="lwg-active.html#2829">2829</a>, <a href="lwg-active.html#2831">2831</a>, <a href="lwg-active.html#2832">2832</a>, <a href="lwg-active.html#2833">2833</a>, <a href="lwg-active.html#2834">2834</a>, <a href="lwg-active.html#2835">2835</a>, <a href="lwg-active.html#2836">2836</a>, <a href="lwg-active.html#2837">2837</a>, <a href="lwg-active.html#2838">2838</a>, <a href="lwg-active.html#2839">2839</a>, <a href="lwg-active.html#2840">2840</a>.</li>
 <li>Added the following Resolved issue: <a href="lwg-defects.html#2830">2830</a>.</li>
 <li>Changed the following 4 issues to Tentatively Ready (from New): <a href="lwg-active.html#2789">2789</a>, <a href="lwg-active.html#2795">2795</a>, <a href="lwg-active.html#2804">2804</a>, <a href="lwg-active.html#2812">2812</a>.</li>
 <li>Changed the following 2 issues to Tentatively Ready (from Open): <a href="lwg-active.html#2768">2768</a>, <a href="lwg-active.html#2769">2769</a>.</li>
@@ -31302,6 +31302,146 @@ to the value that <tt>rv</tt> had before this assignment</td>
 </blockquote>
 </li>
 </ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2840" href="#2840">2840.</a> <tt>directory_iterator::increment</tt> is narrow-contract but marked <tt>noexcept</tt></h3>
+<p><b>Section:</b> 27.10.13.1 [directory_iterator.members], 27.10.14.1 [rec.dir.itr.members] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-12-09 <b>Last modified:</b> 2016-12-18</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#directory_iterator.members">issues</a> in [directory_iterator.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>directory_iterator::increment</tt> and <tt>recursive_directory_iterator::increment</tt> are specified by 
+reference to the input iterator requirements, which is narrow-contract: it's undefined behavior to increment 
+a nondeferenceable iterator. Yet they are marked as <tt>noexcept</tt>.
+<p/>
+Either the <tt>noexcept</tt> (one of which was added by LWG <a href="lwg-defects.html#2637">2637</a>) should be removed, or the 
+behavior of <tt>increment</tt> when given a nondereferenceable iterator should be specified.
+<p/>
+Currently, libstdc++ and MSVC report an error via the <tt>error_code</tt> argument for a nondereferenceable 
+<tt>directory_iterator</tt>, while libc++ and <tt>boost::filesystem</tt> asserts.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
+
+<ol style="list-style-type: none">
+<li><p>Alternative A (remove the <tt>noexcept</tt>):</p>
+
+<ol>
+<li><p>Edit 27.10.13 [class.directory_iterator], class <tt>directory_iterator</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+directory_iterator&amp; operator++();
+directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit 27.10.13.1 [directory_iterator.members] before p10 as indicated:</p>
+<blockquote>
+<pre>
+directory_iterator&amp; operator++();
+directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3).
+<p/>
+-11- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-12- <i>Throws:</i> As specified in 27.10.7.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit 27.10.14 [class.rec.dir.itr], class <tt>recursive_directory_iterator</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+recursive_directory_iterator&amp; operator++();
+recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit 27.10.14.1 [rec.dir.itr.members] before p23 as indicated:</p>
+<blockquote>
+<pre>
+recursive_directory_iterator&amp; operator++();
+recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-23- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3), except that: [&hellip;]
+<p/>
+-24- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-25- <i>Throws:</i> As specified in 27.10.7.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</li>
+
+<li><p>Alternative B (specify that <tt>increment</tt> reports an error if the iterator is not dereferenceable):</p>
+
+<ol>
+<li><p>Edit 27.10.13.1 [directory_iterator.members] before p10 as indicated:</p>
+<blockquote>
+<pre>
+directory_iterator&amp; operator++();
+directory_iterator&amp; increment(error_code&amp; ec) noexcept;
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3)<ins>, except that 
+<tt>increment</tt> reports an error if <tt>*this</tt> is not dereferenceable</ins>.
+<p/>
+-11- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-12- <i>Throws:</i> As specified in 27.10.7.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit 27.10.14.1 [rec.dir.itr.members] before p23 as indicated:</p>
+<blockquote>
+<pre>
+recursive_directory_iterator&amp; operator++();
+recursive_directory_iterator&amp; increment(error_code&amp; ec) noexcept;
+</pre>
+<blockquote>
+<p>
+-23- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3), except that: 
+</p>
+<ul>
+<li><p><ins><tt>increment</tt> reports an error if <tt>*this</tt> is not dereferenceable.</ins></p></li>
+<li><p>If there are no more entries at the current depth, [&hellip;]</p></li>
+<li><p>Otherwise if [&hellip;]</p></li>
+</ul>
+<p>
+-24- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-25- <i>Throws:</i> As specified in 27.10.7.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</li>
+</ol>
+
 
 
 
