@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2016-12-18 at 11:12:34 UTC</p>
+<p><p>Revised 2016-12-18 at 11:12:19 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -26623,18 +26623,25 @@ be representable as a value of type <tt>common_type_t&lt;M, N&gt;</tt>.
 
 
 <hr>
-<h3><a name="2838" href="#2838">2838.</a> <tt>directory_iterator::increment</tt> is narrow-contract but marked <tt>noexcept</tt></h3>
-<p><b>Section:</b> 27.10.13.1 [directory_iterator.members], 27.10.14.1 [rec.dir.itr.members] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+<h3><a name="2838" href="#2838">2838.</a> <tt>is_literal_type</tt> specification needs a little cleanup</h3>
+<p><b>Section:</b> D.11 [depr.meta.types] <b>Status:</b> <a href="lwg-active.html#New">New</a>
  <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-12-09 <b>Last modified:</b> 2016-12-18</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
-<p><b>View all other</b> <a href="lwg-index.html#directory_iterator.members">issues</a> in [directory_iterator.members].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-<tt>directory_iterator::increment</tt> and <tt>recursive_directory_iterator::increment</tt> are specified by 
-reference to the input iterator requirements, which is narrow-contract: it's undefined behavior to increment 
-a nondeferenceable iterator. Yet they are marked as <tt>noexcept</tt>.
+D.11 [depr.meta.types]/3 currently reads:
+</p>
+<blockquote><p>
+<i>Effects:</i> <tt>is_literal_type</tt> has a base-characteristic of <tt>true_type</tt> if <tt>T</tt> is a literal 
+type ([basic.types]), and a base-characteristic of <tt>false_type</tt> otherwise.
+</p></blockquote>
+<p>
+First, this doesn't seem like an <i>Effects</i> clause. Second, this wording failed to say that <tt>is_literal_type</tt> 
+is an <tt>UnaryTypeTrait</tt>, and misspelled <tt>BaseCharacteristic</tt> &mdash; which is only defined for 
+<tt>UnaryTypeTraits</tt> and <tt>BinaryTypeTraits</tt>. Third, moving this to Annex D means that the general prohibition 
+against specializing type traits in [meta.type.synop]/1 no longer applies, which is presumably unintended.
 </p>
 
 
@@ -26642,58 +26649,31 @@ a nondeferenceable iterator. Yet they are marked as <tt>noexcept</tt>.
 <p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
 
 <ol>
-<li><p>Edit 27.10.13 [class.directory_iterator], class <tt>directory_iterator</tt> synopsis, as indicated:</p>
-<blockquote>
-<pre>
-directory_iterator&amp; operator++();
-directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
-</pre>
-</blockquote>
-</li>
-
-<li><p>Edit 27.10.13.1 [directory_iterator.members] as indicated:</p>
-<blockquote>
-<pre>
-directory_iterator&amp; operator++();
-directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
-</pre>
+<li><p>Edit D.11 [depr.meta.types] as indicated:</p>
 <blockquote>
 <p>
--10- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3 [input.iterators]).
-<p/>
--11- <i>Returns:</i> <tt>*this</tt>.
-<p/>
--12- <i>Throws:</i> As specified in 27.10.7 [fs.err.report].
+The header <tt>&lt;type_traits&gt;</tt> has the following addition:
 </p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Edit 27.10.14 [class.rec.dir.itr], class <tt>recursive_directory_iterator</tt> synopsis, as indicated:</p>
 <blockquote>
 <pre>
-recursive_directory_iterator&amp; operator++();
-recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+namespace std {
+  template &lt;class T&gt; struct is_literal_type;
+  
+  template &lt;class T&gt; constexpr bool is_literal_type_v = is_literal_type&lt;T&gt;::value;
+}
 </pre>
 </blockquote>
-</li>
-
-<li><p>Edit 27.10.14.1 [rec.dir.itr.members] as indicated:</p>
-<blockquote>
-<pre>
-recursive_directory_iterator&amp; operator++();
-recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
-</pre>
-<blockquote>
 <p>
--23- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3 [input.iterators]), 
-except that: [&hellip;]
+-2- <i>Requires:</i> <tt>remove_all_extents_t&lt;T&gt;</tt> shall be a complete type or (possibly <i>cv</i>-qualified) <tt>void</tt>.
 <p/>
--24- <i>Returns:</i> <tt>*this</tt>.
+-3- <del><i>Effects:</i> <tt>is_literal_type</tt> has a base-characteristic of <tt>true_type</tt> if <tt>T</tt> is a literal type (3.9), 
+and a basecharacteristic of <tt>false_type</tt> otherwise</del><ins><tt>is_literal_type&lt;T&gt;</tt> is a 
+<tt>UnaryTypeTrait</tt> ( [meta.reqmts]) with a <tt>BaseCharacteristic</tt> of <tt>true_type</tt> if <tt>T</tt> 
+is a literal type (3.9 [basic.types]), and <tt>false_type</tt> otherwise</ins>.
 <p/>
--25- <i>Throws:</i> As specified in 27.10.7 [fs.err.report].
+<ins>-?- The behavior of a program that adds specializations for <tt>is_literal_type</tt> or <tt>is_literal_type_v</tt> is 
+undefined.</ins>
 </p>
-</blockquote>
 </blockquote>
 </li>
 </ol>
