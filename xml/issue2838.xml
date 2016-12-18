@@ -2,17 +2,25 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2838" status="New">
-<title><tt>directory_iterator::increment</tt> is narrow-contract but marked <tt>noexcept</tt></title>
-<section><sref ref="[directory_iterator.members]"/><sref ref="[rec.dir.itr.members]"/></section>
+<title><tt>is_literal_type</tt> specification needs a little cleanup</title>
+<section><sref ref="[depr.meta.types]"/></section>
 <submitter>Tim Song</submitter>
 <date>9 Dec 2016</date>
 <priority>99</priority>
 
 <discussion>
 <p>
-<tt>directory_iterator::increment</tt> and <tt>recursive_directory_iterator::increment</tt> are specified by 
-reference to the input iterator requirements, which is narrow-contract: it's undefined behavior to increment 
-a nondeferenceable iterator. Yet they are marked as <tt>noexcept</tt>.
+<sref ref="[depr.meta.types]"/>/3 currently reads:
+</p>
+<blockquote><p>
+<i>Effects:</i> <tt>is_literal_type</tt> has a base-characteristic of <tt>true_type</tt> if <tt>T</tt> is a literal 
+type ([basic.types]), and a base-characteristic of <tt>false_type</tt> otherwise.
+</p></blockquote>
+<p>
+First, this doesn't seem like an <i>Effects</i> clause. Second, this wording failed to say that <tt>is_literal_type</tt> 
+is an <tt>UnaryTypeTrait</tt>, and misspelled <tt>BaseCharacteristic</tt> &mdash; which is only defined for 
+<tt>UnaryTypeTraits</tt> and <tt>BinaryTypeTraits</tt>. Third, moving this to Annex D means that the general prohibition 
+against specializing type traits in [meta.type.synop]/1 no longer applies, which is presumably unintended.
 </p>
 </discussion>
 
@@ -20,58 +28,31 @@ a nondeferenceable iterator. Yet they are marked as <tt>noexcept</tt>.
 <p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
 
 <ol>
-<li><p>Edit <sref ref="[class.directory_iterator]"/>, class <tt>directory_iterator</tt> synopsis, as indicated:</p>
-<blockquote>
-<pre>
-directory_iterator&amp; operator++();
-directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
-</pre>
-</blockquote>
-</li>
-
-<li><p>Edit <sref ref="[directory_iterator.members]"/> as indicated:</p>
-<blockquote>
-<pre>
-directory_iterator&amp; operator++();
-directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
-</pre>
+<li><p>Edit <sref ref="[depr.meta.types]"/> as indicated:</p>
 <blockquote>
 <p>
--10- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (<sref ref="[input.iterators]"/>).
-<p/>
--11- <i>Returns:</i> <tt>*this</tt>.
-<p/>
--12- <i>Throws:</i> As specified in <sref ref="[fs.err.report]"/>.
+The header <tt>&lt;type_traits&gt;</tt> has the following addition:
 </p>
-</blockquote>
-</blockquote>
-</li>
-
-<li><p>Edit <sref ref="[class.rec.dir.itr]"/>, class <tt>recursive_directory_iterator</tt> synopsis, as indicated:</p>
 <blockquote>
 <pre>
-recursive_directory_iterator&amp; operator++();
-recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+namespace std {
+  template &lt;class T&gt; struct is_literal_type;
+  
+  template &lt;class T&gt; constexpr bool is_literal_type_v = is_literal_type&lt;T&gt;::value;
+}
 </pre>
 </blockquote>
-</li>
-
-<li><p>Edit <sref ref="[rec.dir.itr.members]"/> as indicated:</p>
-<blockquote>
-<pre>
-recursive_directory_iterator&amp; operator++();
-recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
-</pre>
-<blockquote>
 <p>
--23- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (<sref ref="[input.iterators]"/>), 
-except that: [&hellip;]
+-2- <i>Requires:</i> <tt>remove_all_extents_t&lt;T&gt;</tt> shall be a complete type or (possibly <i>cv</i>-qualified) <tt>void</tt>.
 <p/>
--24- <i>Returns:</i> <tt>*this</tt>.
+-3- <del><i>Effects:</i> <tt>is_literal_type</tt> has a base-characteristic of <tt>true_type</tt> if <tt>T</tt> is a literal type (3.9), 
+and a basecharacteristic of <tt>false_type</tt> otherwise</del><ins><tt>is_literal_type&lt;T&gt;</tt> is a 
+<tt>UnaryTypeTrait</tt> (<sref ref="[meta.reqmts]"/>) with a <tt>BaseCharacteristic</tt> of <tt>true_type</tt> if <tt>T</tt> 
+is a literal type (<sref ref="[basic.types]"/>), and <tt>false_type</tt> otherwise</ins>.
 <p/>
--25- <i>Throws:</i> As specified in <sref ref="[fs.err.report]"/>.
+<ins>-?- The behavior of a program that adds specializations for <tt>is_literal_type</tt> or <tt>is_literal_type_v</tt> is 
+undefined.</ins>
 </p>
-</blockquote>
 </blockquote>
 </li>
 </ol>
