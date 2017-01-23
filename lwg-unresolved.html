@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-01-23 at 18:01:58 UTC</p>
+<p><p>Revised 2017-01-23 at 20:01:07 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -27485,7 +27485,7 @@ that is the intention.
 <hr>
 <h3><a name="2849" href="#2849">2849.</a> Why does <tt>!is_regular_file(from)</tt> cause <tt>copy_file</tt> to report a "file already exists" error?</h3>
 <p><b>Section:</b> 27.10.15.4 [fs.op.copy_file] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-12-17 <b>Last modified:</b> 2017-01-22</p>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2016-12-17 <b>Last modified:</b> 2017-01-23</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#fs.op.copy_file">issues</a> in [fs.op.copy_file].</p>
@@ -27505,7 +27505,7 @@ further elaboration.
 <p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
 
 <ol>
-<li><p>Edit [fs.op.copy_file]/4 as indicated</p>
+<li><p>Edit [fs.op.copy_file]/4 as indicated:</p>
 <blockquote>
 <pre>
 bool copy_file(const path&amp; from, const path&amp; to, copy_options options);
@@ -27525,6 +27525,73 @@ bool copy_file(const path&amp; from, const path&amp; to, copy_options options,
 </li>
 <li><p>(4.2) &mdash;[&hellip;]</p></li>
 </ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3><a name="2850" href="#2850">2850.</a> <tt>std::function</tt> move constructor does unnecessary work</h3>
+<p><b>Section:</b> 20.14.12.2.1 [func.wrap.func.con] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2016-12-15 <b>Last modified:</b> 2017-01-23</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#func.wrap.func.con">active issues</a> in [func.wrap.func.con].</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.wrap.func.con">issues</a> in [func.wrap.func.con].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Consider [func.wrap.func.con]/p5:
+</p>
+<blockquote><pre>
+function(function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+<i>Effects:</i> If <tt>!f</tt>, <tt>*this</tt> has no target; otherwise, move constructs the target of <tt>f</tt> into the target 
+of <tt>*this</tt>, leaving <tt>f</tt> in a valid state with an unspecified value.
+</p>
+</blockquote>
+</blockquote>
+<p>
+By my reading, this wording requires the move constructor of <tt>std::function</tt> to construct an entirely new target object. 
+This is silly: in cases where the target is held in separately allocated memory (i.e. where the target doesn't fit in 
+<tt>std::function</tt>'s internal buffer, if any), <tt>std::function</tt>'s move constructor can be implemented by simply 
+transferring ownership of the existing target object (which is a simple pointer assignment), so this requirement forces an 
+unnecessary constructor invocation and probably an unnecessary allocation (the latter can be avoided with something like 
+double-buffering, but ew). Fixing this would technically be a visible change, but I have a hard time imagining reasonable 
+code that would be broken by it, especially since both libstdc++ and libc++ already do the sensible thing, constructing a 
+new target only if the target is held in an internal buffer, and otherwise assigning pointers.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
+
+<ol>
+<li><p>Edit 20.14.12.2.1 [func.wrap.func.con]/5 as indicated:</p>
+
+<blockquote class="note">
+<p>
+<i>Drafting note:</i> The "equivalent to ... before the construction" wording is based on the wording for <tt>MoveConstructible</tt>.
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+function(function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-5- <i><del>Effects</del><ins>Postconditions</ins>:</i> If <tt>!f</tt>, <tt>*this</tt> has no target; otherwise, <del>move 
+constructs the target of <tt>f</tt> into the target of <tt>*this</tt>, leaving <tt>f</tt></del><ins>the target of <tt>*this</tt> 
+is equivalent to the target of <tt>f</tt> before the construction, and <tt>f</tt> is</ins> in a valid state with an 
+unspecified value.
+</p>
 </blockquote>
 </blockquote>
 </li>
