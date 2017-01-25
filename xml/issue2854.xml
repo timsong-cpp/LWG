@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2854" status="New">
+<title><tt>wstring_convert</tt> provides no indication of incomplete input or output</title>
+<section><sref ref="[conversions.string]"/></section>
+<submitter>PowerGamer</submitter>
+<date>8 Jan 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Example:
+</p>
+<blockquote><pre>
+// Input UTF-16 string is incomplete - only first half of
+// UTF-16 surrogate pair L"\xD843\xDEF9":
+wchar_t in_utf16[] = L"\xD843";
+
+std::wstring_convert&lt;std::codecvt_utf8_utf16&lt;wchar_t&gt;&gt; cvt;
+auto out_utf8 = cvt.to_bytes(in_utf16); // No error.
+</pre></blockquote>
+<p>
+There is no indication that input was incomplete (the value returned
+by <tt>cvt.state()</tt> is not documented and so cannot be examined by user for
+that purpose). As such the user will not know that more input data
+should be provided in additional call to <tt>cvt.to_bytes()</tt>.
+<p/>
+The output can be incomplete too: MSVC2017 implementation (which as
+far as I can tell is standard conforming) produces <tt>"\xF0"</tt> in <tt>out_utf8</tt>.
+Again, no indication of incomplete output produced is provided by
+<tt>std::wstring_convert</tt>.
+<p/>
+IMO it makes <tt>std::wstring_convert</tt> in its current state completely
+useless (it cannot be relied upon to either produce complete and valid
+UTF sequence or throw an error in all situations).
+<p/>
+Imagine a file has UTF16 encoded text. You want to read all the data
+from a file at once and convert it into UTF8 using
+<tt>std::wstring_convert&lt;std::codecvt_utf8_utf16&lt;wchar_t&gt;&gt;</tt>.
+<p/>
+Now, if a file contains completely <em>invalid</em> UTF16 (for example,
+forbidden or incorrectly encoded Unicode code points) you will get an
+exception from <tt>std::wstring_convert&lt;std::codecvt_utf8_utf16&lt;wchar_t&gt;&gt;</tt>.
+<p/>
+But if a file contains <em>incomplete</em> (but in all other regards <em>valid</em>)
+UTF16 (for ex. file ends with only the first half of a valid surrogate
+pair) you will <em>neither</em> get an error exception from
+<tt>std::wstring_convert&lt;std::codecvt_utf8_utf16&lt;wchar_t&gt;&gt;</tt> <em>nor</em> any
+indication that the input provided to 
+<tt>std::wstring_convert&lt;std::codecvt_utf8_utf16&lt;wchar_t&gt;&gt;</tt> was incomplete.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
