@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2852" status="New">
+<title>Specifications of <tt>operator==</tt> for <tt>std::basic_string</tt>s and <tt>std::basic_string_view</tt>s are 
+difficult to conform to</title>
+<section><sref ref="[string.operator==]"/><sref ref="[string.compare]"/></section>
+<submitter>Ahti Lepp&auml;nen</submitter>
+<date>9 Jan 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently (<a href="http://wg21.link/n4618">N4618</a>, 2016-11-28) the specification of <tt>operator==</tt> 
+for <tt>std::basic_string</tt> and <tt>std::basic_string_view</tt> objects is clearly defined, but when 
+interpreted as written, it may lead to comparison of strings of different sizes being a &#x1d4aa;(n) operation 
+instead of a simple size check. Actual implementations in standard libraries vary so that in practice the 
+programmers can't rely neither on having the literal version of the standard specification nor reasonable 
+performance characteristics.
+<p/>
+The definition for <tt>basic_string operator==</tt> in N4618 is as follows:
+</p>
+<blockquote>
+<p>
+<sref ref="[string.operator==]"/>
+</p>
+<pre>
+bool operator==(const basic_string&lt;charT, traits, Allocator&gt;&amp; lhs,
+                const basic_string&lt;charT, traits, Allocator&gt;&amp; rhs) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>lhs.compare(rhs) == 0</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote>
+<p>
+<sref ref="[string.compare]"/>
+</p>
+<pre>
+int compare(const basic_string&amp; str) const noexcept;
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to: <tt>return compare(basic_string_view&lt;charT, traits&gt;(str));</tt>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote>
+<p>
+<sref ref="[string.compare]"/>
+</p>
+<pre>
+int compare(basic_string_view&lt;charT, traits&gt; sv) const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Determines the effective length <tt>rlen</tt> of the strings to compare as the smaller of 
+<tt>size()</tt> and <tt>sv.size()</tt>. The function then compares the two strings by calling <tt>traits::compare(data(),
+sv.data(), rlen)</tt>.
+<p/>
+-2- <i>Returns:</i> The nonzero result if the result of the comparison is nonzero. Otherwise, returns a value as
+indicated in Table 63.
+</p>
+</blockquote>
+<blockquote>
+<table border="1">
+<caption>Table 63 &mdash; <tt>compare()</tt> results</caption>
+<tr>
+<th>Condition</th>
+<th>Return Value</th>
+</tr>
+
+<tr>
+<td><tt>size() &lt; sv.size()</tt></td>
+<td><tt>&lt; 0</tt></td>
+</tr>
+
+<tr>
+<td><tt>size() == sv.size()</tt></td>
+<td><tt>0</tt></td>
+</tr>
+
+<tr>
+<td><tt>size() &gt; sv.size()</tt></td>
+<td><tt>&gt; 0</tt></td>
+</tr>
+</table>
+
+</blockquote>
+</blockquote>
+<p>
+From these it seems that <tt>compare()</tt> of strings of different sizes can't return zero and <tt>operator==</tt> 
+will return <tt>false</tt>. However some implementations do not seem to call <tt>traits::compare()</tt> for 
+<tt>basic_string</tt>s of different sizes even when the traits and it's <tt>compare()</tt> are user-defined. And those 
+that call, make the <tt>operator==</tt> a worst case &#x1d4aa;(n) operation even for strings of different sizes.
+<p/>
+This defect report does not propose a wording, but on a general level the wording should allow standard library 
+implementers to write a standard conforming <tt>operator==</tt> for <tt>basic_string</tt> and <tt>basic_string_view</tt> 
+(others?) in such a way that it's performance characteristics are reasonable and the programmers can rely on having 
+a consistent behaviour across implementations. Perhaps the key issue here is that <tt>operator==</tt> is defined 
+through <tt>compare() == 0</tt>: while it returns the intended result, for some inputs it does computations that 
+are not needed by <tt>operator==</tt>. There are also related specifications that may need to be revised, for example 
+<tt>operator!=</tt> for <tt>basic_string_view</tt>s is defined in <sref ref="[string.view.comparison]"/> as
+</p>
+<blockquote>
+<p>
+<i>Returns:</i> <tt>lhs.compare(rhs) != 0</tt>
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
