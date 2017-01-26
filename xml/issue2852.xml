@@ -111,9 +111,88 @@ are not needed by <tt>operator==</tt>. There are also related specifications tha
 <i>Returns:</i> <tt>lhs.compare(rhs) != 0</tt>
 </p>
 </blockquote>
+
+<note>2017-01-26, Jonathan Wakely comments and provides proposed resolution</note>
+<p>
+As mentioned above, some implementations do not make a call to <tt>Traits::compare</tt> if the string lengths are not equal, 
+even though in general this is an observable side effect. Some implementations only perform that optimisation for 
+<tt>std::string</tt> and <tt>std::wstring</tt>, where we know that calls to <tt>std::char_traits&lt;char&gt;::compare</tt> 
+and <tt>std::char_traits&lt;wchar_t&gt;::compare</tt> are not observable.
+<p/>
+My reading is that the <i>Returns:</i> element describes the value that must be returned, not the precise steps that must be 
+taken to calculate that value. If we intended to specify the precise steps that must be taken then we could say that using 
+"<i>Effects:</i> Equivalent to [&hellip;]", but we don't do that.
+<p/>
+I would prefer this issue to be closed NAD with the rationale that my reading is correct and comparing the lengths to avoid 
+calling <tt>Traits::compare</tt> is already permitted. But if my reading is wrong we need to permit this obvious optimisation.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
+
+<ol style="list-style-type:upper-alpha">
+<li><p>Preferred: NAD</p></li>
+<li><p>Alternative:</p>
+
+<ol>
+<li><p>Modify <sref ref="[string.operator==]"/> p1 as shown:</p>
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Allocator&gt;
+  bool operator==(const basic_string&lt;charT, traits, Allocator&gt;&amp; lhs,
+                  const basic_string&lt;charT, traits, Allocator&gt;&amp; rhs) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt><ins>lhs.size() == rhs.size() &amp;&amp;</ins> lhs.compare(rhs) == 0</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[string.view.comparison]"/> as shown:</p>
+<blockquote>
+<p>
+[<i>Example:</i> A sample conforming implementation for <tt>operator==</tt> would be:
+</p>
+<pre>
+template&lt;class T&gt; using __identity = decay_t&lt;T&gt;;
+template&lt;class charT, class traits&gt;
+  constexpr bool operator==(basic_string_view&lt;charT, traits&gt; lhs,
+                            basic_string_view&lt;charT, traits&gt; rhs) noexcept {
+    return <ins>lhs.size() == rhs.size() &amp;&amp;</ins> lhs.compare(rhs) == 0;
+  }
+template&lt;class charT, class traits&gt;
+  constexpr bool operator==(basic_string_view&lt;charT, traits&gt; lhs,
+                            __identity&lt;basic_string_view&lt;charT, traits&gt;&gt; rhs) noexcept {
+    return <ins>lhs.size() == rhs.size() &amp;&amp;</ins> lhs.compare(rhs) == 0;
+  }
+template&lt;class charT, class traits&gt;
+  constexpr bool operator==(__identity&lt;basic_string_view&lt;charT, traits&gt;&gt; lhs,
+                            basic_string_view&lt;charT, traits&gt; rhs) noexcept {
+    return <ins>lhs.size() == rhs.size() &amp;&amp;</ins> lhs.compare(rhs) == 0;
+  }
+</pre>
+<p>
+&mdash; <i>end example</i>]
+</p>
+<pre>
+template&lt;class charT, class traits&gt;
+  constexpr bool operator==(basic_string_view&lt;charT, traits&gt; lhs,
+                            basic_string_view&lt;charT, traits&gt; rhs) noexcept;
+</pre>
+<blockquote>
+<p>
+-2- <i>Returns:</i> <tt><ins>lhs.size() == rhs.size() &amp;&amp;</ins> lhs.compare(rhs) == 0</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</li>
+</ol>
 </resolution>
 
 </issue>
