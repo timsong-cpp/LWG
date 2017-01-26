@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-01-26 at 18:01:31 UTC</p>
+<p><p>Revised 2017-01-26 at 19:01:55 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -28249,6 +28249,211 @@ void bar()
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2857" href="#2857">2857.</a> <tt>{variant,optional,any}::emplace</tt> should return the constructed value</h3>
+<p><b>Section:</b> 20.6 [optional], 20.7 [variant], 20.8 [any] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Zhihao Yuan <b>Opened:</b> 2017-01-25 <b>Last modified:</b> 2017-01-26</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+When you want to continue operate on the new contained object constructed by <tt>emplace</tt>, you probably 
+don't want to go through the type-safe machinery again.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
+
+<ol>
+<li><p>Update the following signatures in 20.6.3 [optional.optional], class template <tt>optional</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 20.6.3.3 [optional.assign], assignment</i>
+[&hellip;]
+template &lt;class... Args&gt; <del>void</del><ins>T&amp;</ins> emplace(Args&amp;&amp;...);
+template &lt;class U, class... Args&gt;
+  <del>void</del><ins>T&amp;</ins> emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 20.6.3.3 [optional.assign] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class... Args&gt; <del>void</del><ins>T&amp;</ins> emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-27- <i>Postconditions:</i> <tt>*this</tt> contains a value.
+<p/>
+<ins>-?- <i>Returns:</i> A reference to the new contained value.</ins>
+<p/>
+-28- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
+</p>
+</blockquote>
+<pre>
+template &lt;class U, class... Args&gt; <del>void</del><ins>T&amp;</ins> emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-31- <i>Postconditions:</i> <tt>*this</tt> contains a value.
+<p/>
+<ins>-?- <i>Returns:</i> A reference to the new contained value.</ins>
+<p/>
+-32- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify the following signatures in 20.7.2 [variant.variant], class template <tt>variant</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 20.7.2.4 [variant.mod], modifiers</i>
+template &lt;class T, class... Args&gt; <del>void</del><ins>T&amp;</ins> emplace(Args&amp;&amp;...);
+template &lt;class T, class U, class... Args&gt;
+  <del>void</del><ins>T&amp;</ins> emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+template &lt;size_t I, class... Args&gt; <del>void</del><ins>variant_alternative_t&lt;I, variant&lt;Types...&gt;&gt;&amp;</ins> emplace(Args&amp;&amp;...);
+template &lt;size_t I, class U, class... Args&gt;
+  <del>void</del><ins>variant_alternative_t&lt;I, variant&lt;Types...&gt;&gt;&amp;</ins> emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 20.7.2.4 [variant.mod] as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, class... Args&gt; <del>void</del><ins>T&amp;</ins> emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to <tt><ins>return</ins> emplace&lt;<i>I</i>&gt;(std::forward&lt;Args&gt;(args)...)<ins>;</ins></tt> 
+where <tt><i>I</i></tt> is the zero-based index of <tt>T</tt> in <tt>Types...</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+template &lt;class T, class U, class... Args&gt;
+  <del>void</del><ins>T&amp;</ins> emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to <tt><ins>return</ins> emplace&lt;<i>I</i>&gt;(il, std::forward&lt;Args&gt;(args)...)<ins>;</ins></tt> 
+where <tt><i>I</i></tt> is the zero-based index of <tt>T</tt> in <tt>Types...</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+template &lt;size_t I, class... Args&gt; <del>void</del><ins>variant_alternative_t&lt;I, variant&lt;Types...&gt;&gt;&amp;</ins> emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Postconditions:</i> <tt>index()</tt> is <tt>I</tt>.
+<p/>
+<ins>-?- <i>Returns:</i> A reference to the new contained value.</ins>
+<p/>
+-8- <i>Throws:</i> Any exception thrown during the initialization of the contained value.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+template &lt;size_t I, class U, class... Args&gt;
+  <del>void</del><ins>variant_alternative_t&lt;I, variant&lt;Types...&gt;&gt;&amp;</ins> emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-12- <i>Postconditions:</i> <tt>index()</tt> is <tt>I</tt>.
+<p/>
+<ins>-?- <i>Returns:</i> A reference to the new contained value.</ins>
+<p/>
+-13- <i>Throws:</i> Any exception thrown during the initialization of the contained value.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify the following signatures in 20.8.3 [any.class], class <tt>any</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 20.8.3.3 [any.modifiers], modifiers</i>
+template &lt;class ValueType, class... Args&gt;
+  <del>void</del><ins>decay_t&lt;ValueType&gt;&amp;</ins> emplace(Args&amp;&amp; ...);
+template &lt;class ValueType, class U, class... Args&gt;
+  <del>void</del><ins>decay_t&lt;ValueType&gt;&amp;</ins> emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 20.8.3.3 [any.modifiers] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class ValueType, class... Args&gt;
+  <del>void</del><ins>decay_t&lt;ValueType&gt;&amp;</ins> emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+-4- <i>Postconditions:</i> <tt>*this</tt> contains a value.
+<p/>
+<ins>-?- <i>Returns:</i> A reference to the new contained value.</ins>
+<p/>
+-5- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
+[&hellip;]
+</p>
+</blockquote>
+
+<pre>
+template &lt;class ValueType, class U, class... Args&gt;
+  <del>void</del><ins>decay_t&lt;ValueType&gt;&amp;</ins> emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+-10- <i>Postconditions:</i> <tt>*this</tt> contains a value.
+<p/>
+<ins>-?- <i>Returns:</i> A reference to the new contained value.</ins>
+<p/>
+-11- <i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
 
 
 
