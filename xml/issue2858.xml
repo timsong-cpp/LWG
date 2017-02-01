@@ -1,0 +1,222 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2858" status="New">
+<title>LWG 2472: actually an incompatibility with C++03</title>
+<section><sref ref="[reverse.iterators]"/></section>
+<submitter>Hubert Tong</submitter>
+<date>28 Jan 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Further to LWG <iref ref="2472"/>, the case of <tt>reverse_iterator</tt> comparisons is a regression introduced 
+by LWG <iref ref="280"/>.
+<p/>
+Consider the following program:
+</p>
+<blockquote><pre>
+#include &lt;utility&gt;
+#include &lt;iterator&gt;
+
+using namespace std::rel_ops;
+
+bool f(std::reverse_iterator&lt;int *&gt; it) { return it != it; }
+</pre></blockquote>
+<p>
+Under C++03, the <tt>operator!=</tt> in lib.reverse.iterator is more specialized than the <tt>operator!=</tt> in <tt>std::rel_ops</tt>.
+<p/>
+Following LWG <iref ref="280"/>, neither <tt>operator!=</tt> candidate is more specialized than the other. The program is 
+observed to fail with libc++.
+<p/>
+Online compiler example, see <a href="http://melpon.org/wandbox/permlink/aeOn1wiOi2CRKwwc">here</a>.
+<p/>
+Suggested resolution:
+<p/>
+Reintroduce the homogeneous comparison operators from C++03 alongside the new ones.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4618">N4618</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[reverse.iterators]"/>, class template <tt>reverse_iterator</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator==(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&lt;(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator!=(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&gt;(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&gt;=(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&lt;=(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator==(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);
+template &lt;class Iterator&gt;
+  constexpr bool operator&lt;(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);
+template &lt;class Iterator&gt;
+  constexpr bool operator!=(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);
+template &lt;class Iterator&gt;
+  constexpr bool operator&gt;(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);
+template &lt;class Iterator&gt;
+  constexpr bool operator&gt;=(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);
+template &lt;class Iterator&gt;
+  constexpr bool operator&lt;=(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[reverse.iter.op==]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator==(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator==(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>x.current == y.current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[reverse.iter.op&lt;]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&lt;(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator&lt;(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>x.current &gt; y.current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[reverse.iter.op!=]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator!=(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator!=(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>x.current != y.current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[reverse.iter.op&gt;]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&gt;(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator&gt;(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>x.current &lt; y.current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[reverse.iter.op&gt;=]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&gt;=(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator&gt;=(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>x.current &lt;= y.current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[reverse.iter.op&lt;=]"/> as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class Iterator1, class Iterator2&gt;
+  constexpr bool operator&lt;=(
+    const reverse_iterator&lt;Iterator1&gt;&amp; x,
+    const reverse_iterator&lt;Iterator2&gt;&amp; y);
+<ins>template &lt;class Iterator&gt;
+  constexpr bool operator&lt;=(
+    const reverse_iterator&lt;Iterator&gt;&amp; x,
+    const reverse_iterator&lt;Iterator&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <tt>x.current &gt;= y.current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
