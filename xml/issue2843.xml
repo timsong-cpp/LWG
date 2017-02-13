@@ -34,9 +34,41 @@ This is <a href="https://github.com/cplusplus/draft/issues/966">editorial issue 
 
 <note>2017-01-27 Telecon</note>
 <p>Priority 3; Marshall to ping Pablo for intent and provide wording.</p>
+
+<note>2017-02-12 Pablo responds and provides wording</note>
+<p>The original intent was:</p>
+<ul>
+  <li>If the alignment is supported by the implementation (see below), then it must use that alignment or else throw.</li>
+  <li>If the alignment is not supported it must use max_align else throw.</li>
+</ul>
+<p>However, the description of do_allocate might have gone stale as the
+aligned-allocation proposal made its way into the standard.</p>
+
+<p>The understanding I take from (the current text of) 3.11 and 5.3.4 is
+that it is intended that, when allocating space for an object with
+extended alignment in a well-formed program, the alignment <i>will</i>
+be honored and <i>will not be</i> truncated to max_align. I think this
+is a change from earlier drafts of the extended-alignment proposal,
+where silent truncation to max_align was permitted (I could be wrong).
+Anyway, it seems wrong to ever ignore the alignment parameter in
+<tt>do_allocate()</tt>.</p>
 </discussion>
 
 <resolution>
+<p>Change the specification of do_allocate() (20.12.2.2 [mem.res.private] p2+p3) as follows:</p>
+
+<blockquote>
+  <p><i>Returns</i>: A derived class shall implement this function to
+  return a pointer to allocated storage (3.7.4.2) with a size of at
+  least <tt>bytes</tt><ins>, aligned to the specified
+  <tt>alignment</tt></ins>. <del>The returned storage is aligned to the
+  specified alignment, if such alignment is supported; otherwise it is
+  aligned to <tt>max_align</tt>.</del></p>
+
+<p><i>Throws</i>: A derived class implementation shall throw an
+appropriate exception if it is unable to allocate memory with the
+requested size and alignment.</p>
+</blockquote>
 </resolution>
 
 </issue>
