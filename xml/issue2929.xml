@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2929" status="New">
+<title><tt>basic_string</tt> misuses "<i>Effects:</i> Equivalent to"</title>
+<section><sref ref="[string.assign]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>3 Feb 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p><tt>basic_string::assign(size_type n, charT c);</tt> says:</p>
+<blockquote><p>
+<i>Effects:</i> Equivalent to <tt>assign(basic_string(n, c))</tt>.
+</p></blockquote>
+<p>
+This requires that a new <tt>basic_string</tt> is constructed, using a
+default-constructed allocator, potentially allocating memory, and then
+that new string is copy-assigned to <tt>*this</tt>, potentially propagating the
+allocator. This must be done even if <tt>this-&gt;capacity() &gt; n</tt>,
+because memory allocation and allocator propagation are observable side
+effects. If the allocator doesn't propagate and isn't equal to
+<tt>this-&gt;get_allocator()</tt> then a second allocation may be required. This
+can't be right; it won't even compile if the allocator isn't default
+constructible.
+<p/>
+<tt>basic_string::assign(InputIterator first, InputIterator last)</tt> has a
+similar problem, even if the iterators are random access and
+<tt>this-&gt;capacity() &gt; distance(first, last)</tt>.
+<p/>
+<tt>basic_string::assign(std::initializer_list&lt;charT&gt;</tt> doesn't say
+"Equivalent to" so maybe it's OK to not allocate anything if the list
+fits in the existing capacity.
+<p/>
+<tt>basic_string::append(size_type, charT)</tt> and
+<tt>basic_string::append(InputIterator, InputIterator)</tt> have the same
+problem, although they don't propagate the allocator, but still
+require at least one, maybe two allocations.
+<p/>
+A partial fix would be to ensure all the temporaries are constructed
+with <tt>get_allocator()</tt> so that they don't require default constructible
+allocators, and so propagation won't alter allocators. The problem of
+observable side effects is still present (the temporary might need to
+allocate memory, even if <tt>this-&gt;capacity()</tt> is large) but arguably it's
+unspecified when construction allocates, to allow for small-string
+optimisations.
+</p>
+</discussion>
+
+<resolution>
+<p>
+</p>
+</resolution>
+
+</issue>
+
