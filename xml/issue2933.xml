@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2933" status="New">
+<title>PR for LWG 2773 could be clearer</title>
+<section><sref ref="[tuple.creation]"/></section>
+<submitter>Eric Fiselier</submitter>
+<date>6 Feb 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current PR for LWG <iref ref="2773"/> changes <tt>std::ignore</tt> to be a <tt>constexpr</tt> variable. However it says 
+nothing about whether using <tt>std::ignore</tt> in <tt>std::tie</tt> is a constant expression. I think the intent was clearly 
+to allow this. Therefore I suggest we update the resolution to explicitly call this out in a note. (I don't think new normative 
+wording is needed).
+<p/>
+I propose we update the current PR as follows:
+</p>
+<ol>
+<li><p>Keep the current changes proposed by the PR.</p></li>
+<li><p>Add a note after [tuple.creation]/p7 (<tt>std::tie</tt>):</p>
+<blockquote><p>
+<ins>[<i>Note:</i> The constructors and assignment operators provided by <tt>ignore</tt> shall be <tt>constexpr</tt>]</ins>
+</p></blockquote>
+</li>
+</ol>
+<p>
+Perhaps LWG feels the existing wording is clear enough, but if not I think the above changes sufficiently clarify it.
+<p/>
+The ability to <tt>constexpr</tt> assign to <tt>std::ignore</tt> can be important: Here is an extremely contrived example:
+</p>
+<blockquote><pre>
+constexpr bool foo() {
+  auto res = std::tie(std::ignore);
+  std::get&lt;0&gt;(res) =42; 
+  return true;
+}
+static_assert(foo());
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4640">N4640</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[tuple.creation]"/> as indicated:</p>
+<blockquote><pre>
+template&lt;class... TTypes&gt;
+  constexpr tuple&lt;TTypes&amp;...> tie(TTypes&amp;... t) noexcept;
+</pre>
+<blockquote>
+<p>
+-7- <i>Returns:</i> [&hellip;]
+<p/>
+<ins>-?- [<i>Note:</i> The constructors and assignment operators provided by <tt>ignore</tt> shall be <tt>constexpr</tt>. &mdash; <i>end note</i>]</ins>
+<p/>
+-8- [<i>Example:</i> [&hellip;] &mdash; <i>end example</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
+
