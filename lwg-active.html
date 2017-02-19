@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D103)</h1>
-<p><p>Revised 2017-02-19 at 14:02:40 UTC</p>
+<p><p>Revised 2017-02-19 at 14:02:03 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,13 +158,13 @@ ownership of it.
 <ul>
 <li>D103: 2017-03-20 2017 post-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>308 open issues, up by 3.</li>
+<li>309 open issues, up by 4.</li>
 <li>2073 closed issues, up by 1.</li>
 <li>73 reassigned issues, up by 0.</li>
-<li>2454 issues total, up by 4.</li>
+<li>2455 issues total, up by 5.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 4 New issues: <a href="lwg-active.html#2929">2929</a>, <a href="lwg-active.html#2930">2930</a>, <a href="lwg-active.html#2931">2931</a>, <a href="lwg-active.html#2932">2932</a>.</li>
+<li>Added the following 5 New issues: <a href="lwg-active.html#2929">2929</a>, <a href="lwg-active.html#2930">2930</a>, <a href="lwg-active.html#2931">2931</a>, <a href="lwg-active.html#2932">2932</a>, <a href="lwg-active.html#2933">2933</a>.</li>
 <li>Changed the following issue to Resolved (from New): <a href="lwg-defects.html#2864">2864</a>.</li>
 </ul></li>
 </ul>
@@ -4877,6 +4877,7 @@ In 23.5.4.2 [unord.map.cnstr], 23.5.5.2 [unord.multimap.cnstr], 23.5.6.2 [unord.
  <b>Submitter:</b> Alisdair Meredith <b>Opened:</b> 2009-09-05 <b>Last modified:</b> 2016-02-10</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#tuple.creation">active issues</a> in [tuple.creation].</p>
 <p><b>View all other</b> <a href="lwg-index.html#tuple.creation">issues</a> in [tuple.creation].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#LEWG">LEWG</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -35832,7 +35833,7 @@ An equivalent optimization could be allowed by adding a single-argument overload
 <hr>
 <h3><a name="2932" href="#2932">2932.</a> Constraints on parallel algorithm implementations are underspecified</h3>
 <p><b>Section:</b> 25.4.3 [algorithms.parallel.exec] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b>  Dietmar K&uuml;hl <b>Opened:</b> 2017-02-05 <b>Last modified:</b> 2017-02-19</p>
+ <b>Submitter:</b> Dietmar K&uuml;hl <b>Opened:</b> 2017-02-05 <b>Last modified:</b> 2017-02-19</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#algorithms.parallel.exec">active issues</a> in [algorithms.parallel.exec].</p>
@@ -35940,6 +35941,75 @@ The mutating element access functions are those which are specified as mutating 
 on any object, operators <tt>++</tt>, <tt>--</tt>, <tt>+=</tt>, and <tt>-=</tt> on any of the iterator or <tt>Size</tt> 
 parameters, and any <tt>@=</tt> operators on the <tt>Size</tt> parameters.</ins>
 </p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3><a name="2933" href="#2933">2933.</a> PR for LWG 2773 could be clearer</h3>
+<p><b>Section:</b> 20.5.3.4 [tuple.creation] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Eric Fiselier <b>Opened:</b> 2017-02-06 <b>Last modified:</b> 2017-02-19</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#tuple.creation">active issues</a> in [tuple.creation].</p>
+<p><b>View all other</b> <a href="lwg-index.html#tuple.creation">issues</a> in [tuple.creation].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The current PR for LWG <a href="lwg-defects.html#2773">2773</a> changes <tt>std::ignore</tt> to be a <tt>constexpr</tt> variable. However it says 
+nothing about whether using <tt>std::ignore</tt> in <tt>std::tie</tt> is a constant expression. I think the intent was clearly 
+to allow this. Therefore I suggest we update the resolution to explicitly call this out in a note. (I don't think new normative 
+wording is needed).
+<p/>
+I propose we update the current PR as follows:
+</p>
+<ol>
+<li><p>Keep the current changes proposed by the PR.</p></li>
+<li><p>Add a note after [tuple.creation]/p7 (<tt>std::tie</tt>):</p>
+<blockquote><p>
+<ins>[<i>Note:</i> The constructors and assignment operators provided by <tt>ignore</tt> shall be <tt>constexpr</tt>]</ins>
+</p></blockquote>
+</li>
+</ol>
+<p>
+Perhaps LWG feels the existing wording is clear enough, but if not I think the above changes sufficiently clarify it.
+<p/>
+The ability to <tt>constexpr</tt> assign to <tt>std::ignore</tt> can be important: Here is an extremely contrived example:
+</p>
+<blockquote><pre>
+constexpr bool foo() {
+  auto res = std::tie(std::ignore);
+  std::get&lt;0&gt;(res) =42; 
+  return true;
+}
+static_assert(foo());
+</pre></blockquote>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://wg21.link/n4640">N4640</a>.</p>
+
+<ol>
+<li><p>Modify 20.5.3.4 [tuple.creation] as indicated:</p>
+<blockquote><pre>
+template&lt;class... TTypes&gt;
+  constexpr tuple&lt;TTypes&amp;...> tie(TTypes&amp;... t) noexcept;
+</pre>
+<blockquote>
+<p>
+-7- <i>Returns:</i> [&hellip;]
+<p/>
+<ins>-?- [<i>Note:</i> The constructors and assignment operators provided by <tt>ignore</tt> shall be <tt>constexpr</tt>. &mdash; <i>end note</i>]</ins>
+<p/>
+-8- [<i>Example:</i> [&hellip;] &mdash; <i>end example</i>]
+</p>
+</blockquote>
 </blockquote>
 </li>
 
