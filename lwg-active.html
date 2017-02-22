@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D103)</h1>
-<p><p>Revised 2017-02-22 at 17:02:19 UTC</p>
+<p><p>Revised 2017-02-22 at 18:02:11 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,13 +158,13 @@ ownership of it.
 <ul>
 <li>D103: 2017-03-20 2017 post-Kona mailing<ul>
 <li><b>Summary:</b><ul>
-<li>307 open issues, up by 2.</li>
+<li>308 open issues, up by 3.</li>
 <li>2077 closed issues, up by 5.</li>
 <li>73 reassigned issues, up by 0.</li>
-<li>2457 issues total, up by 7.</li>
+<li>2458 issues total, up by 8.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 7 New issues: <a href="lwg-active.html#2929">2929</a>, <a href="lwg-active.html#2930">2930</a>, <a href="lwg-active.html#2931">2931</a>, <a href="lwg-active.html#2932">2932</a>, <a href="lwg-active.html#2933">2933</a>, <a href="lwg-active.html#2934">2934</a>, <a href="lwg-active.html#2935">2935</a>.</li>
+<li>Added the following 8 New issues: <a href="lwg-active.html#2929">2929</a>, <a href="lwg-active.html#2930">2930</a>, <a href="lwg-active.html#2931">2931</a>, <a href="lwg-active.html#2932">2932</a>, <a href="lwg-active.html#2933">2933</a>, <a href="lwg-active.html#2934">2934</a>, <a href="lwg-active.html#2935">2935</a>, <a href="lwg-active.html#2936">2936</a>.</li>
 <li>Changed the following 4 issues to Resolved (from New): <a href="lwg-defects.html#2862">2862</a>, <a href="lwg-defects.html#2864">2864</a>, <a href="lwg-defects.html#2867">2867</a>, <a href="lwg-defects.html#2877">2877</a>.</li>
 <li>Changed the following issue to Dup (from New): <a href="lwg-closed.html#2896">2896</a>.</li>
 </ul></li>
@@ -36440,6 +36440,118 @@ is not</ins> an error.
 <p/>
 -4- <em>Throws:</em> As specified in 27.10.7 [fs.err.report].
 </p>
+</li>
+</ol>
+
+
+
+
+
+
+
+<hr>
+<h3><a name="2936" href="#2936">2936.</a> Path comparison is defined in terms of the generic format</h3>
+<p><b>Section:</b> 27.10.8.4.8 [path.compare] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2017-02-21 <b>Last modified:</b> 2017-02-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, path comparison is defined elementwise, which implies a conversion from the native format (implied by 
+<tt>native()</tt> returning <tt>const string&amp;</tt>). However, the conversion from the native format to the generic 
+format might not be information preserving. This would allow two paths <tt>a</tt> and <tt>b</tt> to say 
+<tt>a.compare(b) == 0</tt>, but <tt>a.native().compare(b.native()) != 0</tt> as a result of this missing information, 
+which is undesirable. We only want that condition to happen if there are redundant directory separators. We also don't 
+want to change the path comparison to be in terms of the native format, due to Peter Dimov's example where we want 
+<tt>path("a/b")</tt> to sort earlier than <tt>path("a.b")</tt>, and we want <tt>path("a/b") == path("a//////b")</tt>.
+<p/>
+Citing a Windows example, conversion to the generic format is going to have to drop alternate data streams. This might 
+give <tt>path("a/b:ads") == path("a/b")</tt>. I think I should consider the alternate data streams as part of the path 
+element though, so this case might be fine, so long as I make <tt>path("b:ads").native()</tt> be <tt>"b:ads"</tt>. 
+This might not work for our z/OS friends though, or for folks where the native format looks nothing like the generic format.
+<p/>
+Additionally, this treats root-directory specially. For example, the current spec wants <tt>path("c:/a/b") == path("c:/a////b")</tt>, 
+but <tt>path("c:/a/b") != path("c:///a/b")</tt>, because <tt>native()</tt> for the root-directory path element will literally 
+be the slashes or preferred separators.
+<p/>
+This addresses similar issues to those raised in US 57 &mdash; it won't make absolute paths sort at the beginning or end 
+but it will make paths of the same kind sort together.
+</p>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="http://wg21.link/n4640">N4640</a>.</p>
+
+<ol>
+<li><p>Make the following edits to 27.10.8.4.8 [path.compare]:</p>
+
+<blockquote>
+<pre>
+int compare(const path&amp; p) const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <em>Returns</em>:
+</p>
+<blockquote>
+<p>
+<ins>&mdash; Let <tt>rootNameComparison</tt> be the result of <tt>this-&gt;root_name().native().compare(p.root_name().native())</tt>. If <tt>rootNameComparison</tt> is not <tt>0</tt>, <tt>rootNameComparison</tt>; otherwise,</ins>
+</p>
+<p>
+<ins>&mdash; If <tt>this-&gt;has_root_directory()</tt> and <tt>!p.has_root_directory()</tt>, a value less than <tt>0</tt>; otherwise,</ins>
+</p>
+<p>
+<ins>&mdash; If <tt>!this-&gt;has_root_directory()</tt> and <tt>p.has_root_directory()</tt>, a value greater than <tt>0</tt>; otherwise,</ins>
+</p>
+<p>
+<ins>&mdash; A value greater than, less than, or equal to 0, ordering the paths in a depth-first traversal order.</ins>
+</p>
+</blockquote>
+<p>
+<ins>-?- [<i>Note:</i> For POSIX and Windows platforms, this is accomplished by lexicographically ordering the half-open ranges <tt>[begin(), end())</tt> of <tt>this-&gt;relative_path()</tt> and <tt>p.relative_path()</tt> as follows:</ins></p>
+<blockquote>
+<p>
+&mdash; A value less than <tt>0</tt>, if <tt>native()</tt> for the elements of <tt><del>*</del>this<ins>-&gt;relative_path()</ins></tt> are lexicographically less than <tt>native()</tt> for the elements of <tt>p<ins>.relative_path()</ins></tt>; otherwise,</p>
+<p>
+&mdash; a value greater than <tt>0</tt>, if <tt>native()</tt> for the elements of <tt><del>*</del>this<ins>-&gt;relative_path()</ins></tt> are lexicographically greater than <tt>native()</tt> for the elements of <tt>p<ins>.relative_path()</ins></tt>; otherwise,</p>
+<p>
+&mdash; <tt>0</tt>.</p>
+</blockquote>
+<p>
+<ins>&mdash; <i>end note</i>]</ins>
+</p>
+<p>
+<del>-2- <em>Remarks</em>: The elements are determined as if by iteration over the half-open range <tt>[begin(), end())</tt> 
+for <tt>*this</tt> and <tt>p</tt>.</del>
+</p>
+</blockquote>
+<pre>
+int compare(const string_type&amp; s) const
+int compare(basic_string_view&lt;value_type&gt; s) const;
+</pre>
+<blockquote>
+<p>
+<del>-3- <em>Returns</em>: <tt>compare(path(s))</tt></del>
+</p>
+<blockquote class="note">
+<p>
+[Editor's note: Delete paragraph 3 entirely and merge the <tt>value_type</tt> overload with those above.]
+</p>
+</blockquote>
+</blockquote>
+<pre>
+int compare(const value_type* s) const
+</pre>
+<blockquote>
+<p>
+-4- <em><del>Returns</del><ins>Effects</ins></em>: <ins>Equivalent to <tt>return 
+</tt></ins><tt>compare(path(s))<ins>;</ins><del>.</del></tt>
+</p>
+</blockquote>
+</blockquote>
+
 </li>
 </ol>
 
