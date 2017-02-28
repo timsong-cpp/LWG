@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D103)</h1>
-<p><p>Revised 2017-02-28 at 05:02:08 UTC</p>
+<p><p>Revised 2017-02-28 at 05:02:55 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -35617,7 +35617,7 @@ be a <tt>constexpr</tt> constructor.</ins>
 <hr>
 <h3><a name="2901" href="#2901">2901.</a> Variants cannot properly support allocators</h3>
 <p><b>Section:</b> 20.7.3 [variant.variant] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> United States <b>Opened:</b> 2017-02-03 <b>Last modified:</b> 2017-02-05</p>
+ <b>Submitter:</b> United States <b>Opened:</b> 2017-02-03 <b>Last modified:</b> 2017-02-28</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#variant.variant">active issues</a> in [variant.variant].</p>
@@ -35634,10 +35634,105 @@ allocator support for now, leaving open the possibility to provide proper suppor
 20.7.2.1 [variant.ctor] p34/35. Strike clause 20.7.12 [variant.traits]. Strike the specialization of 
 <tt>uses_allocator</tt> for <tt>variant</tt> in the <tt>&lt;variant&gt;</tt> header synopsis, 20.7.1 [variant.general].</p>
 
+<p><i>[2017-02-28, Kona, Casey provides wording]</i></p>
+
+<p>
+</p>
+
 
 <p><b>Proposed resolution:</b></p>
 <p>
+This wording is relative to <a href="http://wg21.link/n4640">N4640</a>.
 </p>
+
+<ol>
+<li><p>Change 20.7.2 [variant.syn], header <tt>&lt;variant&gt;</tt>  synopsis, as follows:</p>
+
+<blockquote><pre>
+[&hellip;]
+<del><i>// 20.7.13, allocator-related traits</i>
+template &lt;class T, class Alloc&gt; struct uses_allocator;
+template &lt;class... Types, class Alloc&gt; struct uses_allocator&lt;variant&lt;Types...&gt;, Alloc&gt;;</del>
+</pre></blockquote>
+</li>
+
+<li><p>Change 20.7.3 [variant.variant], class template <tt>variant</tt>  synopsis, as follows:</p>
+
+<blockquote><pre>
+[&hellip;]
+<del><i>// allocator-extended constructors</i>
+template &amp;lt;class Alloc&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;);
+template &amp;lt;class Alloc&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, const variant&amp;);
+template &amp;lt;class Alloc&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, variant&amp;&amp;);
+template &amp;lt;class Alloc, class T&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, T&amp;&amp;);
+template &amp;lt;class Alloc, class T, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, in_place_type_t&amp;lt;T&amp;gt;, Args&amp;&amp;...);
+template &amp;lt;class Alloc, class T, class U, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, in_place_type_t&amp;lt;T&amp;gt;,
+          initializer_list&amp;lt;U&amp;gt;, Args&amp;&amp;...);
+template &amp;lt;class Alloc, size_t I, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, in_place_index_t&amp;lt;I&amp;gt;, Args&amp;&amp;...);
+template &amp;lt;class Alloc, size_t I, class U, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp;, in_place_index_t&amp;lt;I&amp;gt;,
+          initializer_list&amp;lt;U&amp;gt;, Args&amp;&amp;...);</del>
+</pre></blockquote>
+</li>
+
+<li><p>Modify 20.7.3.1 [variant.ctor] as indicated:</p>
+<blockquote><pre>
+<del>template &amp;lt;class Alloc&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a);
+template &amp;lt;class Alloc&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, const variant&amp; v);
+template &amp;lt;class Alloc&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, variant&amp;&amp; v);
+template &amp;lt;class Alloc, class T&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, T&amp;&amp; t);
+template &amp;lt;class Alloc, class T, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, in_place_type_t&amp;lt;T&amp;gt;, Args&amp;&amp;... args);
+template &amp;lt;class Alloc, class T, class U, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, in_place_type_t&amp;lt;T&amp;gt;,
+          initializer_list&amp;lt;U&amp;gt; il, Args&amp;&amp;... args);
+template &amp;lt;class Alloc, size_t I, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, in_place_index_t&amp;lt;I&amp;gt;, Args&amp;&amp;... args);
+template &amp;lt;class Alloc, size_t I, class U, class... Args&amp;gt;
+  variant(allocator_arg_t, const Alloc&amp; a, in_place_index_t&amp;lt;I&amp;gt;,
+          initializer_list&amp;lt;U&amp;gt; il, Args&amp;&amp;... args);</del>
+
+</pre>
+<blockquote>
+<p>
+<del>-34- <i>Requires:</i> <tt>Alloc</tt> shall meet the requirements for an Allocator (17.5.3.5).</del>
+<p/>
+<del>-35- <i>Effects:</i> Equivalent to the preceding constructors except that the contained value is constructed with
+uses-allocator construction (20.10.7.2).</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 20.7.13 [variant.traits] as indicated:</p>
+
+<blockquote>
+<pre>
+<del>template &lt;class... Types, class Alloc&gt;
+struct uses_allocator&lt;variant&lt;Types...&gt;, Alloc&gt; : true_type { };</del>
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Requires:</i> <tt>Alloc</tt> shall be an Allocator (17.5.3.5).</del>
+<p/>
+<del>-2- [<i>Note:</i> Specialization of this trait informs other library components that variant can be constructed
+with an allocator, even though it does not have a nested <tt>allocator_type</tt>. &mdash; <i>end note</i>]</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 
 
 
