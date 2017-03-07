@@ -672,7 +672,7 @@ auto operator << (std::ostream & out, write_summary const & x) -> std::ostream &
       out << "up by " << n_reassigned_new - n_reassigned_old;
    }
    else {
-      out << "down by " << n_reassigned_new - n_reassigned_old;
+      out << "down by " << n_reassigned_old - n_reassigned_new;
    }
    out << ".</li>\n";
 
