@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-03-16 at 19:03:23 UTC</p>
+<p><p>Revised 2017-03-16 at 20:03:59 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="255" href="#255">255.</a> Why do <tt>basic_streambuf&lt;&gt;::pbump()</tt> and <tt>gbump()</tt> take an int?</h3>
@@ -29360,7 +29360,7 @@ This wording is relative to <a href="http://wg21.link/n4640">N4640</a>.
 </p>
 
 <ol>
-<li><p>Edit 20.11.2.3 [util.smartptr.weak],  class template <tt>weak_ptr</tt> synopsis, as indicated::</p>
+<li><p>Edit 20.11.2.3 [util.smartptr.weak],  class template <tt>weak_ptr</tt> synopsis, as indicated:</p>
 <blockquote>
 <pre>
 [&hellip;]
@@ -29372,7 +29372,7 @@ template&lt;class U&gt; bool owner_before(const weak_ptr&lt;U&gt;&amp; b) const 
 </blockquote>
 </li>
 
-<li><p>Edit 20.11.2.3.5 [util.smartptr.weak.obs] immediately before p4 as indicated::</p>
+<li><p>Edit 20.11.2.3.5 [util.smartptr.weak.obs] immediately before p4 as indicated:</p>
 <blockquote>
 <pre>
 template&lt;class U&gt; bool owner_before(const shared_ptr&lt;U&gt;&amp; b) const <ins>noexcept</ins>;
@@ -29404,8 +29404,82 @@ template&lt;class U&gt; bool owner_before(const weak_ptr&lt;U&gt;&amp; b) const 
 <p>
 LWG <a href="lwg-defects.html#2676">2676</a> specified <tt>basic_filebuf::open(const std::filesystem::path::value_type* s, ios_base::openmode mode)</tt> 
 by simply reusing the specification for the <tt>const char*</tt> overload, but that specification is incorrect for the wide overload: 
-it says that <tt>'s'</tt> is an NTBS &mdash; a null-terminated byte string &mdash; which it isn't. Moreover, it specifies that 
-the file is opened as if by calling <tt>fopen(s, modstr)</tt>, but that call is ill-formed if s isn't a <tt>const char*</tt>.
+it says that <tt>s</tt> is an NTBS &mdash; a null-terminated byte string &mdash; which it isn't. Moreover, it specifies that 
+the file is opened as if by calling <tt>fopen(s, modstr)</tt>, but that call is ill-formed if <tt>s</tt> isn't a <tt>const char*</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+
+
+
+
+
+
+<hr>
+<h3><a name="2944" href="#2944">2944.</a> LWG 2905 accidentally removed requirement that construction of the deleter doesn't throw an exception</h3>
+<p><b>Section:</b> 20.11.1.2.1 [unique.ptr.single.ctor] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2017-03-11 <b>Last modified:</b> 2017-03-16</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#unique.ptr.single.ctor">issues</a> in [unique.ptr.single.ctor].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The wording simplification in LWG <a href="lwg-defects.html#2905">2905</a> accidentally deleted the
+requirement that construction of the deleter doesn't throw an
+exception. While this isn't the end of the world since any exception
+will just run into the noexcept on the constructor and result in a
+call to <tt>std::terminate()</tt>, the other <tt>unique_ptr</tt> constructors still have
+a similar no-exception <i>Requires:</i> clause, leaving us in the odd
+situation where throwing an exception results in undefined behavior
+for some constructors and <tt>terminate()</tt> for others. If guaranteeing
+<tt>std::terminate()</tt> on exception is desirable, that should be done across
+the board.
+<p/>
+The proposed wording below simply restores the nothrow requirement
+along with the <tt>Copy/MoveConstructible</tt> requirement. Wording for the
+other alternative (guaranteed <tt>std::terminate()</tt>) can be produced if
+desired.
+<p/>
+Suggested wording changes against the <em>expected working draft changes</em>:
+</p>
+
+<blockquote>
+<pre>
+unique_ptr(pointer p, <i>see below</i> d1) noexcept;
+unique_ptr(pointer p, <i>see below</i> d2) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- The signature of these constructors depends upon whether <tt>D</tt> is a reference type. If <tt>D</tt> 
+is a non-reference type <tt>A</tt>, then the signatures are:
+<p/>
+[&hellip;]
+<p/>
+-10- If <tt>D</tt> is an lvalue reference type <tt>A&amp;</tt>, then the signatures are:
+<p/>
+[&hellip;]
+<p/>
+-11- If <tt>D</tt> is an lvalue reference type <tt>const A&amp;</tt>, then the signatures are:
+<p/>
+[&hellip;]
+<p/>
+<ins>-??- <i>Requires:</i> For the first constructor, if <tt>D</tt> is not a reference
+type, <tt>D</tt> shall satisfy the requirements of <tt>CopyConstructible</tt> and such
+construction shall not exit via an exception. For the second
+constructor, if <tt>D</tt> is not a reference type, <tt>D</tt> shall satisfy the
+requirements of <tt>MoveConstructible</tt> and such construction shall not exit
+via an exception.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+<p><i>[2017-03-16, Daniel comments]</i></p>
+
+<p>
+The publication of the new working draft is awaited, before proposed wording against that
+new working draft is formally possible.
 </p>
 
 
