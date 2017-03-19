@@ -13,7 +13,8 @@
 <p>
 LWG <iref ref="2758"/> corrected newly introduced ambiguities of <tt>std::string::assign</tt> and other functions 
 that got new overloads taking a <tt>basic_string_view</tt> as argument, but the assignment operator of 
-<tt>basic_string</tt> and other functions taking a parameter of type <tt>basic_string_view&lt;charT, traits&gt;</tt> were not corrected. Similar to the previous issue the following operations lead now to an ambiguity as well:
+<tt>basic_string</tt> and other functions taking a parameter of type <tt>basic_string_view&lt;charT, traits&gt;</tt> 
+were not corrected. Similar to the previous issue the following operations lead now to an ambiguity as well:
  </p>
 
 <blockquote>
@@ -46,13 +47,14 @@ int main()
 The right fix is to convert <em>all</em> member functions taken a <tt>basic_string_view&lt;charT, traits&gt;</tt> parameter 
 into constrained function templates.
 <p/>
-When doing so, it turns out that there occurs an additional problem: The functions that had been massaged by LWG <iref ref="2758"/>
-are all functions that are not specified to be <tt>noexcept</tt>, but the wider range of "string operation" functions taking
-a <tt>basic_string_view&lt;charT, traits&gt;</tt> parameter are mostly <tt>noexcept</tt> because they had a wide contract.
-Now with the approach of LWG <iref ref="2758"/>, there are all types allowed that are <em>convertible</em> to
-<tt>basic_string_view&lt;charT, traits&gt;</tt>, but the conversion occurs now in the function body, not outside of it. So, if these
-conversion <em>would</em> be potentially exception-throwing, this would lead to a call to <tt>std::terminate</tt>, which is a
-semantic change compared to the previous specification. There are several options to handle this situation:
+When doing so, it turns out that there occurs an additional problem: The functions that had been massaged by LWG 
+<iref ref="2758"/> are all functions that are not specified to be <tt>noexcept</tt>, but the wider range of 
+"string operation" functions taking a <tt>basic_string_view&lt;charT, traits&gt;</tt> parameter are mostly 
+<tt>noexcept</tt> because they had a wide contract. Now with the approach of LWG <iref ref="2758"/>, there are all 
+types allowed that are <em>convertible</em> to <tt>basic_string_view&lt;charT, traits&gt;</tt>, but the conversion 
+occurs now in the function body, not outside of it. So, if these conversion <em>would</em> be potentially 
+exception-throwing, this would lead to a call to <tt>std::terminate</tt>, which is a semantic change compared to 
+the previous specification. There are several options to handle this situation:
 </p>
 <ol>
 <li><p>Ignore that and let <tt>std::terminate</tt> come into action. This is a different way of saying that
@@ -61,19 +63,36 @@ we impose the requirement of a nothrowing operation.</p></li>
 <li><p>Make these functions conditionally <tt>noexcept</tt>.</p></li>
 </ol>
 <p>
-The submitter has a personal preference for option (3), except that this would complicate the wording a bit, because unfortunately
-there exists yet no trait <tt>std::is_nothrow_convertible</tt> (See LWG <iref ref="2040"/>). A seemingly low-hanging fruit would
-be the attempt to use <tt>std::is_nothrow_constructible</tt> instead, but this trait describes a potentially different 
-initialization and is therefore inappropriate. Option (1) would conserve the existing <tt>noexcept</tt> guarantee for 
-all non-throwing conversions, but now these functions become narrow-contract functions and at least according to the 
-<a href="http://wg21.link/n3279">current <tt>noexcept</tt> guidelines</a> such functions should <em>not</em> be marked as 
-<tt>noexcept</tt>. But there are exceptions possible for that rule, and the initially suggested proposed wording
-argues that this exception is reasonable here, because the required wording fixes just an unintended side-effects of 
-transforming the functions into functions templates, but it doesn't intend to change to actual functionality.
+The submitter has a personal preference for option (3), except that this would complicate the wording a bit, 
+because unfortunately there exists yet no trait <tt>std::is_nothrow_convertible</tt> (See LWG <iref ref="2040"/>). 
+A seemingly low-hanging fruit would be the attempt to use <tt>std::is_nothrow_constructible</tt> instead, but this 
+trait describes a potentially different initialization context and is therefore inappropriate. Option (1) would 
+conserve the existing <tt>noexcept</tt> guarantee for all non-throwing conversions, but now these functions become 
+narrow-contract functions and at least according to the <a href="http://wg21.link/n3279">current <tt>noexcept</tt> 
+guidelines</a> such functions should <em>not</em> be marked as <tt>noexcept</tt>. But there are exceptions possible 
+for that rule, and the initially suggested proposed wording below argues that this exception is reasonable here, 
+because the required wording fixes just an unintended side-effects of transforming the functions into functions 
+templates, but it doesn't intend to change the actual functionality.
+<p/>
+Some of the below suggested overload exclusion constraints technically don't require the additional
+<tt>is_convertible_v&lt;const T&amp;, const charT*&gt; == false</tt> requirement, but the submitter of this issue
+suggests a more advanced approach that should be applied in a synchronous wording adjustment combined with the 
+existing LWG <iref ref="2758"/> wording: It would presumably life easier for implementations (which are allowed
+to provide additional member function overloads as conforming extensions), when we would define a mini requirement
+set for template parameter type <tt>T</tt> below:
 </p>
+<ul>
+<li><p><tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt>.</p></li>
+<li><p><tt>is_convertible_v&lt;const T&amp;, const charT*&gt;</tt> is <tt>false</tt>.</p></li>
+<li><p>The implicit conversion to <tt>basic_string_view&lt;charT, traits&gt;</tt> shall not throw an exception.</p></li>
+</ul>
 <p>
-It should also be noted that these changes have impact on deduction behaviour and therefore may require further adjustments of the
-deduction rules.
+But the corresponding slightly revised wording taking advantage of this "concept-like" requirements set will not be
+suggested before the upcoming working draft has been published to allow a simpler coordinated adjustment together with
+the LWG <iref ref="2758"/> wording.
+<p/>
+It should also be noted that these changes have impact on deduction behaviour and therefore may require further 
+adjustments of the deduction rules.
 </p>
 
 </discussion>
@@ -169,17 +188,13 @@ explicit basic_string(<del>basic_string_view&lt;charT, traits&gt; sv</del><ins>c
 <blockquote>
 <p>
 -9- <i>Effects:</i> <del>Same as <tt>basic_string(sv.data(), sv.size(), a)</tt>.</del><ins>Creates a variable, <tt>sv</tt>, 
-as if by <tt>basic_string_view&lt;charT, traits&gt; sv = t;</tt> and then behaves the same as</ins>
+as if by <tt>basic_string_view&lt;charT, traits&gt; sv = t;</tt> and then behaves the same as 
+<tt>basic_string(sv.data(), sv.size(), a)</tt>.</ins>
 <p/>
 <ins>-?- <i>Remarks:</i> This constructor shall not participate in overload resolution unless 
 <tt>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</tt> is <tt>true</tt> and 
 <tt>is_convertible_v&lt;const T&amp;, const charT*&gt;</tt> is <tt>false</tt>.</ins>
 </p>
-<blockquote>
-<pre>
-<ins>basic_string(sv.data(), sv.size(), a);</ins>
-</pre>
-</blockquote>
 </blockquote>
 <p>
 [&hellip;]
