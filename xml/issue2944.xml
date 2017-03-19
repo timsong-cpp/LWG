@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2944" status="New">
+<title>LWG 2905 accidentally removed requirement that construction of the deleter doesn't throw an exception</title>
+<section><sref ref="[unique.ptr.single.ctor]"/></section>
+<submitter>Tim Song</submitter>
+<date>11 Mar 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The wording simplification in LWG <iref ref="2905"/> accidentally deleted the
+requirement that construction of the deleter doesn't throw an
+exception. While this isn't the end of the world since any exception
+will just run into the noexcept on the constructor and result in a
+call to <tt>std::terminate()</tt>, the other <tt>unique_ptr</tt> constructors still have
+a similar no-exception <i>Requires:</i> clause, leaving us in the odd
+situation where throwing an exception results in undefined behavior
+for some constructors and <tt>terminate()</tt> for others. If guaranteeing
+<tt>std::terminate()</tt> on exception is desirable, that should be done across
+the board.
+<p/>
+The proposed wording below simply restores the nothrow requirement
+along with the <tt>Copy/MoveConstructible</tt> requirement. Wording for the
+other alternative (guaranteed <tt>std::terminate()</tt>) can be produced if
+desired.
+<p/>
+Suggested wording changes against the <em>expected working draft changes</em>:
+</p>
+
+<blockquote>
+<pre>
+unique_ptr(pointer p, <i>see below</i> d1) noexcept;
+unique_ptr(pointer p, <i>see below</i> d2) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- The signature of these constructors depends upon whether <tt>D</tt> is a reference type. If <tt>D</tt> 
+is a non-reference type <tt>A</tt>, then the signatures are:
+<p/>
+[&hellip;]
+<p/>
+-10- If <tt>D</tt> is an lvalue reference type <tt>A&amp;</tt>, then the signatures are:
+<p/>
+[&hellip;]
+<p/>
+-11- If <tt>D</tt> is an lvalue reference type <tt>const A&amp;</tt>, then the signatures are:
+<p/>
+[&hellip;]
+<p/>
+<ins>-??- <i>Requires:</i> For the first constructor, if <tt>D</tt> is not a reference
+type, <tt>D</tt> shall satisfy the requirements of <tt>CopyConstructible</tt> and such
+construction shall not exit via an exception. For the second
+constructor, if <tt>D</tt> is not a reference type, <tt>D</tt> shall satisfy the
+requirements of <tt>MoveConstructible</tt> and such construction shall not exit
+via an exception.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+<note>2017-03-16, Daniel comments</note>
+<p>
+The publication of the new working draft is awaited, before proposed wording against that
+new working draft is formally possible.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
+
