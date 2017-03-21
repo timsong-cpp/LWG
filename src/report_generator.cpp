@@ -14,6 +14,7 @@
 #include <memory>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 
 namespace
 {
@@ -64,12 +65,11 @@ struct order_by_major_section {
       }
 
    auto operator()(lwg::issue const & x, lwg::issue const & y) const -> bool {
-assert(!x.tags.empty());
-assert(!y.tags.empty());
+      assert(!x.tags.empty());
+      assert(!y.tags.empty());
       lwg::section_num const & xn = section_db.get()[x.tags[0]];
       lwg::section_num const & yn = section_db.get()[y.tags[0]];
-      return  xn.prefix < yn.prefix
-          or (xn.prefix == yn.prefix  and  xn.num[0] < yn.num[0]);
+      return std::tie(xn.prefix, xn.num[0]) < std::tie(yn.prefix, yn.num[0]);
    }
 
 private:
@@ -85,7 +85,7 @@ struct order_by_section {
    auto operator()(lwg::issue const & x, lwg::issue const & y) const -> bool {
       assert(!x.tags.empty());
       assert(!y.tags.empty());
-      return section_db.get()[x.tags.front()] < section_db.get()[y.tags.front()];
+      return std::tie(section_db.get()[x.tags.front()], x.tags.front()) < std::tie(section_db.get()[y.tags.front()], y.tags.front());
    }
 
 private:
