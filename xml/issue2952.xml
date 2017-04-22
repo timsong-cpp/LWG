@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2952" status="New">
+<title><tt>iterator_traits</tt> should work for pointers to <i>cv</i> <tt>T</tt></title>
+<section><sref ref="[iterator.traits]"/></section>
+<submitter>Billy Robert O'Neal III</submitter>
+<date>27 Mar 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>iterator_traits</tt> accepts pointer to <tt>volatile T*</tt>, but then says that the <tt>value_type</tt> is 
+<tt>volatile T</tt>, instead of <tt>T</tt>, which is inconsistent for what it does for pointer to <tt>const T</tt>. 
+We should either reject <tt>volatile</tt> outright or give the right answer.
+</p>
+
+<note>2017-04-30, David Krauss comments</note>
+<p>
+<tt>volatile</tt> pointers may not be well-behaved random-access iterators. When simple access incurs side effects, 
+the multiple-pass guarantee depends on underlying (hardware) semantics.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[iterator.synopsis]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<i>// <sref ref="[iterator.primitives]"/>, primitives</i>
+template&lt;class Iterator&gt; struct iterator_traits;
+template&lt;class T&gt; struct iterator_traits&lt;T*&gt;;
+<del>template&lt;class T&gt; struct iterator_traits&lt;const T*&gt;;</del>
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[iterator.traits]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- It is specialized for pointers as
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; struct iterator_traits&lt;T*&gt; {
+    using difference_type = ptrdiff_t;
+    using value_type = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>;
+    using pointer = T*;
+    using reference = T&amp;;
+    using iterator_category = random_access_iterator_tag;
+  };
+}
+</pre>
+</blockquote>
+<p>
+<del>and for pointers to <tt>const</tt> as</del>
+</p>
+<blockquote>
+<pre>
+<del>namespace std {
+  template&lt;class T&gt; struct iterator_traits&lt;const T*&gt; {
+    using difference_type = ptrdiff_t;
+    using value_type = T;
+    using pointer = const T*;
+    using reference = const T&amp;;
+    using iterator_category = random_access_iterator_tag;
+  };
+}</del>
+</pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
