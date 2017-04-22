@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D104)</h1>
-<p><p>Revised 2017-04-22 at 16:04:03 UTC</p>
+<p><p>Revised 2017-04-22 at 17:04:18 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,13 +158,13 @@ ownership of it.
 <ul>
 <li>D104: 2017-06-19 2017 pre-Toronto mailing<ul>
 <li><b>Summary:</b><ul>
-<li>223 open issues, up by 4.</li>
+<li>224 open issues, up by 5.</li>
 <li>2176 closed issues, up by 0.</li>
 <li>73 reassigned issues, up by 0.</li>
-<li>2472 issues total, up by 4.</li>
+<li>2473 issues total, up by 5.</li>
 </ul></li>
 <li><b>Details:</b><ul>
-<li>Added the following 4 New issues: <a href="lwg-active.html#2947">2947</a>, <a href="lwg-active.html#2948">2948</a>, <a href="lwg-active.html#2949">2949</a>, <a href="lwg-active.html#2950">2950</a>.</li>
+<li>Added the following 5 New issues: <a href="lwg-active.html#2947">2947</a>, <a href="lwg-active.html#2948">2948</a>, <a href="lwg-active.html#2949">2949</a>, <a href="lwg-active.html#2950">2950</a>, <a href="lwg-active.html#2951">2951</a>.</li>
 <li>No issues changed.</li>
 </ul></li>
 </ul>
@@ -31204,6 +31204,76 @@ Equivalent to: <tt>return byte(static_cast&lt;unsigned char&gt;(static_cast&lt;u
 
 
 <p><b>Proposed resolution:</b></p>
+
+
+
+
+
+<hr>
+<h3><a name="2951" href="#2951">2951.</a> <tt>iterator_traits</tt> should SFINAE for <tt>void*</tt> and function pointers</h3>
+<p><b>Section:</b> 27.4.1 [iterator.traits] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2017-03-24 <b>Last modified:</b> 2017-04-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#iterator.traits">issues</a> in [iterator.traits].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+A customer recently triggered an unexpected SFINAE condition with class <tt>path</tt>. We constrain the constructor that takes 
+<tt>const Source&amp;</tt> by asking if <tt>iterator_traits&lt;Source&gt;::value_type</tt> is one that's OK. This forms 
+<tt>iterator_traits&lt;void*&gt;</tt>, which is a hard error, as it tries to form <tt>void&amp;</tt>.
+<p/>
+Pointers-to-non-object-type can never act as iterators, as they don't support pointer arithmetic (as we recently discovered in 
+<tt>atomic&lt;void*&gt;</tt> / <tt>atomic&lt;int(*)(int)&gt;</tt>).
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.
+</p>
+<ol>
+<li><p>Change 27.4.1 [iterator.traits] as indicated:</p>
+
+<blockquote>
+<p>
+-3- It is specialized for pointers as
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; struct iterator_traits&lt;T*&gt; {
+    using difference_type = ptrdiff_t;
+    using value_type = T;
+    using pointer = T*;
+    using reference = T&amp;;
+    using iterator_category = random_access_iterator_tag;
+  };
+}
+</pre>
+</blockquote>
+<p>
+and for pointers to <tt>const</tt> as
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; struct iterator_traits&lt;const T*&gt; {
+    using difference_type = ptrdiff_t;
+    using value_type = T;
+    using pointer = const T*;
+    using reference = const T&amp;;
+    using iterator_category = random_access_iterator_tag;
+  };
+}
+</pre>
+</blockquote>
+<p>
+<ins>-?- These partial specializations for pointers apply only when <tt>T</tt> is an object type.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
 
 
 
