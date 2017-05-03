@@ -43,7 +43,7 @@ auto utc_timestamp() -> std::tm const & {
 }
 
 // global data - would like to do something about that.
-static std::string const build_timestamp{format_time("<p>Revised %Y-%m-%d at %H:%m:%S UTC</p>\n", utc_timestamp())};
+static std::string const build_timestamp{format_time("<p>Revised %Y-%m-%d at %H:%M:%S UTC</p>\n", utc_timestamp())};
 
 static std::string const maintainer_email{"lwgchair@gmail.com"};
 
