@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2960" status="New">
+<title>[fund.ts.v2] <tt>nonesuch</tt> is insufficiently useless</title>
+<section><sref ref="[meta]"/></section>
+<submitter>Tim Song</submitter>
+<date>8 May 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v2</b></p>
+<p>
+The definition of <tt>std::experimental::nonesuch</tt> (with a deleted default
+constructor, destructor, copy constructor, and copy assignment
+operator) means that it is an aggregate, which means that it can be
+initialized from <tt>{}</tt> in contexts where the availability of the
+destructor is not considered (e.g., overload resolution or a
+new-expression).
+<p/>
+The deleted default constructor also has this effect standing alone,
+because it doesn't affect the formation of implicit conversion
+sequences (and hence overload resolution). The net result is
+ambiguities in situations like:
+</p>
+<blockquote><pre>
+struct such {};
+void f(const such&amp;);
+void f(const nonesuch&amp;);
+f({});
+</pre></blockquote>
+<p>
+For a real-life example of such ambiguity, see 
+<a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=79141">GCC bug 79141</a>,
+involving libstdc++'s internal <tt>__nonesuch</tt> type defined just like the
+one in the fundamentals TS.
+<p/>
+I believe that <tt>nonesuch</tt> would be substantially more useful if the ICS
+from <tt>{}</tt> is gone. <tt>nonesuch</tt> should have no default constructor (rather
+than a deleted one), and it shouldn't be an aggregate.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4617">N4617</a>.</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[meta.type.synop]"/> as indicated, moving the definition of
+<tt>nonesuch</tt> to <sref ref="[meta.detect]"/>:</p>
+
+<blockquote>
+<pre>
+<i>//<sref ref="[meta.detect]"/>, Detection idiom</i>
+[&hellip;]
+
+<del>struct nonesuch {
+  nonesuch() = delete;
+  ~nonesuch() = delete;
+  nonesuch(nonesuch const&amp;) = delete;
+  void operator=(nonesuch const&amp;) = delete;
+};</del>
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Insert at the beginning of <sref ref="[meta.detect]"/> the following paragraphs:</p>
+
+<blockquote>
+<pre>
+<ins>struct nonesuch {
+  ~nonesuch() = delete;
+  nonesuch(nonesuch const&amp;) = delete;
+  void operator=(nonesuch const&amp;) = delete;
+};</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <tt>nonesuch</tt> is not an aggregate (C++14 &sect;[dcl.init.aggr]).</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
