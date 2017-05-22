@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2965" status="New">
+<title>Non-existing <tt>path::native_string()</tt> in <tt>filesystem_error::what()</tt> specification</title>
+<section><sref ref="[filesystem_error.members]"/></section>
+<submitter>Daniel Kr&uuml;gler</submitter>
+<date>22 May 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+As pointed out by Jonathan Wakely and Bo Persson, <sref ref="[filesystem_error.members]"/>/7 refers to a non-existing
+function <tt>path::native_string</tt>:
+</p>
+<blockquote><p>
+<i>Returns:</i> A string containing <tt>runtime_error::what()</tt>. The exact format is unspecified. Implementations
+are encouraged but not required to include <tt>path1.native_string()</tt> if not empty, 
+<tt>path2.native_string()</tt> if not empty, and <tt>system_error::what()</tt> strings in the returned string.
+</p></blockquote>
+<p>
+Existing implementations differ, as Jonathan also determined:
+</p>
+<ul>
+<li><p>Boost.Filesystem uses <tt>path::string()</tt>.</p></li>
+<li><p>Libstdc++ uses <tt>path::string()</tt>.</p></li>
+<li><p>MSVC++/Dinkumware uses <tt>path::u8string()</tt>.</p></li>
+<li><p>It seems that libc++ doesn't include the paths in <tt>what()</tt>.</p></li>
+</ul>
+<p>
+We've had <tt>native_string()</tt> in the spec since <a href="http://wg21.link/n3239#filesystem_error-what">N3239</a> (where
+it already didn't match any existing <tt>path</tt> function at that time).
+<p/>
+Before that it was <tt>file_string()</tt> in <a href="http://wg21.link/n1975#basic_filesystem_error-observers">N1975</a>
+(within that specification <tt>path</tt> was a template that was parametrized in the character type).
+<p/>
+Since it can't be <tt>path::native()</tt> because that might be the wrong type, one of <tt>path::string()</tt> or 
+<tt>path::u8string()</tt> seems appropriate.
+<p/>
+Albeit the wording is just a non-binding encouragement to implementations, the decision on this matter should not be
+considered editorially due to the existing implementation variance. Any official resolution of the current state could
+cause a reconsideration of existing implementations, and therefore it should be documented.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[filesystem_error.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+const char* what() const noexcept override;
+</pre>
+<blockquote>
+<p>
+-7- <i>Returns:</i> A string containing <tt>runtime_error::what()</tt>. The exact format is unspecified. Implementations
+are encouraged but not required to include <tt>path1.<del>native_</del>string()</tt> if not empty, 
+<tt>path2.<del>native_</del>string()</tt> if not empty, and <tt>system_error::what()</tt> strings in the returned string.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
