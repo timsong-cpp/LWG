@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2951" status="New">
+<title><tt>iterator_traits</tt> should SFINAE for <tt>void*</tt> and function pointers</title>
+<section><sref ref="[iterator.traits]"/></section>
+<submitter>Billy Robert O'Neal III</submitter>
+<date>24 Mar 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+A customer recently triggered an unexpected SFINAE condition with class <tt>path</tt>. We constrain the constructor that takes 
+<tt>const Source&amp;</tt> by asking if <tt>iterator_traits&lt;Source&gt;::value_type</tt> is one that's OK. This forms 
+<tt>iterator_traits&lt;void*&gt;</tt>, which is a hard error, as it tries to form <tt>void&amp;</tt>.
+<p/>
+Pointers-to-non-object-type can never act as iterators, as they don't support pointer arithmetic (as we recently discovered in 
+<tt>atomic&lt;void*&gt;</tt> / <tt>atomic&lt;int(*)(int)&gt;</tt>).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.
+</p>
+<ol>
+<li><p>Change <sref ref="[iterator.traits]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- It is specialized for pointers as
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; struct iterator_traits&lt;T*&gt; {
+    using difference_type = ptrdiff_t;
+    using value_type = T;
+    using pointer = T*;
+    using reference = T&amp;;
+    using iterator_category = random_access_iterator_tag;
+  };
+}
+</pre>
+</blockquote>
+<p>
+and for pointers to <tt>const</tt> as
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; struct iterator_traits&lt;const T*&gt; {
+    using difference_type = ptrdiff_t;
+    using value_type = T;
+    using pointer = const T*;
+    using reference = const T&amp;;
+    using iterator_category = random_access_iterator_tag;
+  };
+}
+</pre>
+</blockquote>
+<p>
+<ins>-?- These partial specializations for pointers apply only when <tt>T</tt> is an object type.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
