@@ -21,12 +21,12 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-06-02 at 05:39:26 UTC</p>
+<p><p>Revised 2017-06-05 at 15:40:50 UTC</p>
 </p><h2>Tentative Issues</h2>
 <hr>
 <h3><a name="760" href="#760">760.</a> The emplace issue</h3>
 <p><b>Section:</b> 26.2 [container.requirements] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2017-02-03</p>
+ <b>Submitter:</b> Paolo Carlini <b>Opened:</b> 2007-11-11 <b>Last modified:</b> 2016-10-10</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#container.requirements">issues</a> in [container.requirements].</p>
@@ -117,7 +117,7 @@ elements of the container. No diagnostic required.
 <hr>
 <h3><a name="2337" href="#2337">2337.</a> <tt>shared_ptr operator*()</tt> should not be <tt>noexcept</tt></h3>
 <p><b>Section:</b> 23.11.2.2.5 [util.smartptr.shared.obs] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2017-02-03</p>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2013-10-05 <b>Last modified:</b> 2016-10-10</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.obs">active issues</a> in [util.smartptr.shared.obs].</p>
@@ -262,7 +262,7 @@ However, there are preconditions on the atomic access functions, so these should
 <hr>
 <h3><a name="2444" href="#2444">2444.</a> Inconsistent complexity for <tt>std::sort_heap</tt></h3>
 <p><b>Section:</b> 28.7.7.4 [sort.heap] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Fran&ccedil;ois Dumont <b>Opened:</b> 2014-10-07 <b>Last modified:</b> 2017-05-31</p>
+ <b>Submitter:</b> Fran&ccedil;ois Dumont <b>Opened:</b> 2014-10-07 <b>Last modified:</b> 2017-05-08</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -335,9 +335,242 @@ template&lt;class RandomAccessIterator, class Compare&gt;
 
 
 <hr>
+<h3><a name="2593" href="#2593">2593.</a> Moved-from state of Allocators</h3>
+<p><b>Section:</b> 20.5.3.5 [allocator.requirements] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
+ <b>Submitter:</b> David Krauss <b>Opened:</b> 2016-02-19 <b>Last modified:</b> 2017-06-05</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
+<p><b>View all other</b> <a href="lwg-index.html#allocator.requirements">issues</a> in [allocator.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.5.3.5 [allocator.requirements] suggests that the moved-from state of an allocator may be unequal to its 
+previous state. Such a move constructor would break most container implementations, which move-construct the 
+embedded allocator along with a compressed pair. Even if a moved-from container is empty, it should still 
+subsequently allocate from the same resource pool as it did before.
+</p>
+<blockquote><pre>
+std::vector&lt;int, pool&gt; a(500, my_pool);
+auto b = std::move(a); // b uses my_pool too.
+a.resize(500); // should still use my_pool.
+</pre></blockquote>
+
+<p><i>[2016-02, Jacksonville]</i></p>
+
+<p>Marshall will see if this can be resolved editorially.</p>
+
+<p>
+After discussion, the editors and I decided that this could not be handled editorially. 
+The bit about a moved-from state of an allocator being the same as the original state is a
+normative change. I submitted a <a href="https://github.com/cplusplus/draft/pull/727">pull request</a>
+to handle the mismatched variables in the table.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to N4567.
+</p>
+
+<ol>
+<li><p>Change 20.5.3.5 [allocator.requirements], Table 28 &mdash; "Allocator requirements" as indicated:
+<blockquote class="note">
+<p>
+Note there's an editorial error in Table 28 in that line and the surrounding ones. The left column was apparently 
+updated to use <tt>u</tt> and the right column is still using <tt>a</tt>/<tt>a1</tt>/<tt>b</tt>.
+</p>
+</blockquote>
+</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 28 &mdash; Allocator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X u(move(a));<br/>
+X u = move(a);</tt>
+</td>
+<td></td>
+<td>
+Shall not exit via an exception.
+post: <ins><tt>u</tt> is equal to <tt>a</tt> and equal to the prior value of <tt>a</tt></ins><del><tt>a1</tt> 
+equals the prior value of <tt>a</tt></del>.
+</td>
+<td>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[2016-06-20, Oulu, Daniel comments]</i></p>
+
+<p>
+According to the current working draft, the situation has changed due to changes performed by the project editor, the revised 
+resolution has been adjusted to N4594.
+</p>
+
+<p><i>[2016-08 - Chicago]</i></p>
+
+<p>Thurs AM: Moved to LEWG, as this decision (should allocators only be copyable, not movable) is design.</p>
+
+<p><i>[2017-02 in Kona, LEWG responds]</i></p>
+
+<p>Alisdair Meredith says that if you have a do-not-propagate-on-move-assignment, 
+then the move of the allocator must compare equal to the original.</p>
+<p>Have a data structure where all allocators are equal. 
+Construct an element somewhere else moving from inside the container 
+(which doesn't have a POCMA trait); you don't want the allocator of the
+moved-from element to now be different. So in that case, the allocator's 
+move constructor must behave the same as copy.</p>
+<p>We don't need to go as far as this issue, but going that far is ok for Bloomberg.</p>
+
+<p><i>[2017-06-02 Issues Telecom]</i></p>
+
+<p>We discussed containers that have sentinel nodes, etc, and so might have to 
+allocate/deallocate using a moved-from allocator - and decided that we didn't
+want any part of that</p>
+<p>Adjusted the wording slightly, and moved to Tentatively Ready</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to N4594.
+</p>
+
+<ol>
+<li><p>Change 20.5.3.5 [allocator.requirements], Table 28 &mdash; "Allocator requirements" as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 28 &mdash; Allocator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X u(std::move(a));<br/>
+X u = std::move(a);</tt>
+</td>
+<td></td>
+<td>
+Shall not exit via an exception.
+post: <ins><tt>u</tt> is equal to <tt>a</tt> and equal to the prior value of <tt>a</tt></ins><del><tt>u</tt> is equal to the prior
+value of <tt>a</tt>.</del>.
+</td>
+<td>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to N4594.
+</p>
+
+<ol>
+<li><p>Change 20.5.3.5 [allocator.requirements], Table 28 &mdash; "Allocator requirements" as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 28 &mdash; Allocator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X u(std::move(a));<br/>
+X u = std::move(a);</tt>
+</td>
+<td></td>
+<td>
+Shall not exit via an exception.
+post: <ins>The value of <tt>a</tt> is unchanged and is equal to <tt>u</tt></ins><del><tt>u</tt> is equal to the prior value of <tt>a</tt></del>.
+</td>
+<td>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
 <h3><a name="2597" href="#2597">2597.</a> <tt>std::log</tt> misspecified for complex numbers</h3>
 <p><b>Section:</b> 29.5.8 [complex.transcendentals] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Thomas Koeppe <b>Opened:</b> 2016-03-01 <b>Last modified:</b> 2017-03-13</p>
+ <b>Submitter:</b> Thomas Koeppe <b>Opened:</b> 2016-03-01 <b>Last modified:</b> 2017-03-20</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#complex.transcendentals">issues</a> in [complex.transcendentals].</p>
@@ -488,7 +721,7 @@ this function are intended to be the same in C++ as they are for <tt>csqrt</tt> 
 <hr>
 <h3><a name="2692" href="#2692">2692.</a> Overspecification of lvalueness of bitmask elements</h3>
 <p><b>Section:</b> 20.4.2.1.4 [bitmask.types] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2017-02-03</p>
+ <b>Submitter:</b> Hubert Tong <b>Opened:</b> 2016-04-14 <b>Last modified:</b> 2017-02-06</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#bitmask.types">issues</a> in [bitmask.types].</p>
@@ -521,7 +754,7 @@ Jonathan will provide more precise references.
 <hr>
 <h3><a name="2717" href="#2717">2717.</a> <tt>scoped_allocator_adaptor</tt> uses <tt>forward</tt> to do <tt>move</tt>'s job</h3>
 <p><b>Section:</b> 23.13.4 [allocator.adaptor.members] <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
- <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2017-02-03</p>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2016-05-24 <b>Last modified:</b> 2016-10-10</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.adaptor.members">active issues</a> in [allocator.adaptor.members].</p>
@@ -568,7 +801,7 @@ Withdrawn by the submitter, since the prerequisites were incorrect.
 <hr>
 <h3><a name="2783" href="#2783">2783.</a> <tt>stack::emplace()</tt> and <tt>queue::emplace()</tt> should return <tt>decltype(auto)</tt></h3>
 <p><b>Section:</b> 26.6.4.1 [queue.defn], 26.6.6.1 [stack.defn] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-10-14 <b>Last modified:</b> 2017-03-13</p>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2016-10-14 <b>Last modified:</b> 2017-03-20</p>
 <p><b>Priority: </b>2
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Tentatively Ready">Tentatively Ready</a> status.</p>
@@ -633,7 +866,7 @@ template &lt;class... Args&gt;
 <hr>
 <h3><a name="2937" href="#2937">2937.</a> Is <tt>equivalent("existing_thing", "not_existing_thing")</tt> an error?</h3>
 <p><b>Section:</b> 30.10.15.12 [fs.op.equivalent] <b>Status:</b> <a href="lwg-active.html#Ready">Tentatively Ready</a>
- <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2017-02-27 <b>Last modified:</b> 2017-03-13</p>
+ <b>Submitter:</b> Billy Robert O'Neal III <b>Opened:</b> 2017-02-27 <b>Last modified:</b> 2017-03-20</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#fs.op.equivalent">issues</a> in [fs.op.equivalent].</p>
