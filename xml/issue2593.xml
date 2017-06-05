@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2593" status="LEWG">
+<issue num="2593" status="Tentatively Ready">
 <title>Moved-from state of Allocators</title>
 <section><sref ref="[allocator.requirements]"/></section>
 <submitter>David Krauss</submitter>
@@ -100,6 +100,76 @@ resolution has been adjusted to N4594.
 
 <note>2016-08 - Chicago</note>
 <p>Thurs AM: Moved to LEWG, as this decision (should allocators only be copyable, not movable) is design.</p>
+
+<note>2017-02 in Kona, LEWG responds</note>
+<p>Alisdair Meredith says that if you have a do-not-propagate-on-move-assignment, 
+then the move of the allocator must compare equal to the original.</p>
+<p>Have a data structure where all allocators are equal. 
+Construct an element somewhere else moving from inside the container 
+(which doesn't have a POCMA trait); you don't want the allocator of the
+moved-from element to now be different. So in that case, the allocator's 
+move constructor must behave the same as copy.</p>
+<p>We don't need to go as far as this issue, but going that far is ok for Bloomberg.</p>
+
+<note>2017-06-02 Issues Telecom</note>
+<p>We discussed containers that have sentinel nodes, etc, and so might have to 
+allocate/deallocate using a moved-from allocator - and decided that we didn't
+want any part of that</p>
+<p>Adjusted the wording slightly, and moved to Tentatively Ready</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to N4594.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[allocator.requirements]"/>, Table 28 &mdash; "Allocator requirements" as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 28 &mdash; Allocator requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>X u(std::move(a));<br/>
+X u = std::move(a);</tt>
+</td>
+<td></td>
+<td>
+Shall not exit via an exception.
+post: <ins><tt>u</tt> is equal to <tt>a</tt> and equal to the prior value of <tt>a</tt></ins><del><tt>u</tt> is equal to the prior
+value of <tt>a</tt>.</del>.
+</td>
+<td>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
 </discussion>
 
 <resolution>
@@ -134,8 +204,7 @@ X u = std::move(a);</tt>
 <td></td>
 <td>
 Shall not exit via an exception.
-post: <ins><tt>u</tt> is equal to <tt>a</tt> and equal to the prior value of <tt>a</tt></ins><del><tt>u</tt> is equal to the prior
-value of <tt>a</tt>.</del>.
+post: <ins>The value of <tt>a</tt> is unchanged and is equal to <tt>u</tt></ins><del><tt>u</tt> is equal to the prior value of <tt>a</tt></del>.
 </td>
 <td>
 </td>
