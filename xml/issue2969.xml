@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2969" status="New">
+<title><tt>polymorphic_allocator::construct()</tt> shouldn't pass <tt>resource()</tt></title>
+<section><sref ref="[mem.poly.allocator.mem]"/></section>
+<submitter>Pablo Halpern</submitter>
+<date>30 May 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Section <sref ref="[mem.poly.allocator.mem]"/> defines the effect of <tt>polymorphic_allocator&lt;T&gt;::construct</tt> as:
+</p>
+<blockquote>
+<p>
+<i>Effects:</i> Construct a <tt>T</tt> object in the storage whose address is represented by <tt>p</tt> by uses-allocator
+construction with allocator <tt>resource()</tt> and constructor arguments <tt>std::forward&lt;Args&gt;(args)...</tt>.
+</p>
+</blockquote>
+<p>
+The use of <tt>resource()</tt> is a hold-over from the LFTS, which contains a modified definition of uses-allocator construction. This revised definition was not carried over into the C++17 WP when allocator_resource and polymorphic_allocator were moved over.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[mem.poly.allocator.mem]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, class... Args&gt;
+  void construct(T* p, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-5- <i>Requires:</i> Uses-allocator construction of <tt>T</tt> with allocator <tt><del>resource()</del><ins>*this</ins></tt> (see 
+<sref ref="[allocator.uses.construction]"/>) and constructor arguments <tt>std::forward&lt;Args&gt;(args)...</tt> 
+is well-formed. [<i>Note:</i> Uses-allocator construction is always well formed for types that do not use 
+allocators. &mdash; <i>end note</i>]
+<p/>
+-6- <i>Effects:</i> Construct a <tt>T</tt> object in the storage whose address is represented by <tt>p</tt> by 
+uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</ins></tt> and constructor arguments 
+<tt>std::forward&lt;Args&gt;(args)...</tt>.
+<p/>
+-7- <i>Throws:</i> Nothing unless the constructor for <tt>T</tt> throws.
+</p>
+</blockquote>
+<pre>
+template &lt;class T1, class T2, class... Args1, class... Args2&gt;
+  void construct(pair&lt;T1,T2&gt;* p, piecewise_construct_t,
+                 tuple&lt;Args1...&gt; x, tuple&lt;Args2...&gt; y);
+</pre>
+<blockquote>
+<p>
+-8- [<i>Note:</i> This method and the <tt>construct</tt> methods that follow are overloads for piecewise construction
+of pairs (<sref ref="[pairs.pair]"/>). &mdash; <i>end note</i>]
+<p/>
+-9- <i>Effects:</i> Let <tt>xprime</tt> be a <tt>tuple</tt> constructed from <tt>x</tt> according to the appropriate rule 
+from the following list. [<i>Note:</i> The following description can be summarized as constructing a 
+<tt>pair&lt;T1, T2&gt;</tt> object in the storage whose address is represented by <tt>p</tt>, as if by separate 
+uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</ins></tt> 
+(<sref ref="[allocator.uses.construction]"/>) of <tt>p-&gt;first</tt> using the elements of <tt>x</tt> and 
+<tt>p-&gt;second</tt> using the elements of <tt>y</tt>. &mdash; <i>end note</i>]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
