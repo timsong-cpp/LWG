@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2973" status="New">
+<title><tt>inplace_merge</tt> exact comparison count complexity prohibits useful real-world optimizations</title>
+<section><sref ref="[alg.merge]"/></section>
+<submitter>Billy Robert O'Neal III</submitter>
+<date>8 Jun 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+At the moment, <tt>inplace_merge</tt> requires exactly <tt><i>N</i> - 1</tt> comparisons, if enough additional memory is 
+available (and in practice enough additional memory is always available). However, this prohibits implementing the 
+merge operation using forms of binary search, as in Timsort's 
+<a href="https://hg.python.org/cpython/file/tip/Objects/listsort.txt#l451">'Galloping Mode'</a>, a useful optimization 
+for non-uniform input data. It's not really useful to prohibit standard libraries from trying a few extra speculative 
+compares like this, given that users must be prepared for the fallback "not enough memory" 
+&#x1d4aa;(<tt><i>N</i> lg <i>N</i></tt>) algorithm.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[alg.merge]"/> as indicated:</p>
+
+<blockquote>
+<pre>template&lt;class BidirectionalIterator&gt;
+void inplace_merge(BidirectionalIterator first,
+    BidirectionalIterator middle,
+    BidirectionalIterator last);
+template&lt;class ExecutionPolicy, class BidirectionalIterator&gt;
+void inplace_merge(ExecutionPolicy&amp;&amp; exec,
+    BidirectionalIterator first,
+    BidirectionalIterator middle,
+    BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare&gt;
+void inplace_merge(BidirectionalIterator first,
+    BidirectionalIterator middle,
+    BidirectionalIterator last, Compare comp);
+template&lt;class ExecutionPolicy, class BidirectionalIterator, class Compare&gt;
+void inplace_merge(ExecutionPolicy&amp;&amp; exec,
+    BidirectionalIterator first,
+    BidirectionalIterator middle,
+    BidirectionalIterator last, Compare comp);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-8- <i>Complexity:</i> Let <tt><i>N</i> = last - first</tt>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(8.1) &mdash; For the overloads with no <tt>ExecutionPolicy</tt>, if enough additional memory is available, 
+<del>exactly</del> <tt><i>N</i> - 1</tt> comparisons <ins>on average, &#x1d4aa;(<tt><i>N</i></tt>) comparisons in 
+the worst case</ins>.</p></li>
+<li><p>(8.2) &mdash; For the overloads with no <tt>ExecutionPolicy</tt> if no additional memory is available, 
+&#x1d4aa;(<tt><i>N</i> log <i>N</i></tt>) comparisons.</p></li>
+<li><p>(8.3) &mdash; For the overloads with an <tt>ExecutionPolicy</tt>, &#x1d4aa;(<tt><i>N</i> log <i>N</i></tt>)
+comparisons.</p></li>
+</ol>
+<p>
+-9- <i>Remarks:</i> Stable (<sref ref="[algorithm.stable]"/>).
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
