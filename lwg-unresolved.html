@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-06-12 at 17:45:41 UTC</p>
+<p><p>Revised 2017-06-12 at 19:43:38 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="423" href="#423">423.</a> effects of negative streamsize in iostreams</h3>
@@ -28485,7 +28485,7 @@ in the returned string.
 <hr>
 <h3><a name="2967" href="#2967">2967.</a> <tt>std::equal</tt> on empty ranges</h3>
 <p><b>Section:</b> 28.5.11 [alg.equal] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Gennaro Prota <b>Opened:</b> 2017-05-26 <b>Last modified:</b> 2017-06-10</p>
+ <b>Submitter:</b> Gennaro Prota <b>Opened:</b> 2017-05-26 <b>Last modified:</b> 2017-06-12</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
@@ -28513,7 +28513,7 @@ It should IMHO return true (two empty ranges are always equal).
 <p>
 [<i>Drafting note:</i> The current wording presented below uses two times the unusual phrase "[&hellip;] return [&hellip;]" 
 instead of "[&hellip;] return<b>s</b> [&hellip;]". The project editor is kindly asked to consider to replace these unusual 
-wording forms by the usual one. [&hellip;]" &mdash; <i>end drafting note</i>]
+wording forms by the usual one. &mdash; <i>end drafting note</i>]
 </p>
 </blockquote>
 
@@ -28628,82 +28628,6 @@ non-binding shrink request. A call with <tt>res_arg &lt;= size()</tt> is in effe
 request. &mdash; <i>end note</i>]</del>
 <p/>
 -12- <i>Throws:</i> <tt>length_error</tt> if <tt>res_arg &gt; max_size()</tt>.
-</p>
-</blockquote>
-</blockquote>
-</li>
-</ol>
-
-
-
-
-
-<hr>
-<h3><a name="2969" href="#2969">2969.</a> <tt>polymorphic_allocator::construct()</tt> shouldn't pass <tt>resource()</tt></h3>
-<p><b>Section:</b> 23.12.3.2 [mem.poly.allocator.mem] <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Pablo Halpern <b>Opened:</b> 2017-05-30 <b>Last modified:</b> 2017-06-10</p>
-<p><b>Priority: </b>Not Prioritized
-</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
-<p><b>Discussion:</b></p>
-<p>
-Section 23.12.3.2 [mem.poly.allocator.mem] defines the effect of <tt>polymorphic_allocator&lt;T&gt;::construct</tt> as:
-</p>
-<blockquote>
-<p>
-<i>Effects:</i> Construct a <tt>T</tt> object in the storage whose address is represented by <tt>p</tt> by uses-allocator
-construction with allocator <tt>resource()</tt> and constructor arguments <tt>std::forward&lt;Args&gt;(args)...</tt>.
-</p>
-</blockquote>
-<p>
-The use of <tt>resource()</tt> is a hold-over from the LFTS, which contains a modified definition of uses-allocator construction. This revised definition was not carried over into the C++17 WP when allocator_resource and polymorphic_allocator were moved over.
-</p>
-
-
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.</p>
-
-<ol>
-<li>
-<p>Edit 23.12.3.2 [mem.poly.allocator.mem] as indicated:</p>
-
-<blockquote>
-<pre>
-template &lt;class T, class... Args&gt;
-  void construct(T* p, Args&amp;&amp;... args);
-</pre>
-<blockquote>
-<p>
--5- <i>Requires:</i> Uses-allocator construction of <tt>T</tt> with allocator <tt><del>resource()</del><ins>*this</ins></tt> (see 
-23.10.7.2 [allocator.uses.construction]) and constructor arguments <tt>std::forward&lt;Args&gt;(args)...</tt> 
-is well-formed. [<i>Note:</i> Uses-allocator construction is always well formed for types that do not use 
-allocators. &mdash; <i>end note</i>]
-<p/>
--6- <i>Effects:</i> Construct a <tt>T</tt> object in the storage whose address is represented by <tt>p</tt> by 
-uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</ins></tt> and constructor arguments 
-<tt>std::forward&lt;Args&gt;(args)...</tt>.
-<p/>
--7- <i>Throws:</i> Nothing unless the constructor for <tt>T</tt> throws.
-</p>
-</blockquote>
-<pre>
-template &lt;class T1, class T2, class... Args1, class... Args2&gt;
-  void construct(pair&lt;T1,T2&gt;* p, piecewise_construct_t,
-                 tuple&lt;Args1...&gt; x, tuple&lt;Args2...&gt; y);
-</pre>
-<blockquote>
-<p>
--8- [<i>Note:</i> This method and the <tt>construct</tt> methods that follow are overloads for piecewise construction
-of pairs (23.4.2 [pairs.pair]). &mdash; <i>end note</i>]
-<p/>
--9- <i>Effects:</i> Let <tt>xprime</tt> be a <tt>tuple</tt> constructed from <tt>x</tt> according to the appropriate rule 
-from the following list. [<i>Note:</i> The following description can be summarized as constructing a 
-<tt>pair&lt;T1, T2&gt;</tt> object in the storage whose address is represented by <tt>p</tt>, as if by separate 
-uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</ins></tt> 
-(23.10.7.2 [allocator.uses.construction]) of <tt>p-&gt;first</tt> using the elements of <tt>x</tt> and 
-<tt>p-&gt;second</tt> using the elements of <tt>y</tt>. &mdash; <i>end note</i>]
-<p/>
-[&hellip;]
 </p>
 </blockquote>
 </blockquote>
