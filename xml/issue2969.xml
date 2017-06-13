@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2969" status="Tentatively NAD">
+<issue num="2969" status="New">
 <title><tt>polymorphic_allocator::construct()</tt> shouldn't pass <tt>resource()</tt></title>
 <section><sref ref="[mem.poly.allocator.mem]"/></section>
 <submitter>Pablo Halpern</submitter>
@@ -79,12 +79,98 @@ uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</
 The current description is correct and does not depend on changes to uses-allocator construction. It relies on the fact 
 that <tt>memory_resource*</tt> is convertible to <tt>polymorphic_allocator</tt>.
 </p>
+
+<note>2017-06-13, Tim Song reopens</note>
+<p>
+While it is true that <tt>memory_resource*</tt> is convertible to <tt>polymorphic_allocator</tt>,
+uses-allocator construction still requires allocators, and a
+<tt>memory_resource*</tt> isn't an allocator.
+<p/>
+To take a concrete example from the current WP, a <tt>pmr::vector&lt;std::promise&lt;int&gt;&gt;</tt>, as specified, 
+will be attempting to uses-allocator construct a <tt>promise&lt;int&gt;</tt> with a <tt>memory_resource*</tt>, but
+<tt>std::promise</tt>'s allocator-taking constructor expects something that satisfies the allocator requirements, 
+rather than a <tt>memory_resource*</tt>.
+</p>
+
+<note>2017-06-13, Daniel restores and improves the previously proposed wording</note>
+<p>
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4659">N4659</a>.</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[mem.poly.allocator.mem]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T, class... Args&gt;
+  void construct(T* p, Args&amp;&amp;... args);
+</pre>
+<blockquote>
 <p>
-Withdrawn by the submitter, since the prerequisites were incorrect.
+-5- <i>Requires:</i> Uses-allocator construction of <tt>T</tt> with allocator <tt><del>resource()</del><ins>*this</ins></tt> (see 
+<sref ref="[allocator.uses.construction]"/>) and constructor arguments <tt>std::forward&lt;Args&gt;(args)...</tt> 
+is well-formed. [<i>Note:</i> Uses-allocator construction is always well formed for types that do not use 
+allocators. &mdash; <i>end note</i>]
+<p/>
+-6- <i>Effects:</i> Construct a <tt>T</tt> object in the storage whose address is represented by <tt>p</tt> by 
+uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</ins></tt> and constructor arguments 
+<tt>std::forward&lt;Args&gt;(args)...</tt>.
+<p/>
+-7- <i>Throws:</i> Nothing unless the constructor for <tt>T</tt> throws.
 </p>
+</blockquote>
+<pre>
+template &lt;class T1, class T2, class... Args1, class... Args2&gt;
+  void construct(pair&lt;T1,T2&gt;* p, piecewise_construct_t,
+                 tuple&lt;Args1...&gt; x, tuple&lt;Args2...&gt; y);
+</pre>
+<blockquote>
+<p>
+-8- [<i>Note:</i> This method and the <tt>construct</tt> methods that follow are overloads for piecewise construction
+of pairs (<sref ref="[pairs.pair]"/>). &mdash; <i>end note</i>]
+<p/>
+-9- <i>Effects:</i> Let <tt>xprime</tt> be a <tt>tuple</tt> constructed from <tt>x</tt> according to the appropriate rule 
+from the following list. [<i>Note:</i> The following description can be summarized as constructing a 
+<tt>pair&lt;T1, T2&gt;</tt> object in the storage whose address is represented by <tt>p</tt>, as if by separate 
+uses-allocator construction with allocator <tt><del>resource()</del><ins>*this</ins></tt> 
+(<sref ref="[allocator.uses.construction]"/>) of <tt>p-&gt;first</tt> using the elements of <tt>x</tt> and 
+<tt>p-&gt;second</tt> using the elements of <tt>y</tt>. &mdash; <i>end note</i>]
+</p>
+<ol style="list-style-type: none">
+<li><p>(9.1) &mdash; If <tt>uses_allocator_v&lt;T1,memory_resource*&gt;</tt> is <tt>false</tt>
+and <tt>is_constructible_v&lt;T1,Args1...&gt;</tt> is <tt>true</tt>, then <tt>xprime</tt> is <tt>x</tt>.</p></li>
+<li><p>(9.2) &mdash; Otherwise, if <tt>uses_allocator_v&lt;T1,memory_resource*&gt;</tt> is <tt>true</tt>
+and <tt>is_constructible_v&lt;T1,allocator_arg_t,memory_resource*,Args1...&gt;</tt> is <tt>true</tt>, then 
+<tt>xprime</tt> is <tt>tuple_cat(make_tuple(allocator_arg, <del>resource()</del><ins>*this</ins>), 
+std::move(x))</tt>.</p></li>
+<li><p>(9.3) &mdash; Otherwise, if <tt>uses_allocator_v&lt;T1,memory_resource*&gt;</tt> is <tt>true</tt> and 
+<tt>is_constructible_v&lt;T1,Args1...,memory_resource*&gt;</tt> is <tt>true</tt>, then <tt>xprime</tt> is 
+<tt>tuple_cat(std::move(x), make_tuple(<del>resource()</del><ins>*this</ins>))</tt>.</p></li>
+<li><p>(9.4) &mdash; Otherwise the program is ill formed.</p></li>
+</ol>
+<p>
+Let <tt>yprime</tt> be a tuple constructed from <tt>y</tt> according to the appropriate rule from the following list:
+</p>
+<ol style="list-style-type: none">
+<li><p>(9.5) &mdash; If <tt>uses_allocator_v&lt;T2,memory_resource*&gt;</tt> is <tt>false</tt>
+and <tt>is_constructible_v&lt;T2,Args2...&gt;</tt> is <tt>true</tt>, then <tt>yprime</tt> is <tt>y</tt>.</p></li>
+<li><p>(9.6) &mdash; Otherwise, if <tt>uses_allocator_v&lt;T2,memory_resource*&gt;</tt> is <tt>true</tt> and 
+<tt>is_constructible_v&lt;T2,allocator_arg_t,memory_resource*,Args2...&gt;</tt> is <tt>true</tt>, then <tt>yprime</tt> 
+is <tt>tuple_cat(make_tuple(allocator_arg, <del>resource()</del><ins>*this</ins>), std::move(y))</tt>.</p></li>
+<li><p>(9.7) &mdash; Otherwise, if <tt>uses_allocator_v&lt;T2,memory_resource*&gt;</tt> is <tt>true</tt> and 
+<tt>is_constructible_v&lt;T2,Args2...,memory_resource*&gt;</tt> is <tt>true</tt>,
+then <tt>yprime</tt> is <tt>tuple_cat(std::move(y), make_tuple(<del>resource()</del><ins>*this</ins>))</tt>.</p></li>
+<li><p>(9.8) &mdash; Otherwise the program is ill formed.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
