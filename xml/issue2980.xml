@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2980" status="New">
+<title>Cannot <tt>compare_exchange</tt> empty pointers</title>
+<section><sref ref="[util.smartptr.shared.atomic]"/></section>
+<submitter>Alisdair Meredith</submitter>
+<date>15 Jun 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+[util.smartptr.shared.atomic] p35 states that two shared pointers are equivalent if
+they store the same pointer value, and share <em>ownership</em>. As empty shared pointers
+never share ownership, it is not possible to replace an empty shared pointer using
+the atomic <tt>compare_exchange</tt> API.
+<p/>
+Note the through aliasing, empty shared pointers may still point to different objects,
+and any resolution must allow for that case too.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[util.smartptr.shared.atomic]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  bool atomic_compare_exchange_weak_explicit(
+    shared_ptr&lt;T&gt;* p, shared_ptr&lt;T&gt;* v, shared_ptr&lt;T&gt; w,
+    memory_order success, memory_order failure);
+template&lt;class T&gt;
+  bool atomic_compare_exchange_strong_explicit(
+    shared_ptr&lt;T&gt;* p, shared_ptr&lt;T&gt;* v, shared_ptr&lt;T&gt; w,
+    memory_order success, memory_order failure);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-35- <i>Remarks:</i> Two <tt>shared_ptr</tt> objects are equivalent if they store the same pointer value and share
+ownership<ins>, or if they store the same pointer value and both are empty</ins>. The weak form may fail spuriously. 
+See 32.6.1.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
