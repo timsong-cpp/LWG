@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2984" status="New">
+<title><tt>put_money(99)</tt> is unnecessarily undefined</title>
+<section>
+<sref ref="[ext.manip]"/>
+</section>
+<submitter>Jonathan Wakely</submitter>
+<date>22 Jun 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+[ext.manip] p5 says:
+</p>
+<blockquote><p>
+<i>Requires:</i> The type <tt>moneyT</tt> shall be either <tt>long double</tt> or a specialization of the 
+<tt>basic_string</tt> template (Clause 24).
+</p></blockquote>
+<p>
+This means that <tt>put_money(99)</tt>, <tt>put_money(99.)</tt>, <tt>put_money("99")</tt>, and 
+<tt>put_money(string_view{"99"})</tt> are all undefined, when in practice they will compile fine and 
+do the right thing, converting the argument to <tt>long double</tt> or <tt>std::string</tt> as needed.
+<p/>
+We could change it to be "otherwise the program is ill-formed", or to remove the function templates from overload 
+resolution when the argument is not <tt>long double</tt> or a <tt>std::basic_string</tt>, but that will unnecessarily 
+break code that works fine today. We should accept types convertible to <tt>long double</tt> or the relevant 
+<tt>money_put</tt> facet's <tt>string_type</tt> (which is not known until we attempt to write the unspecified 
+type to an ostream).
+<p/>
+The requirement is also insufficient, because <tt>cout &lt;&lt; put_money(wstring(L"99"))</tt> won't compile on any 
+implementation, despite the argument type being a specialization of <tt>basic_string</tt>. This same problem exists 
+for <tt>std::get_money</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
