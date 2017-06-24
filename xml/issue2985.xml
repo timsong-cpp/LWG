@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2985" status="New">
+<title><tt>std::reverse</tt> should be permitted to be vectorized</title>
+<section><sref ref="[alg.reverse]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>24 Jun 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The fine folks on our backend team suggested that we special case <tt>std::reverse</tt> of 1/2/4/8 to take 
+advantage of vector units. Unfortunately, at present <tt>std::reverse</tt> says it does <tt>N/2 iter_swap</tt>s, 
+which doesn't permit our vector implementation even if the iterator inputs are pointers to trivially copyable <tt>T</tt>s.
+<p/>
+The vectorized version for pointers to <tt>short</tt>s is 
+<a href="https://twitter.com/MalwareMinigun/status/878150939512717312">~8x faster on Skylake</a> than the serial version, 
+and about 7x faster for <tt>unsigned long long</tt>s; and users don't actually care whether or not we call <tt>swap</tt> here.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[alg.reverse]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+  void reverse(BidirectionalIterator first, BidirectionalIterator last);
+template&lt;class ExecutionPolicy, class BidirectionalIterator>
+  void reverse(ExecutionPolicy&amp;&amp; exec,
+               BidirectionalIterator first, BidirectionalIterator last);
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires:</i> <tt>*first</tt> shall be swappable (<sref ref="[swappable.requirements]"/>).
+<p/>
+-2- <i>Effects:</i> For each non-negative integer <tt>i &lt; (last - first) / 2</tt>, applies <tt>iter_swap</tt> 
+to all pairs of iterators <tt>first + i, (last - i) - 1</tt>. <ins>If 
+<tt>is_trivially_copyable_v&lt;typename iterator_traits&lt;BidirectionalIterator&gt;::value_type&gt;</tt> is 
+<tt>true</tt>, an implementation may permute the elements by making temporary copies, rather than by calling 
+<tt>iter_swap</tt>. [<i>Note:</i> this allows the implementation to be vectorized. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
