@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2989" status="New">
+<title><tt>path</tt>'s stream insertion operator lets you insert everything under the sun</title>
+<section><sref ref="[atomics.syn]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>27 Jun 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The rules for converting a <tt>path</tt> to a narrow character sequence aren't necessarily the same as that iostreams should use. Note that this program creates a temporary path and stream inserts that, which likely destroys information.
+</p>
+
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;filesystem&gt;
+#include &lt;string&gt;
+
+void foo() {
+  using namespace std;
+  using namespace std::experimental::filesystem::v1;
+  wstring val(L"abc");
+  std::cout &lt;&lt; val;
+}
+</pre></blockquote>
+<p>
+Using <a href="https://godbolt.org/g/dTQ8Pw">the godbolt online compiler</a> we get:
+</p>
+<blockquote><pre>
+foo PROC
+  sub      rsp, 104   ; 00000068H
+  lea      rdx, OFFSET FLAT:$SG44895
+  lea      rcx, QWORD PTR val$[rsp]
+  call     std::basic_string&lt;wchar_t,std::char_traits&lt;wchar_t&gt;,std::allocator&lt;wchar_t&gt; 
+           &gt;::basic_string&lt;wchar_t,std::char_traits&lt;wchar_t&gt;,std::allocator&lt;wchar_t&gt; &gt;
+  lea      rdx, QWORD PTR val$[rsp]
+  lea      rcx, QWORD PTR $T1[rsp]
+  call     ??$?0_WU?$char_traits@_W@std@@V?$allocator@_W@1@@path@v1@filesystem@experimental@std@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@4@@Z
+  lea      rdx, QWORD PTR $T1[rsp]
+  lea      rcx, OFFSET FLAT:std::cout
+  call     std::experimental::filesystem::v1::operator&lt;&lt;&lt;char,std::char_traits&lt;char&gt; &gt;
+  lea      rcx, QWORD PTR $T1[rsp]
+  call     std::experimental::filesystem::v1::path::~path
+  lea      rcx, QWORD PTR val$[rsp]
+  call     std::basic_string&lt;wchar_t,std::char_traits&lt;wchar_t&gt;,std::allocator&lt;wchar_t&gt; 
+           &gt;::~basic_string&lt;wchar_t,std::char_traits&lt;wchar_t&gt;,std::allocator&lt;wchar_t&gt; &gt;
+  add      rsp, 104   ; 00000068H
+  ret      0
+foo ENDP
+</pre></blockquote>
+<p>
+This should either be disabled with a SFINAE constraint, use the <tt>auto_ptr</tt> user-defined conversion 
+trick, or the stream insertion operators should be made "hidden friends" to prevent conversions to <tt>path</tt>
+from being considered here.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
