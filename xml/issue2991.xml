@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="2991" status="New">
+<title><tt>variant</tt> copy constructor missing <tt>noexcept(<i>see below</i>)</tt></title>
+<section><sref ref="[variant.ctor]"/></section>
+<submitter>Peter Dimov</submitter>
+<date>27 Jun 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The copy constructor of <tt>std::variant</tt> is not conditionally <tt>noexcept</tt> (I think
+it was in the original proposal.)
+<p/>
+It should be, for two reasons: first, this would be consistent with the other three constructors
+</p>
+<blockquote><pre>
+constexpr variant() noexcept(<i>see below</i>);
+
+variant(variant&amp;&amp;) noexcept(<i>see below</i>);
+
+template &lt;class T&gt;
+constexpr variant(T&amp;&amp;) noexcept(<i>see below</i>);
+</pre></blockquote>
+<p>
+and second, <tt>variant</tt> itself makes use of <tt>is_nothrow_copy_constructible</tt>, so
+it's inconsistent for it to take a stance against it.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[variant.variant]"/>, class template <tt>variant</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class... Types&gt;
+  class variant {
+  public:
+    // 23.7.3.1, constructors
+    constexpr variant() noexcept(<i>see below</i>);
+    variant(const variant&amp;) <ins>noexcept(<i>see below</i>)</ins>;
+    variant(variant&amp;&amp;) noexcept(<i>see below</i>);
+    [&hellip;]
+  };
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[variant.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+variant(const variant&amp; w) <ins>noexcept(<i>see below</i>)</ins>;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-8- <i>Remarks:</i> This function shall not participate in overload resolution unless 
+<tt>is_copy_constructible_v&lt;T<sub><i>i</i></sub>&gt;</tt> is <tt>true</tt> for all <tt><i>i</i></tt>.
+<ins>The expression inside <tt>noexcept</tt> is equivalent to the logical AND of
+<tt>is_nothrow_copy_constructible_v&lt;T<sub><i>i</i></sub>&gt;</tt> for all <tt><i>i</i></tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
