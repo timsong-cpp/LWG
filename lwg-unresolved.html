@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-06-28 at 17:51:19 UTC</p>
+<p><p>Revised 2017-06-28 at 18:09:52 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="423" href="#423">423.</a> effects of negative streamsize in iostreams</h3>
@@ -29603,6 +29603,7 @@ The member typedef <tt>type</tt> shall be a POD type suitable for use as uniniti
  <b>Submitter:</b> Mike Spertus <b>Opened:</b> 2017-06-15 <b>Last modified:</b> 2017-06-17</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#refwrap">active issues</a> in [refwrap].</p>
 <p><b>View all other</b> <a href="lwg-index.html#refwrap">issues</a> in [refwrap].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -30527,6 +30528,60 @@ private:
 </blockquote>
 </li>
 </ol>
+
+
+
+
+<hr>
+<h3><a name="2993" href="#2993">2993.</a> <tt>reference_wrapper&lt;T&gt;</tt> conversion from <tt>T&amp;&amp;</tt></h3>
+<p><b>Section:</b> 23.14.5 [refwrap] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2017-06-28 <b>Last modified:</b> 2017-06-28</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#refwrap">active issues</a> in [refwrap].</p>
+<p><b>View all other</b> <a href="lwg-index.html#refwrap">issues</a> in [refwrap].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<tt>reference_wrapper&lt;T&gt;</tt> has a deleted constructor taking <tt>T&amp;&amp;</tt> in order to
+prevent accidentally wrapping an rvalue (which can otherwise happen with the 
+<tt>reference_wrapper(T&amp;)</tt> constructor if <tt>T</tt> is a non-<tt>volatile</tt>
+<tt>const</tt>-qualified type). Unfortunately, a deleted constructor can still
+be used to form implicit conversion sequences, so the deleted <tt>T&amp;&amp;</tt>
+constructor has the (presumably unintended) effect of creating an implicit conversion sequence from 
+a <tt>T</tt> rvalue to a <tt>reference_wrapper&lt;T&gt;</tt>, even though such a conversion would be
+ill-formed if actually used. This is visible in overload resolution:
+</p>
+<blockquote><pre>
+void meow(std::reference_wrapper&lt;int&gt;); //#1
+void meow(convertible_from_int); //#2
+meow(0); // <span style="color:#C80000;font-weight:bold">ambiguous;</span> would call #2 if #1 instead took int&amp;
+</pre></blockquote>
+<p>
+and in conditional expressions (and hence <tt>std::common_type</tt>) after core
+issue <a href="https://wg21.link/cwg1895">CWG 1895</a>:
+</p>
+<blockquote><pre>
+std::reference_wrapper&lt;int&gt; purr();
+
+auto x = true? purr() : 0; // <span style="color:#C80000;font-weight:bold">error, ambiguous:</span> ICS exists from int prvalue to 
+     // reference_wrapper&lt;int&gt; and from reference_wrapper&lt;int&gt; to int
+using t = std::common_type_t&lt;std::reference_wrapper&lt;int&gt;, int&gt;; // <span style="color:#C80000;font-weight:bold">error</span>, no member 
+     // type because the conditional expression is ill-formed
+</pre></blockquote>
+<p>
+The latter in turn interferes with the use of <tt>reference_wrapper</tt> as a
+proxy reference type with proxy iterators.
+<p/>
+We should ensure that there is no implicit conversion sequence from <tt>T</tt>
+rvalues to <tt>reference_wrapper&lt;T&gt;</tt>, not just that the conversion will be
+ill-formed when used. This can be done by using a suitably constrained
+constructor template taking a forwarding reference instead of the
+current pair of constructors taking <tt>T&amp;</tt> and <tt>T&amp;&amp;</tt>.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
 
 
 
