@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<p><p>Revised 2017-07-08 at 13:57:53 UTC</p>
+<p><p>Revised 2017-07-08 at 14:19:47 UTC</p>
 </p><h2>Unresolved Issues</h2>
 <hr>
 <h3><a name="423" href="#423">423.</a> effects of negative streamsize in iostreams</h3>
@@ -30841,6 +30841,7 @@ will eventually result in undefined behavior, attempting to delete the same obje
  <b>Submitter:</b> Tim Song <b>Opened:</b> 2017-07-07 <b>Last modified:</b> 2017-07-08</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
+<p><b>View other</b> <a href="lwg-index-open.html#list.ops">active issues</a> in [list.ops].</p>
 <p><b>View all other</b> <a href="lwg-index.html#list.ops">issues</a> in [list.ops].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
@@ -30911,6 +30912,125 @@ where <tt>j</tt> is an iterator in <tt>[begin(), end())</tt> such that <tt>next(
 -18- <i>Complexity:</i> If <del>the range <tt>[first, last)</tt> is not empty</del><ins><tt>!empty()</tt></ins>, exactly 
 <tt><del>(last - first) - 1</del><ins>distance(begin(), end()) - 1</ins></tt> applications of the corresponding predicate,
  otherwise no applications of the predicate.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+<hr>
+<h3><a name="2998" href="#2998">2998.</a> Requirements on function objects passed to <tt>{forward_,}list</tt>-specific algorithms</h3>
+<p><b>Section:</b> 26.3.10.5 [list.ops], 26.3.9.6 [forwardlist.ops] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2017-07-07 <b>Last modified:</b> 2017-07-08</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#list.ops">active issues</a> in [list.ops].</p>
+<p><b>View all other</b> <a href="lwg-index.html#list.ops">issues</a> in [list.ops].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Some specialized algorithms for <tt>forward_list</tt> and <tt>list</tt> take template parameters named <tt>Predicate</tt>, 
+<tt>BinaryPredicate</tt>, or <tt>Compare</tt>. 
+However, there's no wording importing the full requirements for template type parameters with such names from 
+28.3 [algorithms.requirements] and 28.7 [alg.sorting],
+which means, for instance, that there appears to be no rule prohibiting <tt>Compare</tt> from modifying its arguments, 
+because we only refer to 28.7 [alg.sorting] for the definition of strict weak ordering. Is that intended?
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
+</p>
+
+<ol>
+<li><p>Edit 26.3.10.5 [list.ops] as indicated:</p>
+<blockquote>
+<p>-1- Since lists allow fast insertion and erasing from the middle of a list, certain operations are provided specifically 
+for them.<sup>259)</sup> <ins>In this subclause, arguments for a template parameter named <tt>Predicate</tt>, 
+<tt>BinaryPredicate</tt>, or <tt>Compare</tt> shall meet the corresponding requirements in 
+28.3 [algorithms.requirements] and 28.7 [alg.sorting].</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Edit 26.3.10.5 [list.ops] as indicated:</p>
+<blockquote>
+<pre>
+void merge(list&amp; x);
+void merge(list&amp;&amp; x);
+template &lt;class Compare&gt; void merge(list&amp; x, Compare comp);
+template &lt;class Compare&gt; void merge(list&amp;&amp; x, Compare comp);
+</pre>
+<blockquote>
+<p>-22- <i>Requires:</i> <del><tt>comp</tt> shall define a strict weak ordering (28.7 [alg.sorting]), and b</del><ins>B</ins>oth the list and the argument list shall be sorted
+according to <del>this ordering</del><ins>the strict weak ordering defined by <tt>operator&lt;</tt> (for the first two overloads) or <tt>comp</tt> (for the last two overloads)</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Delete 26.3.10.5 [list.ops]/28 as redundant:</p>
+<blockquote>
+<pre>
+void sort();
+template &lt;class Compare&gt; void sort(Compare comp);
+</pre>
+<blockquote>
+<p>
+<del>-28- <i>Requires:</i> <tt>operator&lt;</tt> (for the first version) or <tt>comp</tt> (for the second version) shall 
+define a strict weak ordering (28.7 [alg.sorting]).</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Insert a new paragraph at the beginning of 26.3.9.6 [forwardlist.ops]:</p>
+<blockquote>
+<p><ins>-?- In this subclause, arguments for a template parameter named <tt>Predicate</tt>, <tt>BinaryPredicate</tt>, 
+or <tt>Compare</tt> shall meet the corresponding requirements in 28.3 [algorithms.requirements] and 
+28.7 [alg.sorting].</ins>
+</p>
+<pre>
+void splice_after(const_iterator position, forward_list&amp; x);
+void splice_after(const_iterator position, forward_list&amp;&amp; x);
+</pre>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+<li><p>Edit 26.3.9.6 [forwardlist.ops] as indicated:</p>
+<blockquote>
+<pre>
+void merge(forward_list&amp; x);
+void merge(forward_list&amp;&amp; x);
+template &lt;class Compare&gt; void merge(forward_list&amp; x, Compare comp);
+template &lt;class Compare&gt; void merge(forward_list&amp;&amp; x, Compare comp);
+</pre>
+<blockquote>
+<p>-22- <i>Requires:</i> <del><tt>comp</tt> defines a strict weak ordering (28.7 [alg.sorting]), and</del> 
+<tt>*this</tt> and <tt>x</tt> are both sorted according to <del>this ordering</del><ins>the strict weak ordering 
+defined by <tt>operator&lt;</tt> (for the first two overloads) or <tt>comp</tt> (for the last two overloads)</ins>.
+<tt>get_allocator() == x.get_allocator()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Delete 26.3.9.6 [forwardlist.ops]/23 as redundant:</p>
+<blockquote>
+<pre>
+void sort();
+template &lt;class Compare&gt; void sort(Compare comp);
+</pre>
+<blockquote>
+<p>
+<del>-23- <i>Requires:</i> <tt>operator&lt;</tt> (for the version with no arguments) or <tt>comp</tt> (for the version 
+with a comparison argument) defines a strict weak ordering (28.7 [alg.sorting]).</del>
 </p>
 </blockquote>
 </blockquote>
