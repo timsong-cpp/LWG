@@ -28,7 +28,7 @@
 </tr>
 <tr>
   <td align="left">Date:</td>
-  <td align="left">2017-07-06</td>
+  <td align="left">2017-07-08</td>
 </tr>
 <tr>
   <td align="left">Project:</td>
@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D105)</h1>
-<p><p>Revised 2017-07-06 at 18:09:47 UTC</p>
+<p><p>Revised 2017-07-08 at 09:54:40 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,14 +158,14 @@ ownership of it.
 <ul>
 <li>D105: 2017-07-30 2017 post-Toronto mailing<ul>
 <li><b>Summary:</b><ul>
-<li>267 open issues, up by 10.</li>
+<li>268 open issues, up by 11.</li>
 <li>2194 closed issues, up by 1.</li>
 <li>55 reassigned issues, up by 1.</li>
-<li>2516 issues total, up by 12.</li>
+<li>2517 issues total, up by 13.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following Tentatively Ready issue: <a href="lwg-active.html#2988">2988</a>.</li>
-<li>Added the following 11 New issues: <a href="lwg-active.html#2983">2983</a>, <a href="lwg-active.html#2984">2984</a>, <a href="lwg-active.html#2985">2985</a>, <a href="lwg-active.html#2986">2986</a>, <a href="lwg-active.html#2987">2987</a>, <a href="lwg-active.html#2989">2989</a>, <a href="lwg-active.html#2990">2990</a>, <a href="lwg-active.html#2991">2991</a>, <a href="lwg-active.html#2992">2992</a>, <a href="lwg-active.html#2993">2993</a>, <a href="lwg-active.html#2994">2994</a>.</li>
+<li>Added the following 12 New issues: <a href="lwg-active.html#2983">2983</a>, <a href="lwg-active.html#2984">2984</a>, <a href="lwg-active.html#2985">2985</a>, <a href="lwg-active.html#2986">2986</a>, <a href="lwg-active.html#2987">2987</a>, <a href="lwg-active.html#2989">2989</a>, <a href="lwg-active.html#2990">2990</a>, <a href="lwg-active.html#2991">2991</a>, <a href="lwg-active.html#2992">2992</a>, <a href="lwg-active.html#2993">2993</a>, <a href="lwg-active.html#2994">2994</a>, <a href="lwg-active.html#2995">2995</a>.</li>
 <li>Changed the following issue to Voting (from Ready): <a href="lwg-active.html#2932">2932</a>.</li>
 <li>Changed the following 11 issues to Voting (from Tentatively Ready): <a href="lwg-active.html#2444">2444</a>, <a href="lwg-active.html#2593">2593</a>, <a href="lwg-active.html#2597">2597</a>, <a href="lwg-active.html#2783">2783</a>, <a href="lwg-active.html#2937">2937</a>, <a href="lwg-active.html#2940">2940</a>, <a href="lwg-active.html#2942">2942</a>, <a href="lwg-active.html#2954">2954</a>, <a href="lwg-active.html#2961">2961</a>, <a href="lwg-active.html#2966">2966</a>, <a href="lwg-active.html#2974">2974</a>.</li>
 <li>Changed the following 4 issues to Tentatively Ready (from New): <a href="lwg-active.html#2870">2870</a>, <a href="lwg-active.html#2901">2901</a>, <a href="lwg-active.html#2972">2972</a>, <a href="lwg-active.html#2980">2980</a>.</li>
@@ -33447,6 +33447,87 @@ the program is ill-formed</ins>.
 traits requirements (24.2 [char.traits])<ins>. If</ins><del>, and the type</del> <tt>traits::char_type</tt> <del>shall 
 name the same type</del> <ins>is not the same type</ins> as <tt>charT</tt><ins>, the program is ill-formed</ins>.
 </p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+<hr>
+<h3><a name="2995" href="#2995">2995.</a> <tt>basic_stringbuf</tt> default constructor forbids it from using SSO capacity</h3>
+<p><b>Section:</b> 30.8.2.1 [stringbuf.cons] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2017-07-07 <b>Last modified:</b> 2017-07-08</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#stringbuf.cons">issues</a> in [stringbuf.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+[stringbuf.cons] says that the default constructor initializes the
+base class as <tt>basic_streambuf()</tt> which means the all the pointers to
+the input and output sequences (<tt>pbase</tt>, <tt>eback</tt> etc) are all required to
+be null.
+<p/>
+This means that a <tt>stringbuf</tt> that is implemented in terms of a Small
+String Optimised <tt>std::basic_string</tt> cannot make us of the string's
+initial capacity, and so cannot avoid a call to the overflow virtual
+function even for small writes. In other words, the following
+assertions must pass:
+</p>
+<blockquote><pre>
+#include &lt;sstream&gt;
+#include &lt;cassert&gt;
+
+bool overflowed = false;
+
+struct SB : std::stringbuf
+{
+  int overflow(int c) {
+    assert( pbase() == nullptr );
+    overflowed = true;
+    return std::stringbuf::overflow(c);
+  }
+};
+
+int main()
+{
+  SB sb;
+  sb.sputc('1');
+  assert(overflowed);
+}
+</pre></blockquote>
+<p>
+This is an unnecessary pessimisation. Implementations should be
+allowed to use the SSO buffer immediately and write to it without
+calling overflow. Libc++ already does this, so is non-conforming.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
+</p>
+
+<ol>
+<li><p>Edit 30.8.2.1 [stringbuf.cons] as indicated:</p>
+
+<blockquote>
+<pre>
+explicit basic_stringbuf(
+  ios_base::openmode which = ios_base::in | ios_base::out);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Constructs an object of class <tt>basic_stringbuf</tt>, initializing the base class with 
+<tt>basic_streambuf()</tt> (30.6.3.1 [streambuf.cons]), and initializing <tt>mode</tt> with <tt>which</tt>.
+<ins>It is implementation-defined whether the sequence pointers (<tt>eback()</tt>, <tt>gptr()</tt>, <tt>egptr()</tt>, 
+<tt>pbase()</tt>, <tt>pptr()</tt>, <tt>epptr()</tt>) are initialized to null pointers.</ins>
+<p/>
+-2- <i>Postconditions:</i> <tt>str() == ""</tt>.
+</p>
+</blockquote>
 </blockquote>
 </li>
 
