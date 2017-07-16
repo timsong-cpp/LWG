@@ -40,7 +40,7 @@
 </tr>
 </table>
 <h1>C++ Standard Library Active Issues List (Revision D105)</h1>
-<p><p>Revised 2017-07-16 at 13:39:27 UTC</p>
+<p><p>Revised 2017-07-16 at 14:00:14 UTC</p>
 </p>
   <p>Reference ISO/IEC IS 14882:2014(E)</p>
   <p>Also see:</p>
@@ -158,15 +158,15 @@ ownership of it.
 <ul>
 <li>D105: 2017-07-30 2017 post-Toronto mailing<ul>
 <li><b>Summary:</b><ul>
-<li>268 open issues, up by 11.</li>
+<li>269 open issues, up by 12.</li>
 <li>2197 closed issues, up by 4.</li>
 <li>59 reassigned issues, up by 5.</li>
-<li>2524 issues total, up by 20.</li>
+<li>2525 issues total, up by 21.</li>
 </ul></li>
 <li><b>Details:</b><ul>
 <li>Added the following Ready issue: <a href="lwg-active.html#2998">2998</a>.</li>
 <li>Added the following Tentatively Ready issue: <a href="lwg-active.html#2988">2988</a>.</li>
-<li>Added the following 14 New issues: <a href="lwg-active.html#2983">2983</a>, <a href="lwg-active.html#2984">2984</a>, <a href="lwg-active.html#2986">2986</a>, <a href="lwg-active.html#2987">2987</a>, <a href="lwg-active.html#2989">2989</a>, <a href="lwg-active.html#2990">2990</a>, <a href="lwg-active.html#2993">2993</a>, <a href="lwg-active.html#2994">2994</a>, <a href="lwg-active.html#2995">2995</a>, <a href="lwg-active.html#2997">2997</a>, <a href="lwg-active.html#2999">2999</a>, <a href="lwg-active.html#3000">3000</a>, <a href="lwg-active.html#3001">3001</a>, <a href="lwg-active.html#3002">3002</a>.</li>
+<li>Added the following 15 New issues: <a href="lwg-active.html#2983">2983</a>, <a href="lwg-active.html#2984">2984</a>, <a href="lwg-active.html#2986">2986</a>, <a href="lwg-active.html#2987">2987</a>, <a href="lwg-active.html#2989">2989</a>, <a href="lwg-active.html#2990">2990</a>, <a href="lwg-active.html#2993">2993</a>, <a href="lwg-active.html#2994">2994</a>, <a href="lwg-active.html#2995">2995</a>, <a href="lwg-active.html#2997">2997</a>, <a href="lwg-active.html#2999">2999</a>, <a href="lwg-active.html#3000">3000</a>, <a href="lwg-active.html#3001">3001</a>, <a href="lwg-active.html#3002">3002</a>, <a href="lwg-active.html#3003">3003</a>.</li>
 <li>Added the following 3 LEWG issues: <a href="lwg-active.html#2985">2985</a>, <a href="lwg-active.html#2991">2991</a>, <a href="lwg-active.html#2996">2996</a>.</li>
 <li>Added the following NAD issue: <a href="lwg-closed.html#2992">2992</a>.</li>
 <li>Changed the following issue to Voting (from Ready): <a href="lwg-active.html#2932">2932</a>.</li>
@@ -34703,6 +34703,81 @@ bool is_open() const <ins>noexcept</ins>;
 <blockquote>
 <p>
 -10- <i>Returns:</i> A <tt>bool</tt> indicating whether this acceptor was opened by a previous call to <tt>open</tt> or <tt>assign</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+<hr>
+<h3><a name="3003" href="#3003">3003.</a> <tt>&lt;future&gt;</tt> still has type-erased allocators in <tt>promise</tt></h3>
+<p><b>Section:</b> 33.6.6 [futures.promise] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Billy O'Neal III <b>Opened:</b> 2017-07-16 <b>Last modified:</b> 2017-07-16</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#futures.promise">active issues</a> in [futures.promise].</p>
+<p><b>View all other</b> <a href="lwg-index.html#futures.promise">issues</a> in [futures.promise].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In Toronto Saturday afternoon LWG discussed LWG <a href="lwg-active.html#2976">2976</a> which finishes the job of removing allocator 
+support from <tt>packaged_task</tt>. LWG confirmed that, despite the removal of <tt>packaged_task</tt> allocators 
+"because it looks like <tt>std::function</tt>" was incorrect, they wanted to keep the allocator removals anyway, 
+in large part due to this resolution being a response to an NB comment.
+<p/>
+If we don't want the type erased allocator situation at all, then we should remove them from the remaining place 
+they exist in <tt>&lt;future&gt;</tt>, namely, in <tt>promise</tt>.
+<p/>
+This change also resolves potential implementation divergence on whether <tt>allocator::construct</tt> is intended 
+to be used on elements constructed in the shared state, and allows the emplace-construction-in-<tt>future</tt> paper, 
+<a href="http://wg21.link/p0319">P0319</a>, to be implemented without potential problems there.
+</p>
+
+
+<p><b>Proposed resolution:</b></p>
+<p>This resolution is relative to <a href="http://wg21.link/n4659">N4659</a>.</p>
+
+<ol>
+<li><p>Edit 33.6.6 [futures.promise], class template <tt>promise</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R&gt; 
+class promise {
+public:
+  promise();
+  <del>template &lt;class Allocator&gt;
+    promise(allocator_arg_t, const Allocator&amp; a);</del>
+  [&hellip;]
+};
+template &lt;class R&gt;
+  void swap(promise&lt;R&gt;&amp; x, promise&lt;R&gt;&amp; y) noexcept;
+<del>template &lt;class R, class Alloc&gt;
+  struct uses_allocator&lt;promise&lt;R&gt;, Alloc&gt;;</del>
+</pre>
+[&hellip;]
+<pre>
+<del>template &lt;class R, class Alloc&gt;
+  struct uses_allocator&lt;promise&lt;R&gt;, Alloc&gt;
+    : true_type { };</del>
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Requires:</i> <tt>Alloc</tt> shall be an Allocator (20.5.3.5 [allocator.requirements]).</del>
+</p>
+</blockquote>
+<pre>
+promise();
+<del>template &lt;class Allocator&gt;
+  promise(allocator_arg_t, const Allocator&amp; a);</del>
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> constructs a <tt>promise</tt> object and a shared state. <del>The second constructor uses the allocator a
+to allocate memory for the shared state.</del>
 </p>
 </blockquote>
 </blockquote>
