@@ -802,6 +802,7 @@ int main(int argc, char* argv[]) {
       generator.make_immediate (issues, target_path);
       generator.make_ready     (issues, target_path);
       generator.make_editors_issues(issues, target_path);
+      generator.make_individual_issues(issues, target_path);
 
 
 
