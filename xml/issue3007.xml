@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3007" status="New">
+<title><tt>allocate_shared</tt> should rebind allocator to <i>cv</i>-unqualified <tt>value_type</tt> for construction</title>
+<section><sref ref="[util.smartptr.shared.create]"/></section>
+<submitter>Glen Joseph Fernandes</submitter>
+<date>6 Aug 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The remarks for the <tt>allocate_shared</tt> family of functions
+specify that when constructing a (sub)object of type <tt>U</tt>, it uses a
+rebound copy of the allocator <tt>a</tt> passed to
+<tt>allocate_shared</tt> such that its <tt>value_type</tt> is
+<tt>U</tt>. However <tt>U</tt> can be a <tt>const</tt> or
+<tt>volatile</tt> qualified type, and [allocator.requirements] specify
+that the <tt>value_type</tt> must be <i>cv</i>-unqualified.
+</p>
+</discussion>
+
+<resolution>
+<p>This resolution is relative to <a href="http://wg21.link/n4687">N4687</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[util.smartptr.shared.create]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, ...&gt;
+shared_ptr&lt;T&gt; make_shared(<i>args</i>);
+template&lt;class T, class A, ...&gt;
+shared_ptr&lt;T&gt; allocate_shared(const A&amp; a, <i>args</i>);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Remarks:</i>
+</p>
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+<li><p>(7.5) &mdash; When a (sub)object of a non-array type <tt>U</tt> is specified to have an initial value of <tt>v</tt>, 
+or <tt>U(l...)</tt>, where <tt>l...</tt> is a list of constructor arguments, <tt>allocate_shared</tt> shall initialize this 
+(sub)object via the expression</p>
+<ol style="list-style-type: none">
+<li><p>(7.5.1) &mdash; <tt>allocator_traits&lt;A2&gt;::construct(a2, pv, v)</tt> or</p></li>
+<li><p>(7.5.2) &mdash; <tt>allocator_traits&lt;A2&gt;::construct(a2, pv, l...)</tt></p></li>
+</ol>
+<p>
+respectively, where <tt>pv</tt> points to storage suitable to hold an object of type <tt>U</tt> and <tt>a2</tt> of 
+type <tt>A2</tt> is a rebound copy of the allocator a passed to <tt>allocate_shared</tt> such that its 
+<tt>value_type</tt> is <tt><ins>remove_cv_t&lt;</ins>U<ins>&gt;</ins></tt>.
+</p>
+</li>
+<li><p>(7.6) &mdash; When a (sub)object of non-array type <tt>U</tt> is specified to have a default initial value, 
+<tt>make_shared</tt> shall initialize this (sub)object via the expression <tt>::new(pv) U()</tt>, where <tt>pv</tt> 
+has type <tt>void*</tt> and points to storage suitable to hold an object of type <tt>U</tt>.</p></li>
+<li><p>(7.7) &mdash; When a (sub)object of non-array type <tt>U</tt> is specified to have a default initial value, 
+<tt>allocate_shared</tt> shall initialize this (sub)object via the expression <tt>allocator_traits&lt;A2&gt;::construct(a2, pv)</tt>,
+where <tt>pv</tt> points to storage suitable to hold an object of type <tt>U</tt> and <tt>a2</tt> of type <tt>A2</tt> 
+is a rebound copy of the allocator a passed to <tt>allocate_shared</tt> such that its <tt>value_type</tt> is 
+<tt><ins>remove_cv_t&lt;</ins>U<ins>&gt;</ins></tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
