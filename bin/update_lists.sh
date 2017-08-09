@@ -7,7 +7,9 @@ popd
 cp -f mailing/lwg-*.html ../issues-gh-pages
 cp -f mailing/unresolved-*.html ../issues-gh-pages
 cp -f mailing/votable-*.html ../issues-gh-pages
+cp -f mailing/issue*.html ../issues-gh-pages
 pushd ../issues-gh-pages
+git add issue*.html
 git commit -a -m"Update"
 git push  "origin" gh-pages:gh-pages
 popd
