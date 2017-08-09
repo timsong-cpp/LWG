@@ -56,6 +56,8 @@ struct report_generator {
 
    void make_editors_issues(std::vector<issue> const & issues, std::string const & path);
 
+   void make_individual_issues(std::vector<issue> const & issues, std::string const & path);
+
 private:
    mailing_info const & lwg_issues_xml;
    section_map &        section_db;
