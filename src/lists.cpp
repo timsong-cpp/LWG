@@ -351,14 +351,9 @@ void format_issue_as_html(lwg::issue & is,
                    //std::cout << "section_tag=\"" << tag.prefix << "\", \"" << tag.name << "\"\n";
                  }    
                }
- 
-               {
-                  std::ostringstream t;
-                  t << section_db[tag] << ' ';
-                  r.insert(0, t.str());
-               }
 
                j -= i - 1;
+               r = lwg::format_section_tag_as_link(section_db, tag);
                s.replace(i, j, r);
                i += r.size() - 1;
                continue;

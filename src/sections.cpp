@@ -193,3 +193,16 @@ auto lwg::read_section_db(std::istream & infile) -> section_map {
    return section_db;
 }
 
+auto lwg::format_section_tag_as_link(section_map & section_db, section_tag const & tag) -> std::string {
+   std::ostringstream o;
+   const auto& num = section_db[tag];
+   o << num << ' ';
+   if(num.num.empty() || num.num.front() == 99 || !tag.prefix.empty()) {
+      o << tag;
+   }
+   else {
+      o << "<a href=\"https://wg21.link/" << tag.name << "\">[" << tag.name << "]</a>";
+   }
+   return o.str();
+}
+

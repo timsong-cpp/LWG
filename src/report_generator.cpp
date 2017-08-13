@@ -279,9 +279,9 @@ void print_issue(std::ostream & out, lwg::issue const & iss, lwg::section_map & 
 
          // Section, Status, Submitter, Date
          out << "<p><b>Section:</b> ";
-         out << section_db[iss.tags[0]] << " " << iss.tags[0];
+         out << lwg::format_section_tag_as_link(section_db, iss.tags[0]);
          for (unsigned k = 1; k < iss.tags.size(); ++k) {
-            out << ", " << section_db[iss.tags[k]] << " " << iss.tags[k];
+            out << ", " << lwg::format_section_tag_as_link(section_db, iss.tags[k]);
          }
 
          out << " <b>Status:</b> <a href=\"lwg-active.html#" << lwg::remove_qualifier(iss.stat) << "\">" << iss.stat << "</a>\n";
