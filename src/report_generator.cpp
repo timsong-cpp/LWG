@@ -267,13 +267,17 @@ void print_issue(std::ostream & out, lwg::issue const & iss, lwg::section_map & 
          out << "<hr>\n";
 
          // Number
-         out << "<h3><a name=\"" << iss.num << "\" href=\"" << lwg::filename_for_status(iss.stat) << '#' << iss.num << "\">" << iss.num << "</a>";
 
          // When printing for the list, also emit an absolute link to the individual file.
          // Absolute link so that copying only the big lists elsewhere doesn't result in broken links.
          if(type == print_issue_type::in_list) {
+              out << "<h3><a name=\"" << iss.num << "\" href=\"#" << iss.num << "\">" << iss.num << "</a>";
               out << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << iss.num << "\">" << "(i)</a></sup>";
          }
+         else {
+              out << "<h3><a name=\"" << iss.num << "\" href=\"" << lwg::filename_for_status(iss.stat) << '#' << iss.num << "\">" << iss.num << "</a>";
+         }
+
          // Title
          out << ". " << iss.title << "</h3>\n";
 
