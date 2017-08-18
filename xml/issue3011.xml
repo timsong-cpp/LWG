@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3011" status="New">
+<title>Requirements for <tt>assert(<em>E</em>)</tt> inconsistent with C</title>
+<section><sref ref="[assertions]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>18 Aug 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The C standard says that the expression in an <tt>assert</tt> must have a scalar type, and implies (or at least allows) 
+that the condition is tested by comparison to zero. C++ says that the expression is a constant subexpression if it can 
+be contextually converted to <tt>bool</tt>. Those ways to test the condition are not equivalent.
+<p/>
+It's possible to have expressions that meet the C++ requirements for a constant subexpression, but fail to meet the C 
+requirements, and so don't compile.
+</p>
+<blockquote><pre>
+#include &lt;stdlib.h&gt;
+
+#define assert(E) do { if (E == 0) { abort(); } } while (false)
+
+struct X {
+  constexpr explicit operator bool() const { return true; }
+};
+
+constexpr bool f(const X&amp; x) {
+  assert(x);
+  return true;
+}
+</pre></blockquote>
+<p>
+C++ says that <tt>assert(x)</tt> is a constant subexpression, but as it doesn't have scalar type it's not even a valid expression.
+<p/>
+I think either <sref ref="[cassert.syn]"/> or <sref ref="[assertions.assert]"/> should repeat the requirement from C that 
+<em>E</em> has scalar type, either normatively or in a note. We should also consider whether "contextually converted to <tt>bool</tt>" 
+is the right condition, or if we should use comparison to zero instead.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
