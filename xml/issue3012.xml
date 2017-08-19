@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3012" status="New">
+<title><tt>atomic&lt;T&gt;</tt> is unimplementable for non-<tt>is_trivially_copy_constructible T</tt></title>
+<section><sref ref="[atomics.types.generic]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>16 Aug 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[atomics.types.generic]" /> requires that <tt>T</tt> for <tt>std::atomic</tt> is trivially copyable. 
+Unfortunately, that's not sufficient to implement atomic. Consider <tt>atomic&lt;T&gt;::load</tt>, which wants 
+to look something like this:
+</p>
+<blockquote><pre>
+template&lt;class T&gt;
+struct atomic {
+  __compiler_magic_storage_for_t storage;
+
+  T load(memory_order = memory_order_seq_cst) const {
+    return __magic_intrinsic(storage);
+  }
+
+};
+</pre></blockquote>
+<p>
+Forming this return statement, though, requires that <tt>T</tt> is copy constructible &mdash; trivially copyable things 
+aren't necessarily copyable! For example, the following is trivially copyable but breaks libc++, libstdc++, and msvc++:
+</p>
+<blockquote><pre>
+struct NonAssignable {
+  int i;
+
+  NonAssignable() = delete;
+  NonAssignable(int) : i(0) {}
+  NonAssignable(const NonAssignable&amp;) = delete;
+  NonAssignable(NonAssignable&amp;&amp;) = default;
+  NonAssignable&amp; operator=(const NonAssignable&amp;) = delete;
+  NonAssignable&amp; operator=(NonAssignable&amp;&amp;) = delete;
+  ~NonAssignable() = default;
+};
+</pre></blockquote>
+<p>
+All three standard libraries are happy as long as <tt>T</tt> is trivially copy constructible, assignability is not required. 
+Casey Carter says that we might want to still require trivially copy assignable though, since what happens when you do an 
+<tt>atomic&lt;T&gt;::store</tt> is morally an "assignment" even if it doesn't use the user's assignment operator.
+</p>
+</discussion>
+
+<resolution>
+<p>This resolution is relative to <a href="http://wg21.link/n4687">N4687</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[atomics.types.generic]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <ins>If <tt>is_trivially_copy_constructible_v&lt;T&gt;</tt> is <tt>false</tt>, the program is ill-formed</ins><del>The 
+template argument for <tt>T</tt> shall be trivially copyable (<sref ref="[basic.types]"/>)</del>. [<i>Note:</i> Type 
+arguments that are not also statically initializable may be difficult to use. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
