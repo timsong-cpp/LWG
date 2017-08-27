@@ -1,0 +1,230 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3013" status="New">
+<title><tt>(recursive_)directory_iterator</tt> construction and traversal should not be <tt>noexcept</tt></title>
+<section><sref ref="[fs.dir.itr.members]"/><sref ref="[fs.rec.dir.itr.members]"/><sref ref="[fs.op.copy]"/>
+<sref ref="[fs.op.is_empty]"/></section>
+<submitter>Tim Song</submitter>
+<date>23 Aug 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Constructing a <tt>(recursive_)directory_iterator</tt> from a <tt>path</tt> requires, at a minimum, initializing its 
+underlying <tt>directory_entry</tt> object with the <tt>path</tt> formed from the supplied <tt>path</tt> and the name of the 
+first entry, which requires a potentially throwing memory allocation; every implementation I've looked at also allocates 
+memory to store additional data as well.
+<p/>
+Similarly, <tt>increment()</tt> needs to update the <tt>path</tt> stored in <tt>directory_entry</tt> object to refer 
+to the name of the next entry, which may require a memory allocation. While it might conceivably be possible to 
+postpone the update in this case until the iterator is dereferenced (the dereference operation is not <tt>noexcept</tt> 
+due to its narrow contract), it seems highly unlikely that such an implementation is intended (not to mention that it 
+would require additional synchronization as the dereference operations are const).
+<p/>
+This further calls into question whether the <tt>error_code</tt> overloads of <tt>copy</tt> and <tt>is_empty</tt>, 
+whose specification uses <tt>directory_iterator</tt>, should be <tt>noexcept</tt>. There might be a case for keeping 
+the <tt>noexcept</tt> for <tt>is_empty</tt>, although that would require changes in all implementations I checked 
+(libstdc++, libc++, and Boost). <tt>copy</tt> appears to be relentlessly hostile to <tt>noexcept</tt>, since its 
+specification forms a <tt>path</tt> via <tt>operator/</tt> in two places (bullets 4.7.4 and 4.8.2) in addition to the 
+<tt>directory_iterator</tt> usage. The proposed resolution below removes both.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4687">N4687</a>.</p>
+<ol>
+<li><p>Edit <sref ref="[fs.class.directory_iterator]"/>, class <tt>directory_iterator</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+[&hellip;]
+
+explicit directory_iterator(const path&amp; p);
+directory_iterator(const path&amp; p, directory_options options);
+directory_iterator(const path&amp; p, error_code&amp; ec) <del>noexcept</del>;
+directory_iterator(const path&amp; p, directory_options options,
+                   error_code&amp; ec) <del>noexcept</del>;
+
+[&hellip;]
+
+directory_iterator&amp; operator++();
+directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.dir.itr.members]"/> before p2 as indicated:</p>
+<blockquote>
+<pre>
+explicit directory_iterator(const path&amp; p);
+directory_iterator(const path&amp; p, directory_options options);
+directory_iterator(const path&amp; p, error_code&amp; ec) <del>noexcept</del>;
+directory_iterator(const path&amp; p, directory_options options, error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> [&hellip;]
+<p/>
+-3- <i>Throws:</i> As specified in <sref ref="[fs.err.report]"/>.
+<p/>
+-4- [<i>Note:</i> [&hellip;] &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.dir.itr.members]"/> before p10 as indicated:</p>
+<blockquote>
+<pre>
+directory_iterator&amp; operator++();
+directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3).
+<p/>
+-11- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-12- <i>Throws:</i> As specified in <sref ref="[fs.err.report]"/>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.class.rec.dir.itr]"/>, class <tt>recursive_directory_iterator</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+[&hellip;]
+
+explicit recursive_directory_iterator(const path&amp; p);
+recursive_directory_iterator(const path&amp; p, directory_options options);
+recursive_directory_iterator(const path&amp; p, error_code&amp; ec) <del>noexcept</del>;
+recursive_directory_iterator(const path&amp; p, directory_options options,
+                             error_code&amp; ec) <del>noexcept</del>;
+
+[&hellip;]
+
+recursive_directory_iterator&amp; operator++();
+recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.rec.dir.itr.members]"/> before p2 as indicated:</p>
+<blockquote>
+<pre>
+explicit recursive_directory_iterator(const path&amp; p);
+recursive_directory_iterator(const path&amp; p, directory_options options);
+recursive_directory_iterator(const path&amp; p, error_code&amp; ec) <del>noexcept</del>;
+recursive_directory_iterator(const path&amp; p, directory_options options, error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> [&hellip;]
+<p/>
+-3- <i>Postconditions:</i> [&hellip;]
+<p/>
+-4- <i>Throws:</i> As specified in <sref ref="[fs.err.report]"/>.
+<p/>
+-5- [<i>Note:</i> [&hellip;] &mdash; <i>end note</i>]
+<p/>
+-6- [<i>Note:</i> [&hellip;] &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.rec.dir.itr.members]"/> before p23 as indicated:</p>
+<blockquote>
+<pre>
+recursive_directory_iterator&amp; operator++();
+recursive_directory_iterator&amp; increment(error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-23- <i>Effects:</i> As specified for the prefix increment operation of Input iterators (24.2.3), except that: [&hellip;]
+<p/>
+-24- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-25- <i>Throws:</i> As specified <sref ref="[fs.err.report]"/>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.filesystem.syn]"/>, header <tt>&lt;filesystem&gt;</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+namespace std::filesystem {
+
+  [&hellip;]
+
+  void copy(const path&amp; from, const path&amp; to);
+  void copy(const path&amp; from, const path&amp; to, error_code&amp; ec) <del>noexcept</del>;
+  void copy(const path&amp; from, const path&amp; to, copy_options options);
+  void copy(const path&amp; from, const path&amp; to, copy_options options,
+            error_code&amp; ec) <del>noexcept</del>;
+
+  [&hellip;]
+
+  bool is_empty(const path&amp; p);
+  bool is_empty(const path&amp; p, error_code&amp; ec) <del>noexcept</del>;
+  
+  [&hellip;]
+
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[fs.op.copy]"/> as indicated:</p>
+<blockquote>
+<pre>
+void copy(const path&amp; from, const path&amp; to, error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Equivalent to <tt>copy(from, to, copy_options::none, ec)</tt>.
+</p>
+</blockquote>
+<pre>
+void copy(const path&amp; from, const path&amp; to, copy_options options);
+void copy(const path&amp; from, const path&amp; to, copy_options options,
+          error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-3- <i>Requires:</i> [&hellip;]
+<p/>
+-4- <i>Effects:</i> [&hellip;]
+<p/>
+-5- <i>Throws:</i> [&hellip;]
+<p/>
+-6- <i>Remarks:</i> [&hellip;]
+<p/>
+-7- [<i>Example:</i> [&hellip;] &mdash; <i>end example</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+
+<li><p>Edit <sref ref="[fs.op.is_empty]"/> as indicated:</p>
+<blockquote>
+<pre>
+bool is_empty(const path&amp; p);
+bool is_empty(const path&amp; p, error_code&amp; ec) <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> [&hellip;]
+<p/>
+-2- <i>Throws:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
