@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3015" status="New">
+<title><tt>copy_options::<i>unspecified</i></tt> underspecified</title>
+<section><sref ref="[fs.op.copy]"/></section>
+<submitter>Tim Song</submitter>
+<date>24 Aug 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[fs.op.copy]"/>/4.8.2 says in the copy-a-directory case <tt>filesystem::copy</tt> performs:
+<blockquote>
+<pre>
+for (const directory_entry&amp; x : directory_iterator(from))
+  copy(x.path(), to/x.path().filename(), options | copy_options::<i>unspecified</i>);
+</pre>
+</blockquote>
+<p/>
+Presumably this does not actually mean that the implementation is free to set whatever <tt>copy_option</tt> element it wishes 
+(<tt>directories_only</tt>? <tt>recursive</tt>? <tt>create_hard_links</tt>?), or <tt>none</tt> at all, or &ndash; since 
+unspecified behavior corresponds to the nondeterministic aspects of the abstract machine (<sref ref="[intro.execution]"/>/3) 
+&ndash; a nondeterministically picked element for every iteration of the loop. That would be outright insane.
+<p/>
+I'm fairly sure that what's intended here is to set an otherwise-unused bit in <tt>options</tt> so as to prevent recursion in the <tt>options == copy_options::none</tt> case.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4687">N4687</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[fs.op.copy]"/> p4, bullet 4.8.2 as indicated:</p>
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(4.7) &mdash; Otherwise, if <tt>is_regular_file(f)</tt>, then:</p>
+<blockquote>
+[&hellip;]
+</blockquote>
+</li>
+<li><p>(4.8) &mdash; Otherwise, if</p>
+<blockquote>
+<blockquote><pre>
+is_directory(f) &amp;&amp;
+((options &amp; copy_options::recursive) != copy_options::none ||
+options == copy_options::none)
+</pre></blockquote>
+<p>
+then:
+</p>
+</blockquote>
+<ol style="list-style-type: none">
+<li><p>(4.8.1) &mdash; If <tt>exists(t)</tt> is <tt>false</tt>, then <code>create_directory(to, from)</code>.</p></li>
+<li><p>(4.8.2) &mdash; Then, iterate over the files in <code>from</code>, as if by </p>
+<blockquote>
+<blockquote><pre>
+for (const directory_entry&amp; x : directory_iterator(from))
+  copy(x.path(), to/x.path().filename(), options | copy_options::<i><del>unspecified</del><ins>in-recursive-copy</ins></i>)<ins>;</ins>
+</pre></blockquote>
+<p>
+<ins>where <tt><i>in-recursive-copy</i></tt> is an exposition-only bitmask element of <tt>copy_options</tt> that is not one of the elements in <sref ref="[fs.enum.copy.opts]"/>.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</li>
+<li><p>(4.9) &mdash; Otherwise, for the signature with argument <tt>ec</tt>, <tt>ec.clear()</tt>.</p></li>
+<li><p>(4.10) &mdash; Otherwise, no effects.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
