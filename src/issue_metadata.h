@@ -12,9 +12,13 @@ struct issue_metadata {
     int num;
     std::string stat;
     std::string first_tag;
+    std::string title;
+    bool has_resolution;
+    int priority;
     std::vector<std::string> duplicates;
     friend bool operator==(issue const & issue, issue_metadata const & md) {
         return md.num == issue.num && md.stat == issue.stat && md.first_tag == as_string(issue.tags.front()) &&
+               md.title == issue.title && md.priority == issue.priority && md.has_resolution == issue.has_resolution &&
                std::equal(md.duplicates.begin(),md.duplicates.end(), issue.duplicates.begin(), issue.duplicates.end());
     }
     friend bool operator==(issue_metadata const & md, issue const & issue) {

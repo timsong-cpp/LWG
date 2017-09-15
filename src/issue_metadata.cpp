@@ -2,110 +2,89 @@
 #include <stdexcept>
 #include <utility>
 #include <sstream>
+#include <string>
+
+
+// return the next <element...></element> pair and the index immediately afterwards, starting at index i.
+static auto next_element(std::string const & element, std::string const & s, std::string::size_type i = 0)
+    -> std::pair<std::string::size_type, std::string>{
+    const auto ele_start = "<" + element;
+    const auto ele_end = "</" + element + ">";
+    auto r = s.find(ele_start, i);
+    if(r == std::string::npos)
+        return {r, ""};
+    auto rend = s.find(">", r + ele_start.length());
+    if(rend  == std::string::npos)
+        throw std::runtime_error("Unable to parse issues: cannot find > for <" + element + "> element.");
+    auto j = s.find(ele_end, rend + 1);
+    if(j == std::string::npos)
+        throw std::runtime_error("Unable to parse issues: cannot find expected " + ele_end + " element.");
+    return {j + ele_end.length(), s.substr(r, j + ele_end.length() - r)};
+}
+
+// return the content of the next <element ...></element> pair and the index immediately afterwards, starting at index i.
+static auto next_element_content(std::string const & element, std::string const & s, std::string::size_type i = 0)
+    -> std::pair<std::string::size_type, std::string> {
+    auto p = next_element(element, s, i);
+    if(p.first == std::string::npos) return p;
+    auto b = p.second.find('>') + 1;
+    return {p.first, p.second.substr(b, p.second.rfind('<') - b)};
+}
+
+// consume the next <td> element, which must contain a section tag, and returns the text of that section tag,
+// not including the square brackets.
+static auto find_next_section_tag(std::string const & s, std::string::size_type i)
+    -> std::pair<std::string::size_type, std::string> {
+    auto td = next_element_content("td", s, i);
+    auto b = td.second.find('[');
+    if(b == std::string::npos) {
+        throw std::runtime_error("unable to parse issue: can't find starting bracket for section tag");
+    }
+    auto e = td.second.find(']', b+1);
+    if(e == std::string::npos) {
+        throw std::runtime_error("unable to parse issue: can't find ending bracket for section tag");
+    }
+    return {td.first, td.second.substr(b+1, e-b-1)};
+}
 
 auto lwg::read_issue_metadata_from_toc(std::string const & s) -> std::vector<issue_metadata> {
-    // Like lists.cpp's read_issues_from_toc, but parses more information.
-
-    // return the index immediately after the next <td> </td> pair, starting at i.
-    auto skip_td = [](std::string const & s, std::string::size_type i, std::string::size_type until) {
-        auto r = s.find("<td", i);
-        if(r >= until)
-            throw std::runtime_error("Unable to parse issues: cannot find expected <td> element.");
-        auto j = s.find("</td>", r + 4);
-        if(j >= until)
-            throw std::runtime_error("Unable to parse issues: cannot find expected <td> element.");
-        return j + 5;
-    };
-
-    // returns the text of the next <a ...>text</a> element, starting at i, updating it to point after the link.
-    // text must not contain >s
-    auto find_next_link_text = [](std::string const & s, std::string::size_type& i){
-        auto e = s.find("</a>", i);
-        auto j = s.rfind(">", e);
-        if (j == std::string::npos) {
-            throw std::runtime_error{"unable to parse issue: can't find beginning bracket"};
-        }
-        i = e + 4; // 4 chars in </a>
-        return s.substr(j+1, e-j-1);
-    };
-
-    // consume the next <td> element that contains a section tag, and returns the text of that section tag,
-    // not including the square brackets.
-    auto find_next_section_tag = [&](std::string const & s, std::string::size_type& i, std::string::size_type until) {
-        auto td_end = skip_td(s, i, until);
-        auto b = s.find("[", i);
-        if(b >= td_end) {
-            throw std::runtime_error("unable to parse issue: can't find starting bracket for section tag");
-        }
-        auto e = s.find("]", b);
-        if(e >= td_end) {
-            throw std::runtime_error("unable to parse issue: can't find ending bracket for section tag");
-        }
-        i = td_end;
-        return s.substr(b+1, e-b-1);
-    };
-
-    // returns the full text of the next <a> element, i.e., the whole <a href="...">text</a> sequence,
-    // in the substring [i, until) of s.
-    // On success, update i to point past the link. On failure, set i to until.
-    // We return a pair, because we can't use optional :(
-
-    auto try_find_next_full_link = [](std::string const& s, std::string::size_type& i, std::string::size_type until) -> std::pair<bool, std::string> {
-        auto b = s.find("<a", i);
-        if (b == std::string::npos || b >= until) {
-            i = until;
-            return {false, ""};
-        }
-        auto e = s.find("</a>", b+2);
-        if (e == std::string::npos || e >= until) {
-            i = until;
-            return {false, ""};
-        }
-        i = e + 4; // 4 chars in </a>
-        return { true, s.substr(b, i - b)};
-    };
-
     // Skip the title row
-    auto i = s.find("<tr>");
-    if (std::string::npos == i) {
-        throw std::runtime_error{"Unable to find the first (title) row"};
-    }
-    i += 4;
+    auto i = next_element("tr", s).first;
     // Read all issues in table
     std::vector<issue_metadata> issues;
-    for(;;) {
-        i = s.find("<tr>", i);
-        if (i == std::string::npos) {
-            break;
-        }
-        const auto until = s.find("</tr>", i + 4); // end of row
+    std::string row;
+    for(std::tie(i, row) = next_element_content("tr", s, i);
+        i != std::string::npos;
+        std::tie(i, row) = next_element_content("tr", s, i)) {
 
-        // issue number
-        auto num_str = find_next_link_text(s, i);
-        std::istringstream instr{num_str};
-        int num;
-        instr >> num;
-        if (instr.fail()) {
-            throw std::runtime_error{"unable to parse issue number: " + num_str};
-        }
+        std::string num_str, stat, first_tag, title, resolution, priority_str;
 
-        // status
-        auto stat = find_next_link_text(s, i);
+        // read the elements.
+        std::string::size_type j;
+        std::tie(j, num_str) = next_element_content("a", row);
+        std::tie(j, stat) = next_element_content("a", row, j);
+        std::tie(j, first_tag) = find_next_section_tag(row, j);
+        std::tie(j, title) = next_element_content("td", row, j);
+        std::tie(j, resolution) = next_element_content("td", row, j);
+        std::tie(j, priority_str) = next_element_content("td", row, j);
 
-        // section
-        auto first_tag = find_next_section_tag(s, i, until);
-
-        // skip title, PR, and priority
-        for(int x = 0; x < 3; ++x) i = skip_td(s, i, until);
+        // parse the numerical ones.
+        const int num = std::stoi(num_str);
+        bool has_resolution = resolution.find("Yes") != std::string::npos;
+        const int priority = priority_str.empty() ? 99 : std::stoi(priority_str);
 
         // duplicates
         std::vector<std::string> dups;
-        for(auto next_dup = try_find_next_full_link(s, i, until); next_dup.first;
-            next_dup = try_find_next_full_link(s, i, until)) {
-            dups.push_back(std::move(next_dup.second));
+        std::string cur_dup;
+
+        for(std::tie(j, cur_dup) = next_element("a", row, j);
+            j != std::string::npos;
+            std::tie(j, cur_dup) = next_element("a", row, j)) {
+            dups.push_back(std::move(cur_dup));
         }
 
-        issues.push_back({num, stat, first_tag, std::move(dups)});
+        issues.push_back({num, std::move(stat), std::move(first_tag), std::move(title),
+                          has_resolution, priority, std::move(dups)});
     }
 
     return issues;
