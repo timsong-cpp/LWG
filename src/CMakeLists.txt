@@ -13,6 +13,7 @@ add_executable(section_data section_data.cpp)
 add_executable(toc_diff toc_diff.cpp)
 add_executable(set_status set_status.cpp)
 add_executable(list_issues list_issues.cpp)
+add_executable(test_issue_metadata test_issue_metadata.cpp issue_metadata.cpp)
 
 target_link_libraries(lists common)
 target_link_libraries(list_issues common)
