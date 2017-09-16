@@ -1,4 +1,5 @@
 #include "issue_metadata.h"
+#include "process_issues.h"
 #include <stdexcept>
 #include <utility>
 #include <sstream>
@@ -47,7 +48,8 @@ static auto find_next_section_tag(std::string const & s, std::string::size_type 
     return {td.first, td.second.substr(b+1, e-b-1)};
 }
 
-auto lwg::read_issue_metadata_from_toc(std::string const & s) -> std::vector<issue_metadata> {
+auto lwg::read_issue_metadata_from_toc(std::string const & filename) -> std::vector<issue_metadata> {
+    auto s = lwg::read_file_into_string(filename);
     // Skip the title row
     auto i = next_element("tr", s).first;
     // Read all issues in table
