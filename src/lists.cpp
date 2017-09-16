@@ -543,12 +543,17 @@ int main(int argc, char* argv[]) {
                    // this is a new issue.
                    requires_regeneration.push_back(iss.num);
                    toc_regeneration_required = true;
+                   force_rebuild_lists = true; // because revision history
                } else if (*p != iss) {
                    // this issue has metadata changes of some sort.
                    requires_regeneration.push_back(iss.num);
                    toc_regeneration_required = true;
-                   // this might be different from the current status.
-                   set_list_for_regen(p->stat);
+
+                   // if the status changed, force a rebuild of the lists because revision history will change.
+                   if(p->stat != iss.stat){
+                       set_list_for_regen(p->stat);
+                       force_rebuild_lists = true;
+                   }
                } else {
                    // Otherwise, regeneration is required:
                    // - if the issue is active, and the number of active issues in the tag is > 2 in one case and < 2 in the other.
