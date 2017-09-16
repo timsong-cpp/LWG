@@ -256,101 +256,6 @@ R"(<table border="1" cellpadding="4">
    out << "</table>\n";
 }
 
-enum class print_issue_type { in_list, individual };
-
-using issue_set_by_first_tag = std::multiset<lwg::issue, order_by_first_tag>;
-using issue_set_by_status    = std::multiset<lwg::issue, order_by_status>;
-
-void print_issue(std::ostream & out, lwg::issue const & iss, lwg::section_map & section_db,
-                 issue_set_by_first_tag const & all_issues, issue_set_by_status const & issues_by_status,
-                 issue_set_by_first_tag const & active_issues, print_issue_type type = print_issue_type::in_list) {
-         out << "<hr>\n";
-
-         // Number
-
-         // When printing for the list, also emit an absolute link to the individual file.
-         // Absolute link so that copying only the big lists elsewhere doesn't result in broken links.
-         if(type == print_issue_type::in_list) {
-              out << "<h3><a name=\"" << iss.num << "\" href=\"#" << iss.num << "\">" << iss.num << "</a>";
-              out << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << iss.num << "\">" << "(i)</a></sup>";
-         }
-         else {
-              out << "<h3><a name=\"" << iss.num << "\" href=\"" << lwg::filename_for_status(iss.stat) << '#' << iss.num << "\">" << iss.num << "</a>";
-         }
-
-         // Title
-         out << ". " << iss.title << "</h3>\n";
-
-         // Section, Status, Submitter, Date
-         out << "<p><b>Section:</b> ";
-         out << lwg::format_section_tag_as_link(section_db, iss.tags[0]);
-         for (unsigned k = 1; k < iss.tags.size(); ++k) {
-            out << ", " << lwg::format_section_tag_as_link(section_db, iss.tags[k]);
-         }
-
-         out << " <b>Status:</b> <a href=\"lwg-active.html#" << lwg::remove_qualifier(iss.stat) << "\">" << iss.stat << "</a>\n";
-         out << " <b>Submitter:</b> " << iss.submitter
-             << " <b>Opened:</b> ";
-         print_date(out, iss.date);
-         out << " <b>Last modified:</b> ";
-         print_date(out, iss.mod_date);
-         out << "</p>\n";
-
-         // priority
-         out << "<p><b>Priority: </b>";
-         if (iss.priority == 99)
-            out << "Not Prioritized\n";
-         else
-            out << iss.priority << '\n';
-         out << "</p>\n";
-
-         // view active issues in []
-         if (active_issues.count(iss) > 1) {
-            out << "<p><b>View other</b> <a href=\"lwg-index-open.html#"
-              << as_string(iss.tags[0]) << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
-         }
-
-         // view all issues in []
-         if (all_issues.count(iss) > 1) {
-            out << "<p><b>View all other</b> <a href=\"lwg-index.html#"
-              << as_string(iss.tags[0]) << "\">issues</a> in " << iss.tags[0] << ".</p>\n";
-         }
-         // view all issues with same status
-         if (issues_by_status.count(iss) > 1) {
-            out << "<p><b>View all issues with</b> <a href=\"lwg-status.html#" << iss.stat << "\">" << iss.stat << "</a> status.</p>\n";
-         }
-
-         // duplicates
-         if (!iss.duplicates.empty()) {
-            out << "<p><b>Duplicate of:</b> ";
-            print_list(out, iss.duplicates, ", ");
-            out << "</p>\n";
-         }
-
-         // text
-         out << iss.text << "\n\n";
-
-}
-
-template <typename Pred>
-void print_issues(std::ostream & out, std::vector<lwg::issue> const & issues, lwg::section_map & section_db, Pred pred) {
-   issue_set_by_first_tag const  all_issues{ issues.begin(), issues.end()} ;
-   issue_set_by_status    const  issues_by_status{ issues.begin(), issues.end() };
-
-   issue_set_by_first_tag active_issues;
-   for (auto const & elem : issues ) {
-      if (lwg::is_active(elem.stat)) {
-         active_issues.insert(elem);
-      }
-   }
-
-   for (auto const & iss : issues) {
-      if (pred(iss)) {
-          print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues);
-      }
-   }
-}
-
 template <typename Pred>
 void print_resolutions(std::ostream & out, std::vector<lwg::issue> const & issues, lwg::section_map & section_db, Pred predicate) {
    // This construction calls out for filter-iterators
@@ -424,13 +329,91 @@ std::string prune_title_tags(const std::string& title){
 namespace lwg
 {
 
+void report_generator::print_issue(std::ostream & out, lwg::issue const & iss,
+                                   print_issue_type type) const {
+    out << "<hr>\n";
+
+    // Number
+
+    // When printing for the list, also emit an absolute link to the individual file.
+    // Absolute link so that copying only the big lists elsewhere doesn't result in broken links.
+    if(type == print_issue_type::in_list) {
+       out << "<h3><a name=\"" << iss.num << "\" href=\"#" << iss.num << "\">" << iss.num << "</a>";
+       out << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << iss.num << "\">" << "(i)</a></sup>";
+    }
+    else {
+       out << "<h3><a name=\"" << iss.num << "\" href=\"" << lwg::filename_for_status(iss.stat) << '#' << iss.num << "\">" << iss.num << "</a>";
+    }
+
+    // Title
+    out << ". " << iss.title << "</h3>\n";
+
+    // Section, Status, Submitter, Date
+    out << "<p><b>Section:</b> ";
+    out << lwg::format_section_tag_as_link(section_db, iss.tags[0]);
+    for (unsigned k = 1; k < iss.tags.size(); ++k) {
+       out << ", " << lwg::format_section_tag_as_link(section_db, iss.tags[k]);
+    }
+
+    out << " <b>Status:</b> <a href=\"lwg-active.html#" << lwg::remove_qualifier(iss.stat) << "\">" << iss.stat << "</a>\n";
+    out << " <b>Submitter:</b> " << iss.submitter
+        << " <b>Opened:</b> ";
+    print_date(out, iss.date);
+    out << " <b>Last modified:</b> ";
+    print_date(out, iss.mod_date);
+    out << "</p>\n";
+
+    // priority
+    out << "<p><b>Priority: </b>";
+    if (iss.priority == 99)
+       out << "Not Prioritized\n";
+    else
+       out << iss.priority << '\n';
+    out << "</p>\n";
+
+    const auto first_tag = as_string(iss.tags.front());
+    // view active issues in []
+    auto active_count = count_active_issues_with_tag(first_tag);
+    if (active_count > 1) {
+       out << "<p><b>View other</b> <a href=\"lwg-index-open.html#"
+           << as_string(iss.tags[0]) << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
+    }
+
+    // view all issues in []
+    if (count_all_issues_with_tag(first_tag) > 1) {
+       out << "<p><b>View all other</b> <a href=\"lwg-index.html#"
+           << as_string(iss.tags[0]) << "\">issues</a> in " << iss.tags[0] << ".</p>\n";
+    }
+    // view all issues with same status
+    if (count_issues_with_status(iss.stat) > 1) {
+       out << "<p><b>View all issues with</b> <a href=\"lwg-status.html#" << iss.stat << "\">" << iss.stat << "</a> status.</p>\n";
+    }
+
+    // duplicates
+    if (!iss.duplicates.empty()) {
+       out << "<p><b>Duplicate of:</b> ";
+       print_list(out, iss.duplicates, ", ");
+       out << "</p>\n";
+    }
+
+    // text
+    out << iss.text << "\n\n";
+}
+
+template <typename Pred>
+void report_generator::print_issues(std::ostream & out, Pred pred) const {
+   for (auto const & iss : issues) {
+    if (pred(iss)) {
+       print_issue(out, iss);
+    }
+   }
+}
+
 // Functions to make the 3 standard published issues list documents
 // A precondition for calling any of these functions is that the list of issues is sorted in numerical order, by issue number.
 // While nothing disasterous will happen if this precondition is violated, the published issues list will list items
 // in the wrong order.
-void report_generator::make_active(std::vector<issue> const & issues, std::string const & path, std::string const & diff_report) {
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
+std::string report_generator::make_active(std::string const & path, std::string const & diff_report) const {
    std::string filename{path + "lwg-active.html"};
    std::ofstream out{filename.c_str()};
    if (!out)
@@ -441,14 +424,13 @@ void report_generator::make_active(std::vector<issue> const & issues, std::strin
    out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
    out << "<h2><a name=\"Status\"></a>Issue Status</h2>\n" << lwg_issues_xml.get_statuses() << '\n';
    out << "<h2>Active Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return is_active(i.stat);} );
+   print_issues(out, [](issue const & i) {return is_active(i.stat);} );
    print_file_trailer(out);
+   return filename;
 }
 
 
-void report_generator::make_defect(std::vector<issue> const & issues, std::string const & path, std::string const & diff_report) {
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
+std::string report_generator::make_defect(std::string const & path, std::string const & diff_report) const {
    std::string filename{path + "lwg-defects.html"};
    std::ofstream out(filename.c_str());
    if (!out)
@@ -458,14 +440,13 @@ void report_generator::make_defect(std::vector<issue> const & issues, std::strin
    out << lwg_issues_xml.get_intro("defect") << '\n';
    out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
    out << "<h2>Defect Reports</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return is_defect(i.stat);} );
+   print_issues(out, [](issue const & i) {return is_defect(i.stat);} );
    print_file_trailer(out);
+   return filename;
 }
 
 
-void report_generator::make_closed(std::vector<issue> const & issues, std::string const & path, std::string const & diff_report) {
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
+std::string report_generator::make_closed(std::string const & path, std::string const & diff_report) const {
    std::string filename{path + "lwg-closed.html"};
    std::ofstream out{filename.c_str()};
    if (!out)
@@ -475,16 +456,15 @@ void report_generator::make_closed(std::vector<issue> const & issues, std::strin
    out << lwg_issues_xml.get_intro("closed") << '\n';
    out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
    out << "<h2>Closed Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return is_closed(i.stat);} );
+   print_issues(out, [](issue const & i) {return is_closed(i.stat);} );
    print_file_trailer(out);
+   return filename;
 }
 
 
 // Additional non-standard documents, useful for running LWG meetings
-void report_generator::make_tentative(std::vector<issue> const & issues, std::string const & path) {
+std::string report_generator::make_tentative(std::string const & path) const {
    // publish a document listing all tentative issues that may be acted on during a meeting.
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
    std::string filename{path + "lwg-tentative.html"};
    std::ofstream out{filename.c_str()};
    if (!out)
@@ -496,15 +476,14 @@ void report_generator::make_tentative(std::vector<issue> const & issues, std::st
 //   out << "<h2><a name=\"Status\"></a>Issue Status</h2>\n" << lwg_issues_xml.get_statuses() << '\n';
    out << "<p>" << build_timestamp << "</p>";
    out << "<h2>Tentative Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return is_tentative(i.stat);} );
+   print_issues(out, [](issue const & i) {return is_tentative(i.stat);} );
    print_file_trailer(out);
+   return filename;
 }
 
 
-void report_generator::make_unresolved(std::vector<issue> const & issues, std::string const & path) {
+std::string report_generator::make_unresolved(std::string const & path) const {
    // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
    std::string filename{path + "lwg-unresolved.html"};
    std::ofstream out{filename.c_str()};
    if (!out)
@@ -516,14 +495,13 @@ void report_generator::make_unresolved(std::vector<issue> const & issues, std::s
 //   out << "<h2><a name=\"Status\"></a>Issue Status</h2>\n" << lwg_issues_xml.get_statuses() << '\n';
    out << "<p>" << build_timestamp << "</p>";
    out << "<h2>Unresolved Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return is_not_resolved(i.stat);} );
+   print_issues(out, [](issue const & i) {return is_not_resolved(i.stat);} );
    print_file_trailer(out);
+   return filename;
 }
 
-void report_generator::make_immediate(std::vector<issue> const & issues, std::string const & path) {
+std::string report_generator::make_immediate(std::string const & path) const {
    // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
    std::string filename{path + "lwg-immediate.html"};
    std::ofstream out{filename.c_str()};
    if (!out)
@@ -551,14 +529,13 @@ out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT M
 </table>
 )";
    out << "<h2>Immediate Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return "Immediate" == i.stat;} );
+   print_issues(out, [](issue const & i) {return "Immediate" == i.stat;} );
    print_file_trailer(out);
+   return filename;
 }
 
-void report_generator::make_ready(std::vector<issue> const & issues, std::string const & path) {
+std::string report_generator::make_ready(std::string const & path) const {
    // publish a document listing all ready issues for a formal vote
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
    std::string filename{path + "lwg-ready.html"};
    std::ofstream out{filename.c_str()};
    if (!out)
@@ -586,14 +563,13 @@ out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING
 </table>
 )";
    out << "<h2>Ready Issues</h2>\n";
-   print_issues(out, issues, section_db, [](issue const & i) {return "Ready" == i.stat || "Tentatively Ready" == i.stat;} );
+   print_issues(out, [](issue const & i) {return "Ready" == i.stat || "Tentatively Ready" == i.stat;} );
    print_file_trailer(out);
+   return filename;
 }
 
-void report_generator::make_editors_issues(std::vector<issue> const & issues, std::string const & path) {
+std::string report_generator::make_editors_issues(std::string const & path) const {
    // publish a single document listing all 'Voting' and 'Immediate' resolutions (only).
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-
    std::string filename{path + "lwg-issues-for-editor.html"};
    std::ofstream out{filename.c_str()};
    if (!out) {
@@ -603,9 +579,10 @@ void report_generator::make_editors_issues(std::vector<issue> const & issues, st
    out << "<h1>C++ Standard Library Issues Resolved In [INSERT CURRENT MEETING HERE]</h1>\n";
    print_resolutions(out, issues, section_db, [](issue const & i) {return "Pending WP" == i.stat;} );
    print_file_trailer(out);
+   return filename;
 }
 
-void report_generator::make_sort_by_num(std::vector<issue>& issues, std::string const & filename) {
+void index_generator::make_sort_by_num(std::vector<issue>& issues, std::string const & filename) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
 
    std::ofstream out{filename.c_str()};
@@ -627,7 +604,7 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 }
 
 
-void report_generator::make_sort_by_priority(std::vector<issue>& issues, std::string const & filename) {
+void index_generator::make_sort_by_priority(std::vector<issue>& issues, std::string const & filename) {
    sort(issues.begin(), issues.end(), order_by_priority{section_db});
 
    std::ofstream out{filename.c_str()};
@@ -665,7 +642,7 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 }
 
 
-void report_generator::make_sort_by_status(std::vector<issue>& issues, std::string const & filename) {
+void index_generator::make_sort_by_status(std::vector<issue>& issues, std::string const & filename) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
    stable_sort(issues.begin(), issues.end(), [](issue const & x, issue const & y) { return x.mod_date > y.mod_date; } );
    stable_sort(issues.begin(), issues.end(), order_by_section{section_db});
@@ -700,7 +677,7 @@ This document is the Index by Status and Section for the <a href="lwg-active.htm
 }
 
 
-void report_generator::make_sort_by_status_mod_date(std::vector<issue> & issues, std::string const & filename) {
+void index_generator::make_sort_by_status_mod_date(std::vector<issue> & issues, std::string const & filename) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
    stable_sort(issues.begin(), issues.end(), order_by_section{section_db});
    stable_sort(issues.begin(), issues.end(), [](issue const & x, issue const & y) { return x.mod_date > y.mod_date; } );
@@ -734,7 +711,7 @@ This document is the Index by Status and Date for the <a href="lwg-active.html">
 }
 
 
-void report_generator::make_sort_by_section(std::vector<issue>& issues, std::string const & filename, bool active_only) {
+void index_generator::make_sort_by_section(std::vector<issue>& issues, std::string const & filename, bool active_only) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
    stable_sort(issues.begin(), issues.end(), [](issue const & x, issue const & y) { return x.mod_date > y.mod_date; } );
    stable_sort(issues.begin(), issues.end(), order_by_status{});
@@ -811,27 +788,15 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, std::str
 }
 
 // Create individual HTML files for each issue, to make linking easier
-void report_generator::make_individual_issues(std::vector<issue> const & issues, std::string const & path) {
-   assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
-   issue_set_by_first_tag const  all_issues{ issues.begin(), issues.end()} ;
-   issue_set_by_status    const  issues_by_status{ issues.begin(), issues.end() };
-
-   issue_set_by_first_tag active_issues;
-   for (auto const & elem : issues ) {
-      if (lwg::is_active(elem.stat)) {
-         active_issues.insert(elem);
-      }
-   }
-
-   for(auto & iss : issues){
-       std::string filename{path + "issue" + std::to_string(iss.num) + ".html"};
-       std::ofstream out{filename.c_str()};
-       if (!out)
-         throw std::runtime_error{"Failed to open " + filename};
-       print_file_header(out, std::string("Issue ") + std::to_string(iss.num) + ": " + prune_title_tags(iss.title));
-       print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues, print_issue_type::individual);
-       print_file_trailer(out);
-   }
+std::string report_generator::make_individual_issue(issue const& iss, std::string const & path) const {
+   std::string filename{path + "issue" + std::to_string(iss.num) + ".html"};
+   std::ofstream out{filename.c_str()};
+   if (!out)
+     throw std::runtime_error{"Failed to open " + filename};
+   print_file_header(out, std::string("Issue ") + std::to_string(iss.num) + ": " + prune_title_tags(iss.title));
+   print_issue(out, iss, print_issue_type::individual);
+   print_file_trailer(out);
+   return filename;
 }
 } // close namespace lwg
 
