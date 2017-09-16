@@ -369,6 +369,7 @@ auto lwg::get_status_priority(std::string const & stat) noexcept -> std::ptrdiff
       "C++11",
       "CD1",
       "TC1",
+      "TS",
       "Resolved",
       "TRDec",
       "NAD Editorial",
