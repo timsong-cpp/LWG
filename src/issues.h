@@ -32,9 +32,11 @@ struct issue {
 };
 
 struct order_by_issue_number {
-    bool operator()(issue const & x, issue const & y) const noexcept   {  return x.num < y.num;   }
-    bool operator()(issue const & x, int y)           const noexcept   {  return x.num < y;       }
-    bool operator()(int x,           issue const & y) const noexcept   {  return x     < y.num;   }
+    template<class T, class U>
+    auto operator()(T const & x, U const & y) const noexcept -> decltype(x.num < y.num) { return x.num < y.num; }
+
+    template<class T> auto operator()(T const & x, int y) const noexcept -> decltype(x.num < y) { return x.num < y; }
+    template<class T> auto operator()(int x, T const & y) const noexcept -> decltype(x < y.num) { return x < y.num; }
 };
 
 auto parse_issue_from_file(std::string file_contents, std::string const & filename, lwg::section_map & section_db) -> issue;

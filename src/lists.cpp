@@ -109,79 +109,6 @@ using namespace boost::filesystem;
 // Issue-list specific functionality for the rest of this file
 // ===========================================================
 
-
-auto read_issues_from_toc(std::string const & s) -> std::vector<std::tuple<int, std::string> > {
-   // parse all issues from the specified stream, 'is'.
-   // Throws 'runtime_error' if *any* parse step fails
-   //
-   // We assume 'is' refers to a "toc" html document, for either the current or a previous issues list.
-   // The TOC file consists of a sequence of HTML <tr> elements - each element is one issue/row in the table
-   //    First we read the whole stream into a single 'string'
-   //    Then we search the string for the first <tr> marker
-   //       The first row is the title row and does not contain an issue.
-   //       If cannt find the first row, we flag an error and exit
-   //    Next we loop through the string, searching for <tr> markers to indicate the start of each issue
-   //       We parse the issue number and status from each row, and append a record to the result vector
-   //       If any parse fails, throw a runtime_error
-   //    If debugging, display the results to 'cout'
-
-   // Skip the title row
-   auto i = s.find("<tr>");
-   if (std::string::npos == i) {
-      throw std::runtime_error{"Unable to find the first (title) row"};
-   }
-
-   // Read all issues in table
-   std::vector<std::tuple<int, std::string> > issues;
-   for(;;) {
-      i = s.find("<tr>", i+4);
-      if (i == std::string::npos) {
-         break;
-      }
-      i = s.find("</a>", i);
-      auto j = s.rfind('>', i);
-      if (j == std::string::npos) {
-         throw std::runtime_error{"unable to parse issue number: can't find beginning bracket"};
-      }
-      std::istringstream instr{s.substr(j+1, i-j-1)};
-      int num;
-      instr >> num;
-      if (instr.fail()) {
-         throw std::runtime_error{"unable to parse issue number"};
-      }
-      i = s.find("</a>", i+4);
-      if (i == std::string::npos) {
-         throw std::runtime_error{"partial issue found"};
-      }
-      j = s.rfind('>', i);
-      if (j == std::string::npos) {
-         throw std::runtime_error{"unable to parse issue status: can't find beginning bracket"};
-      }
-      issues.emplace_back(num, s.substr(j+1, i-j-1));
-   }
-
-   return issues;
-}
-
-
-// ============================================================================================================
-
-
-// ============================================================================================================
-
-auto prepare_issues_for_diff_report(std::vector<lwg::issue> const & issues) -> std::vector<std::tuple<int, std::string> > {
-   std::vector<std::tuple<int, std::string> > result;
-   std::transform( issues.begin(), issues.end(), back_inserter(result),
-#if 1
-                   [](lwg::issue const & iss) { return std::make_tuple(iss.num, iss.stat); }
-#else
-                   // This form does not work because tuple constructors are explicit
-                   [](lwg::issue const & iss) -> std::tuple<int, std::string> { return {iss.num, iss.stat}; }
-#endif
-                 );
-   return result;
-}
-
 struct list_issues {
    std::vector<int> const & issues;
 };
@@ -196,24 +123,15 @@ auto operator<<( std::ostream & out, list_issues const & x) -> std::ostream & {
    return out;
 }
 
-
-struct find_num {
-   // Predidate functor useful to find issue 'y' in a mapping of issue-number -> some string.
-    bool operator()(std::tuple<int, std::string> const & x, int y) const noexcept {
-      return std::get<0>(x) < y;
-   }
-};
-
-
 struct discover_new_issues {
-   std::vector<std::tuple<int, std::string> > const & old_issues;
-   std::vector<std::tuple<int, std::string> > const & new_issues;
+   std::vector<lwg::issue_metadata> const & old_issues;
+   std::vector<lwg::issue> const & new_issues;
 };
 
 
 auto operator<<( std::ostream & out, discover_new_issues const & x) -> std::ostream & {
-   std::vector<std::tuple<int, std::string> > const & old_issues = x.old_issues;
-   std::vector<std::tuple<int, std::string> > const & new_issues = x.new_issues;
+   auto const & old_issues = x.old_issues;
+   auto const & new_issues = x.new_issues;
 
    struct status_order {
       // predicate for 'map'
@@ -226,9 +144,9 @@ auto operator<<( std::ostream & out, discover_new_issues const & x) -> std::ostr
 
    std::map<std::string, std::vector<int>, status_order> added_issues;
    for (auto const & i : new_issues ) {
-      auto j = std::lower_bound(old_issues.cbegin(), old_issues.cend(), std::get<0>(i), find_num{});
-      if(j == old_issues.end() or std::get<0>(*j) != std::get<0>(i)) {
-         added_issues[std::get<1>(i)].push_back(std::get<0>(i));
+      auto j = std::lower_bound(old_issues.cbegin(), old_issues.cend(), i.num, lwg::order_by_issue_number{});
+      if(j == old_issues.end() or j-> num != i.num ) {
+         added_issues[i.stat].push_back(i.num);
       }
    }
 
@@ -251,14 +169,13 @@ auto operator<<( std::ostream & out, discover_new_issues const & x) -> std::ostr
 
 
 struct discover_changed_issues {
-   std::vector<std::tuple<int, std::string> > const & old_issues;
-   std::vector<std::tuple<int, std::string> > const & new_issues;
+   std::vector<lwg::issue_metadata> const & old_issues;
+   std::vector<lwg::issue> const & new_issues;
 };
 
-
 auto operator << (std::ostream & out, discover_changed_issues x) -> std::ostream & {
-   std::vector<std::tuple<int, std::string> > const & old_issues = x.old_issues;
-   std::vector<std::tuple<int, std::string> > const & new_issues = x.new_issues;
+   auto const & old_issues = x.old_issues;
+   auto const & new_issues = x.new_issues;
 
    struct status_transition_order {
       using status_string = std::string;
@@ -273,9 +190,9 @@ auto operator << (std::ostream & out, discover_changed_issues x) -> std::ostream
 
    std::map<std::tuple<std::string, std::string>, std::vector<int>, status_transition_order> changed_issues;
    for (auto const & i : new_issues ) {
-      auto j = std::lower_bound(old_issues.begin(), old_issues.end(), std::get<0>(i), find_num{});
-      if (j != old_issues.end()  and  std::get<0>(i) == std::get<0>(*j)  and  std::get<1>(*j) != std::get<1>(i)) {
-         changed_issues[std::tuple<std::string, std::string>{std::get<1>(*j), std::get<1>(i)}].push_back(std::get<0>(i));
+      auto j = std::lower_bound(old_issues.begin(), old_issues.end(), i.num, lwg::order_by_issue_number{});
+      if (j != old_issues.end()  and i.num == j->num and j->stat != i.stat) {
+         changed_issues[std::make_tuple(j->stat, i.stat)].push_back(i.num);
       }
    }
 
@@ -298,17 +215,17 @@ auto operator << (std::ostream & out, discover_changed_issues x) -> std::ostream
    return out;
 }
 
-
-void count_issues(std::vector<std::tuple<int, std::string> > const & issues, int & n_open, int & n_reassigned, int & n_closed) {
+template<class IssueOrMD>
+void count_issues(std::vector<IssueOrMD> const & issues, int & n_open, int & n_reassigned, int & n_closed) {
    n_open = 0;
    n_reassigned = 0;
    n_closed = 0;
 
    for(auto const & elem : issues) {
-      if (lwg::is_assigned_to_another_group(std::get<1>(elem))) {
+      if (lwg::is_assigned_to_another_group(elem.stat)) {
       	++n_reassigned;
       }
-      else if (lwg::is_active(std::get<1>(elem))) {
+      else if (lwg::is_active(elem.stat)) {
          ++n_open;
       }
       else {
@@ -319,14 +236,14 @@ void count_issues(std::vector<std::tuple<int, std::string> > const & issues, int
 
 
 struct write_summary {
-   std::vector<std::tuple<int, std::string> > const & old_issues;
-   std::vector<std::tuple<int, std::string> > const & new_issues;
+   std::vector<lwg::issue_metadata > const & old_issues;
+   std::vector<lwg::issue > const & new_issues;
 };
 
 
 auto operator << (std::ostream & out, write_summary const & x) -> std::ostream & {
-   std::vector<std::tuple<int, std::string> > const & old_issues = x.old_issues;
-   std::vector<std::tuple<int, std::string> > const & new_issues = x.new_issues;
+   auto const & old_issues = x.old_issues;
+   auto const & new_issues = x.new_issues;
 
    int n_open_new = 0;
    int n_open_old = 0;
@@ -364,8 +281,8 @@ auto operator << (std::ostream & out, write_summary const & x) -> std::ostream &
 
 
 void print_current_revisions( std::ostream & out
-                            , std::vector<std::tuple<int, std::string> > const & old_issues
-                            , std::vector<std::tuple<int, std::string> > const & new_issues
+                            , std::vector<lwg::issue_metadata > const & old_issues
+                            , std::vector<lwg::issue > const & new_issues
                             ) {
    out << "<ul>\n"
           "<li><b>Summary:</b><ul>\n"
@@ -429,7 +346,7 @@ int main(int argc, char* argv[]) {
       }
 #endif
  
-      auto const old_issues = read_issues_from_toc(lwg::read_file_into_string(path + "meta-data/lwg-toc.old.html"));
+      auto const old_issues = lwg::read_issue_metadata_from_toc(path + "meta-data/lwg-toc.old.html");
 
       auto const issues_path = path + "xml/";
 
@@ -457,10 +374,8 @@ int main(int argc, char* argv[]) {
 
       // Collect a report on all issues that have changed status
       // This will be added to the revision history of the 3 standard documents
-      auto const new_issues = prepare_issues_for_diff_report(issues);
-
       std::ostringstream os_diff_report;
-      print_current_revisions(os_diff_report, old_issues, new_issues);
+      print_current_revisions(os_diff_report, old_issues, issues);
       auto const diff_report = os_diff_report.str();
 
       std::vector<lwg::issue> unresolved_issues;
