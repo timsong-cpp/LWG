@@ -32,10 +32,7 @@ struct issue_metadata {
     }
 };
 
-
 auto read_issue_metadata_from_toc(std::string const & s) -> std::vector<issue_metadata>;
-
-
 
 }
 

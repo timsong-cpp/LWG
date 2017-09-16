@@ -363,6 +363,7 @@ auto lwg::get_status_priority(std::string const & stat) noexcept -> std::ptrdiff
       "NAD Future",
       "DR",
       "WP",
+      "TS",
       "C++20",
       "C++17",
       "C++14",

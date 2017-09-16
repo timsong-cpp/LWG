@@ -30,10 +30,13 @@ auto lwg::read_file_into_string(std::string const & filename) -> std::string {
     return std::string {first, last};
 }
 
-auto lwg::read_issues(std::string const & issues_path, lwg::section_map & section_db) -> std::vector<lwg::issue> {
+auto lwg::read_issues(std::string const & issues_path, lwg::section_map & section_db,
+                      std::vector<std::string> const& changed_paths) -> std::pair<std::vector<lwg::issue>, std::vector<int>> {
    // Open the specified directory, 'issues_path', and iterate all the '.xml' files
    // it contains, parsing each such file as an LWG issue document.  Return the set
    // of issues as a vector.
+   //
+   // If changed_paths is nonempty, the second element of the vector contains the issue numbers corresponding to the files.
    //
    // The current implementation relies directly on POSIX headers, but the preferred
    // direction for the future is to switch over to the filesystem TS using directory
@@ -45,21 +48,30 @@ auto lwg::read_issues(std::string const & issues_path, lwg::section_map & sectio
    }
 
    std::vector<lwg::issue> issues{};
+   std::vector<int> changed_issues;
    while ( dirent* entry = readdir(dir.get()) ) {
       std::string const issue_file{entry->d_name };
       if (0 == issue_file.find("issue") ) {
          auto const filename = issues_path + issue_file;
          issues.emplace_back(parse_issue_from_file(read_file_into_string(filename), filename, section_db));
+          // TODO: avoid repeating xml/ here
+          if(std::binary_search(changed_paths.begin(), changed_paths.end(), "xml/" + issue_file)) {
+              changed_issues.push_back(issues.back().num);
+          }
       }
    }
 
-   return issues;
+   if(changed_paths.size() != changed_issues.size()){
+       throw std::runtime_error("Non-issue file present in changed_paths");
+   }
+
+   return {std::move(issues), std::move(changed_issues)};
 }
 
-static void format_issue_as_html(lwg::issue & is,
+static bool format_issue_as_html(lwg::issue & is,
                           std::vector<lwg::issue>::iterator first_issue,
                           std::vector<lwg::issue>::iterator last_issue,
-                          lwg::section_map & section_db) {
+                          lwg::section_map & section_db, std::vector<int> const & changed_issues) {
    // Reformt the issue text for the specified 'is' as valid HTML, replacing all the issue-list
    // specific XML markup as appropriate:
    //   tag             replacement
@@ -82,6 +94,10 @@ static void format_issue_as_html(lwg::issue & is,
    //
    // Essentially, this function is a tiny xml-parser driven by a stack of open tags, that pops as tags
    // are closed.
+   //
+   // Returns true if the issue contains a <iref> to any issue in changec_numbers.
+
+   bool ret = false;
 
    auto fix_tags = [&](std::string &s) {
    int issue_num = is.num;     // current issue number for the issue being formatted
@@ -252,6 +268,8 @@ static void format_issue_as_html(lwg::issue & is,
                   throw std::runtime_error{er.str()};
                }
 
+               if(!ret && std::binary_search(changed_issues.begin(), changed_issues.end(), num)) ret = true;
+
                if (!tag_stack.empty()  and  tag_stack.back() == "duplicate") {
                   n->duplicates.insert(make_html_anchor(is));
                   is.duplicates.insert(lwg::make_html_anchor(*n));
@@ -308,9 +326,13 @@ static void format_issue_as_html(lwg::issue & is,
    fix_tags(is.text);
    fix_tags(is.resolution);
 
+   return ret;
 }
 
-void lwg::prepare_issues(std::vector<lwg::issue> & issues, lwg::section_map & section_db) {
+auto lwg::prepare_issues(std::vector<lwg::issue> & issues, lwg::section_map & section_db,
+                    std::vector<int> const & changed_issue_numbers) -> std::vector<int> {
+
+   std::vector<int> result;
    // Initially sort the issues by issue number, so each issue can be correctly 'format'ted
    sort(issues.begin(), issues.end(), lwg::order_by_issue_number{});
 
@@ -320,9 +342,45 @@ void lwg::prepare_issues(std::vector<lwg::issue> & issues, lwg::section_map & se
    // Currently, the 'format' function takes a reference-to-non-const-vector-of-issues purely to
    // mark up information related to duplicates, so processing duplicates in a separate pass may
    // clarify the code.
-   for (auto & i : issues) { format_issue_as_html(i, issues.begin(), issues.end(), section_db); }
+   for (auto & i : issues) {
+       if(format_issue_as_html(i, issues.begin(), issues.end(), section_db,
+                                                  changed_issue_numbers)){
+           result.push_back(i.num);
+       }
+   }
 
    // Issues will be routinely re-sorted in later code, but contents should be fixed after formatting.
    // This suggests we may want to be storing some kind of issue handle in the functions that keep
    // re-sorting issues, and so minimize the churn on the larger objects.
+
+
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+
+auto lwg::find_location_changes(std::vector<lwg::issue> const & issues, std::vector<lwg::issue_metadata> const & meta,
+                                        std::vector<int> const & issue_numbers) -> std::vector<int> {
+    // Find out which issues in issue_numbers has its location or tag changed from meta to current.
+    // Assumes that both are sorted by number.
+    // Returns a vector containing issue numbers whose location changed, and a vector containing tags that changed.
+    // Both sorted by <.
+
+    std::vector<int> changed_numbers;
+    for (auto i : issue_numbers) {
+        auto p = std::lower_bound(issues.begin(), issues.end(), i, lwg::order_by_issue_number{});
+        auto q = std::lower_bound(meta.begin(), meta.end(), i, lwg::order_by_issue_number{});
+
+        if (p == issues.end() || p->num != i)
+            throw std::runtime_error("issue not found");
+        if (q == meta.end() || q->num != i)
+            throw std::runtime_error("issue metadata not found");
+        if (filename_for_status(p->stat) != filename_for_status(q->stat))
+            changed_numbers.push_back(i);
+    }
+
+    std::sort(changed_numbers.begin(), changed_numbers.end());
+
+    return changed_numbers;
+
 }

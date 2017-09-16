@@ -84,6 +84,7 @@
 #include "report_generator.h"
 #include "sections.h"
 #include "process_issues.h"
+#include "issue_metadata.h"
 
 
 #if 0
@@ -240,7 +241,7 @@ auto operator<<( std::ostream & out, discover_new_issues const & x) -> std::ostr
          out << "<li>Added the following " << item_count << " " << std::get<0>(i) << " issues: " << list_issues{std::get<1>(i)} << ".</li>\n";
       }
    }
-   
+
    if (added_issues.empty()) {
       out << "<li>No issues added.</li>\n";
    }
@@ -387,139 +388,296 @@ void check_is_directory(std::string const & directory) {
 
 int main(int argc, char* argv[]) {
    try {
-      std::string path;
-      std::cout << "Preparing new LWG issues lists..." << std::endl;
-      if (argc == 2) {
-         path = argv[1];
-      }
-      else {
-         char cwd[1024];
-         if (getcwd(cwd, sizeof(cwd)) == 0) {
-            std::cout << "unable to getcwd\n";
-            return 1;
-         }
-         path = cwd;
-      }
+       std::string path;
+       std::cout << "Preparing new LWG issues lists..." << std::endl;
+       if (argc == 2) {
+           path = argv[1];
+       } else {
+           char cwd[1024];
+           if (getcwd(cwd, sizeof(cwd)) == 0) {
+               std::cout << "unable to getcwd\n";
+               return 1;
+           }
+           path = cwd;
+       }
 
-      if (path.back() != '/') { path += '/'; }
-      check_is_directory(path);
-	  
-      const std::string target_path{path + "mailing/"};
-      check_is_directory(target_path);
-	  
+       if (path.back() != '/') { path += '/'; }
+       check_is_directory(path);
 
-      lwg::section_map section_db =[&path]() {
-         auto filename = path + "meta-data/section.data";
-         std::ifstream infile{filename};
-         if (!infile.is_open()) {
-            throw std::runtime_error{"Can't open section.data at " + path + "meta-data"};
-         }
-         std::cout << "Reading section-tag index from: " << filename << std::endl;
+       const std::string target_path{path + "mailing/"};
+       check_is_directory(target_path);
 
-         return lwg::read_section_db(infile);
-      }();
+
+       lwg::section_map section_db = [&path]() {
+           auto filename = path + "meta-data/section.data";
+           std::ifstream infile{filename};
+           if (!infile.is_open()) {
+               throw std::runtime_error{"Can't open section.data at " + path + "meta-data"};
+           }
+           std::cout << "Reading section-tag index from: " << filename << std::endl;
+
+           return lwg::read_section_db(infile);
+       }();
 #if defined (DEBUG_LOGGING)
-      // dump the contents of the section index
-      for (auto const & elem : section_db ) {
-         std::string temp = elem.first;
-         temp.erase(temp.end()-1);
-         temp.erase(temp.begin());
-         std::cout << temp << ' ' << elem.second << '\n';
-      }
+       // dump the contents of the section index
+       for (auto const & elem : section_db ) {
+          std::string temp = elem.first;
+          temp.erase(temp.end()-1);
+          temp.erase(temp.begin());
+          std::cout << temp << ' ' << elem.second << '\n';
+       }
 #endif
- 
-      auto const old_issues = read_issues_from_toc(lwg::read_file_into_string(path + "meta-data/lwg-toc.old.html"));
 
-      auto const issues_path = path + "xml/";
+       auto const old_issues = read_issues_from_toc(lwg::read_file_into_string(path + "meta-data/lwg-toc.old.html"));
 
-      lwg::mailing_info lwg_issues_xml = [&issues_path](){
-         std::string filename{issues_path + "lwg-issues.xml"};
-         std::ifstream infile{filename};
-         if (!infile.is_open()) {
-            throw std::runtime_error{"Unable to open " + filename};
-         }
+       auto const issues_path = path + "xml/";
 
-         return lwg::mailing_info{infile};
-      }();
+       lwg::mailing_info lwg_issues_xml = [&issues_path]() {
+           std::string filename{issues_path + "lwg-issues.xml"};
+           std::ifstream infile{filename};
+           if (!infile.is_open()) {
+               throw std::runtime_error{"Unable to open " + filename};
+           }
 
-      //lwg::mailing_info lwg_issues_xml{issues_path};
+           return lwg::mailing_info{infile};
+       }();
 
+       bool do_incremental_generation = true;
+       bool force_rebuild_lists = false;
+       std::vector<lwg::issue_metadata> prev_metadata = [&] {
+           try {
+               return lwg::read_issue_metadata_from_toc(lwg::read_file_into_string(target_path + "lwg-toc.html"));
+           }
+           catch (...) {
+               std::cout << "Unable to read previous TOC. Performing full rebuild.\n";
+               do_incremental_generation = false;
+               return std::vector<lwg::issue_metadata>();
+           }
+       }();
 
-      std::cout << "Reading issues from: " << issues_path << std::endl;
-      auto issues = lwg::read_issues(issues_path, section_db);
-      lwg::prepare_issues(issues, section_db);
-
-
-      lwg::report_generator generator{lwg_issues_xml, section_db};
-
-
-      // issues must be sorted by number before making the mailing list documents
-      //sort(issues.begin(), issues.end(), order_by_issue_number{});
-
-      // Collect a report on all issues that have changed status
-      // This will be added to the revision history of the 3 standard documents
-      auto const new_issues = prepare_issues_for_diff_report(issues);
-
-      std::ostringstream os_diff_report;
-      print_current_revisions(os_diff_report, old_issues, new_issues );
-      auto const diff_report = os_diff_report.str();
-
-      std::vector<lwg::issue> unresolved_issues;
-      std::vector<lwg::issue> votable_issues;
-
-      std::copy_if(issues.begin(), issues.end(), std::back_inserter(unresolved_issues), [](lwg::issue const & iss){ return lwg::is_not_resolved(iss.stat); } );
-      std::copy_if(issues.begin(), issues.end(), std::back_inserter(votable_issues),    [](lwg::issue const & iss){ return lwg::is_votable(iss.stat); } );
-
-      // If votable list is empty, we are between meetings and should list Ready issues instead
-      // Otherwise, issues moved to Ready during a meeting will remain 'unresolved' by that meeting
-      auto ready_inserter = votable_issues.empty()
-                          ? std::back_inserter(votable_issues)
-                          : std::back_inserter(unresolved_issues);
-      std::copy_if(issues.begin(), issues.end(), ready_inserter, [](lwg::issue const & iss){ return lwg::is_ready(iss.stat); } );
-
-      // First generate the primary 3 standard issues lists
-      generator.make_active(issues, target_path, diff_report);
-      generator.make_defect(issues, target_path, diff_report);
-      generator.make_closed(issues, target_path, diff_report);
-
-      // unofficial documents
-      generator.make_tentative (issues, target_path);
-      generator.make_unresolved(issues, target_path);
-      generator.make_immediate (issues, target_path);
-      generator.make_ready     (issues, target_path);
-      generator.make_editors_issues(issues, target_path);
-      generator.make_individual_issues(issues, target_path);
+       std::vector<std::string> changed_files = [&] {
+           std::vector<std::string> result;
+           if (!do_incremental_generation) return result;
+           std::ifstream infile(target_path + "changed_files.txt");
+           if (!infile) {
+               std::cout << "Unable to read list of changed files (mailing/changed_files.txt). Performing full rebuild.\n";
+               do_incremental_generation = false;
+               return result;
+           }
+           std::string filename;
+           while (std::getline(infile, filename)) {
+               if (filename == "xml/lwg-issues.xml") {
+                   std::cout << "lwg-issues.xml changed. Force rebuilding all lists.\n";
+                   force_rebuild_lists = true;
+               } else if (filename.find("xml/issue") != 0 || filename.find(".xml") == std::string::npos) {
+                   std::cout << "Detected change in non-issue file " << filename << ". Performing full rebuild.\n";
+                   do_incremental_generation = false;
+                   result.clear();
+                   return result;
+               } else {
+                   result.push_back(std::move(filename));
+               }
+           }
+           return result;
+       }();
 
 
 
-      // Now we have a parsed and formatted set of issues, we can write the standard set of HTML documents
-      // Note that each of these functions is going to re-sort the 'issues' vector for its own purposes
-      generator.make_sort_by_num            (issues, {target_path + "lwg-toc.html"});
-      generator.make_sort_by_status         (issues, {target_path + "lwg-status.html"});
-      generator.make_sort_by_status_mod_date(issues, {target_path + "lwg-status-date.html"});  // this report is useless, as git checkouts touch filestamps
-      generator.make_sort_by_section        (issues, {target_path + "lwg-index.html"});
+       //lwg::mailing_info lwg_issues_xml{issues_path};
 
-      // Note that this additional document is very similar to unresolved-index.html below
-      generator.make_sort_by_section        (issues, {target_path + "lwg-index-open.html"}, true);
+
+       std::cout << "Reading issues from: " << issues_path << std::endl;
+       auto issues_and_changed = lwg::read_issues(issues_path, section_db, changed_files);
+       auto &issues = issues_and_changed.first;
+       auto &directly_changed_issues = issues_and_changed.second;
+       auto changed_location_issues = lwg::find_location_changes(issues, prev_metadata,directly_changed_issues);
+       auto content_changed_issues = lwg::prepare_issues(issues, section_db, changed_location_issues);
+
+       lwg::report_generator generator{lwg_issues_xml, section_db, issues};
+
+       // An issue needs to be regenerated if:
+       // - its content changed.
+       // - its metadata changed.
+       // - its tag classification changed.
+       std::vector<int> requires_regeneration = content_changed_issues;
+       requires_regeneration.insert(requires_regeneration.end(), directly_changed_issues.begin(),
+                                    directly_changed_issues.end());
+
+       // The TOC needs to be regenerated only if there are metadata changes.
+       bool toc_regeneration_required = false;
+
+       enum {
+           ACTIVE, DEFECT, CLOSED
+       };
+       bool issue_list_regen_required[3] = {};
+       auto set_list_for_regen = [&](std::string const &stat) {
+           if (lwg::is_active(stat)) issue_list_regen_required[ACTIVE] = true;
+           else if (lwg::is_defect(stat)) issue_list_regen_required[DEFECT] = true;
+           else if (lwg::is_closed(stat)) issue_list_regen_required[CLOSED] = true;
+           else throw std::runtime_error("Unrecognizable status: " + stat);
+       };
+
+       auto for_each_issue_requiring_regeneration = [&](auto f) {
+           auto start = issues.begin();
+           for (const int n : requires_regeneration) {
+               start = std::lower_bound(start, issues.end(), n, lwg::order_by_issue_number{});
+               f(*start);
+               ++start;
+           }
+       };
+
+       if (do_incremental_generation) {
+           std::cout << "Performing incremental regeneration\n";
+           // compute the per-tag and per-status counts.
+           std::unordered_map<std::string, int> prev_status_count;
+           std::unordered_map<std::string, int> prev_tag_count_all;
+           std::unordered_map<std::string, int> prev_tag_count_active;
+           for (const auto &md : prev_metadata) {
+               ++prev_status_count[md.stat];
+               ++prev_tag_count_all[md.first_tag];
+               if (lwg::is_active(md.stat)) ++prev_tag_count_active[md.first_tag];
+           }
+           for (const auto &iss : issues) {
+               auto p = std::lower_bound(prev_metadata.begin(), prev_metadata.end(), iss, lwg::order_by_issue_number{});
+               if (p == prev_metadata.end() || p->num != iss.num) {
+                   // this is a new issue.
+                   requires_regeneration.push_back(iss.num);
+                   toc_regeneration_required = true;
+               } else if (*p != iss) {
+                   // this issue has metadata changes of some sort.
+                   requires_regeneration.push_back(iss.num);
+                   toc_regeneration_required = true;
+                   // this might be different from the current status.
+                   set_list_for_regen(p->stat);
+               } else {
+                   // Otherwise, regeneration is required:
+                   // - if the issue is active, and the number of active issues in the tag is > 2 in one case and < 2 in the other.
+                   // - if the issue is not active, and the number of active issues in the tag is >= 1 in one case and 0 in the other.
+                   // - if the number of all issues in the tag is >1 in one case and <= 1 in the other.
+                   // - if the number of all issues with the status is >1 in one case and <= 1 in the other.
+                   const auto prev_active_count = prev_tag_count_active[p->first_tag] - lwg::is_active(iss.stat);
+                   const auto cur_active_count =
+                           generator.count_active_issues_with_tag(p->first_tag) - lwg::is_active(iss.stat);
+                   const auto prev_all_count = prev_tag_count_all[p->first_tag];
+                   const auto cur_all_count = generator.count_all_issues_with_tag(p->first_tag);
+
+                   if (((prev_active_count > 0) != (cur_active_count > 0))
+                       || ((prev_all_count > 1) != (cur_all_count > 1))
+                       || ((prev_status_count[p->stat] > 1) != (generator.count_issues_with_status(p->stat) > 1))) {
+                       requires_regeneration.push_back(iss.num);
+                   }
+               }
+           }
+           // sort and remove duplicates.
+           std::sort(requires_regeneration.begin(), requires_regeneration.end());
+           requires_regeneration.erase(std::unique(requires_regeneration.begin(), requires_regeneration.end()),
+                                       requires_regeneration.end());
+           for_each_issue_requiring_regeneration([&](lwg::issue const& iss){
+               set_list_for_regen(iss.stat);
+           });
+       }
+
+
+       // issues must be sorted by number before making the mailing list documents
+       //sort(issues.begin(), issues.end(), order_by_issue_number{});
+
+       // Collect a report on all issues that have changed status
+       // This will be added to the revision history of the 3 standard documents
+       auto const new_issues = prepare_issues_for_diff_report(issues);
+
+       std::ostringstream os_diff_report;
+       print_current_revisions(os_diff_report, old_issues, new_issues);
+       auto const diff_report = os_diff_report.str();
+
+       std::vector<lwg::issue> unresolved_issues;
+       std::vector<lwg::issue> votable_issues;
+
+       std::copy_if(issues.begin(), issues.end(), std::back_inserter(unresolved_issues),
+                    [](lwg::issue const &iss) { return lwg::is_not_resolved(iss.stat); });
+       std::copy_if(issues.begin(), issues.end(), std::back_inserter(votable_issues),
+                    [](lwg::issue const &iss) { return lwg::is_votable(iss.stat); });
+
+       // If votable list is empty, we are between meetings and should list Ready issues instead
+       // Otherwise, issues moved to Ready during a meeting will remain 'unresolved' by that meeting
+       auto ready_inserter = votable_issues.empty()
+                             ? std::back_inserter(votable_issues)
+                             : std::back_inserter(unresolved_issues);
+       std::copy_if(issues.begin(), issues.end(), ready_inserter,
+                    [](lwg::issue const &iss) { return lwg::is_ready(iss.stat); });
+       std::ofstream updated_files(target_path + "updated_files.txt");
+
+       // First generate the primary 3 standard issues lists
+       if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[ACTIVE])
+           updated_files << generator.make_active(target_path, diff_report) << '\n';
+       if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[DEFECT])
+           updated_files << generator.make_defect(target_path, diff_report) << '\n';
+       if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[CLOSED])
+           updated_files << generator.make_closed(target_path, diff_report) << '\n';
+
+       // unofficial documents.
+       // These are all subclassifications of active issues.
+       if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[ACTIVE]) {
+           updated_files << generator.make_tentative(target_path) << '\n';
+           updated_files << generator.make_unresolved(target_path) << '\n';
+           updated_files << generator.make_immediate(target_path) << '\n';
+           updated_files << generator.make_ready(target_path) << '\n';
+           updated_files << generator.make_editors_issues(target_path) << '\n';
+       }
+
+       // individual issues
+       if (!do_incremental_generation) {
+           for (const auto &iss : issues) {
+               updated_files << generator.make_individual_issue(iss, target_path) << '\n';
+           }
+       } else {
+           for_each_issue_requiring_regeneration([&](lwg::issue const& iss){
+               updated_files << generator.make_individual_issue(iss, target_path) << '\n';
+           });
+       }
+
+       lwg::index_generator toc_generator{lwg_issues_xml, section_db};
+       // Now we have a parsed and formatted set of issues, we can write the standard set of HTML documents
+       // Note that each of these functions is going to re-sort the 'issues' vector for its own purposes
+
+       auto write_filename = [&](const std::string& filename) -> const std::string& {
+           updated_files << filename << '\n';
+           return filename;
+       };
+
+       if (!do_incremental_generation || toc_regeneration_required) {
+           toc_generator.make_sort_by_num            (issues, write_filename(target_path + "lwg-toc.html"));
+           toc_generator.make_sort_by_status         (issues, write_filename(target_path + "lwg-status.html"));
+           toc_generator.make_sort_by_status_mod_date(issues, write_filename(target_path + "lwg-status-date.html"));  // this report is useless, as git checkouts touch filestamps
+           toc_generator.make_sort_by_section        (issues, write_filename(target_path + "lwg-index.html"));
+
+           // Note that this additional document is very similar to unresolved-index.html below
+           toc_generator.make_sort_by_section(issues, write_filename(target_path + "lwg-index-open.html"), true);
+       }
 
       // Make a similar set of index documents for the issues that are 'live' during a meeting
       // Note that these documents want to reference each other, rather than lwg- equivalents,
       // although it may not be worth attempting fix-ups as the per-issue level
       // During meetings, it would be good to list newly-Ready issues here
-      generator.make_sort_by_num            (unresolved_issues, {target_path + "unresolved-toc.html"});
-      generator.make_sort_by_status         (unresolved_issues, {target_path + "unresolved-status.html"});
-      generator.make_sort_by_status_mod_date(unresolved_issues, {target_path + "unresolved-status-date.html"});
-      generator.make_sort_by_section        (unresolved_issues, {target_path + "unresolved-index.html"});
-      generator.make_sort_by_priority       (unresolved_issues, {target_path + "unresolved-prioritized.html"});
 
-      // Make another set of index documents for the issues that are up for a vote during a meeting
-      // Note that these documents want to reference each other, rather than lwg- equivalents,
-      // although it may not be worth attempting fix-ups as the per-issue level
-      // Between meetings, it would be good to list Ready issues here
-      generator.make_sort_by_num            (votable_issues, {target_path + "votable-toc.html"});
-      generator.make_sort_by_status         (votable_issues, {target_path + "votable-status.html"});
-      generator.make_sort_by_status_mod_date(votable_issues, {target_path + "votable-status-date.html"});
-      generator.make_sort_by_section        (votable_issues, {target_path + "votable-index.html"});
+      // TODO: We are just checking if any active issues changed in any manner for these;
+      // maybe we can do something more clever.
+
+      if(!do_incremental_generation || (toc_regeneration_required && issue_list_regen_required[ACTIVE])) {
+          toc_generator.make_sort_by_num            (unresolved_issues, write_filename(target_path + "unresolved-toc.html"));
+          toc_generator.make_sort_by_status         (unresolved_issues, write_filename(target_path + "unresolved-status.html"));
+          toc_generator.make_sort_by_status_mod_date(unresolved_issues, write_filename(target_path + "unresolved-status-date.html"));
+          toc_generator.make_sort_by_section        (unresolved_issues, write_filename(target_path + "unresolved-index.html"));
+          toc_generator.make_sort_by_priority       (unresolved_issues, write_filename(target_path + "unresolved-prioritized.html"));
+
+          // Make another set of index documents for the issues that are up for a vote during a meeting
+          // Note that these documents want to reference each other, rather than lwg- equivalents,
+          // although it may not be worth attempting fix-ups as the per-issue level
+          // Between meetings, it would be good to list Ready issues here
+          toc_generator.make_sort_by_num            (votable_issues, write_filename(target_path + "votable-toc.html"));
+          toc_generator.make_sort_by_status         (votable_issues, write_filename(target_path + "votable-status.html"));
+          toc_generator.make_sort_by_status_mod_date(votable_issues, write_filename(target_path + "votable-status-date.html"));
+          toc_generator.make_sort_by_section        (votable_issues, write_filename(target_path + "votable-index.html"));
+      }
 
       std::cout << "Made all documents\n";
    }

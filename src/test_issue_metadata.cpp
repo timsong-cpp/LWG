@@ -7,9 +7,6 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 std::ostream& operator<<(std::ostream& os, lwg::issue_metadata const& metadata) {
     os << metadata.num << '\t' << metadata.stat << '\t' << metadata.first_tag << '\t'
@@ -48,7 +45,7 @@ int main() {
     std::sort(mdv.begin(), mdv.end(), sort_by_num);
     std::ifstream sec_str("meta-data/section.data");
     auto section_db = lwg::read_section_db(sec_str);
-    auto issues = lwg::read_issues("xml/", section_db);
+    auto issues = lwg::read_issues("xml/", section_db).first;
     lwg::prepare_issues(issues, section_db);
     if(!std::equal(issues.begin(), issues.end(), mdv.begin(), mdv.end())){
         std::cerr << "Comparison failure!\n";
