@@ -374,7 +374,7 @@ void report_generator::print_issue(std::ostream & out, lwg::issue const & iss,
     const auto first_tag = as_string(iss.tags.front());
     // view active issues in []
     auto active_count = count_active_issues_with_tag(first_tag);
-    if (active_count > 1) {
+    if (active_count - is_active(iss.stat) > 0) {
        out << "<p><b>View other</b> <a href=\"lwg-index-open.html#"
            << as_string(iss.tags[0]) << "\">active issues</a> in " << iss.tags[0] << ".</p>\n";
     }
