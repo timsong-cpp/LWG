@@ -606,43 +606,44 @@ int main(int argc, char* argv[]) {
                     [](lwg::issue const &iss) { return lwg::is_ready(iss.stat); });
        std::ofstream updated_files(target_path + "updated_files.txt");
 
+       // When writing the list of generated files, we want to write a relative path.
+       auto write_filename = [&](const std::string& filename) -> const std::string& {
+           updated_files << filename.substr(path.length()) << '\n';
+           return filename;
+       };
+
        // First generate the primary 3 standard issues lists
        if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[ACTIVE])
-           updated_files << generator.make_active(target_path, diff_report) << '\n';
+           write_filename(generator.make_active(target_path, diff_report));
        if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[DEFECT])
-           updated_files << generator.make_defect(target_path, diff_report) << '\n';
+           write_filename(generator.make_defect(target_path, diff_report));
        if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[CLOSED])
-           updated_files << generator.make_closed(target_path, diff_report) << '\n';
+           write_filename(generator.make_closed(target_path, diff_report));
 
        // unofficial documents.
        // These are all subclassifications of active issues.
        if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[ACTIVE]) {
-           updated_files << generator.make_tentative(target_path) << '\n';
-           updated_files << generator.make_unresolved(target_path) << '\n';
-           updated_files << generator.make_immediate(target_path) << '\n';
-           updated_files << generator.make_ready(target_path) << '\n';
-           updated_files << generator.make_editors_issues(target_path) << '\n';
+           write_filename(generator.make_tentative(target_path));
+           write_filename(generator.make_unresolved(target_path));
+           write_filename(generator.make_immediate(target_path));
+           write_filename(generator.make_ready(target_path));
+           write_filename(generator.make_editors_issues(target_path));
        }
 
        // individual issues
        if (!do_incremental_generation) {
            for (const auto &iss : issues) {
-               updated_files << generator.make_individual_issue(iss, target_path) << '\n';
+               write_filename(generator.make_individual_issue(iss, target_path));
            }
        } else {
            for_each_issue_requiring_regeneration([&](lwg::issue const& iss){
-               updated_files << generator.make_individual_issue(iss, target_path) << '\n';
+               write_filename(generator.make_individual_issue(iss, target_path));
            });
        }
 
        lwg::index_generator toc_generator{lwg_issues_xml, section_db};
        // Now we have a parsed and formatted set of issues, we can write the standard set of HTML documents
        // Note that each of these functions is going to re-sort the 'issues' vector for its own purposes
-
-       auto write_filename = [&](const std::string& filename) -> const std::string& {
-           updated_files << filename << '\n';
-           return filename;
-       };
 
        if (!do_incremental_generation || toc_regeneration_required) {
            toc_generator.make_sort_by_num            (issues, write_filename(target_path + "lwg-toc.html"));
