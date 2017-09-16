@@ -10,20 +10,19 @@ if [ ! -f mailing/commit ] || [ ! -f mailing/updated_files.txt ]; then
    exit 1
 fi
 
+UPDATE_FILE="$(pwd)/mailing/updated_files.txt"
+
 if cmp -s ../issues-gh-pages/commit mailing/commit.prev; then
    # matching commits, just copy the specified files
 
-   UPDATE_FILE="$(pwd)/mailing/updated_files.txt"
-   while read fn; do
-       cp mailing/"$(basename $fn)" ../issues-gh-pages
-   done < "$UPDATE_FILE"
+   cat "$UPDATE_FILE" | sed 's/\r//' | xargs cp -t ../issues-gh-pages
 
    cp mailing/commit ../issues-gh-pages
 
    pushd ../issues-gh-pages
-   while read fn; do
-       git add "$(basename $fn)"
-   done < "$UPDATE_FILE"
+
+   cat "$UPDATE_FILE" | sed 's!.*/!!' | xargs git add
+
    git add commit
    git commit -m"Update"
    git push  "origin" gh-pages:gh-pages
