@@ -42,5 +42,5 @@ else
    git add issue*.html commit lwg-*.html unresolved-*.html votable-*.html 
    git commit -m"Update"
    git push  "origin" gh-pages:gh-pages
-   
+   popd
 fi
