@@ -363,7 +363,7 @@ int main(int argc, char* argv[]) {
       bool force_rebuild_lists = false;
       std::vector<lwg::issue_metadata> prev_metadata = [&] {
           try {
-             return lwg::read_issue_metadata_from_toc(target_path + "lwg-toc.html");
+             return lwg::read_issue_metadata_from_toc(target_path + "lwg-toc.prev.html");
           }
           catch (...) {
              std::cout << "Unable to read previous TOC. Performing full rebuild.\n";
