@@ -360,7 +360,7 @@ auto lwg::prepare_issues(std::vector<lwg::issue> & issues, lwg::section_map & se
 
 auto lwg::find_location_changes(std::vector<lwg::issue> const & issues, std::vector<lwg::issue_metadata> const & meta,
                                         std::vector<int> const & issue_numbers) -> std::vector<int> {
-    // Find out which issues in issue_numbers has its location or tag changed from meta to current.
+    // Find out which issues in issue_numbers has its location changed from meta to current.
     // Assumes that both are sorted by number.
     // Returns a vector containing issue numbers whose location changed, and a vector containing tags that changed.
     // Both sorted by <.
@@ -372,9 +372,9 @@ auto lwg::find_location_changes(std::vector<lwg::issue> const & issues, std::vec
 
         if (p == issues.end() || p->num != i)
             throw std::runtime_error("issue not found");
-        if (q == meta.end() || q->num != i)
-            throw std::runtime_error("issue metadata not found");
-        if (filename_for_status(p->stat) != filename_for_status(q->stat))
+        else if (q == meta.end() || q->num != i) // this is a new issue
+            changed_numbers.push_back(i);
+        else if (filename_for_status(p->stat) != filename_for_status(q->stat))
             changed_numbers.push_back(i);
     }
 
