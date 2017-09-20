@@ -256,8 +256,8 @@ R"(<table border="1" cellpadding="4">
    out << "</table>\n";
 }
 
-template <typename Pred>
-void print_resolutions(std::ostream & out, std::vector<lwg::issue> const & issues, lwg::section_map & section_db, Pred predicate) {
+template <typename Issues, typename Pred>
+void print_resolutions(std::ostream & out, Issues const & issues, lwg::section_map & section_db, Pred predicate) {
    // This construction calls out for filter-iterators
 //   std::multiset<lwg::issue, order_by_first_tag> pending_issues;
    std::vector<lwg::issue> pending_issues;
@@ -317,6 +317,35 @@ R"(<table>
    out << lwg_issues_xml.get_revision() << ")</h1>\n";
    out << "<p>" << build_timestamp << "</p>";
 }
+
+void print_ready_list_heading(std::ostream& out, std::string const& type, std::string const& description, std::string const& subset = "") {
+   print_file_header(out, "C++ Standard Library Issues " + description + " in [INSERT CURRENT MEETING HERE]");
+   out << "<h1>C++ Standard Library Issues " << description << " in [INSERT CURRENT MEETING HERE]";
+   if(!subset.empty()) out << " (" << subset << ")";
+out << R"(</h1>
+<table>
+<tr>
+<td align="left">Doc. no.</td>
+<td align="left">??????</td>
+</tr>
+<tr>
+<td align="left">Date:</td>
+<td align="left">)" << build_timestamp << R"(</td>
+</tr>
+<tr>
+<td align="left">Project:</td>
+<td align="left">Programming Language C++</td>
+</tr>
+<tr>
+<td align="left">Reply to:</td>
+<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
+                                                                     << maintainer_email << R"(</a>&gt;</td>
+</tr>
+</table>
+)";
+   out << "<h2>" << type << " Issues</h2>\n";
+}
+
 
 std::string prune_title_tags(const std::string& title){
     static const std::regex rx("<[^>]*>");
@@ -500,86 +529,90 @@ std::string report_generator::make_unresolved(std::string const & path) const {
    return filename;
 }
 
-std::string report_generator::make_immediate(std::string const & path) const {
-   // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
-   std::string filename{path + "lwg-immediate.html"};
+template<class Iterator, class Pred, class F>
+void report_generator::make_report(std::string const& filename, Iterator first, Iterator last, Pred pred, F header_printer) const {
    std::ofstream out{filename.c_str()};
    if (!out)
      throw std::runtime_error{"Failed to open " + filename};
-   print_file_header(out, "C++ Standard Library Issues Resolved Directly In [INSERT CURRENT MEETING HERE]");
-out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT MEETING HERE]</h1>
-<table>
-<tr>
-<td align="left">Doc. no.</td>
-<td align="left">N4???</td>
-</tr>
-<tr>
-<td align="left">Date:</td>
-<td align="left">)" << build_timestamp << R"(</td>
-</tr>
-<tr>
-<td align="left">Project:</td>
-<td align="left">Programming Language C++</td>
-</tr>
-<tr>
-<td align="left">Reply to:</td>
-<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
-                                                                     << maintainer_email << R"(</a>&gt;</td>
-</tr>
-</table>
-)";
-   out << "<h2>Immediate Issues</h2>\n";
-   print_issues(out, [](issue const & i) {return "Immediate" == i.stat;} );
-   print_file_trailer(out);
-   return filename;
-}
-
-std::string report_generator::make_ready(std::string const & path) const {
-   // publish a document listing all ready issues for a formal vote
-   std::string filename{path + "lwg-ready.html"};
-   std::ofstream out{filename.c_str()};
-   if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
-   print_file_header(out, "C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]");
-out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]</h1>
-<table>
-<tr>
-<td align="left">Doc. no.</td>
-<td align="left">R0165???</td>
-</tr>
-<tr>
-<td align="left">Date:</td>
-<td align="left">)" << build_timestamp << R"(</td>
-</tr>
-<tr>
-<td align="left">Project:</td>
-<td align="left">Programming Language C++</td>
-</tr>
-<tr>
-<td align="left">Reply to:</td>
-<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
-                                                                     << maintainer_email << R"(</a>&gt;</td>
-</tr>
-</table>
-)";
-   out << "<h2>Ready Issues</h2>\n";
-   print_issues(out, [](issue const & i) {return "Ready" == i.stat || "Tentatively Ready" == i.stat;} );
-   print_file_trailer(out);
-   return filename;
-}
-
-std::string report_generator::make_editors_issues(std::string const & path) const {
-   // publish a single document listing all 'Voting' and 'Immediate' resolutions (only).
-   std::string filename{path + "lwg-issues-for-editor.html"};
-   std::ofstream out{filename.c_str()};
-   if (!out) {
-     throw std::runtime_error{"Failed to open " + filename};
+   header_printer(out);
+   for(; first != last; ++first) {
+      if(pred(*first)) print_issue(out, *first);
    }
-   print_file_header(out, "C++ Standard Library Issues Resolved Directly In [INSERT CURRENT MEETING HERE]");
-   out << "<h1>C++ Standard Library Issues Resolved In [INSERT CURRENT MEETING HERE]</h1>\n";
-   print_resolutions(out, issues, section_db, [](issue const & i) {return "Pending WP" == i.stat;} );
    print_file_trailer(out);
-   return filename;
+}
+
+std::vector<std::string> report_generator::make_immediate(std::string const & path) const {
+   // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
+   std::string primary_filename{path + "lwg-immediate.html"};
+   auto immediate_pred = [](issue const & i) {return "Immediate" == i.stat;};
+
+   std::vector<std::string> filenames{primary_filename};
+   std::ofstream out{primary_filename.c_str()};
+   if (!out)
+     throw std::runtime_error{"Failed to open " + primary_filename};
+   print_ready_list_heading(out, "Immediate", "Resolved Directly");
+   print_issues(out, immediate_pred);
+   print_file_trailer(out);
+   for(const auto & p : issues_by_doc) {
+      std::string prefix = p.first.empty() ? "IS" : p.first;
+      std::string filename = path + "lwg-immediate-" + prefix + ".html";
+      make_report(filename, p.second.begin(), p.second.end(), immediate_pred,
+                  [&](std::ostream& out) { print_ready_list_heading(out, "Immediate", "Resolved Directly", prefix); });
+      filenames.push_back(filename);
+   }
+   return filenames;
+}
+
+
+std::vector<std::string> report_generator::make_ready(std::string const & path) const {
+   // publish a document listing all ready issues for a formal vote
+   std::string primary_filename{path + "lwg-ready.html"};
+   auto ready_pred = [](issue const & i) {return "Ready" == i.stat || "Tentatively Ready" == i.stat;};
+
+   std::vector<std::string> filenames{primary_filename};
+   std::ofstream out{primary_filename.c_str()};
+   if (!out)
+     throw std::runtime_error{"Failed to open " + primary_filename};
+   print_ready_list_heading(out, "Ready", "to Be Moved");
+   print_issues(out, ready_pred);
+   print_file_trailer(out);
+   for(const auto & p : issues_by_doc) {
+      std::string prefix = p.first.empty() ? "IS" : p.first;
+      std::string filename = path + "lwg-ready-" + prefix + ".html";
+      make_report(filename, p.second.begin(), p.second.end(), ready_pred, 
+                  [&](std::ostream& out) { print_ready_list_heading(out, "Ready", "to Be Moved", prefix); });
+      filenames.push_back(filename);
+   }
+   return filenames;
+}
+
+std::vector<std::string> report_generator::make_editors_issues(std::string const & path) const {
+   // publish a single document listing all 'Voting' and 'Immediate' resolutions (only).
+   std::vector<std::string> filenames;
+   auto print_editors_issues=[&](std::string const& filename, auto const& issues, std::string const& prefix = "") {
+      std::ofstream out{filename.c_str()};
+      if (!out) {
+         throw std::runtime_error{"Failed to open " + filename};
+      }
+      if(prefix.empty()) {
+         print_file_header(out, "C++ Standard Library Issues Resolved in [INSERT CURRENT MEETING HERE]");
+         out << "<h1>C++ Standard Library Issues Resolved in [INSERT CURRENT MEETING HERE]</h1>\n";
+      }
+      else {
+         print_file_header(out, "C++ Standard Library Issues Resolved in [INSERT CURRENT MEETING HERE] (" + prefix + ")");
+         out << "<h1>C++ Standard Library Issues Resolved in [INSERT CURRENT MEETING HERE] (" << prefix << ")</h1>\n";
+      }
+      print_resolutions(out, issues, section_db, [](issue const & i) {return "Pending WP" == i.stat;} );
+      print_file_trailer(out);
+      filenames.push_back(filename);
+   };
+
+   print_editors_issues(path + "lwg-issues-for-editor.html", issues);
+   for(const auto & p : issues_by_doc) {
+      std::string prefix = p.first.empty() ? "IS" : p.first;
+      print_editors_issues(path + "lwg-issues-for-editor-" + prefix + ".html", p.second, prefix);
+   }
+   return filenames;
 }
 
 void index_generator::make_sort_by_num(std::vector<issue>& issues, std::string const & filename) {

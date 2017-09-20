@@ -541,9 +541,9 @@ int main(int argc, char* argv[]) {
       if (!do_incremental_generation || force_rebuild_lists || issue_list_regen_required[ACTIVE]) {
           write_filename(generator.make_tentative(target_path));
           write_filename(generator.make_unresolved(target_path));
-          write_filename(generator.make_immediate(target_path));
-          write_filename(generator.make_ready(target_path));
-          write_filename(generator.make_editors_issues(target_path));
+          for(const auto& fn : generator.make_immediate(target_path)) write_filename(fn);
+          for(const auto& fn : generator.make_ready(target_path)) write_filename(fn);
+          for(const auto& fn : generator.make_editors_issues(target_path)) write_filename(fn);
       }
 
       // individual issues

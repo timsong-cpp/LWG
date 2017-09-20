@@ -6,7 +6,7 @@
 #include <set>
 #include <unordered_map>
 #include <cassert>
-
+#include <functional>
 #include "issues.h"  // cannot forward declare the 'section_map' alias, nor the 'LwgIssuesXml' alias
 #include <algorithm>
 
@@ -27,9 +27,11 @@ struct report_generator {
       for(const auto& i : issues){
          ++ status_count[i.stat];
          auto tag_string = as_string(i.tags.front());
-         ++ tag_count_all[tag_string];
+         auto& tag_cnt = tag_count[tag_string];
+         ++ tag_cnt.all;
          if(lwg::is_active(i.stat))
-            ++ tag_count_active[tag_string];
+            ++ tag_cnt.active;
+         issues_by_doc[i.doc_prefix].push_back(i);
       }
    }
 
@@ -49,23 +51,22 @@ struct report_generator {
    std::string make_unresolved(std::string const & path) const;
       // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
 
-   std::string make_immediate(std::string const & path) const;
+   std::vector<std::string> make_immediate(std::string const & path) const;
       // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
 
-   std::string make_ready(std::string const & path) const;
+   std::vector<std::string> make_ready(std::string const & path) const;
       // publish a document listing all ready issues for a formal vote
 
-   std::string make_editors_issues(std::string const & path) const;
+   std::vector<std::string> make_editors_issues(std::string const & path) const;
 
    std::string make_individual_issue(lwg::issue const& iss, std::string const & path) const;
 
-   int count_all_issues_with_tag(std::string const& tag) const { return tag_count_all.at(tag); }
+   int count_all_issues_with_tag(std::string const& tag) const { return tag_count.at(tag).all; }
 
    int count_issues_with_status(std::string const & stat) const { return status_count.at(stat); }
 
    int count_active_issues_with_tag(std::string const& tag) const {
-       auto p = tag_count_active.find(tag);
-       return p == tag_count_active.end() ? 0 : p->second;
+       return tag_count.at(tag).active;
    }
 
 private:
@@ -74,12 +75,22 @@ private:
    void print_issues(std::ostream & out, Pred pred) const;
 
    void print_issue(std::ostream & out, lwg::issue const & iss, print_issue_type type = print_issue_type::in_list) const;
+
+   template<typename Iterator, typename Pred, typename F>
+   void make_report(const std::string& filename, Iterator first, Iterator last, Pred pred, F header_printer) const;
+
    mailing_info const & lwg_issues_xml;
    section_map &        section_db;
    std::vector<issue> const& issues;
-   std::unordered_map<std::string, int> tag_count_all;
+
+   struct issue_count {
+      int all = 0;
+      int active = 0;
+   };
+
+   std::unordered_map<std::string, issue_count> tag_count;
    std::unordered_map<std::string, int> status_count;
-   std::unordered_map<std::string, int> tag_count_active;
+   std::unordered_map<std::string, std::vector<std::reference_wrapper<const issue>>> issues_by_doc;
 };
 
 struct index_generator {
