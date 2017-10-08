@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3020" status="New">
+<title>[networking.ts] Remove spurious nested <tt>value_type</tt> buffer sequence requirement</title>
+<section><sref ref="[buffer.reqmts]"/></section>
+<submitter>Vinnie Falco</submitter>
+<date>20 Sep 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: networking.ts</b></p>
+<p>
+The post-condition requirements for <tt>ConstBufferSequence</tt> and <tt>MutableBufferSequence</tt> refer to <tt>X::value_type</tt>, 
+but no such nested type is required. The lambda expression passed to <tt>equal</tt> can use <tt>auto const&amp;</tt> parameter types 
+instead. 
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4588">N4588</a>.
+</p>
+
+<ol>
+<li>
+<p>
+Modify <sref ref="[buffer.reqmts.mutablebuffersequence]"/> Table 12 "<tt>MutableBufferSequence</tt> requirements" as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 12 &mdash; <tt>MutableBufferSequence</tt> requirements</caption>
+<tr>
+<th>expression</th>
+<th>return type</th>
+<th>assertion/note<br/>pre/post-condition</th>
+</tr>
+<tr>
+<td colspan="3" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td>
+<tt>X u(x);</tt>
+</td>
+<td>
+</td>
+<td>
+post:<br/>
+<pre>
+equal(
+  net::buffer_sequence_begin(x),
+  net::buffer_sequence_end(x),
+  net::buffer_sequence_begin(u),
+  net::buffer_sequence_end(u),
+  [](const <del>typename X::value_type</del><ins>auto</ins>&amp; v1,
+     const <del>typename X::value_type</del><ins>auto</ins>&amp; v2)
+    {
+      mutable_buffer b1(v1);
+      mutable_buffer b2(v2);
+      return b1.data() == b2.data()
+          &amp;&amp; b1.size() == b2.size();
+    })
+</pre>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+
+<li>
+<p>
+Modify <sref ref="[buffer.reqmts.constbuffersequence]"/> Table 13 "<tt>ConstBufferSequence</tt> requirements" as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 13 &mdash; <tt>ConstBufferSequence</tt> requirements</caption>
+<tr>
+<th>expression</th>
+<th>return type</th>
+<th>assertion/note<br/>pre/post-condition</th>
+</tr>
+<tr>
+<td colspan="3" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td>
+<tt>X u(x);</tt>
+</td>
+<td>
+</td>
+<td>
+post:<br/>
+<pre>
+equal(
+  net::buffer_sequence_begin(x),
+  net::buffer_sequence_end(x),
+  net::buffer_sequence_begin(u),
+  net::buffer_sequence_end(u),
+  [](const <del>typename X::value_type</del><ins>auto</ins>&amp; v1,
+     const <del>typename X::value_type</del><ins>auto</ins>&amp; v2)
+    {
+      const_buffer b1(v1);
+      const_buffer b2(v2);
+      return b1.data() == b2.data()
+          &amp;&amp; b1.size() == b2.size();
+    })
+</pre>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
