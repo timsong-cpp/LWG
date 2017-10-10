@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3024" status="New">
+<title><tt>variant</tt>'s copies must be deleted instead of disabled via SFINAE</title>
+<section><sref ref="[variant.ctor]"/></section>
+<submitter>Casey Carter</submitter>
+<date>10 Oct 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of <tt>variant</tt>'s copy constructor and copy assignment
+operator require that those functions do not participate in overload resolution
+unless certain conditions are satisfied. There is no mechanism in C++ that makes
+it possible to prevent a copy constructor or copy assignment operator from
+participating in overload resolution. These functions should instead be specified
+to be defined as deleted unless the requisite conditions hold, as we did for the
+copy constructor and copy assignment operator of <tt>optional</tt> in LWG
+<iref ref="2756"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4687.</p>
+
+<ol>
+<li><p>Change <sref ref="[variant.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+variant(const variant&amp; w);
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> If <tt>w</tt> holds a value, initializes the <tt>variant</tt>
+to hold the same alternative as <tt>w</tt> and direct-initializes the contained
+value with <tt>get&lt;j&gt;(w)</tt>, where <tt>j</tt> is <tt>w.index()</tt>.
+Otherwise, initializes the <tt>variant</tt> to not hold a value.
+</p>
+<p>
+-7- <i>Throws:</i> Any exception thrown by direct-initializing any
+<tt>T<sub><i>i</i></sub></tt> for all <i>i</i>.
+</p>
+<p>
+-8- <i>Remarks:</i> This <del>function shall not participate in overload
+resolution</del><ins>constructor shall be defined as deleted</ins> unless
+<tt>is_copy_constructible_v&lt;T<sub><i>i</i></sub>&gt;</tt> is true for all
+<i>i</i>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[variant.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+variant&amp; operator=(const variant&amp; rhs);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+<p>
+-4- <i>Postconditions:</i> <tt>index() == rhs.index()</tt>.
+</p>
+<p>
+-5- <i>Remarks:</i> This <del>function shall not participate in overload
+resolution</del><ins>operator shall be defined as deleted</ins> unless
+<tt>is_copy_constructible_v&lt;T<sub><i>i</i></sub>&gt; &amp;&amp;
+is_copy_assignable_v&lt;T<sub><i>i</i></sub>&gt;</tt> is true for all <i>i</i>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
