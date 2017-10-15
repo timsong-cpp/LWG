@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3025" status="New">
+<title>Map-like container deduction guides should use <tt>pair&lt;Key, T&gt;</tt>, not <tt>pair&lt;const Key, T&gt;</tt></title>
+<section><sref ref="[map.overview]"/><sref ref="[multimap.overview]"/>
+<sref ref="[unord.map.overview]"/><sref ref="[unord.multimap.overview]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>8 Oct 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+With the deduction guides as specified currently, code like this doesn't work:
+</p>
+<blockquote><pre>
+map m{pair{1, 1}, {2, 2}, {3, 3}};
+</pre></blockquote>
+<p>
+Same problem occurs with <tt>multimap</tt>, <tt>unordered_map</tt> and <tt>unordered_multimap</tt>.
+The problem is in deduction guides like
+</p>
+<blockquote><pre>
+template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+          class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+map(initializer_list&lt;pair&lt;const Key, T&gt;&gt;, Compare = Compare(),
+    Allocator = Allocator()) -&gt; map&lt;Key, T, Compare, Allocator&gt;;
+</pre></blockquote>
+<p>
+The <tt>pair&lt;const Key, T&gt;</tt> is not matched by a <tt>pair&lt;int, int&gt;</tt>, because 
+<tt>int</tt> can't match a <tt>const Key</tt>. Dropping the <tt>const</tt> from the parameter of the 
+deduction guide makes it work with no loss of functionality.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4687">N4687</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[map.overview]"/> p3, class template <tt>map</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+         class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Compare = Compare(), Allocator = Allocator())
+    -&gt; map&lt;Key, T, Compare, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, class Allocator&gt;
+  map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator) -&gt; map&lt;Key, T, less&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[multimap.overview]"/> p3, class template <tt>multimap</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+         class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Compare = Compare(), Allocator = Allocator())
+    -&gt; multimap&lt;Key, T, Compare, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, class Allocator&gt;
+  multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator)
+    -&gt; multimap&lt;Key, T, less&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[unord.map.overview]"/> p3, class template <tt>unordered_map</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Hash = hash&lt;Key&gt;,
+         class Pred = equal_to&lt;Key&gt;, class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  unordered_map(initializer_list&lt;pair&lt;const Key, T&gt;&gt;, typename <i>see below</i>::size_type = <i>see below</i>, Hash = Hash(),
+                Pred = Pred(), Allocator = Allocator())
+    -&gt; unordered_map&lt;Key, T, Hash, Pred, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type,
+                Allocator)
+    -&gt; unordered_map&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator)
+    -&gt; unordered_map&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, class Hash, class Allocator&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type, Hash,
+                Allocator)
+    -&gt; unordered_map&lt;Key, T, Hash, equal_to&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[unord.multimap.overview]"/> p3, class template <tt>unordered_multimap</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Hash = hash&lt;Key&gt;,
+         class Pred = equal_to&lt;Key&gt;, class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;,
+                     typename <i>see below</i>::size_type = <i>see below</i>,
+                     Hash = Hash(), Pred = Pred(), Allocator = Allocator())
+    -&gt; unordered_multimap&lt;Key, T, Hash, Pred, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type,
+                     Allocator)
+    -&gt; unordered_multimap&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator)
+    -> unordered_multimap&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, class Hash, class Allocator&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type,
+                     Hash, Allocator)
+    -&gt; unordered_multimap&lt;Key, T, Hash, equal_to&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
