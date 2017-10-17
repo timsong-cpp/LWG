@@ -4,4 +4,4 @@ ${CXX:-g++} $* -std=c++14 -Wall -DNDEBUG -O2 -o bin/lists src/date.cpp src/issue
 ${CXX:-g++} $* -std=c++14 -Wall -o bin/section_data src/section_data.cpp
 ${CXX:-g++} $* -std=c++14 -Wall -o bin/toc_diff src/toc_diff.cpp
 ${CXX:-g++} $* -std=c++14 -Wall -DNDEBUG -O2 -o bin/list_issues src/date.cpp src/issues.cpp src/status.cpp src/sections.cpp src/list_issues.cpp
-${CXX:-g++} $* -std=c++14 -Wall -DNDEBUG -O2 -o bin/set_status  src/status.cpp
+${CXX:-g++} $* -std=c++14 -Wall -DNDEBUG -O2 -o bin/set_status  src/set_status.cpp src/status.cpp
