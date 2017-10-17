@@ -13,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <ctime>
 
 // platform headers - requires a Posix compatible platform
 // The hope is to replace all of this with the filesystem TS
@@ -24,7 +25,7 @@
 // solution specific headers
 //#include "issues.h"
 //#include "sections.h"
-
+#include "status.h"
 
 #if 0
 // Revisit this after AJM works out linker issues on his Mac
@@ -91,7 +92,7 @@ int main(int argc, char const * argv[]) {
 
       std::string new_status{argv[2]};
       std::replace(new_status.begin(), new_status.end(), '_', ' ');  // simplifies unix shell scripting
-  
+
       std::string path;
       char cwd[1024];
       if (getcwd(cwd, sizeof(cwd)) == 0) {
@@ -131,7 +132,21 @@ int main(int argc, char const * argv[]) {
       if (l == std::string::npos) {
          throw bad_issue_file{filename, "Corrupt status attribute"};
       }
+      auto old_status = issue_data.substr(k, l-k);
       issue_data.replace(k, l-k, new_status);
+
+      if(lwg::filename_for_status(new_status) != lwg::filename_for_status(old_status)) {
+         // when performing a major status change, record the date and change as a note
+         auto eod = issue_data.find("</discussion>");
+         if(eod == std::string::npos) {
+             throw bad_issue_file{filename, "Unable to find end of discussion"};
+         }
+         std::time_t t{ std::time(nullptr) };
+         std::tm utc = *std::gmtime(&t);
+         char date[11]; // YYYY-mm-dd + null
+         if(std::strftime(&date[0], sizeof date, "%Y-%m-%d", &utc) != (sizeof date - 1)) throw std::logic_error("Datestamp size is borked");
+         issue_data.insert(eod, "<note>\n" + std::string(date) + " Status changed: " + old_status + " &rarr; " + new_status + ".\n</note>\n");
+      }
 
       std::ofstream out_file{filename};
       if (!out_file.is_open()) {
