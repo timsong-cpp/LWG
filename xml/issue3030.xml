@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3030" status="New">
+<title>Who shall meet the requirements of <tt>try_lock</tt>?</title>
+<section><sref ref="[thread.lock.algorithm]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>7 Nov 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[thread.lock.algorithm]"/> says:
+</p>
+<blockquote><p>
+"If a call to <tt>try_lock()</tt> fails, <tt>unlock()</tt> shall be called for all prior
+arguments and there shall be no further calls to <tt>try_lock()</tt>."
+</p></blockquote>
+<p>
+We try to use "shall" for requirements on the user (e.g. as in the
+previous paragraph) which is absolutely not what is meant here.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4700">N4700</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[thread.lock.algorithm]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class L1, class L2, class... L3&gt; int try_lock(L1&amp;, L2&amp;, L3&amp;...);
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires:</i> [&hellip;]
+<p/>
+-2- <i>Effects:</i> Calls <tt>try_lock()</tt> for each argument in order beginning with the first until all arguments have
+been processed or a call to <tt>try_lock()</tt> fails, either by returning <tt>false</tt> or by throwing an exception.
+If a call to <tt>try_lock()</tt> fails, <tt>unlock()</tt> <del>shall be</del><ins>is</ins> called for all prior arguments 
+<del>and there shall be</del><ins>with</ins> no further calls to <tt>try_lock()</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template &lt;class L1, class L2, class... L3&lt; void lock(L1&amp;, L2&amp;, L3&amp;...);
+</pre>
+<blockquote>
+<p>
+-4- <i>Requires:</i> [&hellip;]
+<p/>
+-5- <i>Effects:</i> All arguments are locked via a sequence of calls to <tt>lock()</tt>, <tt>try_lock()</tt>, 
+or <tt>unlock()</tt> on each argument. The sequence of calls <del>shall</del><ins>does</ins> not result in deadlock, 
+but is otherwise unspecified. [<i>Note:</i> A deadlock avoidance algorithm such as try-and-back-off must be used, but the 
+specific algorithm is not specified to avoid over-constraining implementations. &mdash; <i>end note</i>] If a 
+call to <tt>lock()</tt> or <tt>try_lock()</tt> throws an exception, <tt>unlock()</tt> <del>shall be</del><ins>is</ins> 
+called for any argument that had been locked by a call to <tt>lock()</tt> or <tt>try_lock()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
