@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3031" status="New">
+<title>Algorithms and predicates with non-const reference arguments</title>
+<section><sref ref="[algorithms.requirements]"/><sref ref="[alg.sorting]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>8 Nov 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+This doesn't compile with any major implementation:
+</p>
+<blockquote><pre>
+int i[1];
+std::stable_sort(i, i, [](int&amp; x, int&amp; y) { return x &lt; y; });
+</pre></blockquote>
+<p>
+The problem is that the <tt>Compare</tt> expects non-const references. We say "It is assumed that 
+<tt>comp</tt> will not apply any non-constant function through the dereferenced iterator" But that 
+isn't sufficient to forbid the example.
+<p/>
+My first thought was to modify [algorithm.requirements] to make the <tt>Predicate</tt> and <tt>BinaryPredicate</tt> requirements use <tt>pred(as_const(*first))</tt> and <tt>binary_pred(as_const(*first1), as_const(*first2))</tt>, but this could break the 
+<tt>InputIterator</tt> cases if the <tt>InputIterator</tt> returns a proxy, since <tt>as_const</tt> is deleted for rvalues.
+<p/>
+Maybe we can say that when the iterator is a forward iterator, the predicate must additionally handle the arguments being 
+called as <tt>as_const(*iter)</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
