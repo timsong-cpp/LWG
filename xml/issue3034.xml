@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3034" status="New">
+<title>P0767R1 breaks previously-standard-layout types</title>
+<section><sref ref="[meta.trans.other]"/></section>
+<submitter>Casey Carter</submitter>
+<date>12 Nov 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<a href="http://wg21.link/p0767r1">P0767R1 "Expunge POD"</a> changed the
+requirement for several library types from "POD" to "trivial." Since these types
+no longer provide/require the standard-layout portion of "POD," the change breaks:
+<ul>
+<li>user classes with a member of such a type that were standard-layout in C++17</li>
+<li>implementations of <tt>basic_string</tt> and <tt>basic_string_view</tt> that
+expect character types to be both trivial and standard layout.</li>
+</ul>
+It appears this breakage was not intentional and not discussed in LWG.
+</p>
+<p>
+The fix is straight-forward: apply an additional standard-layout requirement to
+the affected types:
+<ul>
+<li><tt>max_align_t</tt></li>
+<li>the <tt>type</tt> member of specializations of <tt>aligned_storage</tt></li>
+<li>the <tt>type</tt> member of specializations of <tt>aligned_union</tt></li>
+<li>the char-like objects used by <tt>basic_string</tt> and <tt>basic_string_view</tt>.</li>
+</ul>
+(Albeit the potential for breakage with <tt>max_align_t</tt> is admittedly small.)
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4700">N4700</a> +
+<a href="http://wg21.link/p0767r1">P0767R1</a>.
+</p>
+<ol>
+<li><p>Change in <sref ref="[support.types.layout]"/> paragraph 5:</p>
+<p>
+The type <tt>max_align_t</tt> is a trivial <ins>standard-layout</ins> type whose
+alignment requirement is at least as great as that of every scalar type, and whose
+alignment requirement is supported in every context (<sref ref="[basic.align]"/>).
+</p>
+</li>
+<li><p>Change the table in <sref ref="[meta.trans.other]"/> as indicated:</p>
+<p>
+<tt>aligned_storage</tt><br/>
+The member typedef <tt>type</tt> shall be a trivial <ins>standard-layout</ins>
+type suitable for use as uninitialized storage for any object whose size is at
+most <tt>Len</tt> and whose alignment is a divisor of <tt>Align</tt>.
+</p>
+<p>
+<tt>aligned_union</tt><br/>
+The member typedef <tt>type</tt> shall be a trivial <ins>standard-layout</ins>
+type suitable for use as uninitialized storage for any object whose type is listed
+in <tt>Types</tt>; its size shall be at least <tt>Len</tt>.
+</p>
+</li>
+<li><p>Change <sref ref="[strings.general]"/> paragraph 1 as indicated:</p>
+<p>
+This Clause describes components for manipulating sequences of any non-array
+trivial <ins>standard-layout</ins> (<sref ref="[basic.types]"/>) type. Such types
+are called char-like types, and objects of char-like types are called char-like
+objects or simply characters.
+</p>
+</li>
+</ol>
+</resolution>
+
+</issue>
