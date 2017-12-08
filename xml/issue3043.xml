@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3043" status="New">
+<title>Bogus postcondition for <tt>filesystem_error</tt> constructor</title>
+<section><sref ref="[fs.filesystem_error.members]"/></section>
+<submitter>Tim Song</submitter>
+<date>6 Dec 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[fs.filesystem_error.members]"/> says that constructors of
+<tt>filesystem_error</tt> have the postcondition that <tt>runtime_error::what()</tt> has the
+value <tt>what_arg.c_str()</tt>. That's obviously incorrect: these are pointers
+to distinct copies of the string in any sane implementation and cannot
+possibly compare equal.
+<p/>
+The requirement seems suspect for a further reason: it mandates the content of the string
+returned by <tt>runtime_error::what()</tt>, but <tt>filesystem_error</tt>
+has no direct control over the construction of its indirect
+non-virtual base class <tt>runtime_error</tt>. Instead, what is passed to <tt>runtime_error</tt>'s
+constructor is determined by <tt>system_error</tt>'s constructor, which in many implementations
+is an eagerly crafted error string. This is permitted by the specification of
+<tt>system_error</tt> (see <sref ref="[syserr.syserr]"/>) but would make the requirement unimplementable.
+<p/>
+The proposed wording below adjusts the postcondition using the formula of <tt>system_error</tt>'s 
+constructor. As an editorial change, it also replaces the postcondition tables with normal postcondition clauses,
+in the spirit of <a href="https://github.com/cplusplus/draft/issues/1875">editorial issue 1875</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.</p>
+
+<ol>
+<li><p>Replace <sref ref="[fs.filesystem_error.members]"/> p2-4, including Tables 119 through 121, with the following:</p>
+<pre>
+filesystem_error(const string&amp; what_arg, error_code ec);
+</pre>
+<blockquote>
+-2- <i>Postconditions</i>: <tt>code() == ec</tt>, <tt>path1().empty() == true</tt>, <tt>path2().empty() == true</tt>,
+and <tt>string_view(what()).find(what_arg) != string_view::npos</tt>.
+</blockquote>
+<pre>
+filesystem_error(const string&amp; what_arg, const path&amp; p1, error_code ec);
+</pre>
+<blockquote>
+-3- <i>Postconditions</i>: <tt>code() == ec</tt>, <tt>path1()</tt> returns a reference to the stored copy of <tt>p1</tt>, <tt>path2().empty() == true</tt>,
+and <tt>string_view(what()).find(what_arg) != string_view::npos</tt>.
+</blockquote>
+<pre>
+filesystem_error(const string&amp; what_arg, const path&amp; p1, const path&amp; p2, error_code ec);
+</pre>
+<blockquote>
+-4- <i>Postconditions</i>: <tt>code() == ec</tt>, <tt>path1()</tt> returns a reference to the stored copy of <tt>p1</tt>,
+<tt>path2()</tt> returns a reference to the stored copy of <tt>p2</tt>, and <tt>string_view(what()).find(what_arg) != string_view::npos</tt>.
+</blockquote>
+</li>
+<li><p>Edit <sref ref="[fs.filesystem_error.members]"/> p7 as indicated:</p>
+<pre>
+const char* what() const noexcept override;
+</pre>
+<blockquote>
+-7- <i>Returns</i>: <del>A string containing <tt>runtime_error::what()</tt>.</del><ins>An <span style="font-variant:small-caps">ntbs</span> that
+incorporates the <tt>what_arg</tt> argument supplied to the constructor.</ins> The exact format is unspecified. Implementations should include
+the <tt>system_error::what()</tt> string and the pathnames of <tt>path1</tt> and <tt>path2</tt> in the native format in the returned string.
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
