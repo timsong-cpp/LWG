@@ -1,7 +1,5 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY nbsp "&#160;">
-] >
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2243" status="New">
 <title><tt>istream::putback</tt> problem</title>
@@ -17,12 +15,62 @@ is called. The problem are not the obvious typos in the expression, but the fact
 interpretations, since nowhere is specified what the required argument to <tt>sputbackc</tt> is.
 <p/>
 It can be guessed to be "<tt>rdbuf()-&gt;sputbackc(c)</tt>", but "<tt>rdbuf()-&gt;sputbackc(char_type())</tt>" or 
-just anything would be as conforming (or non-confoming) as the first guess.
+just anything would be as conforming (or non-conforming) as the first guess.
 </p>
 
+<note>2017-12-12, Jonathan comments and provides wording</note>
+<p>
+Fix the bogus expression, and change <tt>sputbackc()</tt> to just <tt>sputbackc</tt>
+since we're talking about the function, not an expression <tt>sputbackc()</tt> (which 
+isn't a valid expression any more than <tt>rdbuf-&gt;sputbackc()</tt> is). Make the 
+corresponding change to the equivalent wording in p36 too.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.</p>
+
+<ol>
+<li><p>Change [istream.unformatted] as shown:</p>
+
+<blockquote>
+<pre>
+basic_istream&lt;charT, traits&gt;&amp; putback(char_type c);
+</pre>
+<blockquote>
+<p>
+-34- <i>Effects:</i> Behaves as an unformatted input function (as described above), except that the function
+first clears <tt>eofbit</tt>. After constructing a sentry object, if <tt>!good()</tt> calls 
+<tt>setstate(failbit)</tt> which may throw an exception, and return. If <tt>rdbuf()</tt> is not null, calls 
+<tt>rdbuf<ins>()</ins>-&gt;sputbackc(<ins>c</ins>)</tt>. If <tt>rdbuf()</tt> is null, or if 
+<tt>sputbackc<del>()</del></tt> returns <tt>traits::eof()</tt>, calls <tt>setstate(badbit)</tt> (which may throw 
+<tt>ios_base::failure</tt> (<sref ref="[iostate.flags]"/>)). 
+[<i>Note:</i> This function extracts no characters, so the value returned by the next call to <tt>gcount()</tt> 
+is <tt>0</tt>. &mdash; <i>end note</i>]
+<p/>
+-35- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+<pre>
+basic_istream&lt;charT, traits&gt;&amp; unget();
+</pre>
+<blockquote>
+<p>
+-36- <i>Effects:</i> Behaves as an unformatted input function (as described above), except that the function
+first clears <tt>eofbit</tt>. After constructing a sentry object, if <tt>!good()</tt> calls 
+<tt>setstate(failbit)</tt> which may throw an exception, and return. If <tt>rdbuf()</tt> is not null, calls 
+<tt>rdbuf()-&gt;sungetc()</tt>. If <tt>rdbuf()</tt> is null, or if <tt>sungetc<del>()</del></tt> returns 
+<tt>traits::eof()</tt>, calls <tt>setstate(badbit)</tt> (which may throw <tt>ios_base::failure</tt> 
+(<sref ref="[iostate.flags]"/>)). 
+[<i>Note:</i> This function extracts no characters, so the value returned by the next call to <tt>gcount()</tt> is 
+<tt>0</tt>. &mdash; <i>end note</i>]
+<p/>
+-37- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
