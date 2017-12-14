@@ -16,7 +16,7 @@ It currently reads, in its entirety (<sref ref="[complex.ops]"/>/12-15):
 <blockquote class="note">
 <pre>
 template&lt;class T, class charT, class traits&gt;
-basic_istream&lt;charT, traits&gt;&amp; operator>>(basic_istream&lt;charT, traits&gt;&amp; is, complex&lt;T&gt;&amp; x);
+basic_istream&lt;charT, traits&gt;&amp; operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp; is, complex&lt;T&gt;&amp; x);
 </pre>
 <blockquote>
 <p>
@@ -45,9 +45,8 @@ It is completely unclear:
 <li>what is left in the stream on failure. (For example, with <tt>"(0, 0]"</tt>, libstdc++ extracts the <tt>]</tt> 
 while libc++ leaves it in the stream.)</li>
 </ul>
-</discussion>
-
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <blockquote class="note">
 <i>Drafting note:</i> the following wording is based on:
 <ul>
@@ -63,7 +62,7 @@ while libc++ leaves it in the stream.)</li>
 <pre>
 template&lt;class T, class charT, class traits&gt;
 basic_istream&lt;charT, traits&gt;&amp;
-operator>>(basic_istream&lt;charT, traits&gt;&amp; is, complex&lt;T&gt;&amp; x);
+operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp; is, complex&lt;T&gt;&amp; x);
 </pre>
 <blockquote>
 <p>
@@ -106,7 +105,67 @@ is specified to be the same for each of the simpler extractions. &mdash; <i>end 
 </blockquote>
 </li>
 </ol>
+</blockquote>
+<note>2017-12-13 Tim Song adjusts the P/R to avoid relying on putback.</note>
+</discussion>
 
+<resolution>
+<blockquote class="note">
+<i>Drafting note:</i> the following wording assumes that:
+<ul>
+<li> Characters are extracted using <tt>operator&gt;&gt;</tt> and compared using <tt>traits::eq</tt>.</li>
+<li> Mismatched characters are not extracted. </li>
+<li> <tt>x</tt> is assigned a value-initialized <tt>complex</tt> on failure for consistency with the arithmetic extractors (compare LWG <iref ref="696"/>). </li>
+</ul>
+</blockquote>
+<p>This wording is relative to <a href="https://wg21.link/N4713">N4713</a>.</p>
+<ol>
+<li><p>Replace <sref ref="[complex.ops]"/>/12-15 with the following paragraphs:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class charT, class traits&gt;
+basic_istream&lt;charT, traits&gt;&amp;
+operator&gt;&gt;(basic_istream&lt;charT, traits&gt;&amp; is, complex&lt;T&gt;&amp; x);
+</pre>
+<blockquote>
+<p>
+-?- <i>Effects:</i> Let <tt><i>PEEK</i>(is)</tt> be a formatted input function (<sref ref="[istream.formatted.reqmts]"/>) of <tt>is</tt> that returns the next character that 
+would be extracted from <tt>is</tt> by <tt>operator&gt;&gt;</tt>. [<i>Note</i>: The <tt>sentry</tt> object is constructed and destroyed,
+ but the returned character is not extracted from the stream. &mdash; <i>end note</i>] 
+<ul>
+<li>If <tt><i>PEEK</i>(is)</tt> is not equal to <tt>is.widen('(')</tt>, extracts an object <tt>u</tt> of type <tt>T</tt> from <tt>is</tt>, 
+and assigns <tt>complex&lt;T&gt;(u)</tt> to <tt>x</tt>.</li>
+<li>Otherwise, extracts that character from <tt>is</tt>, then extracts an object <tt>u</tt> of type <tt>T</tt> from <tt>is</tt>.
+<ul>
+   <li> If <tt><i>PEEK</i>(is)</tt> is equal to <tt>is.widen(')')</tt>, then extracts that character from <tt>is</tt> and assigns <tt>complex&lt;T&gt;(u)</tt> to <tt>x</tt>. </li>
+   <li> Otherwise, if it is equal to <tt>is.widen(',')</tt>, then extracts that character from <tt>is</tt> and then extracts an object <tt>v</tt> of type <tt>T</tt> from <tt>is</tt>, then:
+    <ul>
+       <li>If <tt><i>PEEK</i>(is)</tt> is equal to <tt>is.widen(')')</tt>, then extracts that character from <tt>is</tt> and assigns <tt>complex&lt;T&gt;(u, v)</tt> to <tt>x</tt>.</li>
+       <li> Otherwise, the extraction fails.</li>
+    </ul>
+   </li>
+   <li>Otherwise, the extraction fails.</li>
+</ul>
+</li>
+</ul>
+In the description above, characters are extracted from <tt>is</tt> as if by <tt>operator&gt;&gt;</tt> (<sref ref="[istream.extractors]"/>), character
+equality is determined using <tt>traits::eq</tt>, and an object <tt>t</tt> of type <tt>T</tt> is extracted from <tt>is</tt> as if by <tt> is &gt;&gt; t</tt>.
+<p/>
+If any extraction operation fails, no further operation is performed and the whole extraction fails.
+<p/>
+On failure, assigns <tt>complex&lt;T&gt;()</tt> to <tt>x</tt> and calls <tt>is.setstate(ios_base::failbit)</tt> (which may throw <tt>ios::failure</tt>
+(<sref ref="[iostate.flags]"/>)).
+<p/>
+-?- <i>Returns:</i> <tt>is</tt>.
+<p/>
+-?- [<i>Note</i>: This extraction is performed as a series of simpler extractions. Therefore, the skipping of whitespace
+is specified to be the same for each of the simpler extractions. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
