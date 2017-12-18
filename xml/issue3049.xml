@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3049" status="New">
+<title>Missing wording allowing algorithms to use copies of function objects as substitutes for their parameters</title>
+<section><sref ref="[algorithms.requirements]"/></section>
+<submitter>Jared Hoberock</submitter>
+<date>4 Dec 2017</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When designing the parallel algorithms library, we intended for parallel algorithms to copy their function objects parameters 
+when it is possible and useful to do so, but there doesn't appear to be any wording to enable that latitude. To the contrary, 
+algorithm specifications refer to their function object parameters by name, implying that a copy of the parameter may not 
+be used as a substitute.
+<p/>
+This was noticed when Billy O'Neal observed that parallel <tt>generate()</tt> did not share parallel <tt>for_each()</tt> and 
+<tt>for_each_n()</tt>'s special requirement for a <tt>CopyConstructible</tt> user-provided function object.
+<p/>
+This <tt>CopyConstructible Function</tt> requirement was added to relax legacy <tt>for_each()</tt>'s <tt>MoveConstructible Function</tt>
+requirement to allow parallel implementations to make copies as necessary. All parallel algorithms need similar permissions, 
+but a strong requirement for <tt>CopyConstructible</tt> in all algorithms is too restrictive.
+<p/>
+What we require is to allow algorithm implementations to use copies of function objects as substitutes for their original parameters, 
+while not requiring that all function object parameters be copyable.
+<p/>
+Casey Carter noted that <sref ref="[algorithms.requirements]"/> p8 grants permission to all algorithms to copy their function 
+object parameters. However, this paragraph is not normative and does not indicate how the algorithm is allowed to use such copies. 
+Additionally, it does not specify which algorithm parameters are the ones called out as function objects. For example, 
+<sref ref="[alg.generate]"/> refers to <tt>gen</tt> as a function object, but <sref ref="[alg.foreach]"/> does not refer to <tt>f</tt> 
+as a function object. All the other types of callable algorithm parameters (i.e. <tt>Predicate</tt>, <tt>BinaryPredicate</tt>, 
+<tt>Compare</tt>, <tt>UnaryOperation</tt>, <tt>BinaryOperation</tt>, <tt>BinaryOperation1</tt>, and <tt>BinaryOperation2</tt>) 
+are defined to be function objects in <sref ref="[algorithms.requirements]"/> and <sref ref="[algorithms.parallel.user]"/>. This 
+list intentionally omits <tt>Function</tt> and <tt>Generator</tt> by design.
+<p/>
+A potential resolution would introduce normative wording to explicitly allow algorithms to use copies of function object parameters 
+as substitutes for their function object parameters, and remove ambiguity in algorithm specifications about which parameters are 
+function objects.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[algorithms.requirements]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-8- <del>[<i>Note:</i></del> Unless otherwise specified, algorithms that take function objects as arguments are permitted to copy
+those function objects freely. <ins>When an algorithm's specification requires the invocation of a function object parameter, 
+such a copy may be invoked as a substitute for the original function object parameter.</ins> <ins>[<i>Note:</i> This implies 
+that copyable user-supplied function objects should not rely on their identity.</ins> Programmers for whom object identity is 
+important should consider using a wrapper class that points to a noncopied implementation object such as 
+<tt>reference_wrapper&lt;T&gt;</tt> (<sref ref="[refwrap]"/>), or some equivalent solution. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.foreach]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class Function&gt;
+  constexpr Function for_each(InputIterator first, InputIterator last, Function f);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Effects:</i> Applies <ins>the function object</ins> <tt>f</tt> to the result of dereferencing every iterator in the range 
+<tt>[first, last)</tt>, [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class ExecutionPolicy, class ForwardIterator, class Function&gt;
+  void for_each(ExecutionPolicy&amp;&amp; exec,
+                ForwardIterator first, ForwardIterator last,
+                Function f);
+</pre>
+<blockquote>
+<p>
+<del>-6- <i>Requires:</i> <tt>Function</tt> shall meet the requirements of <tt>CopyConstructible</tt>.</del>
+<p/>
+-7- <i>Effects:</i> Applies <ins>the function object</ins> <tt>f</tt> to the result of dereferencing every iterator in the range 
+<tt>[first, last)</tt>. [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class InputIterator, class Size, class Function&gt;
+constexpr InputIterator for_each_n(InputIterator first, Size n, Function f);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-13- <i>Effects:</i> Applies <ins>the function object</ins> <tt>f</tt> to the result of dereferencing every iterator in the range 
+<tt>[first, first + n)</tt> in order. [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class ExecutionPolicy, class ForwardIterator, class Size, class Function&gt;
+  ForwardIterator for_each_n(ExecutionPolicy&amp;&amp; exec, ForwardIterator first, Size n,
+                             Function f);
+</pre>
+<blockquote>
+<p>
+<del>-16- <i>Requires:</i> <tt>Function</tt> shall meet the requirements of <tt>CopyConstructible</tt>.</del>
+<p/>
+[&hellip;]
+<p/>
+-18- <i>Effects:</i> Applies <ins>the function object</ins> <tt>f</tt> to the result of dereferencing every iterator in the range 
+<tt>[first, first + n).</tt> [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
