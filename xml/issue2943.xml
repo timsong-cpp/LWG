@@ -21,9 +21,53 @@ the file is opened as if by calling <tt>fopen(s, modstr)</tt>, but that call is 
 
 <note>2017-11 Albuquerque Wednesday issue processing</note>
 <p>Status to Open; Jonathan to provide wording.</p>
+
+<note>2018-01-16; Jonathan and Tim Song provide wording</note>
+<p>
+We'll have to ask the Microsoft guys if "as by a call to <tt>fopen</tt>" is OK for them. There are 
+paths that can be represented as a wide character string that can't reliably be converted to narrow 
+characters (because they become dependent on the current codepage, or some other Windows nonsense) 
+so they definitely won't use <tt>fopen</tt>. But as long as they call something that behaves like 
+it (which should allow <tt>_fwopen</tt>), I think they'll still meet the spirit of the wording.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[filebuf.members]"/> as indicated:</p>
+<blockquote>
+<pre>
+basic_filebuf* open(const char* s, ios_base::openmode mode);
+basic_filebuf* open(const filesystem::path::value_type* s,
+                    ios_base::openmode mode); <i>// wide systems only; see <sref ref="[fstream.syn]"/></i>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>s</tt> shall point to a NTCTS (<sref ref="[defns.ntcts]"/>).</ins>
+<p/>
+-2- <i>Effects:</i> If <tt>is_open() != false</tt>, returns a null pointer. Otherwise, initializes the 
+<tt>filebuf</tt> as required. It then opens <ins>the file that <tt>s</tt> resolves to, if possible, as 
+if by a call to <tt>fopen</tt> with the second argument</ins><del>a file, if possible, whose name is the 
+<span style="font-variant:small-caps">ntbs</span> <tt>s</tt> (as if by calling <tt>fopen(s, modstr))</tt>. 
+The <span style="font-variant:small-caps">ntbs</span> <tt>modstr</tt> is</del> determined from 
+<tt>mode &amp; ~ios_base::ate</tt> as indicated in Table 117. If <tt>mode</tt> is not some combination 
+of flags shown in the table then the open fails.
+<p/>
+-3- If the open operation succeeds and <tt>(mode &amp; ios_base::ate) != 0</tt>, positions the file to 
+the end (as if by calling <tt>fseek(file, 0, SEEK_END)</tt><ins>, where <tt>file</tt> is the pointer 
+returned by calling <tt>fopen</tt></ins>).(footnote 330)
+<p/>
+-4- If the repositioning operation fails, calls <tt>close()</tt> and returns a null pointer to indicate failure.
+<p/>
+-5- <i>Returns:</i> <tt>this</tt> if successful, a null pointer otherwise.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
