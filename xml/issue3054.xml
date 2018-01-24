@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3054" status="New">
+<title><tt>uninitialized_copy</tt> appears to not be able to meet its exception-safety guarantee</title>
+<section><sref ref="[uninitialized.copy]"/></section>
+<submitter>Jon Cohen</submitter>
+<date>24 Jan 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+I believe that <tt>uninitialized_copy</tt> is unable to meet its exception-safety guarantee in the 
+presence of throwing move constructors:
+<p/>
+<sref ref="[specialized.algorithms]"/>/1 has two statements of note for the specialized algorithms such 
+as <tt>uninitialized_copy</tt>:
+<p/>
+<ul>
+<li><p>the provided iterators satisfy the InpuIterator requirements (<sref ref="[input.iterators]"/>)</p></li>
+<li><p>if an exception is thrown during the algorithm then there are no effects</p></li>
+</ul>
+<p/>
+Suppose we have an input iterator <tt>Iter</tt>. Then <tt>std::move_iterator&lt;Iter&gt;</tt> appears 
+to also be an input iterator. Notably, it still satisfies that <tt>(void)*a, *a</tt> is equivalent to 
+<tt>*a</tt> for move iterator <tt>a</tt> since the dereference only forms an rvalue reference, it 
+doesn't actually perform the move operation (<sref ref="[input.iterators]"/> Table 95 &mdash; "Input iterator requirements"). 
+<p/>
+Suppose also that we have a type <tt>T</tt> whose move constructor can throw, a range of <tt>T</tt>'s 
+<tt>[t<sub>begin</sub>, t<sub>end</sub>)</tt>, and a pointer to an uninitialized buffer of <tt>T</tt>'s 
+<tt>buf</tt>. Then <tt>std::uninitialized_copy(std::make_move_iterator(t<sub>begin</sub>), 
+std::make_move_iterator(t<sub>end</sub>), buf)</tt> can't possibly satisfy the property that it has 
+no effects if one of the moves throws &mdash; we'll have a <tt>T</tt> left in a moved-from state with 
+no way of recovering.  
+<p/>
+See <a href="https://wandbox.org/permlink/aYdtwlPckvXp59eJ">here</a> for an example in code.
+<p/>
+It seems like the correct specification for <tt>uninitialized_copy</tt> should be that if 
+<tt>InputIterator</tt>'s <tt>operator*</tt> returns an rvalue reference and 
+<tt>InputIterator::value_type</tt>'s move constructor is not marked <tt>noexcept</tt>, then 
+<tt>uninitialized_copy</tt> will leave the objects in the underlying range in a valid but 
+unspecified state.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
