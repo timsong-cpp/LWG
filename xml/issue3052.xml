@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3052" status="New">
+<title><tt>visit</tt> is underconstrained</title>
+<section><sref ref="[variant.visit]"/></section>
+<submitter>Casey Carter</submitter>
+<date>23 Jan 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::visit</tt> accepts a parameter pack of forwarding references named
+<tt>vars</tt> whose types are the parameter pack <tt>Variants</tt>. Despite that:
+<ol>
+<li>the names of both packs are variants of "variant",</li>
+<li>para 1 passes the types in <tt>Variants</tt> (modified) to <tt>variant_size_v</tt>,</li>
+<li>para 3 uses the expression <tt>vars<sub><i>i</i></sub>.index()</tt>,</li>
+<li>para 4 says "...if any <tt>variant</tt> in <tt>vars</tt> is <tt>valueless_by_exception</tt>,
+and</li>
+<li>para 5 mentions "..the number of alternative types of <tt>Variants<sub>0</sub></tt>"</li>
+</ol>
+the <i>Requires</i> element imposes no explicit requirements on the types in <tt>Variants</tt>.
+Notably, the <tt>Variants</tt> are not required to be <tt>variant</tt>s. This lack of constraints
+appears to be simply an oversight.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a> after an
+<a href="https://github.com/cplusplus/draft/commit/b4d7e7406dfa7c59591743dca9b79f30fa8f15bd">
+editorial change</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[variant.visit]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Visitor, class... Variants&gt;
+  constexpr <i>see below</i> visit(Visitor&amp;&amp; vis, Variants&amp;&amp;... vars);
+</pre>
+<blockquote>
+<p>[&hellip;]</p>
+<p>
+-4- <i>Throws:</i> <tt>bad_variant_access</tt> if <del>any <tt>variant</tt> in <tt>vars</tt> is
+<tt>valueless_by_exception()</tt></del><ins><tt>(vars.valueless_by_exception() || ...)</tt> is
+<tt>true</tt></ins>.
+</p><p>-5- <i>Complexity:</i> [&hellip;]</p><p>
+<ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless
+<tt>remove_cvref_t&lt;Variants<sub><i>i</i></sub>&gt;</tt> is a specialization of <tt>variant</tt>
+for all <tt>0 &lt;= i &lt; n</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
