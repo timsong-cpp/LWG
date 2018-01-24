@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3053" status="New">
+<title>Prohibit <tt>error_code</tt> construction from rvalues of <tt>error_category</tt></title>
+<section><sref ref="[syserr.errcode.overview]"/></section>
+<submitter>Antony Polukhin</submitter>
+<date>24 Jan 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Constructor <tt>error_code(int val, const error_category&amp; cat)</tt> and
+member function <tt>void assign(int val, const error_category&amp; cat)</tt>
+could be misused if a custom <tt>error_category</tt> is provided:
+</p>
+<blockquote><pre>
+error_code ec{1, test_category{}}; // ec holds a pointer/reference to a temporary
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[syserr.errcode.overview]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  class error_code {
+  public:
+    <i>// <sref ref="[syserr.errcode.constructors]"/>, constructors</i>
+    [&hellip;]
+    error_code(int val, const error_category&amp; cat) noexcept;
+    <ins>error_code(int val, const error_category&amp;&amp; cat) = delete;</ins>
+    [&hellip;]
+    // <sref ref="[syserr.errcode.modifiers]"/>, modifiers
+    void assign(int val, const error_category&amp; cat) noexcept;
+    <ins>void assign(int val, const error_category&amp;&amp; cat) = delete;</ins>
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
