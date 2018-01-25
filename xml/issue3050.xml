@@ -3,7 +3,7 @@
 
 <issue num="3050" status="New">
 <title>Conversion specification problem in <tt>chrono::duration</tt> constructor</title>
-<section><sref ref="[time.duration.cons]"/></section>
+<section><sref ref="[time.duration.cons]"/><sref ref="[time.duration.nonmember]"/></section>
 <submitter>Barry Revzin</submitter>
 <date>22 Jan 2018</date>
 <priority>99</priority>
@@ -37,6 +37,9 @@ struct X { operator int64_t() /* not const */; };
 <p>
 <tt>std::is_constructible_v&lt;std::chrono::seconds, X&gt;</tt> is <tt>true</tt>, but actual 
 construction will fail to compile.
+<p/>
+Further analysis of sub-clause <sref ref="[time.duration]"/> revealed similar specification problems in 
+some other functions.
 </p>
 </discussion>
 
@@ -64,6 +67,69 @@ template&lt;class Rep2&gt;
 -2- <i>Effects:</i> Constructs an object of type <tt>duration</tt>.
 <p/>
 -3- <i>Postconditions:</i> <tt>count() == static_cast&lt;rep&gt;(r)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[time.duration.nonmember]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Rep1, class Period, class Rep2&gt;
+  constexpr duration&lt;common_type_t&lt;Rep1, Rep2&gt;, Period&gt;
+    operator*(const duration&lt;Rep1, Period&gt;&amp; d, const Rep2&amp; s);
+</pre>
+<blockquote>
+<p>
+-4- <i>Remarks:</i> This operator shall not participate in overload resolution unless 
+<ins><tt>is_convertible_v&lt;const Rep2&amp;, CR(Rep1, Rep2)&gt;</tt> is 
+<tt>true</tt></ins><del><tt>Rep2</tt> is implicitly convertible to <tt>CR(Rep1, Rep2)</tt></del>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class Rep1, class Rep2, class Period&gt;
+  constexpr duration&lt;common_type_t&lt;Rep1, Rep2&gt;, Period&gt;
+    operator*(const Rep1&amp; s, const duration&lt;Rep2, Period&gt;&amp; d);
+</pre>
+<blockquote>
+<p>
+-6- <i>Remarks:</i> This operator shall not participate in overload resolution unless 
+<ins><tt>is_convertible_v&lt;const Rep1&amp;, CR(Rep1, Rep2)&gt;</tt> is 
+<tt>true</tt></ins><del><tt>Rep1</tt> is implicitly convertible to <tt>CR(Rep1, Rep2)</tt></del>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class Rep1, class Period, class Rep2&gt;
+  constexpr duration&lt;common_type_t&lt;Rep1, Rep2&gt;, Period&gt;
+    operator/(const duration&lt;Rep1, Period&gt;&amp; d, const Rep2&amp; s);
+</pre>
+<blockquote>
+<p>
+-8- <i>Remarks:</i> This operator shall not participate in overload resolution unless 
+<ins><tt>is_convertible_v&lt;const Rep2&amp;, CR(Rep1, Rep2)&gt;</tt> is 
+<tt>true</tt></ins><del><tt>Rep2</tt> is implicitly convertible to <tt>CR(Rep1, Rep2)</tt></del> 
+and <tt>Rep2</tt> is not a specialization of <tt>duration</tt>.
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class Rep1, class Period, class Rep2&gt;
+  constexpr duration&lt;common_type_t&lt;Rep1, Rep2&gt;, Period&gt;
+    operator%(const duration&lt;Rep1, Period&gt;&amp; d, const Rep2&amp; s);
+</pre>
+<blockquote>
+<p>
+-11- <i>Remarks:</i> This operator shall not participate in overload resolution unless 
+<ins><tt>is_convertible_v&lt;const Rep2&amp;, CR(Rep1, Rep2)&gt;</tt> is 
+<tt>true</tt></ins><del><tt>Rep2</tt> is implicitly convertible to <tt>CR(Rep1, Rep2)</tt></del> 
+and <tt>Rep2</tt> is not a specialization of <tt>duration</tt>.
+<p/>
+[&hellip;]
 </p>
 </blockquote>
 </blockquote>
