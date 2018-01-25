@@ -1,9 +1,5 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY hellip "&#x2026;">
-  <!ENTITY mdash  "&#x2014;">
-  <!ENTITY auml   "&#xE4;">
-] >
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2524" status="Open">
 <title><tt>generate_canonical</tt> can occasionally return 1.0</title>
@@ -16,8 +12,7 @@
 <p>Original title was: <tt>exponential_distribution&lt;float&gt;</tt> sometimes returns inf.</p>
 
 <p>
-The random number distribution class template <tt>exponential_distribution&lt;float&gt;</tt> may return "inf" as can be 
-seen from the following example program:
+The random number distribution class template <tt>exponential_distribution&lt;float&gt;</tt> may return "inf" as can be seen from the following example program:
 </p>
 <blockquote>
 <pre>
@@ -117,9 +112,82 @@ but <tt>generate_canonical</tt> is defined to return a result in the range [0, 1
 <note>2017-11 Albuquerque Wednesday issue processing</note>
 <p>Choice: Rerun the algorithm if it gets 1.0.</p>
 <p>Thomas K to provide wording; Marshall and STL to review.</p>
+
+<note>2018-01-22, Walter Brown comments on <a href="http://lists.isocpp.org/lib/2018/01/5253.php">c++std-lib reflector</a></note>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+[&hellip;]
+<p/>
+I am writing to report that I've recently cultivated a new source of random number expertise, and requested their careful review of that proposal. They have reported to me that the proposed resolution has satisfactory randomness characteristics.
+<p/>
+They also point out, however, that the resolution incurs a not inconsiderable performance penalty.
+<p/>
+If LWG is okay with that trade-off, I am prepared to support the proposal.
+</p>
+</blockquote>
+<p>
+Daniel: 
+<p/>
+Walter Brown refers here to <a href="http://wiki.edg.com/pub/Wg21albuquerque/LibraryWorkingGroup/lwg2524.html?twiki_redirect_cache=8242a4d7860c37c90807180a58bc9c95">this informal proposal suggested by Thomas K&ouml;ppe</a> at the 2017 Albuquerque meeting.
+The Proposed Wording part of that proposal is provided below as "Proposed resolution".
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[rand.util.canonical]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class RealType, size_t bits, class URBG&gt;
+  RealType generate_canonical(URBG&amp; g);
+</pre>
+<blockquote>
+<p>
+-3- <i>Complexity:</i> <ins>For each attempt (see below), exactly</ins><del>Exactly</del> 
+<tt><i>k</i> = max(1, &lceil;<i>b</i>/log<sub>2</sub> <i>R</i>&rceil;)</tt> 
+invocations of <tt>g</tt>, where <tt>b</tt>(footnote 276) is the lesser of 
+<del><tt>numeric_limits&lt;RealType&gt;::digits</tt> and</del> <tt>bits</tt> 
+<ins>and <tt>log<sub>2</sub>(numeric_limits&lt;RealType&gt;::radix) &times; 
+numeric_limits&lt;RealType&gt;::digits</tt></ins>, and <tt><i>R</i></tt> is the value of 
+<tt>g.max() - g.min() + 1</tt>.
+<p/>
+-4- <i>Effects:</i> <ins>For each attempt, i</ins><del>I</del>nvokes <tt>g() <i>k</i></tt> 
+times to obtain values <tt><i>g</i><sub>0</sub>,&hellip;, <i>g</i><sub><i>k</i>-1</sub></tt>, respectively
+<ins>and c</ins><del>. C</del>alculates a quantity
+</p>
+<p>
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+<mrow>
+  <mi>S</mi>
+  <mo>=</mo>
+  <munderover>
+    <mo>&sum;</mo>
+    <mrow><mi>i</mi><mo>=</mo><mn>0</mn></mrow>    
+    <mrow><mi>k</mi><mo>-</mo><mn>1</mn></mrow>
+  </munderover>
+  <mo>(</mo>
+    <msub><mi>g</mi><mi>i</mi></msub><mo>-</mo><mi mathvariant="monospace" mathsize="small">g.min()</mi>
+  <mo>)</mo>
+  <mo>&middot;</mo>
+  <msup><mi>R</mi><mi>i</mi></msup>
+</mrow>
+</math>
+<p/>
+using arithmetic of type <tt>RealType</tt>. <ins>Attempts are repeated as long as the quantity 
+<tt><i>S</i>/<i>R</i><sup><i>k</i></sup></tt> has the value <tt>1.0</tt> when expressed as type 
+<tt>RealType</tt>.</ins>
+<p/>
+-5- <i>Returns:</i> <tt><i>S</i>/<i>R</i><sup><i>k</i></sup></tt>.
+<p/>
+-6- <i>Throws:</i> What and when <tt>g</tt> throws.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
