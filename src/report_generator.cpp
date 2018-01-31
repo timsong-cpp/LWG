@@ -275,6 +275,11 @@ void print_issue(std::ostream & out, lwg::issue const & iss, lwg::section_map & 
               out << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << iss.num << "\">" << "(i)</a></sup>";
          }
          else {
+              out << "<p><em>This page is a snapshot from the LWG issues list, see the "
+                     "<a href=\"lwg-active.html\">Library Active Issues List</a> "
+                     "for more information and the meaning of "
+                     "<a href=\"lwg-active.html#" << lwg::remove_qualifier(iss.stat) << "\">"
+                  << iss.stat << "</a> status.</em></p>\n";
               out << "<h3><a name=\"" << iss.num << "\" href=\"" << lwg::filename_for_status(iss.stat) << '#' << iss.num << "\">" << iss.num << "</a>";
          }
 
