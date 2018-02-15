@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3065" status="New">
+<title>LWG 2989 missed that all <tt>path</tt>'s other operators should be hidden friends as well</title>
+<section><sref ref="[fs.path.nonmember]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>13 Feb 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following program:
+</p>
+<blockquote><pre>
+// <a href="https://godbolt.org/g/2wwqe8">See godbolt link</a>
+#include &lt;assert.h&gt;
+#include &lt;string&gt;
+#include &lt;filesystem&gt;
+
+using namespace std;
+using namespace std::filesystem;
+
+int main() {
+  bool b = L"a//b" == std::string("a/b");
+  assert(b); // passes. What?!
+  return b;
+}
+</pre></blockquote>
+<p>
+<tt>L"a"</tt> gets converted into a <tt>path</tt>, and the string gets converted into a <tt>path</tt>, 
+and then those paths are compared for equality. But <tt>path</tt> equality comparison doesn't work 
+anything like string equality comparison, leading to surprises.
+<p/>
+<tt>path</tt>'s other operators should be made hidden friends as well, so that one side or the other 
+of a given operator is of type <tt>path</tt> before those conversions apply.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4713">N4713</a>.
+<p/>
+All drafting notes from LWG <iref ref="2989"/> apply here too.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[fs.filesystem.syn]"/>, header <tt>&lt;filesystem&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[fs.path.nonmember]"/>, path non-member functions</i>
+void swap(path&amp; lhs, path&amp; rhs) noexcept;
+size_t hash_value(const path&amp; p) noexcept;
+
+<del>bool operator==(const path&amp; lhs, const path&amp; rhs) noexcept;
+bool operator!=(const path&amp; lhs, const path&amp; rhs) noexcept;
+bool operator&lt; (const path&amp; lhs, const path&amp; rhs) noexcept;
+bool operator&lt;=(const path&amp; lhs, const path&amp; rhs) noexcept;
+bool operator&gt; (const path&amp; lhs, const path&amp; rhs) noexcept;
+bool operator&gt;=(const path&amp; lhs, const path&amp; rhs) noexcept;
+
+path operator/ (const path&amp; lhs, const path&amp; rhs);</del>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[fs.path.nonmember]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>friend</ins> bool operator&lt; (const path&amp; lhs, const path&amp; rhs) noexcept;
+[&hellip;]
+<ins>friend</ins> bool operator&lt;=(const path&amp; lhs, const path&amp; rhs) noexcept;
+[&hellip;]
+<ins>friend</ins> bool operator&gt; (const path&amp; lhs, const path&amp; rhs) noexcept;
+[&hellip;]
+<ins>friend</ins> bool operator&gt;=(const path&amp; lhs, const path&amp; rhs) noexcept;
+[&hellip;]
+<ins>friend</ins> bool operator==(const path&amp; lhs, const path&amp; rhs) noexcept;
+[&hellip;]
+<ins>friend</ins> bool operator!=(const path&amp; lhs, const path&amp; rhs) noexcept;
+[&hellip;]
+<ins>friend</ins> path operator/ (const path&amp; lhs, const path&amp; rhs);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[fs.class.path]"/>, class <tt>path</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+class path {
+public:
+  [&hellip;]
+  <i>// <sref ref="[fs.path.modifiers]"/>, modifiers</i>
+  [&hellip;]
+  
+  <ins><i>// <sref ref="[fs.path.nonmember]"/>, non-member operators</i></ins>
+  <ins>friend bool operator&lt; (const path&amp; lhs, const path&amp; rhs) noexcept;</ins>
+  <ins>friend bool operator&lt;=(const path&amp; lhs, const path&amp; rhs) noexcept;</ins>
+  <ins>friend bool operator&gt; (const path&amp; lhs, const path&amp; rhs) noexcept;</ins>
+  <ins>friend bool operator&gt;=(const path&amp; lhs, const path&amp; rhs) noexcept;</ins>
+  <ins>friend bool operator==(const path&amp; lhs, const path&amp; rhs) noexcept;</ins>
+  <ins>friend bool operator!=(const path&amp; lhs, const path&amp; rhs) noexcept;</ins>
+  
+  <ins>friend path operator/ (const path&amp; lhs, const path&amp; rhs);</ins>
+  
+  <i>// <sref ref="[fs.path.native.obs]"/>, native format observers</i>
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
