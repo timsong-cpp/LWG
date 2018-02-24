@@ -26,6 +26,56 @@ My first thought was to modify [alg.sorting] to make the <tt>Compare</tt> requir
 
 <note>2017-11 Albuquerque Wednesday night issues processing</note>
 <p>Priority set to 2; Jonathan to improve the statement of the problem.</p>
+
+<note>2018-02 David Jones provided this <a href="https://bugs.llvm.org/show_bug.cgi?id=34536">truly awful example</a>:</note>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+struct Base {
+    Base(int value) : v(value) {}
+    friend bool operator&lt;(const Base&amp; l, const Base&amp; r) { return l.v &lt; r.v; }
+    int v;
+};
+
+struct Derived : public Base {
+    using Base::Base;
+    bool operator&lt;(const Derived&amp; o) /* no const here */ { return v &gt; o.v; }
+};
+
+int main(void) {
+    std::vector&lt;Base&gt; b = {{1}, {5}, {0}, {3}};
+    std::vector&lt;Derived&gt; d = {{0}, {1}, {3}, {5}};
+
+    std::cout &lt;&lt; std::lower_bound(d.begin(), d.end(), 4)-&gt;v &lt;&lt; std::endl;
+
+    std::sort(b.begin(), b.end());
+    for (const auto &amp;x : b) std::cout &lt;&lt; x.v &lt;&lt; " ";
+    std::cout &lt;&lt; std::endl;
+
+    std::sort(d.begin(), d.end());
+    for (const auto &amp;x : d) std::cout &lt;&lt; x.v &lt;&lt; " ";
+    std::cout &lt;&lt; std::endl;
+}
+
+libc++:
+=====
+$ bin/clang++ -std=c++11 -stdlib=libc++ tmp/ex.cc &amp;&amp; ./a.out
+5
+0 1 3 5 
+0 1 3 5 
+=====
+
+libstdc++:
+=====
+$ bin/clang++ -std=c++11 -stdlib=libstdc++ tmp/ex.cc &amp;&amp; ./a.out
+0
+0 1 3 5 
+5 3 1 0 
+=====
+</pre></blockquote>
+
 </discussion>
 
 <resolution>
