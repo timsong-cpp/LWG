@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3068" status="New">
+<title>Forbid assigning an rvalue <tt>basic_string</tt> to <tt>basic_string_view</tt></title>
+<section><sref ref="[string.view.template]"/></section>
+<submitter>Antony Polukhin </submitter>
+<date>19 Feb 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It is known that we cannot disable move construction of
+<tt>basic_string_view</tt> from rvalues of <tt>basic_string</tt>, because it breaks a
+valid use case:
+</p>
+<blockquote><pre>
+string foo();
+void bar(string_view );
+bar(foo());
+</pre></blockquote>
+<p>
+Though it is still possible to disable an absolutely wrong case of
+assigning an rvalue <tt>basic_string</tt> to <tt>basic_string_view</tt>:
+</p>
+<blockquote><pre>
+string_view sw = "Hello";
+sw = foo();
+</pre></blockquote>
+<p>
+Some tests that make sure that other use cases are not affected are available 
+<a href="https://raw.githubusercontent.com/apolukhin/apolukhin.github.io/master/papers/misc/safer_string_view_tests.cpp">here</a>
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4727">N4727</a>.
+</p>
+
+<ol>
+<li><p>Change <sref ref="[string.view.template]"/>, class template <tt>basic_string_view</tt> synopsis, 
+as indicated:</p>
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[string.view.cons]"/>, construction and assignment</i>
+constexpr basic_string_view() noexcept;
+constexpr basic_string_view(const basic_string_view&amp;) noexcept = default;
+constexpr basic_string_view&amp; operator=(const basic_string_view&amp;) noexcept = default;
+<ins>template &lt;class A&gt;
+basic_string_view&amp; operator=(const basic_string&lt;charT, traits, A&gt;&amp;&amp;) = delete;</ins>
+constexpr basic_string_view(const charT* str);
+constexpr basic_string_view(const charT* str, size_type len);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
