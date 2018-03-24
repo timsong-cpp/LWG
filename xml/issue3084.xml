@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3084" status="New">
+<title>Termination in C++ is unclear</title>
+<section><sref ref="[support.start.term]"/><sref ref="[exception.terminate]"/></section>
+<submitter>JF Bastien </submitter>
+<date>15 Mar 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It's unclear how different termination facilities in C++ interact (and how they interact with the C 
+termination facilities). Individually some of these functions try to handle corner cases, but hilarity 
+ensues when combined with each other. As a simple example, can an <tt>atexit</tt> handler call <tt>exit</tt>? 
+If not, can it call <tt>quick_exit</tt>, and can then <tt>at_quick_exit</tt> handler call <tt>exit</tt>? 
+Is it possible to install an <tt>atexit</tt> handler from an <tt>at_quick_exit</tt>, without strongly 
+happens before, while handling a separate <tt>atexit</tt> handler (and what happens then)?
+<p/>
+The termination handlers and termination conditions I collected:
+</p>
+<ul>
+<li><p>returning from <tt>main</tt> calls <tt>atexit</tt> handlers.</p></li>
+<li><p><tt>atexit</tt> / <tt>exit</tt></p></li>
+<li><p><tt>at_quick_exit</tt> / <tt>quick_exit</tt></p></li>
+<li><p><tt>set_terminate</tt></p></li>
+<li><p>violating <tt>noexcept</tt> and other things that call <tt>std::terminate</tt> (see 
+<tt>[except.terminate]</tt>)</p></li>
+<li><p>violating exception specification</p></li>
+<li><p>parallel algorithms leaving with uncaught exception</p></li>
+<li><p>some <tt>std::signal</tt> such as <tt>SIGTERM</tt>, <tt>SIGSEGV</tt>, <tt>SIGINT</tt>, 
+<tt>SIGILL</tt>, <tt>SIGABRT</tt>, and (maybe?) <tt>SIGFPE</tt>.</p></li>
+<li><p><tt>set_unexpected</tt> (now a zombie)</p></li>
+<li><p><tt>unexpected_handler</tt> (now a zombie)</p></li>
+</ul>
+<p>
+What's unclear is:
+</p>
+<ul>
+<li><p>Is termination handling a DAG?</p></li>
+<li><p>Which thread(s) are termination handlers called on?</p></li>
+<li><p>Is program termination Turing complete?</p></li>
+</ul>
+<p>
+I've written a sample program which exercises some of this, see 
+<a href="https://github.com/jfbastien/terminator/blob/master/terminator.cc">here</a>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
