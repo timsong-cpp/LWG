@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3083" status="New">
+<title>What should <tt>ios::iword(-1)</tt> do?</title>
+<section><sref ref="[ios.base.storage]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>16 Mar 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Is calling <tt>iword</tt> and <tt>pword</tt> with a negative argument undefined, or should it cause 
+a failure condition (and return a valid reference)? What about <tt>INT_MAX</tt>? What about <tt>0</tt>?
+<p/>
+Using arbitrary indices isn't safe, because the implementation could be already using them for 
+something else. Some replies on the reflector suggested the only reliable argument is one obtained from 
+<tt>ios_base::xalloc()</tt>. Others pointed out that the iwords and pwords could be stored in sparse 
+arrays, so that any value from <tt>INT_MIN</tt> to <tt>INT_MAX</tt> could be a valid key (which might 
+require the implementation to use keys outside that range for its own entries in the arrays).
+<p/>
+If it's undefined we should add a <i>Requires</i> element to the spec. If invalid indices are supposed 
+to cause a failure we need to define which indices are invalid (and ensure that's something the 
+implementation can check), and specify that it causes a failure.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4727">N4727</a>.
+</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[ios.base.storage]"/> as indicated:</p>
+<blockquote>
+<pre>
+long&amp; iword(int idx);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>idx</tt> is a value obtained by a call to <tt>xalloc</tt>.</ins>
+<p/>
+-3- <i>Effects:</i> If <tt>iarray</tt> is a null pointer, [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+void*&amp; pword(int idx);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>idx</tt> is a value obtained by a call to <tt>xalloc</tt>.</ins>
+<p/>
+-5- <i>Effects:</i> If <tt>iarray</tt> is a null pointer, [&hellip;]
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
