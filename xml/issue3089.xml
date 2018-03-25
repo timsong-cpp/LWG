@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3089" status="New">
+<title><tt>copy_n</tt> should require non-overlapping ranges</title>
+<section><sref ref="[alg.copy]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>21 Mar 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+All the copy algorithms have some kind of prohibition on having the input and output ranges overlap. 
+<p/>
+The serial version of <tt>copy</tt> says:
+</p>
+<blockquote><p>
+<i>Requires:</i> <tt>result</tt> shall not be in the range <tt>[first, last)</tt>.
+</p></blockquote>
+<p>
+The parallel version of <tt>copy</tt> says:
+</p>
+<blockquote><p>
+<i>Requires:</i> The ranges <tt>[first, last)</tt> and <tt>[result, result + (last - first))</tt> 
+shall not overlap.
+</p></blockquote>
+<p>
+<tt>copy_if</tt> says: 
+</p>
+<blockquote><p>
+<i>Requires:</i> The ranges <tt>[first, last)</tt> and <tt>[result, result + (last - first))</tt> 
+shall not overlap.
+</p></blockquote>
+<p>
+<tt>copy_backwards</tt> says:
+</p>
+<blockquote><p>
+<i>Requires:</i> <tt>result</tt> shall not be in the range <tt>[first, last)</tt>.
+</p></blockquote>
+<p>
+But <tt>copy_n</tt> has no such requirement.
+<p/>
+I think it should. I checked the minutes of the LWG discussion from 2008 when this was added, and 
+there was no discussion of overlapping ranges.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4727">N4727</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[alg.copy]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> I'm using the permission in <sref ref="[algorithms.requirements]"/>/10 to 
+do random-access arithmetic on (possibly) input iterators.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class Size, class OutputIterator&gt;
+  constexpr OutputIterator copy_n(InputIterator first, Size n,
+                                  OutputIterator result);
+template&lt;class ExecutionPolicy, class ForwardIterator1, class Size, class ForwardIterator2&gt;
+  ForwardIterator2 copy_n(ExecutionPolicy&amp;&amp; exec,
+                          ForwardIterator1 first, Size n,
+                          ForwardIterator2 result);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Requires:</i> <tt>result</tt> shall not be in the range <tt>[first, first + n)</tt>.</ins>
+<p/>
+-9- <i>Effects:</i> For each non-negative integer <tt>i &lt; n</tt>, performs <tt>*(result + i) = *(first + i)</tt>.
+<p/>
+-10- <i>Returns:</i> <tt>result + n</tt>.
+<p/>
+-11- <i>Complexity:</i> Exactly <tt>n</tt> assignments.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
