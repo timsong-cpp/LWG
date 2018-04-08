@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3097" status="New">
+<title><tt>basic_stringbuf seekoff</tt> effects trigger undefined behavior and have contradictory returns</title>
+<section><sref ref="[stringbuf.virtuals]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>7 Apr 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Paragraph citations relative to <a href="http://wg21.link/n4727">N4727</a>.
+</p>
+<p>
+[stringbuf.virtuals]/10 says that <tt>newoff</tt> might be calculated from <tt>xnext - xbegin</tt>, 
+or from <tt>high_mark - xbegin</tt>. After <tt>newoff</tt> is calculated, it does the null pointer 
+check against and zero offset check. However, that means the effects may have already done 
+<tt>nullptr -</tt> non-<tt>nullptr</tt>, or non-<tt>nullptr - nullptr</tt>, which [expr.add]/5 says 
+is undefined behavior.
+<p/>
+Moreover, the attempt at avoiding this problem only tests <tt>newoff</tt>, not the value actually used 
+which is <tt>newoff + off</tt>. For example, <tt>buf.seekoff(100, ios_base::beg, ios_base::out)</tt> 
+on a read-only <tt>streambuf</tt> would try to assign <tt>pptr() + newoff + off to pptr()</tt>, but 
+<tt>pptr()</tt> may have been <tt>nullptr</tt>, giving <tt>nullptr + 0 + 100</tt> which triggers UB. 
+(Perhaps the "refers to an uninitialized character" bit protects that though).
+<p/>
+Last, the <i>Returns:</i> element says that it returns <tt>newoff</tt>, but then also says it returns 
+the resulting stream position, which should be something like <tt>newoff + off</tt>. (I checked libc++ 
+and MSVC++ and we both return <tt>newoff + off</tt>)
+<p/>
+We probably want to resolve that by renaming the value that comes out of Table 108 to something like 
+"<tt>basis</tt>" and make "<tt>newoff</tt>" actually be the new offset instead of the starting offset.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
