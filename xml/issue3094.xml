@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3094" status="New">
+<title>&sect;[time.duration.io]p4 makes surprising claims about encoding</title>
+<section><sref ref="[time.duration.io]"/></section>
+<submitter>Richard Smith</submitter>
+<date>2 Apr 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+[time.duration.io]p4 says:
+</p>
+<blockquote><p>
+For streams where <tt>charT</tt> has an 8-bit representation, <tt>"&micro;s"</tt> should be encoded as UTF-8. Otherwise UTF-16 or 
+UTF-32 is encouraged. The implementation may substitute other encodings, including <tt>"us"</tt>.
+</p></blockquote>
+<p>
+This choice of encoding is not up to the <tt>&lt;chrono&gt;</tt> library to decide or encourage. The basic execution character 
+set determines how a mu should be encoded in type <tt>char</tt>, for instance, and it would be truly bizarre to use a UTF-8 
+encoding if that character set is, say, Latin-1 or EBCDIC.
+<p/>
+I suggest we strike at least the first two sentences of this paragraph, as the meaning of the prior wording is unambiguous 
+without them and confusing with them, and they do not providing any normative requirements (although they do provide 
+recommendations). The third sentence appears to have a normative impact, but it's hard to see how it's legitimate to call 
+<tt>"us"</tt> an "encoding" of <tt>"&micro;s"</tt>; it's really just an alternative unit suffix. So how about replacing that 
+paragraph with this:
+</p>
+<blockquote><p>
+If <tt>Period::type</tt> is <tt>micro</tt>, but the character U+00B5 cannot be represented in the encoding used for 
+<tt>charT</tt>, the unit suffix <tt>"us"</tt> is used instead of <tt>"&micro;s"</tt>.
+</p></blockquote>
+<p>
+(This also removes the permission for an implementation to choose a arbitrary alternative "encoding", which seems undesirable.)
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4xxx">N4xxx</a>.
+</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[time.duration.io]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Rep, class Period&gt;
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<blockquote>
+<p>
+-1- <i>Requires:</i> [&hellip;]
+<p/>
+-2- <i>Effects:</i> [&hellip;]
+<p/>
+-3- The units suffix depends on the type <tt>Period::type</tt> as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+<li><p>(3.5) &mdash; Otherwise, if <tt>Period::type</tt> is <tt>micro</tt>, the suffix is <tt>"&mu;s"</tt> 
+(<tt>"\u00b5\u0073"</tt>).</p></li>
+<li><p>[&hellip;]</p></li>
+<li><p>(3.21) &mdash; Otherwise, the suffix is <tt>"[<i>num</i>/<i>den</i>]s"</tt>.</p></li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+-4- <del>For streams where <tt>charT</tt> has an 8-bit representation, <tt>"&micro;s"</tt> should be encoded as UTF-8. 
+Otherwise UTF-16 or UTF-32 is encouraged. The implementation may substitute other encodings, including 
+<tt>"us"</tt></del><ins>If <tt>Period::type</tt> is <tt>micro</tt>, but the character U+00B5 cannot be represented 
+in the encoding used for <tt>charT</tt>, the unit suffix <tt>"us"</tt> is used instead of <tt>"&micro;s"</tt></ins>.
+<p/>
+-5- <i>Returns:</i> <tt>os</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
