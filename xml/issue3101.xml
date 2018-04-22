@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3101" status="New">
+<title><tt>span</tt>'s <tt>Container</tt> constructors need another constraint</title>
+<section><sref ref="[span.cons]"/></section>
+<submitter>Stephan T. Lavavej</submitter>
+<date>12 Apr 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When I overhauled <tt>span</tt>'s constructor constraints, I was careful about the built-in array, <tt>std::array</tt>, 
+and converting <tt>span</tt> constructors. These types contain bounds information, so we can achieve safety at 
+compile-time by permitting implicit conversions if and only if the destination extent is dynamic (this accepts 
+anything by recording the size at runtime) or the source and destination extents are identical. However, I missed 
+the fact that the <tt>Container</tt> constructors are the opposite case. A <tt>Container</tt> (e.g. a <tt>vector</tt>) 
+has a size that's known only at runtime. It's safe to convert this to a <tt>span</tt> with <tt>dynamic_extent</tt>, 
+but for consistency and safety, this shouldn't implicitly convert to a <tt>span</tt> with fixed extent. (The more 
+verbose <tt>(ptr, count)</tt> and <tt>(first, last)</tt> constructors are available to construct fixed extent spans 
+from runtime-length ranges. Note that debug precondition checks are equally possible with the <tt>Container</tt> and 
+<tt>(ptr, count)</tt>/<tt>(first, last)</tt> constructors. The issue is that implicit conversions are notoriously 
+problematic, so they should be permitted only when they are absolutely known to be safe.)
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4741">N4741</a>.</p>
+
+<blockquote>
+<ol>
+<li>
+<p>Edit <sref ref="[span.cons]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class Container&gt; constexpr span(Container&amp; cont);
+template&lt;class Container&gt; constexpr span(const Container&amp; cont);
+</pre>
+<blockquote>
+<p>
+-14- <i>Requires:</i> <tt>[data(cont), data(cont) + size(cont))</tt> shall be a valid range. <del>If <tt>extent</tt> is 
+not equal to <tt>dynamic_extent</tt>, then <tt>size(cont)</tt> shall be equal to <tt>extent</tt>.</del>
+<p/>
+-15- <i>Effects:</i> Constructs a <tt>span</tt> that is a view over the range <tt>[data(cont), data(cont) + size(cont))</tt>.
+<p/>
+-16- <i>Postconditions:</i> <tt>size() == size(cont) &amp;&amp; data() == data(cont)</tt>.
+<p/>
+-17- <i>Throws:</i> What and when <tt>data(cont)</tt> and <tt>size(cont)</tt> throw.
+<p/>
+-18- <i>Remarks:</i> These constructors shall not participate in overload resolution unless:
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(18.?) &mdash; <tt>extent == dynamic_extent</tt>,</ins></p></li>
+<li><p>(18.1) &mdash; <tt>Container</tt> is not a specialization of <tt>span</tt>,</p></li>
+<li><p>(18.2) &mdash; <tt>Container</tt> is not a specialization of <tt>array</tt>,</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+</resolution>
+
+</issue>
