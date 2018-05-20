@@ -139,8 +139,8 @@ A dynamic string buffer contains a reference to the underlying string. Copies
 of a dynamic string buffer refer to the same string. Note that the dynamic
 string buffer also contains some state: the <tt>size_</tt> and <tt>max_size_</tt>
 data members. This additional metadata informs the dynamic string buffer of
-the boundaries between the input and output sequences, as well as the maximum
-allowed size of the total of the input and output sequences.
+the boundaries between the readable and writable bytes, as well as the maximum
+allowed size of the total of the readable and writable bytes.
 <p/>
 When only one composed operation handles the dynamic buffer, things seem to
 work. However, if a composed operation wishes to invoke another composed
@@ -182,7 +182,7 @@ int main()
 <p>
 While not technically incorrect, it may be surprising to the user that
 the string contains additional value-initialized data which was not part
-of the original input sequence (which in this case was empty). The wording of
+of the original readable bytes (which in this case was empty). The wording of
 the dynamic buffer concept does not address this case.
 <p/>
 The solution we propose is to change the semantics of <b>DynamicBuffer</b>
@@ -413,11 +413,11 @@ dynamic_vector_buffer(vector&lt;T, Allocator&gt;<del>&amp;</del> vec,
 </p>
 </blockquote>
 <pre>
-void consume(size_t n);
+size_t max_size() const noexcept;
 </pre>
 <blockquote>
 <p>
--15- <i>Effects:</i> [&hellip;]
+-8- <i>Returns:</i> <tt>max_size_</tt>.
 </p>
 </blockquote>
 <pre>
@@ -426,6 +426,15 @@ void consume(size_t n);
 <blockquote>
 <p>
 <ins>-?- <em>Effects:</em> Performs <tt>max_size_ = maximum_size</tt>.</ins>
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+void consume(size_t n);
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects:</i> [&hellip;]
 </p>
 </blockquote>
 <pre>
@@ -486,7 +495,7 @@ private:
 };
 
 <ins>using dynamic_string_buffer =
-  basic_string_buffer&lt;char, char_traits&lt;char&gt;, allocator&lt;char&gt;&gt;</ins>
+  basic_dynamic_string_buffer&lt;char, char_traits&lt;char&gt;, allocator&lt;char&gt;&gt;</ins>
 </pre>
 </blockquote>
 <p>
