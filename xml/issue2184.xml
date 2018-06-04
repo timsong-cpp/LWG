@@ -18,9 +18,57 @@ object's constructor or, if that allocator has been replaced, a copy of the most
 doesn't replace the allocator, how can the allocator be replaced?
 </p>
 
+<note>2018-06-04, Daniel comments and provides wording</note>
+<p>
+Similar to the reasoning provided in the 2018-06-02 comment in LWG <iref ref="2183"/>, it is possible to refer to 
+the introductory wording of <tt>match_results</tt> which says in <sref ref="[re.results]"/> p2:
+</p>
+<blockquote><p>
+The class template <tt>match_results</tt> satisfies the requirements of an allocator-aware container and 
+of a sequence container (26.2.1, 26.2.3) except that only operations defined for const-qualified sequence 
+containers are supported and that the semantics of comparison functions are different from those required 
+for a container.
+</p></blockquote>
+<p>
+Again, similar to LWG <iref ref="2183"/>, this allows us to deduce the required effects of the copy/move
+assignment operators discussed here, because <sref ref="[container.requirements.general]"/> p8 also says:
+</p>
+<blockquote><p>
+[&hellip;] The allocator may be replaced only via assignment or <tt>swap()</tt>. Allocator replacement is 
+performed by copy assignment, move assignment, or swapping of the allocator only if 
+<tt>allocator_traits&lt;allocator_type&gt;::propagate_on_container_copy_assignment::value</tt>,
+<tt>allocator_traits&lt;allocator_type&gt;::propagate_on_container_move_assignment::value</tt>, or 
+<tt>allocator_traits&lt;allocator_type&gt;::propagate_on_container_swap::value</tt> is <tt>true</tt> 
+within the implementation of the corresponding container operation. In all container types defined in 
+this Clause, the member <tt>get_allocator()</tt> returns a copy of the allocator used to construct the 
+container or, if that allocator has been replaced, a copy of the most recent replacement. [&hellip;]
+</p></blockquote>
+<p>
+So this wording already specifies everything we need, <em>except</em> for the problem that
+<sref ref="[re.results]"/> p2 quoted above restricts to operations supported by a const-qualified sequence 
+container, which of-course would exclude the copy assignment and the move assignment operators.
+But given that these mutable definitions are defined for <tt>match_results</tt>, it seems that the only fix 
+needed is to adjust <sref ref="[re.results]"/> p2 a bit to ensure that both assignment operators are 
+covered (again) by the general allocator-aware container wording. 
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4750">N4750</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[re.results]"/> as indicated:</p>
+<blockquote>
+<p>
+-2- The class template <tt>match_results</tt> satisfies the requirements of an allocator-aware container 
+and of a sequence container (<sref ref="[container.requirements.general]"/>, <sref ref="[sequence.reqmts]"/>) 
+except that <ins>besides copy assignment and move assignment</ins> only operations defined for 
+const-qualified sequence containers are supported and that the semantics of comparison functions are 
+different from those required for a container.
+</p>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
