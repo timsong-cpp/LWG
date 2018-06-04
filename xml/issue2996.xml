@@ -24,25 +24,17 @@ This issue is related to <a href="https://wg21.link/p0390r0">P0390R0</a>.
 <p>Status LEWG</p>
 
 <note>2018-06 Rapperswil Monday AM</note>
-<p>Move to Ready; choosing the PR in the issue as opposed to <a href="https://wg21.link/P0390R0">P0390R0</a></p>
+<p>Move to Ready; choosing the PR in the issue as opposed to <a href="https://wg21.link/P0390R0">P0390R0</a>
+and rebase wording to most recent working draft</p>
 </discussion>
 
 <resolution>
 <p>
-This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
+This wording is relative to <a href="https://wg21.link/n4750">N4750</a>.
 </p>
 
 <ol>
 <li><p>Edit <sref ref="[memory.syn]"/>, header <tt>&lt;memory&gt;</tt> synopsis, as indicated:</p>
-
-<blockquote class="note">
-<p>
-[<i>Drafting note:</i> The text with light-blue background shows a currently missing declaration of 
-<tt>reinterpret_pointer_cast</tt> in the header <tt>&lt;memory&gt;</tt> synopsis. The project editor 
-is kindly asked to consider adding it for consistency. &mdash; <i>end drafting note</i>]
-</p>
-</blockquote>
-
 <blockquote>
 <pre>
 [&hellip;]
@@ -59,8 +51,8 @@ template&lt;class T, class U&gt;
 shared_ptr&lt;T&gt; const_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;
 <ins>template&lt;class T, class U&gt;
 shared_ptr&lt;T&gt; const_pointer_cast(shared_ptr&lt;U&gt;&amp;&amp; r) noexcept;</ins>
-<span style="background-color:powderblue;text-decoration:underline;">template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; reinterpret_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;</span>
+template&lt;class T, class U&gt;
+shared_ptr&lt;T&gt; reinterpret_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;
 <ins>template&lt;class T, class U&gt;
 shared_ptr&lt;T&gt; reinterpret_pointer_cast(shared_ptr&lt;U&gt;&amp;&amp; r) noexcept;</ins>
 [&hellip;]
@@ -83,25 +75,6 @@ public:
   shared_ptr(const shared_ptr&amp; r) noexcept;
   [&hellip;]
 };
-
-[&hellip;]
-<i>// <sref ref="[util.smartptr.shared.cast]"/>,</i> shared_ptr <i>casts</i>
-template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; static_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;
-<ins>template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; static_pointer_cast(shared_ptr&lt;U&gt;&amp;&amp; r) noexcept;</ins>
-template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; dynamic_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;
-<ins>template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; dynamic_pointer_cast(shared_ptr&lt;U&gt;&amp;&amp; r) noexcept;</ins>
-template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; const_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;
-<ins>template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; const_pointer_cast(shared_ptr&lt;U&gt;&amp;&amp; r) noexcept;</ins>
-template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; reinterpret_pointer_cast(const shared_ptr&lt;U&gt;&amp; r) noexcept;
-<ins>template&lt;class T, class U&gt;
-shared_ptr&lt;T&gt; reinterpret_pointer_cast(shared_ptr&lt;U&gt;&amp;&amp; r) noexcept;</ins>
 [&hellip;]
 </pre>
 </blockquote>
@@ -150,10 +123,14 @@ template&lt;class T, class U&gt;
 </pre>
 <blockquote>
 <p>
--1- <i>Requires:</i> The expression <tt>static_cast&lt;T*&gt;((U*)0)</tt> shall be well formed.
+-1- <i>Requires:</i> The expression <tt>static_cast&lt;T*&gt;((U*)nullptr)</tt> shall be well-formed.
 <p/>
--2- <i>Returns:</i> <tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, 
-static_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get()))</tt><ins>, where <tt><i>R</i></tt> 
+-2- <i>Returns:</i> 
+<blockquote>
+<tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, static_cast&lt;typename 
+  shared_ptr&lt;T&gt;::element_type*&gt;(r.get()))</tt>
+</blockquote>
+<ins>, where <tt><i>R</i></tt> 
 is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> for the second.</ins>
 <p/>
 -3- [<i>Note:</i> The seemingly equivalent expression <tt>shared_ptr&lt;T&gt;(static_cast&lt;T*&gt;(r.get()))</tt> 
@@ -168,15 +145,16 @@ template&lt;class T, class U&gt;
 </pre>
 <blockquote>
 <p>
--4- <i>Requires:</i> The expression <tt>dynamic_cast&lt;T*&gt;((U*)0)</tt> shall be well formed and shall have 
-well defined behavior.
+-4- <i>Requires:</i> The expression <tt>dynamic_cast&lt;T*&gt;((U*)nullptr)</tt> shall be well-formed. The 
+expression <tt>dynamic_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get())</tt> shall be well formed 
+and shall have well-defined behavior.
 <p/>
 -5- <i>Returns:</i>
 </p>
 <ol style="list-style-type: none">
 <li><p>(5.1) &mdash; When <tt>dynamic_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get())</tt> returns 
-a nonzero value <tt>p</tt>, <tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, p)</tt><ins>, where <tt><i>R</i></tt> 
-is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> for the second</ins>.</p></li>
+a non-null value <tt>p</tt>, <tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, p)</tt><ins>, where 
+<tt><i>R</i></tt> is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> for the second</ins>.</p></li>
 <li><p>(5.2) &mdash; Otherwise, <tt>shared_ptr&lt;T&gt;()</tt>.</p></li>
 </ol>
 <p>
@@ -192,9 +170,13 @@ template&lt;class T, class U&gt;
 </pre>
 <blockquote>
 <p>
--7- <i>Requires:</i> The expression <tt>const_cast&lt;T*&gt;((U*)0)</tt> shall be well formed.
+-7- <i>Requires:</i> The expression <tt>const_cast&lt;T*&gt;((U*)nullptr)</tt> shall be well-formed.
 <p/>
--8- <i>Returns:</i> <tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, const_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get()))</tt><ins>, where <tt><i>R</i></tt> is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> 
+-8- <i>Returns:</i> 
+<blockquote>
+<tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, const_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get()))</tt>
+</blockquote>
+<ins>, where <tt><i>R</i></tt> is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> 
 for the second.</ins>
 <p/>
 -9- [<i>Note:</i> The seemingly equivalent expression <tt>shared_ptr&lt;T&gt;(const_cast&lt;T*&gt;(r.get()))</tt> 
@@ -209,9 +191,13 @@ template&lt;class T, class U&gt;
 </pre>
 <blockquote>
 <p>
--10- <i>Requires:</i> The expression <tt>reinterpret_cast&lt;T*&gt;((U*)0)</tt> shall be well formed.
+-10- <i>Requires:</i> The expression <tt>reinterpret_cast&lt;T*&gt;((U*)nullptr)</tt> shall be well-formed.
 <p/>
--11- <i>Returns:</i> <tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, reinterpret_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get()))</tt><ins>, where <tt><i>R</i></tt> is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> 
+-11- <i>Returns:</i> 
+<blockquote>
+<tt>shared_ptr&lt;T&gt;(<del>r</del><ins><i>R</i></ins>, reinterpret_cast&lt;typename shared_ptr&lt;T&gt;::element_type*&gt;(r.get()))</tt>
+</blockquote>
+<ins>, where <tt><i>R</i></tt> is <tt>r</tt> for the first overload, and <tt>std::move(r)</tt> 
 for the second.</ins>
 <p/>
 -12- [<i>Note:</i> The seemingly equivalent expression <tt>shared_ptr&lt;T&gt;(reinterpret_cast&lt;T*&gt;(r.get()))</tt> 
