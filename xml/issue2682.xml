@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="2682" status="Review">
+<issue num="2682" status="Ready">
 <title><code>filesystem::copy()</code> won't create a symlink to a directory</title>
 <section><sref ref="[fs.op.copy]"/></section>
 <submitter>Jonathan Wakely</submitter>
@@ -82,27 +82,39 @@ are ordered:
 So 3.6 catches <tt>create_symlinks | recursive</tt> but I believe we want 3.X to handle it instead.
 </p>
 
-<note>2018-1-26 issues processing telecon</note>
+<note>2018-01-26 issues processing telecon</note>
 <p>Status to 'Review'; we think this is OK but want some implementation experience before adopting it.</p>
 
-<note>2018-1-29 Jonathan says</note>
-<p>The proposed resolution for LWG 2682 has been in GCC's Filesystem TS implementation for more than a year. It's also in our std::filesystem implementation on the subversion trunk.</p>
+<note>2018-01-29 Jonathan says</note>
+<p>The proposed resolution for LWG 2682 has been in GCC's Filesystem TS implementation for more than a year. 
+It's also in our <tt>std::filesystem</tt> implementation on the subversion trunk.</p>
+
+<note>2018-06; Rapperswil Wednesday evening</note>
+<p>
+JW: can we use the words we are shipping already since two years?<br/>
+BO: what we got is better than what we had before<br/>
+no objection to moving to Ready<br/>
+ACTION move to Ready<br/>
+ACTION link 2682 and LWG <iref ref="3057"/> and set a priority 2 and look at 3057 in San Diego 
+<p/>
+Daniel rebases wording to N4750.
+</p>
 </discussion>
 
 <resolution>
-<p>This wording is relative to N4606.</p>
+<p>This wording is relative to <a href="http://wg21.link/n4750">N4750</a>.</p>
 
 <ol>
-<li><p>Add a new bullet before (3.6) in <sref ref="[fs.op.copy]"/> as shown:</p>
+<li><p>Add a new bullet before (4.8) in <sref ref="[fs.op.copy]"/> as shown:</p>
 
 <blockquote>
 <ol style="list-style-type: none">
-<li><p>(3.5) &mdash; Otherwise, if <tt>is_regular_file(f)</tt>, then:</p>
+<li><p>(4.7) &mdash; Otherwise, if <tt>is_regular_file(f)</tt>, then:</p>
 <blockquote>
 [&hellip;]
 </blockquote>
 </li>
-<li><p><ins>(3.?) &mdash; Otherwise, if</ins></p>
+<li><p><ins>(4.?) &mdash; Otherwise, if</ins></p>
 <blockquote>
 <blockquote><pre>
 <ins>is_directory(f) &amp;&amp; 
@@ -111,7 +123,7 @@ So 3.6 catches <tt>create_symlinks | recursive</tt> but I believe we want 3.X to
 <p> 
 <ins>then report an error with an <code>error_code</code> argument equal to
 <code>make_error_code(errc::is_a_directory)</code>.</ins></p></blockquote></li>
-<li><p>(3.6) &mdash; Otherwise, if</p>
+<li><p>(4.8) &mdash; Otherwise, if</p>
 <blockquote>
 <blockquote><pre>
 is_directory(f) &amp;&amp;
@@ -123,17 +135,20 @@ then:
 </p>
 </blockquote>
 <ol style="list-style-type: none">
-<li><p>(3.6.1) &mdash; If <code>!exists(t)</code>, then <code>create_directory(to, from)</code>.</p></li>
-<li><p>(3.6.2) &mdash; Then, iterate over the files in <code>from</code>, as if by <code>for (directory_entry&amp; x :
- directory_iterator(from))</code>, and for each iteration</p>
+<li><p>(4.8.1) &mdash; If <code>exists(t)</code> is <tt>false</tt>, then <code>create_directory(to, from)</code>.</p></li>
+<li><p>(4.8.2) &mdash; Then, iterate over the files in <code>from</code>, as if by</p> 
 <blockquote><pre>
-copy(x.path(), to/x.path().filename(), options | copy_options::<i>unspecified</i>)
+for (const directory_entry&amp; x : directory_iterator(from))
+  copy(x.path(), to/x.path().filename(),
+    options | copy_options::<i>in-recursive-copy</i>);
 </pre></blockquote>
+<p>where <tt><i>in-recursive-copy</i></tt> is a bitmask element of <tt>copy_options</tt> that is not one of the
+elements in <sref ref="[fs.enum.copy.opts]"/>.</p>
 </li>
 </ol>
 </li>
-<li><p>(3.7) &mdash; Otherwise, for the signature with argument <tt>ec</tt>, <tt>ec.clear()</tt>.</p></li>
-<li><p>(3.8) &mdash; Otherwise, no effects.</p></li>
+<li><p>(4.9) &mdash; Otherwise, for the signature with argument <tt>ec</tt>, <tt>ec.clear()</tt>.</p></li>
+<li><p>(4.10) &mdash; Otherwise, no effects.</p></li>
 </ol>
 </blockquote>
 
