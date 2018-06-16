@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3121" status="New">
+<title><tt>tuple</tt> constructor constraints for <tt>UTypes&amp;&amp;...</tt> overloads</title>
+<section><sref ref="[tuple.cnstr]"/></section>
+<submitter>Matt Calabrese</submitter>
+<date>12 Jun 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently the <tt>tuple</tt> constructors of the form:
+</p>
+<blockquote>
+<pre>
+template&lt;class... UTypes&gt;
+<i>EXPLICIT</i> constexpr tuple(UTypes&amp;&amp;...);
+</pre>
+</blockquote>
+<p>
+are not properly constrained in that in the 1-element <tt>tuple</tt> case, the constraints do no short-circuit when 
+the constructor would be (incorrectly) considered as a possible copy/move constructor candidate. libc++ has a 
+workaround for this, but the additional short-circuiting does not actually appear in the working draft.
+<p/>
+As an example of why this lack of short circuiting is a problem in practice, consider the following line:
+</p>
+<blockquote>
+<pre>
+bool a = std::is_copy_constructible_v&lt;std::tuple&lt;any&gt;&gt;;
+</pre>
+</blockquote>
+<p>
+The above code will cause a compile error because of a recursive trait definition. The copy constructibility 
+check implies doing substitution into the <tt>UTypes&amp;&amp;...</tt> constructor overloads, which in turn 
+will check if <tt>tuple&lt;any&gt;</tt> is convertible to any, which in turn will check if <tt>tuple&lt;any&gt;</tt> 
+is copy constructible (and so the trait is dependent on itself).
+<p/>
+I do not provide wording for the proposed fix in anticipation of requires clauses potentially changing how we 
+do the specification, however, the basic solution should be similar to what we've done for other standard library 
+types, which is to say that the very first constraint should be to check that if <tt>sizeof...(UTypes) == 1</tt> 
+and the type, after applying <tt>remove_cvref_t</tt>, is the <tt>tuple</tt> type itself, then we should force 
+substitution failure rather than checking any further constraints.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
