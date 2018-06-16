@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3120" status="New">
+<title>Unclear behavior of <tt>monotonic_buffer_resource::release()</tt></title>
+<section><sref ref="[mem.res.monotonic.buffer.mem]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>10 Jun 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The effects of <tt>monotonic_buffer_resource::release()</tt> are defined as:
+</p>
+<blockquote>
+<p>
+Calls <tt>upstream_rsrc-&gt;deallocate()</tt> as necessary to release all allocated memory.
+</p>
+</blockquote>
+<p>
+This doesn't give any instruction on what to do with the memory controlled by the <tt>monotonic_buffer_resource</tt> which 
+was not allocated, i.e., what to do with the initial buffer provided to its constructor.
+<p/>
+Boost.Container's pmr implementation expels its initial buffer after a <tt>release()</tt>.
+Arthur O'Dwyer's proposed pmr implementation for libc++ reuses the initial buffer after a <tt>release()</tt>, on the 
+assumption that this is what the average library user will be expecting.
+</p>
+<blockquote>
+<pre>
+#include &lt;memory_resource&gt;
+
+int main() 
+{
+  char buffer[100];
+  {
+    std::pmr::monotonic_buffer_resource mr(buffer, 100, std::pmr::null_memory_resource());
+    mr.release();
+    mr.allocate(60);  // A
+  }
+  {
+    std::pmr::monotonic_buffer_resource mr(buffer, 100, std::pmr::null_memory_resource());
+    mr.allocate(60);  // B
+    mr.release();
+    mr.allocate(60);  // C
+  }
+}
+</pre>
+</blockquote>
+<p>
+Assume that allocation "B" always succeeds.<br/>
+With the proposed libc++ implementation, allocations "A" and "C" both succeed.<br/>
+With Boost.Container's implementation, allocations "A" and "C" both fail.<br/>
+Using another plausible implementation strategy, allocation "A" could succeed but allocation "C" 
+could fail. I have been informed that MSVC's implementation does this.
+<p/>
+Which of these strategies should be permitted by the Standard?
+<p/>
+Arthur considers "A and C both succeed" to be the obviously most user-friendly strategy, and really 
+really hopes it's going to be permitted. Requiring "C" to succeed is unnecessary (and would render MSVC's 
+current implementation non-conforming) but could help programmers concerned with portability between 
+different implementations.
+<p/>
+Another side-effect of <tt>release()</tt> which goes underspecified by the Standard is the effect of 
+<tt>release()</tt> on <tt>next_buffer_size</tt>. As currently written, my interpretation is that 
+<tt>release()</tt> is not permitted to decrease <tt>current_buffer_size</tt>; I'm not sure if this 
+is a feature or a bug.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4750">N4750</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[mem.res.monotonic.buffer.mem]"/> as indicated:</p>
+<blockquote>
+<pre>
+void release();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Calls <tt>upstream_rsrc-&gt;deallocate()</tt> as necessary to release all allocated memory. 
+<ins>Resets the state of the initial buffer.</ins>
+<p/>
+-2- [<i>Note:</i> The memory is released back to <tt>upstream_rsrc</tt> even if some blocks that were allocated from
+this have not been deallocated from this. <ins>This function has no effect on <tt>next_buffer_size</tt>.</ins> 
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
