@@ -64,11 +64,32 @@ Another side-effect of <tt>release()</tt> which goes underspecified by the Stand
 <tt>release()</tt> on <tt>next_buffer_size</tt>. As currently written, my interpretation is that 
 <tt>release()</tt> is not permitted to decrease <tt>current_buffer_size</tt>; I'm not sure if this 
 is a feature or a bug.
+<p/>
+Consider this test case (taken from <a href="https://reviews.llvm.org/D47111#inline-421469">here</a>):
+</p>
+<blockquote>
+<pre>
+std::pmr::monotonic_buffer_resource mr(std::pmr::new_delete_resource());
+for (int i=0; i &lt; 100; ++i) {
+  mr.allocate(1);  // D
+  mr.release();
+}
+</pre>
+</blockquote>
+<p>
+Arthur believes it is important that the 100<sup>th</sup> invocation of line "D" does not attempt to allocate 
+2<sup>100</sup> bytes from the upstream resource.
 </p>
 </discussion>
 
 <resolution>
 <p>This wording is relative to <a href="http://wg21.link/n4750">N4750</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The resolution depicted below would make MSVC's and my-proposed-libc++'s implementations 
+both conforming.]</p>
+</blockquote>
 
 <ol>
 <li><p>Modify <sref ref="[mem.res.monotonic.buffer.mem]"/> as indicated:</p>
@@ -82,7 +103,7 @@ void release();
 <ins>Resets the state of the initial buffer.</ins>
 <p/>
 -2- [<i>Note:</i> The memory is released back to <tt>upstream_rsrc</tt> even if some blocks that were allocated from
-this have not been deallocated from this. <ins>This function has no effect on <tt>next_buffer_size</tt>.</ins> 
+this have not been deallocated from this. <ins>This function has an unspecified effect on <tt>next_buffer_size</tt>.</ins> 
 &mdash; <i>end note</i>]
 </p>
 </blockquote>
