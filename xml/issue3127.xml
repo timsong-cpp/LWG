@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3127" status="New">
+<title><tt>basic_osyncstream::rdbuf</tt> needs a <tt>const_cast</tt></title>
+<section><sref ref="[syncstream.osyncstream.overview]"/></section>
+<submitter>Tim Song</submitter>
+<date>29 Jun 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current specification of <tt>basic_osyncstream::rdbuf()</tt> is
+</p>
+<blockquote>
+<pre>
+    syncbuf_type* rdbuf() const noexcept { return &amp;sb; }
+</pre>
+</blockquote>
+<p>
+This is ill-formed because the exposition-only member <tt>sb</tt> is <tt>const</tt> inside this <tt>const</tt> member function,
+but the return type is a pointer to non-<tt>const</tt> <tt>syncbuf_type</tt>. It needs to cast away the constness, consistent
+with the other streams with embedded stream buffers (such as string and file streams).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4750">N4750</a>.
+</p>
+
+<ol>
+<li>
+<p>Change <sref ref="[syncstream.osyncstream.overview]"/>, class template <tt>basic_osyncstream</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class charT, class traits, class Allocator&gt;
+  class basic_osyncstream : public basic_ostream&lt;charT, traits&gt; {
+  public:
+    [&hellip;]
+
+    // <sref ref="[syncstream.osyncstream.members]"/>, member functions
+    void emit();
+    streambuf_type* get_wrapped() const noexcept;
+    syncbuf_type* rdbuf() const noexcept { return <ins>const_cast&lt;syncbuf_type *&gt;(</ins>&amp;sb<ins>)</ins>; }
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
