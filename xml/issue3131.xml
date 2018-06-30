@@ -1,0 +1,404 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3131" status="New">
+<title><tt>addressof</tt> all the things</title>
+<section><sref ref="[time.parse]"/><sref ref="[string.accessors]"/><sref ref="[string.view.template]"/><sref ref="[container.requirements.general]"/><sref ref="[output.iterators]"/><sref ref="[bidirectional.iterators]"/><sref ref="[re.traits]"/><sref ref="[re.regiter]"/><sref ref="[thread.lock.guard]"/></section>
+<submitter>Tim Song</submitter>
+<date>30 Jun 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Some additional instances where the library specification applies unary
+operator <tt>&amp;</tt> when it should use <tt>addressof</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4750">N4750</a>.
+</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Two uses of <tt>&amp;</tt> in <sref ref="[reverse.iterators]"/> are not included in 
+the wording below because the entire sentence is slated to be removed by a revision of <a href="http://wg21.link/p0896">P0896</a>,
+the One Ranges Proposal.]
+</p>
+</blockquote>
+<ol>
+<li>
+<p>
+Change <sref ref="[time.parse]"/> p4-5 as indicated:
+</p>
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);
+</pre>
+<blockquote>
+<p>
+-4- <i>Remarks:</i> This function shall not participate in overload resolution unless
+</p>
+<blockquote>
+<pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp, <del>&amp;</del><ins>addressof(</ins>abbrev<ins>)</ins>)
+</pre>
+</blockquote>
+<p>
+is a valid expression.
+<p/>
+-5- <i>Returns:</i> A manipulator that, when extracted from a <tt>basic_istream&lt;charT, traits&gt; is</tt>,
+calls <tt>from_stream(is, fmt.c_str(), tp, <del>&amp;</del><ins>addressof(</ins>abbrev<ins>)</ins>)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[time.parse]"/> p8-9 as indicated:
+</p>
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);
+</pre>
+<blockquote>
+<p>
+-8- <i>Remarks:</i> This function shall not participate in overload resolution unless
+</p>
+<blockquote>
+<pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp, <del>&amp;</del><ins>addressof(</ins>abbrev<ins>)</ins>, &amp;offset)
+</pre>
+</blockquote>
+<p>
+is a valid expression.
+<p/>
+-9- <i>Returns:</i> A manipulator that, when extracted from a <tt>basic_istream&lt;charT, traits&gt; is</tt>,
+calls <tt>from_stream(is, fmt.c_str(), tp, <del>&amp;</del><ins>addressof(</ins>abbrev<ins>)</ins>, &amp;offset)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[string.accessors]"/> p1 and p4 as indicated:
+</p>
+<blockquote>
+<pre>
+const charT* c_str() const noexcept;
+const charT* data() const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> A pointer <tt>p</tt> such that <tt>p + i == <del>&amp;</del><ins>addressof(</ins>operator[](i)<ins>)</ins></tt>
+for each <tt>i</tt> in <tt>[0, size()]</tt>.
+<p/>
+-2- <i>Complexity:</i> Constant time.
+<p/>
+-3- <i>Requires:</i> The program shall not alter any of the values stored in the character array.
+</p>
+</blockquote>
+<pre>
+charT* data() noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Returns:</i> A pointer <tt>p</tt> such that <tt>p + i == <del>&amp;</del><ins>addressof(</ins>operator[](i)<ins>)</ins></tt>
+for each <tt>i</tt> in <tt>[0, size()]</tt>.
+<p/>
+-5- <i>Complexity:</i> Constant time.
+<p/>
+-6- <i>Requires:</i> The program shall not alter the value stored at <tt>p + size()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[string.view.iterators]"/> p4 as indicated:
+</p>
+<blockquote>
+<pre>
+constexpr const_iterator begin() const noexcept;
+constexpr const_iterator cbegin() const noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Returns:</i> An iterator such that
+<p/>
+(4.1) &mdash; if <tt>!empty()</tt>, <tt><del>&amp;</del><ins>addressof(</ins>*begin()<ins>)</ins> == data_</tt>,
+<p/>
+(4.2) &mdash; otherwise, an unspecified value such that <tt>[begin(), end())</tt> is a valid range.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[string.view.ops]"/> p21 and p24 as indicated:
+</p>
+<blockquote>
+<pre>
+constexpr bool starts_with(charT x) const noexcept;
+</pre>
+<blockquote>
+<p>
+-21- <i>Effects:</i> Equivalent to: <tt>return starts_with(basic_string_view(<del>&amp;</del><ins>addressof(</ins>x<ins>)</ins>, 1));</tt>
+</p>
+</blockquote>
+<p>[&hellip;]</p>
+<pre>
+constexpr bool ends_with(charT x) const noexcept;
+</pre>
+<blockquote>
+<p>
+-24- <i>Effects:</i> Equivalent to: <tt>return ends_with(basic_string_view(<del>&amp;</del><ins>addressof(</ins>x<ins>)</ins>, 1));</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[string.view.find]"/> p5 as indicated:
+</p>
+<blockquote>
+<p>
+-5- Each member function of the form
+</p>
+<blockquote>
+<pre>
+constexpr <i>return-type</i> <i>F</i>(charT c, size_type pos);
+</pre>
+</blockquote>
+<p>
+is equivalent to <tt>return <i>F</i>(basic_string_view(<del>&amp;</del><ins>addressof(</ins>c<ins>)</ins>, 1), pos);</tt>
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>
+Edit <sref ref="[container.requirements.general]"/>, Table 77 &mdash; "Container requirements", as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 77 &mdash; Container requirements</caption>
+<tr style="text-align:center">
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational<br/>semantics</th>
+<th>Assertion/note<br/>pre/post-condition</th>
+<th>Complexity</th>
+</tr>
+<tr>
+<td colspan="5" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td>
+<tt><del>(&amp;a)-&gt;</del><ins>a.</ins>~X()</tt>
+</td>
+<td>
+<tt>void</tt>
+</td>
+<td></td>
+<td>
+the destructor is applied to every element of <tt>a</tt>; any memory obtained is deallocated.
+</td>
+<td>
+linear
+</td>
+</tr>
+<tr>
+<td colspan="5" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+
+<li>
+<p>
+Edit <sref ref="[output.iterators]"/>, Table 90 &mdash; "Output iterator requirements (in addition to Iterator)", as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 90 &mdash; Output iterator requirements (in addition to Iterator)</caption>
+<tr style="text-align:center">
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational<br/>semantics</th>
+<th>Assertion/note<br/>pre/post-condition</th>
+</tr>
+<tr>
+<td colspan="4" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td>
+<tt>++r</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td></td>
+<td>
+<tt><del>&amp;</del><ins>addressof(</ins>r<ins>)</ins> == <del>&amp;</del><ins>addressof(</ins>++r<ins>)</ins></tt>.
+<br/>[&hellip;]
+</td>
+</tr>
+<tr>
+<td colspan="4" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+
+<li>
+<p>
+Edit <sref ref="[bidirectional.iterators]"/>, Table 92 &mdash; "Bidirectional iterator requirements (in addition to forward iterator)", as indicated:
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 92 &mdash; Bidirectional iterator requirements (in addition to forward iterator)</caption>
+<tr style="text-align:center">
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational<br/>semantics</th>
+<th>Assertion/note<br/>pre/post-condition</th>
+</tr>
+<tr>
+<td>
+<tt>--r</tt>
+</td>
+<td>
+<tt>X&amp;</tt>
+</td>
+<td></td>
+<td>
+[&hellip;]
+<br/>
+<tt><del>&amp;</del><ins>addressof(</ins>r<ins>)</ins> == <del>&amp;</del><ins>addressof(</ins>--r<ins>)</ins></tt>.
+</td>
+</tr>
+<tr>
+<td colspan="4" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+<li>
+<p>
+Change <sref ref="[re.traits]"/> p6 as indicated:
+</p>
+<blockquote>
+<pre>
+template&lt;class ForwardIterator&gt;
+  string_type transform(ForwardIterator first, ForwardIterator last) const;
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> As if by:
+</p>
+<blockquote>
+<pre>
+string_type str(first, last);
+return use_facet&lt;collate&lt;charT&gt;&gt;(
+  getloc()).transform(<del>&amp;*</del>str.<del>begin</del><ins>data</ins>(), <del>&amp;*</del>str.<del>begin</del><ins>data</ins>() + str.length());
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[re.regiter.cnstr]"/> p2 as indicated:
+</p>
+<blockquote>
+<pre>
+regex_iterator(BidirectionalIterator a, BidirectionalIterator b,
+               const regex_type&amp; re,
+               regex_constants::match_flag_type m = regex_constants::match_default);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Initializes <tt>begin</tt> and <tt>end</tt> to <tt>a</tt> and <tt>b</tt>, respectively,
+sets <tt>pregex</tt> to <tt><del>&amp;</del><ins>addressof(</ins>re<ins>)</ins></tt>, sets <tt>flags</tt> to <tt>m</tt>,
+then calls <tt>regex_search(begin, end, match, *pregex, flags)</tt>. If this call returns <tt>false</tt>
+the constructor sets <tt>*this</tt> to the end-of-sequence iterator.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[re.regiter.deref]"/> p2 as indicated:
+</p>
+<blockquote>
+<pre>
+const value_type* operator-&gt;() const;
+</pre>
+<blockquote>
+<p>
+-2- <i>Returns:</i> <tt><del>&amp;</del><ins>addressof(</ins>match<ins>)</ins></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Change <sref ref="[thread.lock.guard]"/> p2-7 as indicated:
+</p>
+<blockquote>
+<pre>
+explicit lock_guard(mutex_type&amp; m);
+</pre>
+<blockquote>
+<p>
+-2- <i>Requires:</i> If <tt>mutex_type</tt> is not a recursive mutex, the calling thread does not own the mutex <tt>m</tt>.
+<p/>
+-3- <i>Effects:</i> <del>As if by</del><ins>Initializes <tt>pm</tt> with <tt>m</tt>. Calls</ins> <tt>m.lock()</tt>.
+<p/>
+<del>-4- <i>Postconditions:</i> <tt>&amp;pm == &amp;m</tt></del>
+</p>
+</blockquote>
+<pre>
+lock_guard(mutex_type&amp; m, adopt_lock_t);
+</pre>
+<blockquote>
+<p>
+-5- <i>Requires:</i> The calling thread owns the mutex <tt>m</tt>.
+<p/>
+-6- <del><i>Postconditions:</i> <tt>&amp;pm == &amp;m</tt></del><ins><i>Effects:</i> Initializes <tt>pm</tt> with <tt>m</tt>.</ins>
+<p/>
+-7- <i>Throws:</i> Nothing.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
