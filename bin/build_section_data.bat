@@ -14,5 +14,7 @@ if exist bin\networking-annex-f (
     type meta-data\networking-section.data >>bin\section.data
 )
 type meta-data\tr1_section.data >>bin\section.data
+type meta-data\filesystem-section.data >>bin\section.data
+type meta-data\lfts-old-section.data >>bin\section.data
 type meta-data\lfts-v3-section.data >>bin\section.data
 dir bin\section.data

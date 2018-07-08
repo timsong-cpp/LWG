@@ -10,5 +10,6 @@ else
     cat meta-data/networking-section.data >> bin/section.data
 fi
 cat meta-data/tr1_section.data >>bin/section.data
-cat meta-data/lfts-v3-section.data >>bin/section.data
+cat meta-data/filesystem-section.data >>bin/section.data
+cat meta-data/lfts-old-section.data meta-data/lfts-v3-section.data >>bin/section.data
 ls -l bin/section.data
