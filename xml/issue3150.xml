@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3150" status="New">
+<title><tt>UniformRandomBitGenerator</tt> should validate <tt>min</tt> and <tt>max</tt></title>
+<section><sref ref="[rand.req.urng]"/></section>
+<submitter>Casey Carter</submitter>
+<date>09 Aug 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[rand.req.urng]"/>
+<a href="https://wg21.link/rand.req.urng#2">paragraph 2</a> specifies axioms for
+the <tt>UniformRandomBitGenerator</tt> concept:
+</p>
+<blockquote>
+<p>
+2 Let <tt>g</tt> be an object of type <tt>G</tt>. <tt>G</tt> models
+<tt>UniformRandomBitGenerator</tt> only if
+</p><p>
+(2.1) &mdash; both <tt>G::min()</tt> and <tt>G::max()</tt> are constant
+expressions (<sref ref="[expr.const]"/>),
+</p><p>
+(2.2) &mdash; <tt>G::min() &lt; G::max()</tt>,
+</p><p>
+(2.3) &mdash; <tt>G::min() &lt;= g()</tt>,
+</p><p>
+(2.4) &mdash; <tt>g() &lt;= G::max()</tt>, and
+</p><p>
+(2.5) &mdash; <tt>g()</tt> has amortized constant complexity.
+</p>
+</blockquote>
+<p>
+Bullets 2.1 and 2.2 are both compile-time requirements that ought to be
+validated by the concept.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+
+<ul>
+<li><p>Modify <sref ref="[rand.req.urng]"/> as follows:</p>
+
+<blockquote>
+<p>1 A <i>uniform random bit generator</i> <tt>g</tt> of type <tt>G</tt> is a
+function object returning unsigned integer values such that each value in the
+range of possible results has (ideally) equal probability of being returned.
+[<i>Note:</i> The degree to which <tt>g</tt>'s results approximate the ideal is
+often determined statistically.&mdash;<i>end note</i>]
+</p>
+<blockquote>
+<pre>
+<ins>template&lt;auto&gt; struct <i>require-constant</i>; // <i>exposition-only</i></ins>
+
+template&lt;class G&gt;
+  concept UniformRandomBitGenerator =
+    Invocable&lt;G&amp;&gt; &amp;&amp; UnsignedIntegral&lt;invoke_result_t&lt;G&amp;&gt;&gt; &amp;&amp;
+    requires {
+      G::min(); requires Same&lt;decltype(G::min()), invoke_result_t&lt;G&amp;&gt;&gt;;
+      G::max(); requires Same&lt;decltype(G::max()), invoke_result_t&lt;G&amp;&gt;&gt;;
+      <ins>typename <i>require-constant</i>&lt;G::min()&gt;;</ins>
+      <ins>typename <i>require-constant</i>&lt;G::max()&gt;;</ins>
+      <ins>requires G::min() &lt; G::max();</ins>
+    };
+</pre>
+</blockquote>
+<p>
+2 Let <tt>g</tt> be an object of type <tt>G</tt>. <tt>G</tt> models
+<tt>UniformRandomBitGenerator</tt> only if
+</p><p>
+<del>(2.1) &mdash; both <tt>G​::​min()</tt> and <tt>G​::​max()</tt> are constant
+expressions (<sref ref="[expr.const]"/>),</del>
+</p><p>
+<del>(2.2) &mdash; <tt>G​::​min() &lt; G​::​max()</tt>,</del>
+</p><p>
+(2.3) &mdash; <tt>G​::​min() &lt;= g()</tt>,
+</p><p>
+(2.4) &mdash; <tt>g() &lt;= G​::​max()</tt>, and
+</p><p>
+(2.5) &mdash; <tt>g()</tt> has amortized constant complexity.
+</p><p>
+3 A class <tt>G</tt> meets the <i>uniform random bit generator</i> requirements
+if <tt>G</tt> models <tt>UniformRandomBitGenerator</tt>,
+<tt>invoke_­result_­t&lt;G&amp;&gt;</tt> is an unsigned integer type
+(<sref ref="[basic.fundamental]"/>), and <tt>G</tt> provides a nested
+<i>typedef-name</i> <tt>result_­type</tt> that denotes the same type as
+<tt>invoke_­result_­t&lt;G&amp;&gt;</tt>.
+</p>
+</blockquote>
+</li>
+</ul>
+</resolution>
+
+</issue>
