@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3151" status="New">
+<title><tt>ConvertibleTo</tt> rejects conversions from array and function types</title>
+<section><sref ref="[concept.convertibleto]"/></section>
+<submitter>Casey Carter</submitter>
+<date>09 Aug 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the definition of <tt>ConvertibleTo</tt> in <sref ref="[concept.convertibleto]"/>:
+</p>
+<blockquote>
+<pre>
+template&lt;class From, class To&gt;
+  concept ConvertibleTo =
+    is_convertible_v&lt;From, To&gt; &amp;&amp;
+    requires(From (&amp;f)()) {
+      static_cast&lt;To&gt;(f());
+    };
+</pre>
+</blockquote>
+<p>
+<tt>f</tt> is an arbitrary function that returns type <tt>From</tt>. Since
+functions cannot return array or function types (<sref ref="[dcl.fct]"/>
+<a href="https://wg21.link/dcl.fct#11">paragraph 11</a>), <tt>ConvertibleTo</tt>
+cannot be satisfied when <tt>From</tt> is an array or function type regardless
+of the type of <tt>To</tt>. This is incompatibility with <tt>is_convertible_v</tt>
+was not an intentional design feature, so it should be corrected. (Note that any
+change made here must take care to avoid breaking the
+<tt>ConvertibleTo&lt;T, void&gt;</tt> cases.)
+</p>
+</discussion>
+
+<resolution>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> I've used <tt>declval</tt> here, despite that "Concepts
+mean we never have to use <tt>declval</tt> again!" because the alternative
+is less readable:]
+</p>
+<blockquote>
+<pre>
+requires(add_rvalue_reference_t&lt;From&gt; (&amp;f)()) {
+  static_cast&lt;To&gt;(f());
+};
+</pre>
+</blockquote>
+</blockquote>
+
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+
+<ul>
+<li><p>Modify <sref ref="[concept.convertibleto]"/> as follows:</p>
+
+<blockquote>
+<pre>
+template&lt;class From, class To&gt;
+  concept ConvertibleTo =
+    is_convertible_v&lt;From, To&gt; &amp;&amp;
+    requires<del>(From (&amp;f)())</del> {
+      static_cast&lt;To&gt;(<del>f()</del> <ins>declval&lt;From&gt;()</ins>);
+    };
+</pre>
+</blockquote>
+</li>
+</ul>
+</resolution>
+
+</issue>
