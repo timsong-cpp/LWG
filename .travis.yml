@@ -1,10 +1,53 @@
 dist: trusty
 sudo: false
-language: generic
+language: cpp
 os: linux
 
 git:
   depth: 1
 
+matrix:
+  include:
+    - env: BUILD_TYPE=CRLF
+    - env: BUILD_TYPE=generate GCC_VERSION=6
+      addons: &gcc6
+        apt:
+          packages:
+            - g++-6
+          sources:
+            - ubuntu-toolchain-r-test
+    - env: BUILD_TYPE=generate CLANG_VERSION=5
+      addons: &clang5
+        apt:
+          packages:
+            - clang++-5.0
+            - g++-6
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty
+            - llvm-toolchain-trusty-5.0
+
 script:
-  - '! grep -IUrl --exclude-dir=.git . -e $''\r'''
+  - |
+    case "$BUILD_TYPE" in
+      (CRLF)
+        echo "Checking for carriage returns..."
+        if grep -IUrl --exclude-dir=.git . -e $'\r'; then
+          echo "Sorry, carriage returns are not allowed in the repo."
+          exit 1
+        else
+          echo "All good."
+        fi
+        ;;
+      (generate)
+        if [ -n "$GCC_VERSION" ]; then
+          export CXX=g++-${GCC_VERSION}
+        elif [ -n "$CLANG_VERSION" ]; then
+          export CXX=clang++-${CLANG_VERSION}.0
+        fi
+        echo "Building generator..."
+        bash -ex ./bin/build_pgms.sh || exit 1
+        echo "Generating lists..."
+        mkdir mailing && bash -ex ./bin/build_lists_only.sh || exit 1
+        ;;
+    esac
