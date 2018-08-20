@@ -17,11 +17,13 @@ int i[1] = { };
 std::stable_sort(i, i, [](int&amp; x, int&amp; y) { return x &lt; y; });
 </pre></blockquote>
 <p>
-The problem is that the <tt>Compare</tt> expects non-const references. We say "It is assumed that 
-<tt>comp</tt> will not apply any non-constant function through the dereferenced iterator" But that 
+The problem is that the <tt>Compare</tt> expects non-const references. We say "It is assumed that
+<tt>comp</tt> will not apply any non-constant function through the dereferenced iterator" But that
 isn't sufficient to forbid the example.
 <p/>
-My first thought was to modify [alg.sorting] to make the <tt>Compare</tt> requirements use <tt>comp(as_const(x), as_const(x))</tt> but that would get very verbose to add to every expression using <tt>comp</tt>.
+My first thought was to modify [alg.sorting] to make the <tt>Compare</tt> requirements use
+<tt>comp(as_const(x), as_const(x))</tt> but that would get very verbose to add to every expression
+using <tt>comp</tt>.
 </p>
 
 <note>2017-11 Albuquerque Wednesday night issues processing</note>
@@ -78,9 +80,71 @@ $ bin/clang++ -std=c++11 -stdlib=libstdc++ tmp/ex.cc &amp;&amp; ./a.out
 
 <note>2018-08 Batavia Monday issue discussion</note>
 <p>Tim to provide wording; status to 'Open'</p>
+
+<note> 2018-08-20, Tim adds P/R based on Batavia discussion.</note>
+<p>
+Similar to the Ranges TS design, the P/R below requires <tt>Predicate</tt>,
+<tt>BinaryPredicate</tt>, and <tt>Compare</tt> to accept all mixes of
+<tt>const</tt> and non-<tt>const</tt> arguments.
+</p>
 </discussion>
 
 <resolution>
+<p> This wording is relative to <a href="https://wg21.link/N4762">N4762</a>.</p>
+<ol>
+<li>
+<p>Edit <sref ref="[algorithms.requirements]" /> p6-7 as indicated: </p>
+<blockquote>
+<p>
+-6- The <tt>Predicate</tt> parameter is used whenever an algorithm expects a function object
+(<sref ref="[function.objects]" />) that, when applied to the result of dereferencing the
+corresponding iterator, returns a value testable as <tt>true</tt>. In other words, if an
+algorithm takes <tt>Predicate pred</tt> as its argument and <tt>first</tt> as its iterator
+argument<ins> with value type <tt>T</tt></ins>, it should work correctly in the construct
+<tt>pred(*first)</tt> contextually converted to <tt>bool</tt> (<sref ref="[conv]"/>). The
+function object <tt>pred</tt> shall not apply any non-constant function through the
+dereferenced iterator.<ins> Given a glvalue <tt>u</tt> of type (possibly <tt>const</tt>)
+<tt>T</tt> that designates the same object as <tt>*first</tt>, <tt>pred(u)</tt> shall be a
+valid expression that is equal to <tt>pred(*first)</tt>.</ins>
+<p/>
+-7- The <tt>BinaryPredicate</tt> parameter is used whenever an algorithm expects a function
+object that when applied to the result of dereferencing two corresponding iterators or to
+dereferencing an iterator and type <tt>T</tt> when <tt>T</tt> is part of the signature
+returns a value testable as <tt>true</tt>. In other words, if an algorithm takes
+<tt>BinaryPredicate binary_pred</tt> as its argument and <tt>first1</tt> and <tt>first2</tt>
+as its iterator arguments<ins> with value types <tt>T1</tt> and <tt>T2</tt> respectively</ins>,
+it should work correctly in the construct <tt>binary_pred(*first1, *first2)</tt>
+contextually converted to <tt>bool</tt> (<sref ref="[conv]" />).
+<ins>Unless otherwise specified, </ins><tt>BinaryPredicate</tt> always takes the first iterator's
+<tt>value_type</tt> as its first argument, that is, in those cases when <tt>T value</tt> is part
+of the signature, it should work correctly in the construct <tt>binary_pred(*first1, value)</tt>
+contextually converted to <tt>bool</tt> (<sref ref="[conv]" />). <tt>binary_pred</tt> shall not
+apply any non-constant function through the dereferenced iterators. <ins>Given a glvalue <tt>u</tt>
+of type (possibly <tt>const</tt>) <tt>T1</tt> that designates the same object as <tt>*first1</tt>,
+and a glvalue <tt>v</tt> of type (possibly <tt>const</tt>) <tt>T2</tt> that designates the
+same object as <tt>*first2</tt>, <tt>binary_pred(u, *first2)</tt>, <tt>binary_pred(*first1, v)</tt>,
+and <tt>binary_pred(u, v)</tt> shall each be a valid expression that is equal to
+<tt>binary_pred(*first1, *first2)</tt>, and <tt>binary_pred(u, value)</tt> shall
+be a valid expression that is equal to <tt>binary_pred(*first1, value)</tt>.</ins>
+</p>
+</blockquote>
+</li>
+<li>
+<p>Edit <sref ref="[alg.sorting]" /> p2 as indicated: </p>
+<blockquote>
+<p>
+<tt>Compare</tt> is a function object type (<sref ref="[function.objects]"/>)<ins> that meets the
+requirements for a template parameter named <tt>BinaryPredicate</tt>
+(<sref ref="[algorithms.requirements]"/>)</ins>. The return value of the function call operation
+applied to an object of type <tt>Compare</tt>, when contextually converted to <tt>bool</tt>
+(<sref ref="[conv]"/>), yields <tt>true</tt> if the first argument of the call is less than the second,
+and <tt>false</tt> otherwise. <tt>Compare comp</tt> is used throughout for algorithms assuming an
+ordering relation. <del>It is assumed that <tt>comp</tt> will not apply any non-constant function
+through the dereferenced iterator.</del>
+</p>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
