@@ -41,9 +41,127 @@ exceptions has not been added. IMO this position should be reconsidered to follo
 </p>
 
 <note>2018-01; Priority set to 3 after mailing list discussion</note>
+
+<note>2018-08-21, Jonathan comments and provides wording</note>
+<p>
+The phrase "the largest value that can meaningfully be passed to <tt>X::allocate()</tt>" is meaningless. Is it a 
+requirement on the caller, so that larger values must not be passed? Or a hint from the allocator implementor that larger 
+values will produce a <tt>bad_alloc exception</tt>? Can the return value change dynamically, based on the free memory 
+available to the allocator?! &mdash; LWG <iref ref="97"/> says it can't change.
+<p/>
+As noted in the LWG <iref ref="2162"/> comments, we don't currently guarantee it can be called on a <tt>const</tt> object 
+(so <tt>allocator_traits</tt> will not use the allocator's <tt>max_size()</tt> if it's non-<tt>const</tt>, although that was 
+unclear before DR <iref ref="2284"/>). In addition to adding "<i>Throws:</i> nothing" we should ensure it's callable 
+on <tt>const</tt> lvalues, and clarify what "meaningfully" means and who is supposed to care about it. My proposed 
+resolution doesn't achieve all of this, but is a start.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+
+<ul>
+<li><p>Change <sref ref="[allocator.requirements]"/>, Table 32 &mdash; "Descriptive variable definitions", as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 32 &mdash; Descriptive variable definitions</caption>
+<tr>
+<th>Variable</th>
+<th>Definition</th>
+</tr>
+
+<tr>
+<td>
+<tt>T, U, C</tt>
+</td>
+<td>
+any <i>cv</i>-unqualified object type (3.9)
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a, a1, a2</tt>
+</td>
+<td>
+lvalues of type <tt>X</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>a3</tt></ins>
+</td>
+<td>
+<ins>an lvalue of type <tt>const X</tt></ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[allocator.requirements]"/>, Table 33 &mdash; "<i>Cpp17Allocator</i> requirements", as indicated:</p>
+<blockquote>
+<table border="1">
+<caption>Table 33 &mdash; <i>Cpp17Allocator</i> requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a<ins>3</ins>.max_size()</tt>
+</td>
+<td>
+<tt>X::size_type</tt>
+</td>
+<td>
+the largest value that can<br/>
+meaningfully be passed to<br/>
+<tt>X::allocate()</tt><ins>.<br/> 
+[<i>Note:</i> Larger values might cause<br/> 
+an exception to be thrown. &mdash; <i>end note</i>]<br/> 
+<i>Throws:</i> Nothing.</ins>
+</td>
+<td>
+<tt>numeric_limits&lt;size_type&gt;::max()<br/>
+/ sizeof(value_type)</tt>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ul>
 </resolution>
 
 </issue>
