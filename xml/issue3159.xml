@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3159" status="New">
+<title>&sect;[unique.ptr.single] requirements on deleter may be too strict</title>
+<section><sref ref="[unique.ptr.single]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>17 Sep 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[unique.ptr.single]"/> p1 says:
+</p>
+<blockquote><p>
+The default type for the template parameter <tt>D</tt> is <tt>default_delete</tt>. A client-supplied template argument 
+<tt>D</tt> shall be a function object type (19.14), lvalue reference to function, or lvalue reference to function object 
+type for which, given a value <tt>d</tt> of type <tt>D</tt> and a value ptr of type <tt>unique_ptr&lt;T, D&gt;::pointer</tt>, 
+the expression <tt>d(ptr)</tt> is valid and has the effect of disposing of the pointer as appropriate for that deleter.
+</p></blockquote>
+<p>
+That means this is undefined:
+</p>
+<blockquote><pre>
+#include &lt;memory&gt;
+
+struct IncompleteBase;
+
+struct Deleter {
+  void operator()(IncompleteBase*) const;
+};
+
+struct IncompleteDerived;
+
+struct X {
+  std::unique_ptr&lt;IncompleteDerived, Deleter&gt; p;
+  ~X();
+};
+</pre></blockquote>
+<p>
+<tt>unique_ptr::pointer</tt> is <tt>IncompleteDerived*</tt>, but <tt>is_invocable&lt;Deleter, IncompleteDerived*&gt;</tt> 
+is unknowable until the type is complete (see LWG <iref ref="3099"/> etc).
+<p/>
+The intention is that <tt>IncompleteDerived</tt> only needs to be complete when the deleter is invoked, which is in the 
+definition of <tt>X::~X()</tt> for this example. But the requirement for <tt>d(ptr)</tt> to be valid requires a complete type. 
+If the <tt>unique_ptr</tt> implementation adds <tt>static_assert(is_invocable_v&lt;D, pointer&gt;)</tt> to enforce the 
+requirement, the example above fails to compile. GCC recently added that assertion.
+<p/>
+Do we want to relax that requirement, or do we want to force the code above to define <tt>Deleter::pointer</tt> as 
+<tt>IncompleteBase*</tt> so that the <tt>is_invocable</tt> condition can be checked?
+<p/>
+The destructor and <tt>reset</tt> member function already require that the deleter can be invoked (and that <i>Requires:</i> 
+element will be turned into a <i>Mandates:</i> one soon). We can just remove that requirement from the preamble for the 
+class template, or say that the expression only needs to be valid when the destructor and <tt>reset</tt> member are 
+instantiated. We could also rephrase it in terms of <tt>is_invocable_v&lt;D, unique_ptr&lt;T, D&gt;::pointer&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
