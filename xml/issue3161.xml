@@ -22,13 +22,34 @@ template&lt;class... Args&gt;
 </pre>
 
 <p>The same pattern appears in <sref ref="[queue]"/>.</p>
-<p>The calls to <tt>c.emplace_back(std::forward&lt;Args&gt;(args)...)</tt> should be replaced with <tt>c.emplace(c.end(), std::forward&lt;Args&gt;(args)...)</tt>.</p>
-<p>We can do this w/o messing with the list above because <tt>emplace</tt> is part of the sequence container requirements, while <tt>emplace_back</tt> is not.</p>
+
+<p>I see two ways to resolve this:</p>
+<p>The first is to add <tt>emplace_back()</tt> to the list of requirements for underlying containers for <tt>stack</tt> and <tt>queue</tt></p>
+
+<p>The second is to replace the calls to <tt>c.emplace_back(std::forward&lt;Args&gt;(args)...)</tt> with <tt>c.emplace(c.end(), std::forward&lt;Args&gt;(args)...)</tt>. We can do this w/o messing with the list above because <tt>emplace</tt> is part of the sequence container requirements, while <tt>emplace_back</tt> is not. I checked the libc++ implementation of <tt>vector</tt>, <tt>deque</tt>, and <tt>list</tt>, and they all do the same thing for <tt>emplace(end(), ...)</tt> and <tt>emplace_back(...)</tt>.</p>
 </discussion>
 
 <resolution>
 <p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
 
+<blockquote class=note>
+I have prepared two mutually exclusive options.
+<br/>Option A a requirement for <tt>emplace_back</tt> to the underlying container.
+<br/>Option B one replaces the calls to <tt>emplace_back</tt> with calls to <tt>emplace</tt>.
+</blockquote>
+
+<p><b>Option A</b></p>
+<ul>
+<li><p>Edit <sref ref="[stack]"/>, as indicated:</p>
+<p>Any sequence container supporting operations <tt>back()</tt>, <tt>push_back()</tt>,  <ins><tt>emplace_back()</tt></ins> and <tt>pop_back()</tt> can be used to instantiate <tt>stack</tt>. </p>
+</li>
+
+<li><p>Edit <sref ref="[queue.defn]"/>, as indicated:</p>
+<p>Any sequence container supporting operations <tt>front()</tt>, <tt>back()</tt>, <tt>push_back()</tt>,  <ins><tt>emplace_back()</tt></ins> and <tt>pop_front()</tt> can be used to instantiate <tt>queue</tt>. </p>
+</li>
+</ul>
+
+<p><b>Option B</b></p>
 <ul>
 <li><p>Edit <sref ref="[stack.defn]"/>, class template <tt>stack</tt> definition, as indicated:</p>
 <blockquote><pre>
