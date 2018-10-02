@@ -11,22 +11,42 @@
 <discussion>
 <sref ref="[stack]"/> p1 says:
 <blockquote>
-Any sequence container supporting operations <tt>back()<tt>, <tt>push_back()<tt> and <tt>pop_back()<tt> can be used to instan- tiate stack. 
+Any sequence container supporting operations <tt>back()</tt>, <tt>push_back()</tt> and <tt>pop_back()</tt> can be used to instantiate <tt>stack</tt>. 
 </blockquote>
 
 <p>but then in <sref ref="[stack.defn]"/> we have the following code:</p>
-template<class... Args>
-  decltype(auto) emplace(Args&&... args)
-    { return c.emplace_back(std::forward<Args>(args)...); }
 <pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args)
+    { return c.emplace_back(std::forward&lt;Args&gt;(args)...); }
 </pre>
 
-<p>The same pattern appears in <sref ref="[queue]"/></p>
+<p>The same pattern appears in <sref ref="[queue]"/>.</p>
+<p>I believe the calls to <tt>c.emplace_back(std::forward&lt;Args&gt;(args)...)</tt> should be replaced with <tt>c.emplace(c.end(), std::forward&lt;Args&gt;(args)...)</tt>.</p>
+<p>We can do this because <tt>emplace</tt> is part of the sequence container requirements, while <tt>emplace_back</tt> is not.</p>
 </discussion>
 
 <resolution>
-<p>
-</p>
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+
+<ul>
+<li><p>Edit <sref ref="[stack.defn]"/>, class template <tt>stack</tt> definition, as indicated:</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args)
+    { return c.emplace<del>_back</del>(<ins>c.end(), </ins>std::forward&lt;Args&gt;(args)...); }
+</pre></blockquote>
+</li>
+
+<li><p>Edit <sref ref="[queue.defn]"/>, class template <tt>queue</tt> definition, as indicated:</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args)
+    { return c.emplace<del>_back</del>(<ins>c.end(), </ins>std::forward&lt;Args&gt;(args)...); }
+</pre></blockquote>
+</li>
+</ul>
+
 </resolution>
 
 </issue>
