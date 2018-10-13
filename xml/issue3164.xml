@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3164" status="New">
+<title>Unhelpful "shall not participate" constraints for <tt>unique_ptr</tt> with reference deleter</title>
+<section><sref ref="[unique.ptr.single.ctor]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>9 Oct 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+[unique.ptr.single.ctor] defines these constructors:
+</p>
+<blockquote><pre>
+unique_ptr(pointer p, const D&amp; d) noexcept;
+unique_ptr(pointer p, remove_reference_t&lt;D&gt;&amp;&amp; d) noexcept;
+</pre></blockquote>
+<p>
+and p13 says:
+</p>
+<blockquote>
+<p>
+<i>Remarks:</i> If <tt>D</tt> is a reference type, the second constructor is defined
+as deleted. These constructors shall not participate in overload resolution unless 
+<tt>is_constructible_v&lt;D, decltype(d)&gt;</tt> is true.
+</p>
+</blockquote>
+<p>
+The first sentence in the <i>Remarks</i> has no effect. If <tt>D</tt> is a reference
+type <tt>A&amp;</tt>, then for the second constructor the condition is
+<tt>is_constructible&lt;A&amp;, A&amp;&amp;&gt;</tt> which is <tt>false</tt>. So the 
+second constructor never participates in overload resolution for reference deleters, and
+so it's irrelevant whether it's deleted or not.
+<p/>
+We should either strike that sentence, or adjust the <tt>is_constructible</tt>
+constraint so that the deleted constructor participates in overload
+resolution for deleters of reference type. That way trying to
+initialize a deleter of reference type from an rvalue will resolve to
+the deleted function as intended.
+<p/>
+I think we can just change the "shall not participate" condition to only apply to 
+non-reference deleters. For reference deleters the condition is always true for the 
+first constructor, because <tt>is_constructible&lt;A&amp;, A&amp;&gt;</tt> is 
+<tt>true</tt>, and always <tt>false</tt> for the second constructor (but we want 
+it to be true so the deleted constructor is used). So for both constructors, the 
+"shall not participate" isn't useful when <tt>D</tt> is a reference type.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4778">N4778</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[unique.ptr.single.ctor]"/> as indicated</p>
+<blockquote><pre>
+unique_ptr(pointer p, const D&amp; d) noexcept;
+unique_ptr(pointer p, remove_reference_t&lt;D&gt;&amp;&amp; d) noexcept;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-11- <i>Remarks:</i> If <tt>D</tt> is a reference type, the second constructor is defined as deleted. 
+<ins>If <tt>D</tt> is not a reference type, t</ins><del>T</del>hese constructors shall not participate 
+in overload resolution unless <tt>is_constructible_v&lt;D, decltype(d)&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
