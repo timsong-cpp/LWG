@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3149" status="New">
+<issue num="3149" status="Open">
 <title><tt>DefaultConstructible</tt> should require default initialization</title>
 <section><sref ref="[concept.defaultconstructible]"/></section>
 <submitter>Casey Carter</submitter>
@@ -80,6 +80,26 @@ immediate context of the variable initialization is considered.</ins>
 
 <note>2018-08-23 Tim provides updated P/R based on Batavia discussion</note>
 
+<note>2018-10-28 Casey expands the problem statement and the P/R</note>
+<p>
+During Batavia review of <a href="https://wg21.link/p0896r3">P0896R3</a>, Tim
+Song noted that <tt>{}</tt> is not necessarily a valid initializer for a
+<tt>DefaultConstructible</tt> type. In this sample program
+(see <a href="https://godbolt.org/z/I64p_E">Compiler Explorer</a>):
+<blockquote>
+<pre>
+struct S0 { explicit S0() = default; };
+struct S1 { S0 x; }; // Note: aggregate
+S1 x;   // Ok
+S1 y{}; // ill-formed; copy-list-initializes x from {}
+</pre>
+</blockquote>
+<tt>S1</tt> can be default-initialized, but not list-initialized from an empty
+<i>braced-init-list</i>. The consensus among those present was that
+<tt>DefaultConstructible</tt> should prohibit this class of pathological types
+by requiring that initialization form to be valid.
+</p>
+
 </discussion>
 
 <resolution>
@@ -90,13 +110,13 @@ immediate context of the variable initialization is considered.</ins>
 <blockquote>
 <pre>
 <ins>template&lt;class T&gt;
-  inline constexpr bool <i>is-default-initializable</i> = <i>see below</i>;  //<i>exposition only</i></ins> 
+  inline constexpr bool <i>is-default-initializable</i> = <i>see below</i>; // <i>exposition only</i></ins>
 
 template&lt;class T&gt;
-  concept DefaultConstructible = Constructible&lt;T&gt; <ins>&amp;&amp; <i>is-default-initializable</i>&lt;T&gt;</ins>;
+  concept DefaultConstructible = Constructible&lt;T&gt; <ins>&amp;&amp; requires { T{}; } &amp;&amp; <i>is-default-initializable</i>&lt;T&gt;</ins>;
 </pre>
 <p>
-<ins>-?- For a type <tt>T</tt>, <tt><i>is-default-initializable</i>&lt;T&gt;</tt> is <tt>true</tt> 
+<ins>-?- For a type <tt>T</tt>, <tt><i>is-default-initializable</i>&lt;T&gt;</tt> is <tt>true</tt>
 if and only if the variable definition</ins>
 <blockquote>
 <pre>
