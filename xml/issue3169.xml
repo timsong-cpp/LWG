@@ -1,0 +1,166 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3169" status="New">
+<title><tt>ranges</tt> permutation generators discard useful information</title>
+<section><sref ref="[alg.permutation.generators]"/></section>
+<submitter>Casey Carter</submitter>
+<date>26 Nov 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the Ranges design, algorithms that necessarily traverse an entire range -
+consequently discovering the end iterator value - return that iterator value
+unless the algorithm's sole purpose is to return a derived value,
+for example, <tt>ranges::count</tt>.
+<tt>ranges::next_permutation</tt> and <tt>ranges::prev_permutation</tt>
+necessarily traverse the entirety of their range argument, but are currently
+specified to discard the end iterator value and return only a <tt>bool</tt>
+indicating whether they found a next (respectively previous) permutation or
+"reset" the range to the first (respectively last) permutation.
+They should instead return an aggregate composed of both
+that <tt>bool</tt> and the end iterator value to be consistent with the other
+<tt>range</tt> algorithms.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to the post-San Diego working draft.</p>
+
+<ul>
+<li><p>Modify <sref ref="[algorithm.syn]"/> as follows:</p>
+
+<blockquote>
+<pre>
+  // <sref ref="[alg.permutation.generators]"/>, permutations
+  template&lt;class BidirectionalIterator&gt;
+    constexpr bool next_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last);
+  template&lt;class BidirectionalIterator, class Compare&gt;
+    constexpr bool next_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last, Compare comp);
+
+  namespace ranges {
+    <ins>template&lt;class I&gt;</ins>
+    <ins>struct next_permutation_result {</ins>
+      <ins>bool found;</ins>
+      <ins>I in;</ins>
+    <ins>};</ins>
+
+    template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;I, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+        next_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+    template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+        next_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+  }
+
+  template&lt;class BidirectionalIterator&gt;
+    constexpr bool prev_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last);
+  template&lt;class BidirectionalIterator, class Compare&gt;
+    constexpr bool prev_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last, Compare comp);
+
+  namespace ranges {
+    <ins>template&lt;class I&gt;</ins>
+    <ins>using prev_permutation_result = next_permutation_result&lt;I&gt;;</ins>
+
+    template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;I, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+        prev_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+    template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+        prev_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+  }
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[alg.permutation.generators]"/> as follows:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator>
+  constexpr bool next_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare>
+  constexpr bool next_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last, Compare comp);
+
+namespace ranges {
+  template&lt;BidirectionalIterator I, Sentinel&lt;I> S, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;I, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+      next_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+      next_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+</pre>
+</blockquote>
+[&hellip;]
+<p>4 <i>Returns:</i> <ins>Let <tt>B</tt> be</ins> <tt>true</tt>
+  if <del>and only if</del> a next permutation was found
+  <ins>and otherwise <tt>false</tt></ins>. <ins>Returns:</ins></p>
+<ul>
+<li><p><ins><tt>B</tt> for the overloads in namespace <tt>std</tt>,
+  or</ins></p></li>
+<li><p><ins><tt>{ B, last }</tt> for the overloads
+  in namespace <tt>ranges</tt>.</ins></p></li>
+</ul>
+<p>5 <i>Complexity:</i> [&hellip;]</p>
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+  constexpr bool prev_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare&gt;
+  constexpr bool prev_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last, Compare comp);
+
+namespace ranges {
+  template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;I, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+      prev_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+      prev_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+</pre>
+</blockquote>
+[&hellip;]
+<p>9 <i>Returns:</i> <ins>Let <tt>B</tt> be</ins> <tt>true</tt>
+  if <del>and only if</del> a previous permutation was found
+  <ins>and otherwise <tt>false</tt></ins>. Returns:</p>
+<ul>
+<li><p><ins><tt>B</tt> for the overloads in namespace <tt>std</tt>,
+  or</ins></p></li>
+<li><p><ins><tt>{ B, last }</tt> for the overloads
+  in namespace <tt>ranges</tt>.</ins></p></li>
+</ul>
+<p>10 <i>Complexity:</i> [&hellip;]</p>
+</blockquote>
+</li>
+</ul>
+</resolution>
+
+</issue>
