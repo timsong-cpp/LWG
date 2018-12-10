@@ -1,0 +1,128 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3174" status="New">
+<title>Precondition on <tt>is_convertible</tt> is too strong</title>
+<section><sref ref="[meta.rel]"/></section>
+<submitter>Casey Carter</submitter>
+<date>09 Dec 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Per <a href="http://eel.is/c++draft/meta.rel#tab:type-traits.relationship">Table 49</a>
+in <sref ref="[meta.rel]"/>, the preconditions for both
+<tt>is_convertible&lt;From, To&gt;</tt> and
+<tt>is_nothrow_convertible&lt;From, To&gt;</tt> are:
+</p>
+<blockquote>
+<p>
+<tt>From</tt> and <tt>To</tt> shall be complete types, arrays of unknown bound,
+or <i>cv</i> <tt>void</tt> types.
+</p>
+</blockquote>
+<p>
+Consequently, this program fragment:
+</p>
+<blockquote>
+<pre>
+struct S;
+static_assert(is_convertible_v&lt;S, const S&amp;&gt;);
+</pre>
+</blockquote>
+<p>
+has undefined behavior despite that the actual behavior of <tt>is_convertible</tt>
+specified in <a href="https://wg21.link/meta.rel#5">[meta.rel]/5</a>:
+</p>
+<blockquote>
+<p>
+-5- The predicate condition for a template specialization
+<tt>is_­convertible&lt;From, To&gt;</tt> shall be satisfied if and only if the
+return expression in the following code would be well-formed, including any
+implicit conversions to the return type of the function:
+</p>
+<blockquote>
+<pre>
+To test() {
+  return declval&lt;From&gt;();
+}
+</pre>
+</blockquote>
+<p>[ <i>Note:</i> &hellip;]</p>
+</blockquote>
+<p>
+is well-formed: <tt>declval&lt;S&gt;()</tt> is an xvalue of type <tt>S</tt>,
+which certainly does implicitly convert to <tt>const S&amp;</tt>. We should
+relax the precondition to allow this perfectly valid case (and similar cases
+like <tt>is_convertible&lt;S, S&amp;&amp;&gt;</tt>), letting the cases that
+would in fact be invalid fall through to the blanket "incompletely-defined
+object type" wording in
+<a href="https://wg21.link/meta.rqmts#5">[meta.rqmts]/5</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4788">N4788</a>.</p>
+
+<ul>
+<li><p>Modify Table 49 in <sref ref="[meta.rel]"/> as follows:</p>
+<table border="1">
+<caption>Table 49 &mdash; Type relationship predicates</caption>
+<tr style="text-align:center">
+<th>Template</th>
+<th>Condition</th>
+<th>Comments</th>
+</tr>
+<tr>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+</tr>
+<tr>
+<td>
+<pre>
+template&lt;class From, class To&gt;
+struct is_­convertible;
+</pre>
+</td>
+<td><i>see below</i></td>
+<td>
+<del><tt>From</tt> and</del> <tt>To</tt> shall be <ins>a</ins><br/>
+complete type<del>s</del>, <ins>an</ins><br/>
+array<del>s</del> of unknown bound,<br/>
+or <i>cv</i> <tt>void</tt> <del>types</del>.
+</td>
+</tr>
+<tr>
+<td>
+<pre>
+template&lt;class From, class To&gt;
+struct is_nothrow_­convertible;
+</pre>
+</td>
+<td>
+<tt>is_­convertible_­v&lt;From, <br/>
+To&gt;</tt> is <tt>true</tt> and the<br/>
+conversion, as defined by<br/>
+<tt>is_­convertible</tt>, is known<br/>
+not to throw any<br/>
+exceptions (<sref ref="[expr.unary.noexcept]"/>)
+</td>
+<td>
+<del><tt>From</tt> and</del> <tt>To</tt> shall be <ins>a</ins><br/>
+complete type<del>s</del>, <ins>an</ins><br/>
+array<del>s</del> of unknown bound,<br/>
+or <i>cv</i> <tt>void</tt> <del>types</del>.
+</td>
+</tr>
+<tr>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+</tr>
+</table>
+</li>
+</ul>
+</resolution>
+
+</issue>
