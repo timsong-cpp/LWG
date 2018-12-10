@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3173" status="New">
+<title>Enable CTAD for <i><tt>ref-view</tt></i></title>
+<section><sref ref="[range.view.ref]"/></section>
+<submitter>Casey Carter</submitter>
+<date>09 Dec 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the specification of <tt>view::all</tt> in <sref ref="[range.all]"/>,
+<a href="https://wg21.link/range.all#2.2">paragraph 2.2</a> states that
+<tt>view::all(E)</tt> is sometimes expression-equivalent to
+"<tt><i>ref-view</i>{E}</tt> if that expression is well-formed". Unfortunately,
+the expression <tt><i>ref-view</i>{E}</tt> is <strong>never</strong> well-formed:
+<tt><i>ref-view</i></tt>'s only non-default constructor is a
+perfect-forwarding-ish constructor template that accepts only arguments that
+convert to lvalues of the <tt><i>ref-view</i></tt>'s template argument type, and
+either do not convert to rvalues or have a better lvalue conversion (similar to
+the <tt>reference_wrapper</tt> converting constructor
+(<sref ref="[refwrap.const]"/>) after issue <iref ref="2993"/>).
+</p><p>
+Presumably this breakage was not intentional, and we should add a deduction
+guide to enable class template argument deduction to function as intended by
+<a href="https://wg21.link/range.all#2.2">paragraph 2.2</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ul>
+<li><p>Modify the <tt><i>ref-view</i></tt> class synopsis
+in <sref ref="[ranges.view.ref]"/> as follows:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;Range R&gt;
+    requires is_object_v&lt;R&gt;
+  class <i>ref-view</i> : public view_interface&lt;<i>ref-view</i>&lt;R&gt;&gt; {
+    [&hellip;]
+  };
+
+  <ins>template&lt;class R&gt;</ins>
+    <ins><i>ref_view</i>(R&amp;) -> <i>ref_view</i>&lt;R&gt;;</ins>
+}
+</pre>
+</blockquote>
+</li>
+</ul>
+</resolution>
+
+</issue>
