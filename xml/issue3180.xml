@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3180" status="New">
+<title>Inconsistently named return type for <tt>ranges::minmax_element</tt></title>
+<section><sref ref="[algorithm.syn]"/></section>
+<submitter>Casey Carter</submitter>
+<date>21 Dec 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The overloads of <tt>std::ranges::minmax_element</tt> are specified to return
+<tt>std::ranges::minmax_result</tt>, which is inconsistent with the intended
+design. When an algorithm <tt>foo</tt> returns an aggregate of multiple results,
+the return type should be named <tt>foo_result</tt>.
+The spec should introduce an alias <tt>minmax_element_result</tt> for
+<tt>minmax_result</tt> and use that alias as the return type of the
+<tt>std::ranges::minmax_element</tt> overloads.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[algorithm.syn]"/> as indicated, and adjust the
+declarations of <tt>std::ranges::minmax_element</tt>
+in <sref ref="[alg.min.max]"/> to agree:</p>
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class ExecutionPolicy, class ForwardIterator, class Compare&gt;
+  pair&lt;ForwardIterator, ForwardIterator&gt;
+    minmax_element(ExecutionPolicy&amp;&amp; exec, // see <sref ref="[algorithms.parallel.overloads]"/>
+                   ForwardIterator first, ForwardIterator last, Compare comp);
+
+namespace ranges {
+  <ins>template&lt;class I&gt;</ins>
+  <ins>using minmax_element_result = minmax_result&lt;I&gt;;</ins>
+
+  template&lt;ForwardIterator I, Sentinel&lt;I&gt; S, class Proj = identity,
+           IndirectStrictWeakOrder&lt;projected&lt;I, Proj&gt;&gt; Comp = ranges::less&lt;&gt;&gt;
+    constexpr minmax_<ins>element_</ins>result&lt;I&gt;
+      minmax_element(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;ForwardRange R, class Proj = identity,
+           IndirectStrictWeakOrder&lt;projected&lt;iterator_t&lt;R&gt;, Proj&gt;&gt; Comp = ranges::less&lt;&gt;&gt;
+    constexpr minmax_<ins>element_</ins>result&lt;safe_iterator_t&lt;R&gt;&gt;
+      minmax_element(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+
+// <sref ref="[alg.clamp]"/>, bounded value
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
