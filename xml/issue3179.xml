@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3179" status="New">
+<title><tt>subrange</tt> should always model <tt>Range</tt></title>
+<section><sref ref="[range.subrange.ctor]"/></section>
+<submitter>Casey Carter</submitter>
+<date>21 Dec 2018</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The constructors of <tt>subrange</tt> place no requirements on the iterator and
+sentinel values from which a <tt>subrange</tt> is constructed. They allow
+constructions like <tt>subrange{myvec.end(), myvec.begin()}</tt> in which the
+resulting <tt>subrange</tt> isn't in the domain of the <tt>Range</tt> concept
+which requires that "<tt>[ranges::begin(r), ranges::end(r))</tt> denotes a
+range" (<a href="https://wg21.link/range.range#3.1">[range.range]/3.1</a>).
+We should forbid the construction of abominable values like this to enforce the
+useful semantic that values of <tt>subrange</tt> are always in the domain of
+<tt>Range</tt>.
+</p><p>
+(From <a href="https://github.com/ericniebler/stl2/issues/597">ericniebler/stl2#597</a>.)
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[range.subrange.ctor]"/> as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+constexpr subrange(I i, S s) requires (!StoreSize);
+</pre>
+</blockquote>
+<p>
+<ins>-?- <i>Expects:</i> <tt>[i, s)</tt> is a valid range.</ins>
+</p><p>
+-1- <i>Effects:</i> Initializes <tt>begin_</tt> with <tt>i</tt> and
+<tt>end_</tt> with <tt>s</tt>.
+</p>
+<blockquote>
+<pre>
+constexpr subrange(I i, S s, iter_difference_t&lt;I&gt; n)
+  requires (K == subrange_kind::sized);
+</pre>
+</blockquote>
+<p>
+-2- <i>Expects:</i> <ins><tt>[i, s)</tt> is a valid range, and</ins>
+<tt>n == ranges::distance(i, s)</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
