@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3181" status="New">
+<title><tt>split_view::outer_iterator</tt> converting constructor is misconstrained</title>
+<section><sref ref="[range.split.outer]"/></section>
+<submitter>Casey Carter</submitter>
+<date>05 Jan 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The constraints on <tt>split_view::outer_iterator</tt>'s converting constructor:
+<blockquote>
+<pre>
+constexpr outer_iterator(outer_iterator&lt;!Const&gt; i)
+  requires Const &amp;&amp; ConvertibleTo&lt;iterator_t&lt;V&gt;, iterator_t&lt;const V&gt;&gt;;
+</pre>
+</blockquote>
+are problematic. Since <tt>const V</tt> doesn't depend on a template parameter
+of <tt>outer_iterator</tt>, compilers want to expand
+<tt>iterator_t&lt;const V&gt;</tt> when <tt>outer_iterator</tt> is instantiated
+- regardless of the value of <tt>Const</tt> - which can result in a hard error
+when <tt>iterator_t&lt;const V&gt;</tt> is ill-formed. The constraint should
+instead use <tt>iterator_t&lt;Base&gt;</tt>, as do the similar converting
+constructors for the other range adaptor iterator and sentinel types.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[range.split.outer]"/> as follows:</p>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class V, class Pattern&gt;
+  template&lt;bool Const&gt;
+  struct split_view&lt;V, Pattern&gt;::outer_iterator {
+    [&hellip;]
+    constexpr outer_iterator(outer_iterator&lt;!Const&gt; i)
+      requires Const &amp;&amp; ConvertibleTo&lt;iterator_t&lt;V&gt;, iterator_t&lt;<del>const V</del><ins>Base</ins>&gt;&gt;;
+    [&hellip;]
+  };
+}
+</pre>
+<p>
+[&hellip;]
+</p>
+<pre>
+constexpr outer_iterator(outer_iterator&lt;!Const&gt; i)
+  requires Const &amp;&amp; ConvertibleTo&lt;iterator_t&lt;V&gt;, iterator_t&lt;<del>const V</del><ins>Base</ins>&gt;&gt;;
+</pre>
+<p>
+-4- <i>Effects:</i> Initializes <tt>parent_</tt> with <tt>i.parent_</tt> and
+<tt>current_</tt> with <tt>std::move(i.current_)</tt>.
+</p><p>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
