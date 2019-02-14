@@ -25,9 +25,9 @@ applies to the move-assignment operator. Note that <tt>pair</tt> and <tt>variant
 
 <note>2016-07, Toronto Thursday night issues processing</note>
 <p>The description doesn't match the resolution; Alisdair to investigate. Status to Open</p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="http://wg21.link/n4640">N4640</a>.
 </p>
@@ -195,6 +195,82 @@ and <tt>is_assignable_v&lt;T1&amp;, U2&amp;&amp;&gt;</tt> is <tt>true</tt> for t
 </pre></blockquote>
 <p>
 -20- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2019-02-14; Jonathan comments and provides revised wording</note>
+<p>
+The suggested change was already made to <tt>std::optional</tt> by LWG <iref ref="2756"/>. The current P/R for 2899 
+doesn't resolve the issue for <tt>std::tuple</tt> or <tt>std::unique_ptr</tt>. I hope the following alternative does.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4800">N4800</a>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[tuple.cnstr]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+tuple(tuple&amp;&amp; u) = default;
+</pre>
+<blockquote>
+<p>
+-13- <i><del>Requires</del><ins>Constraints</ins>:</i> <tt>is_move_constructible_v&lt;T<sub><i>i</i></sub>&gt;</tt> 
+is <tt>true</tt> for all <tt><i>i</i></tt>.
+<p/>
+-14- <i>Effects:</i> For all <tt><i>i</i></tt>, initializes the <tt><i>i</i></tt><sup>th</sup> element of 
+<tt>*this</tt> with <tt>std::forward&lt;T<sub><i>i</i></sub>&gt;(get&lt;<i>i</i>&gt;(u))</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[unique.ptr.single.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+unique_ptr(unique_ptr&amp;&amp; u) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>is_move_constructible_v&lt;D&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-15- <i>Requires:</i> If <tt>D</tt> is not a reference type, <tt>D</tt> shall satisfy the 
+<i>Cpp17MoveConstructible</i> requirements (Table 26). Construction of the deleter from an 
+rvalue of type <tt>D</tt> shall not throw an exception.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[unique.ptr.single.asgn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+unique_ptr&amp; operator=(unique_ptr&amp;&amp; u) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>is_assignable_v&lt;D&amp;&amp;, remove_reference_t&lt;D&gt;&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-1- <i>Requires:</i> If <tt>D</tt> is not a reference type, <tt>D</tt> shall satisfy the 
+<i>Cpp17MoveAssignable</i> requirements (Table 28) and assignment of the deleter from an 
+rvalue of type <tt>D</tt> shall not throw an exception. Otherwise, <tt>D</tt> is a reference 
+type; <tt>remove_reference_t&lt;D&gt;</tt> shall satisfy the <i>Cpp17CopyAssignable</i> 
+requirements and assignment of the deleter from an lvalue of type <tt>D</tt> shall not throw an exception.
+<p/>
+-2- <i>Effects:</i> Calls <tt>reset(u.release())</tt> followed by <tt>get_deleter() = std::forward&lt;D&gt;(u.get_deleter())</tt>.
+<p/>
+[&hellip;]
 </p>
 </blockquote>
 </blockquote>
