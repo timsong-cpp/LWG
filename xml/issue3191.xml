@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3191" status="New">
+<title><tt>std::ranges::shuffle</tt> synopsis does not match algorithm definition</title>
+<section><sref ref="[alg.random.shuffle]"/></section>
+<submitter>Christopher Di Bella</submitter>
+<date>02 Mar 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[algorithm.syn]"/> declares <tt>std::ranges::shuffle</tt> like so:
+</p>
+<blockquote><pre>
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; &amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;I&gt;&gt;
+  I shuffle(I first, S last, Gen&amp;&amp; g);
+
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; &amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;iterator_t&lt;R&gt;&gt;&gt;
+  safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+</pre></blockquote>
+<p>
+<sref ref="[alg.random.shuffle]"/> defines the algorithm like so:
+</p>
+<blockquote><pre>
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt;
+  I shuffle(I first, S last, Gen&amp;&amp; g);
+
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt;&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt;
+  safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+</pre></blockquote>
+<p>
+Notice the missing <tt>ConvertibleTo</tt> requirements in the latter. Looking at the <a href="https://wg21.link/n4685">Ranges TS</a>, 
+<sref ref="[alg.random.shuffle]"/> includes this requirement, albeit in the Ranges TS-format.
+</p>
+
+<note>2019-03-03; Daniel comments</note>
+<p>
+Given that the accepted proposal <a href="https://wg21.link/p0896r4">P0896R4</a> voted in San Diego did contain the same error I
+decided to open this issue instead of submitting an editorial change request.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4800">N4800</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[alg.random.shuffle]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; <ins>&amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;I&gt;&gt;</ins>
+    I shuffle(I first, S last, Gen&amp;&amp; g);
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt;&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; <ins>&amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;iterator_t&lt;R&gt;&gt;&gt;</ins>
+    safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
