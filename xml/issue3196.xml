@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3196" status="New">
+<title><tt>std::optional&lt;T&gt;</tt> is ill-formed is <tt>T</tt> is an array</title>
+<section><sref ref="[optional.optional]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>18 Mar 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[optional.optional]"/> appears to allow arrays:
+</p>
+<blockquote><p>
+<tt>T</tt> shall be an object type other than <i>cv</i> <tt>in_place_t</tt> or <i>cv</i> <tt>nullopt_t</tt> and shall 
+satisfy the <i>Cpp17Destructible</i> requirements (Table 30).
+</p></blockquote>
+<p>
+But instantiating it fails, because <tt>value_or</tt> attempts to return <tt>T</tt> by value, which isn't possible for an array type.
+<p/>
+Existing practice seems to be to reject array types. Libstdc++ and libc++ give an error for the signature of <tt>value_or</tt>, 
+and MSVC fails a static assert saying the type needs to be destructible (which is misleading, because <tt>int[2]</tt> 
+is destructible, but either way it's ill-formed).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.optional]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <tt>T</tt> shall be a<del>n</del> <ins>non-array</ins> object type other than <i>cv</i> <tt>in_place_t</tt> 
+or <i>cv</i> <tt>nullopt_t</tt> and shall satisfy the <i>Cpp17Destructible</i> requirements (Table 30).
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
