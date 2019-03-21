@@ -1,7 +1,5 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY hellip "&#x2026;">
-] >
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2497" status="New">
 <title>Use of <tt>uncaught_exception()</tt></title>
@@ -30,9 +28,51 @@ compare with the saved value on exit.
 <p>
 JW: I already added an 's' here to make it use the new function, but that doesn't resolve Roger's suggestion to capture the value on entry and check it.
 </p>
+
+<note>2019-03-21; Daniel comments and provides wording</note>
+<p>
+The wording below implements Roger's suggestion.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[ostream.sentry]"/>, class <tt>basic_ostream::sentry</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class charT, class traits = char_traits&lt;charT&gt;&gt;
+  class basic_ostream&lt;charT, traits&gt;::sentry {
+    bool ok_; <i>// exposition only</i>
+    <ins>int  uncaught_ = uncaught_exceptions(); <i>// exposition only</i></ins>
+  public:
+    explicit sentry(basic_ostream&lt;charT, traits&gt;&amp; os);
+    ~sentry();
+    explicit operator bool() const { return ok_; }
+    sentry(const sentry&amp;) = delete;
+    sentry&amp; operator=(const sentry&amp;) = delete;
+  };
+}
+</pre>
+<p>
+[&hellip;]
+</p>
+<pre>
+~sentry();
+</pre>
+<blockquote>
+<p>
+-4- If <tt>(os.flags() &amp; ios_base::unitbuf) &amp;&amp; <del>!</del>uncaught_exceptions() <ins>&lt;= uncaught_</ins> 
+&amp;&amp; os.good()</tt> is <tt>true</tt>, calls <tt>os.rdbuf()-&gt;pubsync()</tt>. If that function returns <tt>-1</tt>, 
+sets <tt>badbit</tt> in <tt>os.rdstate()</tt> without propagating an exception.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
