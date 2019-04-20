@@ -26,9 +26,142 @@ wrote since that addition isn't required to use two's complement. This seems lik
 A similar issue affects the <tt>atomic&lt;T*&gt;</tt> partial specialization for pointers.
 </p>
 <note>2018-01; Priority set to 3 after mailing list discussion</note>
+
+<note>2019-04-15; JF Bastien comments and provides wording</note>
+<p>
+As  in <a href="http://wiki.edg.com/bin/view/Wg21sandiego2018/LWGD1236Review">LWG during the San Diego 2018 meeting</a>, 
+Jens removed LWG 3047 from <a href="http://wg21.link/p1236r1">"P1236R1: Alternative Wording for P0907R4 Signed Integers are 
+Two's Complement"</a>.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[atomics.ref.int]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<i>integral</i> operator <i>op</i>=(<i>integral</i> operand) const noexcept;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>static_cast&lt;<i>integral</i>&gt;(static_cast&lt;make_unsigned_t&lt;<i>integral</i>&gt;&gt;(</ins>fetch_<i>key</i>(operand)<ins>)</ins> 
+<i>op</i> <ins>static_cast&lt;make_unsigned_t&lt;<i>integral</i>&gt;&gt;(</ins>operand<ins>))</ins>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.ref.memop]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+T* operator++() const noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_add(1)<ins>)</ins> + 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</tt>
+</p>
+</blockquote>
+<pre>
+T* operator--(<del>int</del>) const noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_sub(1)<ins>)</ins> - 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.types.int]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+T operator <i>op</i>=(T operand) volatile noexcept;
+T operator <i>op</i>=(T operand) noexcept;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_<i>key</i>(operand)<ins>)</ins> 
+<i>op</i> <ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>operand<ins>))</ins>;</tt>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <tt>atomic&lt;<i>integral</i>&gt;</tt>'s working for <tt>operator++/operator--</tt> 
+is shared with <tt>atomic&lt;T*&gt;</tt>. &mdash; <i>end drafting note</i>]
+<p/>
+[<i>Drafting note:</i> <tt>atomic&lt;<i>floating-point</i>&gt;</tt> seems to be correct, LWG should confirm 
+that it is. &mdash; <i>end drafting note</i>]
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.types.pointer]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+T* operator <i>op</i>=(ptrdiff_t operand) volatile noexcept;
+T* operator <i>op</i>=(ptrdiff_t operand) noexcept;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>reinterpret_cast&lt;T*&gt;(reinterpret_cast&lt;ptrdiff_t&gt;(</ins>fetch_<i>key</i>(operand)<ins>)</ins> 
+<i>op</i> operand<ins>)</ins>;</tt>
+<p/>
+<ins><i>Remarks:</i> The result may be an undefined address, but the operations otherwise have no undefined behavior.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.types.memop]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+T operator++() volatile noexcept;
+T operator++() noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_add(1)<ins>)</ins> + 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</tt>
+</p>
+</blockquote>
+<pre>
+T operator--() volatile noexcept;
+T operator--() noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to: <tt>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_sub(1)<ins>)</ins> - 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</tt>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Alternatively, LWG may want to separate the integral overload of <tt>operator++/operator--</tt> 
+from that of <tt>atomic&lt;T*&gt;</tt>. <i>end drafting note</i>]
+</p>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
