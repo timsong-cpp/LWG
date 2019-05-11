@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3204" status="New">
+<title><tt>sub_match::swap</tt> only swaps the base class</title>
+<section><sref ref="[re.submatch]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>7 May 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>sub_match&lt;I&gt;</tt> derives publicly from <tt>pair&lt;I,I&gt;</tt>, and so inherits 
+<tt>pair::swap(pair&amp;)</tt>. This means that the following program fails:
+</p>
+<blockquote><pre>
+#include &lt;regex&gt;
+#include &lt;cassert&gt;
+
+int main()
+{
+  std::sub_match&lt;const char*&gt; a, b;
+  a.matched = true;
+  a.swap(b);
+  assert(b.matched);
+}
+</pre></blockquote>
+<p>
+The <tt>pair::swap(pair&amp;)</tt> member should be hidden by a <tt>sub_match::swap(sub_match&amp;)</tt> 
+member that does the right thing.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[re.submatch]"/>, class template <tt>sub_match</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+class sub_match : public pair&lt;BidirectionalIterator, BidirectionalIterator&gt; {
+public:
+  [&hellip;]
+  int compare(const sub_match&amp; s) const;
+  int compare(const string_type&amp; s) const;
+  int compare(const value_type* s) const;
+  
+  <ins>void swap(sub_match&amp; s) noexcept(<i>see below</i>);</ins>
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[re.submatch.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+int compare(const value_type* s) const;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>void swap(sub_match&amp; s) noexcept(<i>see below</i>);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Expects:</i> Lvalues of type <tt>BidirectionalIterator</tt> are swappable 
+(<sref ref="[swappable.requirements]"/>).</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>this-&gt;pair&lt;BidirectionalIterator, BidirectionalIterator&gt;::swap(s);
+std::swap(matched, s.matched);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks:</i> The expression inside <tt>noexcept</tt> is equivalent to 
+<tt>is_nothrow_swappable_v&lt;BidirectionalIterator&gt;</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
