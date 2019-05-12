@@ -37,6 +37,34 @@ the same wrapper type, if they are instantiated (called with) same parameters ty
 However, the existence of this issue, shows that some library-wide
 clarification note would be welcomed.
 </p>
+
+<note>2019-05-12; Tomasz comments</note>
+<p>
+I have realized that this issue indicates an real problem with the
+usability of <tt>bind</tt> as the replacement of the <tt>binder1st/binder2nd</tt>.
+Currently it is not required that a binding functor of the same type with
+same argument, produces the same result, of the type of the call wrapper
+because it may depend on the <i>cv</i> ref qualifiers of arguments. For example we are
+not requiring that the types of <tt>f1, f2, f3, f4</tt> are the same (and actually
+are not for clang):
+</p>
+<blockquote><pre>
+auto func = [](std::string) {};
+std::string s("foo");
+auto f1 = std::bind(func, s);
+auto f2 = std::bind(std::as_const(func), std::as_const(s));
+auto f3 = std::bind(func, std::string("bar"));
+auto f4 = std::bind(std::move(func), std::move(s));
+// online link: https://wandbox.org/permlink/dcXJaITMJCnBWt7R
+</pre></blockquote>
+<p>
+As a consequence, if the user creates a <tt>std::vector&lt;decltype(std::bind(func,
+std::string(), _2))&gt;</tt> (instead of <tt>std::vector&lt;std::binder1st&lt;FuncType,
+std::string&gt;&gt;</tt>) he may not be able to store the result of the binding <tt>func</tt> 
+with <tt>std::string</tt> instance, if an copy of <tt>std::string</tt> is made. That leads me
+to conclusion that this issue actually require wording change, to provide such 
+guarantee, and is materially different from LWG <iref ref="3015"/>.
+</p>
 </discussion>
 
 <resolution>
