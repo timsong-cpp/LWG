@@ -60,7 +60,7 @@ struct order_by_first_tag {
 };
 
 struct order_by_major_section {
-   explicit order_by_major_section(lwg::section_map & sections) 
+   explicit order_by_major_section(lwg::section_map & sections)
       : section_db(sections)
       {
       }
@@ -78,7 +78,7 @@ private:
 };
 
 struct order_by_section {
-   explicit order_by_section(lwg::section_map &sections) 
+   explicit order_by_section(lwg::section_map &sections)
       : section_db(sections)
       {
       }
@@ -101,7 +101,7 @@ struct order_by_status {
 
 
 struct order_by_priority {
-   explicit order_by_priority(lwg::section_map &sections) 
+   explicit order_by_priority(lwg::section_map &sections)
       : section_db(sections)
       {
       }
@@ -409,7 +409,7 @@ R"(<table>
       out << "C++ Standard Library Active Issues List (Revision ";
    }
    else if (paper == "defect") {
-      out << "C++ Standard Library Defect Report List (Revision ";
+      out << "C++ Standard Library Defect Reports and Accepted Issues (Revision ";
    }
    else if (paper == "closed") {
       out << "C++ Standard Library Closed Issues List (Revision ";
@@ -458,11 +458,11 @@ void report_generator::make_defect(std::vector<issue> const & issues, std::strin
    std::ofstream out(filename.c_str());
    if (!out)
      throw std::runtime_error{"Failed to open " + filename};
-   print_file_header(out, "C++ Standard Library Defect Report List");
+   print_file_header(out, "C++ Standard Library Defect Reports and Accepted Issues");
    print_paper_heading(out, "defect", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("defect") << '\n';
    out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
-   out << "<h2>Defect Reports</h2>\n";
+   out << "<h2>Accepted Issues</h2>\n";
    print_issues(out, issues, section_db, [](issue const & i) {return is_defect(i.stat);} );
    print_file_trailer(out);
 }
@@ -550,7 +550,7 @@ out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT M
 </tr>
 <tr>
 <td align="left">Reply to:</td>
-<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
+<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)"
                                                                      << maintainer_email << R"(</a>&gt;</td>
 </tr>
 </table>
@@ -585,7 +585,7 @@ out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING
 </tr>
 <tr>
 <td align="left">Reply to:</td>
-<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)" 
+<td align="left">)" << maintainer_name << R"( &lt;<a href="mailto:)" << maintainer_email << R"(">)"
                                                                      << maintainer_email << R"(</a>&gt;</td>
 </tr>
 </table>
@@ -623,7 +623,7 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 <h1>Table of Contents</h1>
 <p>Reference ISO/IEC IS 14882:2011(E)</p>
 <p>This document is the Table of Contents for the <a href="lwg-active.html">Library Active Issues List</a>,
-<a href="lwg-defects.html">Library Defect Reports List</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.</p>
+<a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.</p>
 )";
    out << "<p>" << build_timestamp << "</p>";
 
@@ -645,7 +645,7 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 <h1>Table of Contents</h1>
 <p>Reference ISO/IEC IS 14882:2011(E)</p>
 <p>This document is the Table of Contents for the <a href="lwg-active.html">Library Active Issues List</a>,
-<a href="lwg-defects.html">Library Defect Reports List</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.</p>
+<a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.</p>
 )";
    out << "<p>" << build_timestamp << "</p>";
 
@@ -687,7 +687,7 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 <p>Reference ISO/IEC IS 14882:2011(E)</p>
 <p>
 This document is the Index by Status and Section for the <a href="lwg-active.html">Library Active Issues List</a>,
-<a href="lwg-defects.html">Library Defect Reports List</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.
+<a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.
 </p>
 
 )";
@@ -722,7 +722,7 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 <p>Reference ISO/IEC IS 14882:2011(E)</p>
 <p>
 This document is the Index by Status and Date for the <a href="lwg-active.html">Library Active Issues List</a>,
-<a href="lwg-defects.html">Library Defect Reports List</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.
+<a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.
 </p>
 )";
    out << "<p>" << build_timestamp << "</p>";
@@ -771,7 +771,7 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, std::str
    out << "<p>Reference ISO/IEC IS 14882:2011(E)</p>\n";
    out << "<p>This document is the Index by Section for the <a href=\"lwg-active.html\">Library Active Issues List</a>";
    if(!active_only) {
-      out << ", <a href=\"lwg-defects.html\">Library Defect Reports List</a>, and <a href=\"lwg-closed.html\">Library Closed Issues List</a>";
+      out << ", <a href=\"lwg-defects.html\">Library Defect Reports and Accepted Issues</a>, and <a href=\"lwg-closed.html\">Library Closed Issues List</a>";
    }
    out << ".</p>\n";
    out << "<h2>Index by Section";
@@ -839,4 +839,3 @@ void report_generator::make_individual_issues(std::vector<issue> const & issues,
    }
 }
 } // close namespace lwg
-
