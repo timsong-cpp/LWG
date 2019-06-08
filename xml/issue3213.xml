@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3213" status="New">
+<title><tt>for_each_n</tt> and <tt>copy_n</tt> missing requirements for <tt>Size</tt></title>
+<section><sref ref="[alg.foreach]"/><sref ref="[alg.copy]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>31 May 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>search_n</tt> and <tt>fill_n</tt> and <tt>generate_n</tt> require that "The type <tt>Size</tt> shall be 
+convertible to integral type", but <tt>for_each_n</tt> and <tt>copy_n</tt> have no requirements on 
+<tt>Size</tt>. Presumably it should be convertible to an integral type.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[alg.foreach]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class Size, class Function&gt;
+  constexpr InputIterator for_each_n(InputIterator first, Size n, Function f);
+</pre>
+<blockquote>
+<p>
+-16- <i>Requires:</i> shall satisfy the <i>Cpp17MoveConstructible</i> requirements [&hellip;]
+<p/>
+-17- <i>Requires:</i> <ins>The type <tt>Size</tt> shall be convertible to integral type 
+(<sref ref="[conv.integral]"/>, <sref ref="[class.conv]"/>).</ins> <tt>n &gt;= 0</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class ExecutionPolicy, class ForwardIterator, class Size, class Function&gt;
+  ForwardIterator for_each_n(ExecutionPolicy&amp;&amp; exec, ForwardIterator first, Size n,
+                             Function f);
+</pre>
+<blockquote>
+<p>
+-21- <i>Requires:</i> shall satisfy the <i>Cpp17CopyConstructible</i> requirements [&hellip;]
+<p/>
+-22- <i>Requires:</i> <ins>The type <tt>Size</tt> shall be convertible to integral type 
+(<sref ref="[conv.integral]"/>, <sref ref="[class.conv]"/>).</ins> <tt>n &gt;= 0</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[alg.copy]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class Size, class OutputIterator&gt;
+  constexpr OutputIterator copy_n(InputIterator first, Size n,
+                                  OutputIterator result);
+template&lt;class ExecutionPolicy, class ForwardIterator1, class Size, class ForwardIterator2&gt;
+  ForwardIterator2 copy_n(ExecutionPolicy&amp;&amp; exec,
+                          ForwardIterator1 first, Size n,
+                          ForwardIterator2 result);
+template&lt;InputIterator I, WeaklyIncrementable O&gt;
+  requires IndirectlyCopyable&lt;I, O&gt;
+  constexpr ranges::copy_n_result&lt;I, O&gt;
+    ranges::copy_n(I first, iter_difference_t&lt;I&gt; n, O result);
+</pre>
+<blockquote>
+<p>
+-10- Let <tt><i>M</i></tt> be <tt>max(n, 0)</tt>.
+<p/>
+<ins>-?- <i>Requires:</i> The type <tt>Size</tt> shall be convertible to integral type 
+(<sref ref="[conv.integral]"/>, <sref ref="[class.conv]"/>).</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
