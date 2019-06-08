@@ -40,7 +40,7 @@ auto parse_month(std::string const & m) -> gregorian::month {
         : (m == "Oct") ? gregorian::oct
         : (m == "Nov") ? gregorian::nov
         : (m == "Dec") ? gregorian::dec
-        : throw std::runtime_error{"unknown month " + m};
+        : throw std::runtime_error{"unknown month abbreviation " + m};
 }
 
 auto parse_date(std::istream & temp) -> gregorian::date {
