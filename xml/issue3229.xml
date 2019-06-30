@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3229" status="New">
+<title>&sect;[res.on.exception.handling]#3 cannot apply to types with implicitly declared destructors</title>
+<section><sref ref="[res.on.exception.handling]"/></section>
+<submitter>Nevin Liber</submitter>
+<date>28 Jun 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[res.on.exception.handling]"/>#3 says:
+</p>
+<blockquote><p>
+Destructor operations defined in the C++ standard library shall not throw exceptions. 
+Every destructor in the C++ standard library shall behave as if it had a non-throwing 
+exception specification.
+</p></blockquote>
+<p>
+However, types like <tt>pair</tt> and <tt>array</tt> have implicitly declared destructors, 
+where <sref ref="[except.spec]"/>#8 applies:
+</p>
+<blockquote><p>
+The exception specification for an implicitly-declared destructor, or a destructor without 
+a <i>noexcept</i>-specifier, is potentially-throwing if and only if any of the destructors 
+for any of its potentially constructed subobjects is potentially-throwing or the destructor 
+is virtual and the destructor of any virtual base class is potentially throwing.
+</p></blockquote>
+<p>
+We can relax <sref ref="[res.on.exception.handling]"/> to only cover explicitly declared 
+destructors because if they hold a user type where the destructor throws then we get UB 
+from <sref ref="[res.on.functions]"/>#2: 
+</p>
+<blockquote><p>
+In particular, the effects are undefined in the following cases: [&hellip;] 
+</p>
+<ol style="list-style-type:none">
+<li><p>[&hellip;]</p></li>
+<li><p>(2.4) &mdash; if any replacement function or handler function or destructor operation 
+exits via an exception, unless specifically allowed in the applicable 
+<i>Required behavior:</i> paragraph.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+<p>
+and the referred to UB happens before [res.on.exception.handling] could apply.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4820">N4820</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[res.on.exception.handling]"/> as indicated:</p>
+
+<blockquote><p>
+-3- Destructor operations defined in the C++ standard library shall not throw exceptions. 
+Every <ins>explicitly declared</ins> destructor in the C++ standard library shall behave 
+as if it had a non-throwing exception specification.
+</p></blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
