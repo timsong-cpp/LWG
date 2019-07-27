@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3235" status="New">
+<title><code>parse</code> manipulator without abbreviation is not callable</title>
+<section><sref ref="[time.parse]"/></section>
+<submitter>Tomasz Kami&nacute;ski</submitter>
+<date>10 Jul 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <code>parse</code> overload that does not accept the abbreviation but does accept an offset, 
+because the expression in the <i>Remarks:</i> clause:
+</p>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;*&gt;(), fmt.c_str(), tp, nullptr, &amp;offset)
+</pre></blockquote>
+<p>
+is not valid. This is caused by deduction failure for the <tt>basic_string&lt;charT, traits, Alloc&gt;*</tt> 
+from <code>nullptr</code> (see <a href="https://gcc.godbolt.org/z/ZIjfwV">this link</a>):
+</p>
+</discussion>
+
+<p>This wording is relative to <a href="http://wg21.link/n4820">N4820</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As a drive-by fix the <i>Remarks</i> element is also converted to
+a <i>Constraints</i> element.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[time.parse]"/> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          minutes&amp; offset);
+</pre></blockquote>
+<p>
+-6- <i><del>Remarks</del><ins>Constraints</ins>:</i> <del>This function shall not participate in 
+overload resolution unless</del> <tt>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), 
+fmt.c_str(), tp, <ins>declval&lt;basic_string&lt;charT, traits, Alloc&gt;*&gt;()</ins><del>nullptr</del>, 
+&amp;offset)</tt> is a <del>valid</del><ins>well-formed</ins> expression <ins>when treated as an 
+unevaluated operand</ins>.
+<p/>
+-7- <i>Returns:</i> A manipulator that, when extracted from a <tt>basic_istream&lt;charT, traits&gt; is</tt>, 
+calls <tt>from_stream(is, fmt.c_str(), tp, <ins>static_cast&lt;basic_string&lt;charT, traits,
+Alloc&gt;*&gt;(</ins>nullptr<ins>)</ins>, &amp;offset)</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+</issue>
