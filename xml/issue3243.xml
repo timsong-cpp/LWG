@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3243" status="New">
+<title><tt>std::format</tt> and negative zeroes</title>
+<section><sref ref="[format.string]"/></section>
+<submitter>Richard Smith</submitter>
+<date>31 Jul 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+What are these:
+</p>
+<blockquote><pre>
+std::format("{}", -0.0);
+std::format("{:+}", -0.0);
+std::format("{:-}", -0.0);
+std::format("{: }", -0.0);
+</pre></blockquote>
+<p>
+with
+</p>
+<blockquote><pre>
+"{:{}} {}"
+</pre></blockquote>
+<p>
+A negative zero is not a negative number, so I <em>think</em> the answer for an implementation that supports 
+signed zeroes is <tt>"0"</tt>, <tt>"-0"</tt>, <tt>"0"</tt>, <tt>" 0"</tt>. Is that the intent? (Note 
+that this doesn't satisfy <tt>to_chars</tt>' round-trip guarantee.)
+<p/>
+Or should the behavior actually be that <tt>"+"</tt> means "insert a leading <tt>+</tt> if <tt>to_chars</tt>' 
+output does not start with <tt>-"</tt> and <tt>" "</tt> actually means "insert a leading space if 
+<tt>to_chars</tt>' output does not start with <tt>-"</tt> (that is, the same as <tt>"%+f"</tt> and <tt>"% f"</tt>) 
+&mdash; so that the result of all four calls is <tt>"-0"</tt>?
+<p/>
+<b>Victor Zverovich:</b>
+<p/>
+The latter. <tt>std::format</tt> is specified in terms of <tt>to_chars</tt> and the intent is to have similar 
+round trip guarantee here, so the result should be <tt>"-0"</tt>, <tt>"-0"</tt>, <tt>"-0"</tt>, <tt>"-0"</tt>. 
+This has also been extensively discussed in LEWG and the outcome of that discussion was to print <tt>'-'</tt> 
+for negative zeros.
+<p/>
+So I think it should be clarified that <tt>'-'</tt> and space apply to negative numbers and negative zero.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
