@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3247" status="New">
+<title><tt>ranges::iter_move</tt> should perform ADL-only lookup of <tt>iter_move</tt></title>
+<section><sref ref="[iterator.cust.move]"/></section>
+<submitter>Casey Carter</submitter>
+<date>29 Jul 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of the <tt>ranges::iter_move</tt> customization point in [iterator.cust.move] 
+doesn't include a deleted poison pill overload. There is no <tt>std::iter_move</tt> to avoid, 
+so such a poison pill is not needed. This is fine, except that it suggests that unqualified 
+lookup for <tt>iter_move</tt> in the <tt>iter_move(E)</tt> expression in paragraph 1.1 should 
+find declarations of iter_move in the global namespace via normal unqualified lookup, when the 
+design intent is that only ADL be used to find overloads of <tt>iter_move</tt>.
+<p/>
+Absent a more idiomatic wording to specify an ADL-only lookup, we can correct the problem by 
+specifying the lookup in paragraph 1.1 is performed in a context that includes the declaration 
+"<tt>void iter_move();</tt>" which has the desired effect.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4820">N4820</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> There's a drive-by fix here to change "valid" &mdash; which suggests runtime behavior 
+which cannot be validated at compile time &mdash; to "well-formed".]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.cust.move]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The name <tt>ranges::iter_move</tt> denotes a customization point object (<sref 
+ref="[customization.point.object]"/>). The expression <tt>ranges::iter_move(E)</tt> for 
+some subexpression <tt>E</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; <tt>iter_move(E)</tt>, if that expression is <del>valid</del><ins>well-formed 
+when treated as an unevaluated operand</ins>, with overload resolution 
+performed in a context that does not include a declaration of <tt>ranges::iter_move</tt><del>.</del> 
+<ins>but does include the declaration:</ins></p>
+<pre>
+   <ins>void iter_move();</ins>
+</pre></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
