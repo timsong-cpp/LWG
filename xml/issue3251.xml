@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3251" status="New">
+<title>Are <tt>std::format</tt> alignment specifiers applied to string arguments?</title>
+<section><sref ref="[format.string]"/></section>
+<submitter>Richard Smith</submitter>
+<date>2 Aug 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+We are told:
+</p>
+<blockquote><p>
+Formatting of objects of arithmetic types and <tt>const void*</tt> is done as if by 
+calling <tt>to_chars</tt> (unless otherwise specified) and copying the output through 
+the output iterator of the format context with additional padding and adjustments 
+as specified by the format specifiers.
+</p></blockquote>
+<p>
+&hellip; but there is no corresponding rule for strings. Is an alignment specifier 
+intended to be applied to strings or not? The wording as-is is ambiguous.
+<p/>
+(The above also doesn't cover formatting <tt>void*</tt> or <tt>std::nullptr_t</tt>. 
+Presumably at least those two should have the relevant adjustments applied to them!)
+<p/>
+The wording never actually anywhere says that the <tt>basic_format_args</tt> are in 
+any way involved in the formatting process, or how formatting actually happens. 
+(The wording doesn't say that <tt>basic_format_arg::handle::format</tt> is ever 
+called, for example.)
+<p/>
+<b>Victor Zverovich:</b>
+<p/>
+An alignment specifier is intended to be applied to strings as well, <tt>void*</tt> and 
+<tt>std::nullptr_t</tt> are converted into <tt>const void*</tt> when constructing 
+<tt>basic_format_arg</tt>.
+<p/>
+The wording for <tt>vformat</tt> and similar functions says that <tt>basic_format_args</tt> is involved:
+</p>
+<blockquote><p>
+<i>Returns:</i> A string object holding the character representation of formatting arguments
+ provided by <tt>args</tt> formatted according to specifications given in <tt>fmt</tt>.
+</p></blockquote>
+<p>
+but I admit that it is hand-wavy. Perhaps we could add something along the lines of
+</p>
+<blockquote><p>
+For each replacement field referring to the argument with index <tt>(arg-id) i</tt>, the 
+<tt>basic_format_arg</tt> object referring to the argument is obtained via <tt>args.get(i)</tt> 
+and the <tt>parse</tt> and <tt>format</tt> functions of the <tt>formatter</tt> specialization 
+for the underlying argument type are called to parse the format specification and format the value.
+</p></blockquote>
+<p>
+to clarify how we format <tt>args</tt> (<tt>basic_format_args</tt>).
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
