@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3255" status="New">
+<title><tt>span</tt>'s <tt>array</tt> constructor is too strict</title>
+<section><sref ref="[span.cons]"/></section>
+<submitter>Jean Guegant &amp; Barry Revzin</submitter>
+<date>10 Aug 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<b>Barry Revzin:</b>
+<p/>
+From <a href="https://stackoverflow.com/q/57444188/2069064">StackOverflow</a>:
+<p/>
+This compiles:
+</p>
+<blockquote><pre>
+std::vector&lt;int*&gt; v = {nullptr, nullptr};
+std::span&lt;const int* const&gt; s{v};
+</pre></blockquote>
+<p>
+This does not:
+</p>
+<blockquote><pre>
+std::array&lt;int*, 2&gt; a = {nullptr, nullptr};
+std::span&lt;const int* const&gt; s{a};
+</pre></blockquote>
+<p>
+The problem is that <tt>span</tt>'s constructors include
+</p>
+<ul>
+<li><p>A constructor template that takes any <tt>Container</tt> that is neither a raw array nor a <tt>std::array</tt></p></li>
+<li><p>A constructor template that takes an <tt>array&lt;value_type, N&gt;&amp;</tt></p></li>
+<li><p>A constructor template that takes a <tt>const array&lt;value_type, N&gt;&amp;</tt></p></li>
+</ul>
+<p>
+So the first is excluded, and the other two don't match. We can change the array constructor templates to take an 
+<tt>array&lt;T, N&gt;</tt> with the requirement that <tt>T(*)[]</tt> is convertible to <tt>ElementType(*)[]</tt>?
+<p/>
+<b>Jean Guegant:</b>
+<p/>
+It is impossible to create a <tt>std::span</tt> from a <tt>std::array&lt;const T, X&gt;</tt> given the current 
+set of constructors of <tt>std::span</tt> (<sref ref="[span.cons]"/>):
+</p>
+<blockquote><pre>
+std::array&lt;const int, 4&gt; a = {1, 2, 3, 4};
+std::span&lt;const int&gt; s{a}; <i>// No overload can be found.</i>
+std::span s{a}; <i>// CTAD doesn't help either.</i>
+</pre></blockquote>
+<p>
+Both constructors accepting a <tt>std::array</tt> (<sref ref="[span.cons]"/> p11) require the first template 
+parameter of the <tt>std::array</tt> parameter to be <tt>value_type</tt>:
+</p>
+<blockquote><pre>
+template&lt;size_t N&gt; constexpr span(array&lt;value_type, N&gt;&amp; arr) noexcept;
+template&lt;size_t N&gt; constexpr span(const array&lt;value_type, N&gt;&amp; arr) noexcept;
+</pre></blockquote>
+<p>
+<tt>value_type</tt> being defined as <tt>remove_cv_t&lt;ElementType&gt;</tt> &mdash; this constrains the first 
+template parameter not to be <tt>const</tt>.
+<p/>
+Both constructors accepting a generic <tt>Container</tt> (<sref ref="[span.cons]"/> p14) have a 
+constraint &mdash; (p14.3) <tt>Container</tt> is not a specialization of <tt>array</tt> &mdash; 
+rejecting <tt>std::array</tt>.
+<p/>
+While you can call <tt>std::array&lt;const T, X&gt;::data</tt> and <tt>std::array&lt;const T, X&gt;::size</tt> 
+to manually create a <tt>std::span</tt>, we should, in my opinion, offer a proper overload for this scenario.
+Two reasons came to my mind:
+</p>
+<ol>
+<li><p><tt>std::span</tt> handles C-arrays and <tt>std::arrays</tt> in an asymmetric way. The constructor 
+taking a C-array (<sref ref="[span.cons]"/> p11) is using <tt>element_type</tt> and as such can work with 
+<tt>const T</tt>:</p>
+<blockquote><pre>
+const int a[] = {1, 2, 3, 4};
+std::span&lt;const int&gt; s{a}; <i>// It works</i>
+</pre></blockquote>
+<p>
+If a user upgrades her/his code from C-arrays to a <tt>std::array</tt>s and literally take the type 
+<tt>const T</tt> and use it as the first parameter of <tt>std::array</tt>, he/she will face an error.
+</p>
+</li>
+<li><p>Even if the user is aware that <tt>const std::array&lt;T, X&gt;</tt> is more idiomatic than 
+<tt>std::array&lt;const T, X&gt;</tt>, the second form may appear in the context of template 
+instantiation.</p></li>
+</ol>
+<p>
+At the time this issue is written <tt>gls::span</tt>, from which <tt>std::span</tt> is partly based on, 
+does not suffer from the same issue: Its constructor taking a generic <tt>const Container&amp;</tt> does 
+not constraint the <tt>Container</tt> not to be a <tt>std::array</tt> (although its constructor taking 
+a generic <tt>Container&amp;</tt> does). For the users willing to upgrade from <tt>gsl::span</tt> to 
+<tt>std::span</tt>, this could be a breaking change.
+<p/>
+Three tracks could be explored to solve that issue:
+</p>
+<ul>
+<li><p>Making both constructors accepting a <tt>std::array</tt> (<sref ref="[span.cons]"/> p11) 
+requiring the first template parameter of the <tt>std::array</tt> parameter to be <tt>element_type</tt> and 
+not <tt>value_type</tt>.</p></li>
+<li><p>Removing the constraint &mdash; <tt>Container</tt> is not a specialization of <tt>array</tt> 
+(<sref ref="[span.cons]"/> p14.3) &mdash; on the constructor taking a generic <tt>const Container&amp;</tt> 
+as <tt>gsl::span</tt> does.</p></li>
+<li><p><a href="http://wg21.link/p1394">P1394</a> could also fix that issue if accepted in a later standard.</p></li>
+</ul>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
