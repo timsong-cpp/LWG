@@ -92,20 +92,74 @@ does not suffer from the same issue: Its constructor taking a generic <tt>const 
 not constraint the <tt>Container</tt> not to be a <tt>std::array</tt> (although its constructor taking 
 a generic <tt>Container&amp;</tt> does). For the users willing to upgrade from <tt>gsl::span</tt> to 
 <tt>std::span</tt>, this could be a breaking change.
-<p/>
-Three tracks could be explored to solve that issue:
 </p>
-<ul>
-<li><p>Making both constructors accepting a <tt>std::array</tt> (<sref ref="[span.cons]"/> p11) 
-requiring the first template parameter of the <tt>std::array</tt> parameter to be <tt>element_type</tt> and 
-not <tt>value_type</tt>.</p></li>
-<li><p>Removing the constraint &mdash; <tt>Container</tt> is not a specialization of <tt>array</tt> 
-(<sref ref="[span.cons]"/> p14.3) &mdash; on the constructor taking a generic <tt>const Container&amp;</tt> 
-as <tt>gsl::span</tt> does.</p></li>
-<li><p><a href="http://wg21.link/p1394">P1394</a> could also fix that issue if accepted in a later standard.</p></li>
-</ul>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<blockquote class="note">
+<p>
+The only change is to make the constructors templated on the element type of the array as well. 
+We already have the right constraints in place. It's just that the 2nd constraint is trivially 
+satisfied today by the raw array constructor and either always or never satisfied by the <tt>std::array</tt> one. 
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[span.overview]"/>, class template <tt>span</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ElementType, size_t Extent = dynamic_extent&gt;
+class span {
+public:
+  [&hellip;]
+  <i>// <sref ref="[span.cons]"/>, constructors, copy, and assignment</i>
+  constexpr span() noexcept;
+  constexpr span(pointer ptr, index_type count);
+  constexpr span(pointer first, pointer last);
+  template&lt;<ins>class T,</ins> size_t N&gt;
+    constexpr span(<ins>T</ins><del>element_type</del> (&amp;arr)[N]) noexcept;
+  template&lt;<ins>class T,</ins> size_t N&gt;
+    constexpr span(array&lt;<ins>T</ins><del>value_type</del>, N&gt;&amp; arr) noexcept;
+  template&lt;<ins>class T,</ins> size_t N&gt;
+    constexpr span(const array&lt;<ins>T</ins><del>value_type</del>, N&gt;&amp; arr) noexcept;
+  [&hellip;]
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[span.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<ins>class T,</ins> size_t N&gt;
+  constexpr span(<ins>T</ins><del>element_type</del> (&amp;arr)[N]) noexcept;
+template&lt;<ins>class T,</ins> size_t N&gt;
+  constexpr span(array&lt;<ins>T</ins><del>value_type</del>, N&gt;&amp; arr) noexcept;
+template&lt;<ins>class T,</ins> size_t N&gt;
+  constexpr span(const array&lt;<ins>T</ins><del>value_type</del>, N&gt;&amp; arr) noexcept;
+</pre>
+<blockquote>
+<p>
+-11- <i>Constraints:</i>
+</p>
+<ol style="list-style-type: none">
+<li><p>(11.1) &mdash; <tt>extent == dynamic_extent || N == extent</tt> is <tt>true</tt>, and</p></li>
+<li><p>(11.2) &mdash; <tt>remove_pointer_t&lt;decltype(data(arr))&gt;(*)[]</tt> is convertible to <tt>ElementType(*)[]</tt>.</p></li>
+</ol>
+<p>
+-12- <i>Effects:</i> Constructs a <tt>span</tt> that is a view over the supplied array.
+<p/>
+-13- <i>Ensures:</i> <tt>size() == N &amp;&amp; data() == data(arr)</tt> <ins>is <tt>true</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
 </resolution>
 </issue>
