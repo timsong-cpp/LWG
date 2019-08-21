@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3258" status="New">
+<title>Range access and <tt>initializer_list</tt></title>
+<section><sref ref="[range.access.begin]"/><sref ref="[range.access.end]"/></section>
+<submitter>Casey Carter</submitter>
+<date>15 Aug 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of <tt>ranges::begin</tt> in <sref ref="[range.access.begin]"/> includes a
+"poison pill" overload:
+<blockquote><pre>
+template&lt;class T&gt; void begin(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
+</pre></blockquote>
+which exists to create an ambiguity with the non-member <tt>initializer_list</tt> overload of
+<tt>begin</tt> in namespace <tt>std</tt> (<sref ref="[initializer.list.syn]"/>) when performing
+unqualified lookup, since specializations of <tt>initializer_list</tt> should not satisfy
+<tt><i>forwarding-range</i></tt> (<sref ref="[range.range]"/>). The design intent is that
+<tt>const</tt> specializations of <tt>initializer_list</tt> should also not satisfy
+<tt><i>forwarding-range</i></tt>, although they are rare enough beasts that they were overlooked
+when this wording is written.
+</p><p>
+<tt>ranges::end</tt> (<sref ref="[range.access.end]"/>) has a similar poison pill for
+<tt>initializer_list</tt>, which should be changed consistently.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to N4830.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.access.begin]"/> as follows:</p>
+
+<blockquote><p>
+-1- The name <tt>ranges::begin</tt> denotes a customization point object (<sref
+ref="[customization.point.object]"/>). The expression <tt>ranges::begin(E)</tt> for some
+subexpression <tt>E</tt> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; <tt>E + 0</tt> if <tt>E</tt> is an lvalue of array type (<sref
+ref="[basic.compound]"/>).
+</p><p>
+(1.2) &mdash; Otherwise, if <tt>E</tt> is an lvalue, <tt><i>decay-copy</i>(E.begin())</tt> if it
+is a valid expression and its type <tt>I</tt> models <tt>input_or_output_iterator</tt>.
+</p><p>
+(1.3) &mdash; Otherwise, <tt><i>decay-copy</i>(begin(E))</tt> if it is a valid expression and its
+type <tt>I</tt> models <tt>input_or_output_iterator</tt> with overload resolution performed in a
+context that includes the declarations:
+<blockquote><pre>
+template&lt;class T&gt; void begin(T&amp;&amp;) = delete;
+template&lt;class T&gt; void begin(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
+</pre></blockquote>
+and does not include a declaration of <tt>ranges::begin</tt>.
+</p></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.access.end]"/> as follows:</p>
+
+<blockquote><p>
+-1- The name <tt>ranges::end</tt> denotes a customization point object (<sref
+ref="[customization.point.object]" />). The expression <tt>ranges::end(E)</tt> for some
+subexpression <tt>E</tt> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; <tt>E + extent_v&lt;T&gt;</tt> if <tt>E</tt> is an lvalue of array type (<sref
+ref="[basic.compound]" />) <tt>T</tt>.
+</p><p>
+(1.2) &mdash; Otherwise, if <tt>E</tt> is an lvalue, <tt><i>decay-copy</i>(E.end())</tt> if it is a
+valid expression and its type <tt>S</tt> models <tt>sentinel_for&lt;decltype(ranges::begin(E))&gt;</tt>
+</p><p>
+(1.3) &mdash; Otherwise, <tt><i>decay-copy</i>(end(E))</tt> if it is a valid expression and its type
+<tt>S</tt> models <tt>sentinel_for&lt;decltype(ranges::begin(E))&gt;</tt> with overload resolution
+performed in a context that includes the declarations:
+<blockquote><pre>
+template&lt;class T&gt; void end(T&amp;&amp;) = delete;
+template&lt;class T&gt; void end(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
+</pre></blockquote>
+and does not include a declaration of <tt>ranges::end</tt>.
+</p></blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
