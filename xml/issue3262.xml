@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3262" status="New">
+<title>Formatting of negative durations is not specified</title>
+<section><sref ref="[time.format]"/></section>
+<submitter>Tomasz Kami&nacute;ski</submitter>
+<date>18 Aug 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current specification of the formatting for <code>std::chrono::duration</code> and 
+<code>std::hh_mm_ss</code> types is unclear in regards the the handling of negative values. 
+To illustrate:
+</p>
+<blockquote><pre>
+std::cout &lt;&lt; std::format("%H:%M:%S", -10'000s); <i>// prints either -02:46:40 or -02:-46:-40</i>
+</pre></blockquote>
+<p>
+The indented behavior (and currently implemented, see 
+<a href="https://wandbox.org/permlink/mrw03IaAldP7Bdx1">here</a>) is to apply the
+sign once, before the leftmost converted field.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> With the above clarification, the specification of the
+<code>operator&lt;&lt;</code> for <code>hh_mm_ss</code> may be simplified to
+<code>format("{:%T}", hms)</code>.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[time.format]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- Each conversion specifier <i>conversion-spec</i> is replaced by appropriate 
+characters as described in Table [tab:time.format.spec]. Some of the conversion 
+specifiers depend on the locale that is passed to the formatting function if 
+the latter takes one, or the global locale otherwise. If the formatted object 
+does not contain the information the conversion specifier refers to, an 
+exception of type <tt>format_error</tt> is thrown.
+<p/>
+<ins>-?- The result of formatting a <tt>std::chrono::duration</tt> instance holding 
+a negative value, or of an <tt>hh_mm_ss</tt> object <tt>h</tt> for which <tt>h.is_negative()</tt> 
+is <tt>true</tt>, is equivalent to the output of the corresponding positive value, 
+with a <tt>-</tt> character placed before the replacement of the leftmost conversion
+specifier.</ins>
+<p/>
+<ins>[<i>Example:</i></ins>
+</p>
+<blockquote><pre>
+<ins>cout &lt;&lt; format("%T", -10'000s); <i>// prints:</i> -02:46:40
+cout &lt;&lt; format("%H:%M:%S", -10'000s); <i>// prints:</i> -02:46:40
+cout &lt;&lt; format("minutes %M, hours %H, seconds %S", -10'000s); <i>// prints:</i> minutes -46, hours 02, seconds 40</ins>
+</pre></blockquote>
+<p>
+<ins>&mdash; <i>end example</i>]</ins>
+<p/>
+-3- Unless explicitly requested, [&hellip;]
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[time.hms.nonmembers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Duration&gt;
+basic_ostream&lt;charT, traits&gt;&amp;
+operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const hh_mm_ss&lt;Duration&gt;&amp; hms);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return os &lt;&lt; format(os.getloc(),
+             <del>hms.is_negative() ? <i>STATICALLY-WIDEN</i>&lt;charT&gt;("-{:%T}")
+                               : </del><i>STATICALLY-WIDEN</i>&lt;charT&gt;("{:%T}"),
+             <del>abs(</del>hms.to_duration()<del>)</del>);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
