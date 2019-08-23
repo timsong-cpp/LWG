@@ -3,7 +3,8 @@
 
 <issue num="3258" status="New">
 <title>Range access and <tt>initializer_list</tt></title>
-<section><sref ref="[range.access.begin]"/><sref ref="[range.access.end]"/></section>
+<section><sref ref="[range.access.begin]"/><sref ref="[range.access.end]"/>
+<sref ref="[range.access.rbegin]"/><sref ref="[range.access.rend]"/></section>
 <submitter>Casey Carter</submitter>
 <date>15 Aug 2019</date>
 <priority>99</priority>
@@ -25,6 +26,14 @@ when this wording is written.
 </p><p>
 <tt>ranges::end</tt> (<sref ref="[range.access.end]"/>) has a similar poison pill for
 <tt>initializer_list</tt>, which should be changed consistently.
+</p><p>
+Notably <tt>ranges::rbegin</tt> (<sref ref="[range.access.rbegin]"/>) and <tt>ranges::rend</tt>
+(<sref ref="[range.access.rbegin]"/>) as currently specified <em>accept</em> rvalue
+<tt>initializer_list</tt> arguments; they find the <tt>initializer_list</tt> overloads of
+<tt>std::rbegin</tt> and <tt>std::rend</tt> (<sref ref="[iterator.range]"/>) via ADL. While I can't
+put my finger on anything in particular that's broken by this behavior, it seems wise to make
+<tt>rbegin</tt> and <tt>rend</tt> consistent with <tt>begin</tt> and <tt>end</tt> for
+<tt>initializer_list</tt> until and unless we discover a reason to do otherwise.
 </p>
 </discussion>
 
@@ -52,6 +61,8 @@ template&lt;class T&gt; void begin(T&amp;&amp;) = delete;
 template&lt;class T&gt; void begin(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
 </pre></blockquote>
 and does not include a declaration of <tt>ranges::begin</tt>.
+</p><p>
+[&hellip;]
 </p></blockquote>
 </li>
 
@@ -76,6 +87,60 @@ template&lt;class T&gt; void end(T&amp;&amp;) = delete;
 template&lt;class T&gt; void end(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
 </pre></blockquote>
 and does not include a declaration of <tt>ranges::end</tt>.
+</p><p>
+[&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.access.rbegin]"/> as follows:</p>
+
+<blockquote><p>
+-1- The name <tt>ranges::rbegin</tt> denotes a customization point object (<sref
+ref="[customization.point.object]" />). The expression <tt>ranges::rbegin(E)</tt> for some
+subexpression <tt>E</tt> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; If <tt>E</tt> is an lvalue, <tt><i>decay-copy</i>(E.rbegin())</tt> if it is a valid
+expression and its type <tt>I</tt> models <tt>input_or_output_iterator</tt>.
+</p><p>
+(1.2) &mdash; Otherwise, <tt><i>decay-copy</i>(rbegin(E))</tt> if it is a valid expression and its
+type <tt>I</tt> models <tt>input_or_output_iterator</tt> with overload resolution performed in a
+context that includes the declaration<ins>s</ins>:
+<blockquote><pre>
+template&lt;class T&gt; void rbegin(T&amp;&amp;) = delete;
+<ins>template&lt;class T&gt; void rbegin(initializer_list&lt;T&gt;) = delete;</ins>
+</pre></blockquote>
+and does not include a declaration of <tt>ranges::rbegin</tt>.
+</p><p>
+[&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.access.rend]"/> as follows:</p>
+
+<blockquote><p>
+-1- The name <tt>ranges::rend</tt> denotes a customization point object (<sref
+ref="[customization.point.object]" />). The expression <tt>ranges::rend(E)</tt> for some
+subexpression <tt>E</tt> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; If <tt>E</tt> is an lvalue, <tt><i>decay-copy</i>(E.rend())</tt> if it is a valid
+expression and its type <del><tt>S</tt></del> models
+<blockquote><pre>
+sentinel_for&lt;<ins>S,</ins> decltype(ranges::rbegin(E))&gt;
+</pre></blockquote>
+</p><p>
+(1.2) &mdash; Otherwise, <tt><i>decay-copy</i>(rend(E))</tt> if it is a valid expression and its
+type <tt>S</tt> models
+<blockquote><pre>
+sentinel_for&lt;<ins>S,</ins> decltype(ranges::rbegin(E))&gt;
+</pre></blockquote>
+with overload resolution performed in a context that includes the declaration<ins>s</ins>:
+<blockquote><pre>
+template&lt;class T&gt; void rend(T&amp;&amp;) = delete;
+<ins>template&lt;class T&gt; void rend(initializer_list&lt;T&gt;) = delete;</ins>
+</pre></blockquote>
+and does not include a declaration of <tt>ranges::rend</tt>.
+</p><p>
+[&hellip;]
 </p></blockquote>
 </li>
 </ol>
