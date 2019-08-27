@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3266" status="New">
+<title><tt>to_chars(bool)</tt> should be deleted</title>
+<section><sref ref="[charconv.syn]"/></section>
+<submitter>Jens Maurer</submitter>
+<date>23 Aug 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[charconv.to.chars]"/> does not present an overload for <tt>bool</tt>
+(because it is neither a signed nor unsigned integer type), so an attempt to call 
+<tt>to_chars</tt> with a bool argument would promote it to <tt>int</tt> and 
+unambiguously call the <tt>int</tt> overload of <tt>to_chars</tt>.
+<p/>
+This was not intended, since it is not obvious that the correct textual representation 
+of a <tt>bool</tt> is <tt>0/1</tt> (as opposed to, say, <tt>"true"/"false"</tt>).
+<p/>
+The user should cast explicitly if he wants the <tt>0/1</tt> behavior. (Correspondingly, 
+there is no <tt>bool</tt> overload for <tt>from_chars</tt> in the status quo, and 
+conversions do not apply there because of the reference parameter.)
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[charconv.syn]"/>, header <tt>&lt;charconv&gt;</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[charconv.to.chars]"/>, primitive numerical output conversion</i>
+struct to_chars_result {
+  char* ptr;
+  errc ec;
+  friend bool operator==(const to_chars_result&amp;, const to_chars_result&amp;) = default;
+};
+
+to_chars_result to_chars(char* first, char* last, <i>see below</i> value, int base = 10);
+<ins>to_chars_result to_chars(char* first, char* last, bool value, int base = 10) = delete;</ins>
+to_chars_result to_chars(char* first, char* last, float value);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
