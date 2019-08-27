@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3265" status="New">
+<title><tt>move_iterator</tt>'s conversions are more broken after P1207</title>
+<section><sref ref="[move.iter.cons]"/></section>
+<submitter>Casey Carter</submitter>
+<date>23 Aug 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The converting constructor and assignment operator specified in <sref ref="[move.iter.cons]"/> 
+were technically broken before P1207:
+</p>
+<ul>
+<li><p><sref ref="[move.iter.cons]"/> para 3 (and 5 for that matter) is an instance of LWG 
+<iref ref="3105"/>; it should instead mandate that <tt>u.base()</tt> is convertible to <tt>Iterator</tt>.</p></li>
+<li><p><sref ref="[move.iter.cons]"/> para 5 uses "is convertible" to guard an assignment operation 
+instead of a conversion; it should instead mandate.</p></li>
+</ul>
+<p>
+After applying <a href="http://wg21.link/p1207r4">P1207R4</a> "Movability of Single-pass Iterators", 
+<tt>u.base()</tt> is not always well-formed, exacerbating the problem. These operations must ensure 
+that <tt>u.base()</tt> is well-formed.
+<p/>
+Drive-by:
+</p>
+<ul>
+<li><p>Let's burninate "Constructs a <tt>move_iterator</tt>" while we're touching this subclause.</p></li>
+<li><p>We'll also burninate "Iterator operations applied..." since the requirement it wants to impose 
+is covered (and indeed must be covered) by the specifications of those other operations.</p></li>
+</ul>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[move.iter.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr move_iterator();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> <del>Constructs a <tt>move_iterator</tt>, 
+v</del><ins>V</ins>alue-initializ<ins>es</ins><del>ing</del> <tt>current</tt>. <del>Iterator operations applied to the
+resulting iterator have defined behavior if and only if the corresponding operations are defined on a
+value-initialized iterator of type <tt>Iterator</tt>.</del>
+</p>
+</blockquote>
+<pre>
+constexpr explicit move_iterator(Iterator i);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> <del>Constructs a move_iterator, i</del><ins>I</ins>nitializ<ins>es</ins><del>ing</del> 
+<tt>current</tt> with <tt>std::move(i)</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-3- <i>Mandates:</i> <tt><del>U</del><ins>u.base()</ins></tt> is <ins>well-formed and</ins> convertible 
+to <tt>Iterator</tt>.
+<p/>
+-4- <i>Effects:</i> <del>Constructs a <tt>move_iterator</tt>, i</del><ins>I</ins>nitializ<ins>es</ins><del>ing</del> 
+<tt>current</tt> with <tt>u.base()</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator&amp; operator=(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-5- <i>Mandates:</i> <del><tt>U</tt> is convertible to <tt>Iterator</tt></del><ins><tt>u.base()</tt> is 
+well-formed and <tt>is_assignable_v&lt;Iterator&amp;, const U&amp;&gt;</tt> is <tt>true</tt></ins>.
+<p/>
+-6- <i>Effects:</i> Assigns <tt>u.base()</tt> to <tt>current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
