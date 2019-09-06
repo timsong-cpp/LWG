@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3299" status="New">
+<title>Pointers don't need customized iterator behavoir</title>
+<section><sref ref="[iterator.cust.move]"/><sref ref="[iterator.cust.swap]"/></section>
+<submitter>Casey Carter</submitter>
+<date>07 Oct 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It is not intentional design that users may customize the behavior of
+<tt>ranges::iter_move</tt> (<sref ref="[iterator.cust.move]" />) and
+<tt>ranges::iter_swap</tt> (<sref ref="[iterator.cust.swap]" />)  for pointers to program-defined
+type by defining e.g. <tt>iter_move(my_type*)</tt> or <tt>iter_swap(my_type*, my_type*)</tt> in a
+namespace associated with <tt>my_type</tt>. The intent of customization points is that users may
+define behavior for types they define, not that users may mess with the well-defined semantics for
+existing types like pointers.
+</p><p>
+We should forbid such silliness by constraining the "finds an overload via ADL" cases for
+customization points to only trigger with argument expressions of class or enumeration type. Note
+that WG21 made a similar change to <tt>ranges::swap</tt> shortly before merging it into the working
+draft to forbid users customizing behavior for pointers to program-defined types or arrays of
+program-defined types.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<blockquote class="note"><p>
+[<i>Drafting note:</i> <iref ref="3247"/> touches the same wording in
+<sref ref="[iterator.cust.move]"/>; if both are resolved simultaneously the changes should be
+reconciled before passing them on to the Editor.]
+</p></blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.cust.move]"/> as follows:</p>
+
+<blockquote><p>
+(1.1) &mdash; <tt>iter_move(E)</tt>, if <del>that expression is valid,</del> <ins><tt>E</tt> has
+class or enumeration type and <tt>iter_move(E)</tt> is a well-formed expression</ins> with overload
+resolution performed in a context that does not include a declaration of <tt>ranges::iter_move</tt>.
+</p></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[iterator.cust.swap]"/> as follows:</p>
+
+<blockquote><p>
+(4.1) &mdash; <tt>(void)iter_swap(E1, E2)</tt>, if <del>that expression is valid,</del> <ins>either
+<tt>E1</tt> or <tt>E2</tt> has class or enumeration type and <tt>iter_swap(E1, E2)</tt> is a
+well-formed expression</ins> with overload resolution performed in a context that includes the
+declaration
+<blockquote><pre>
+template&lt;class I1, class I2&gt;
+void iter_swap(I1, I2) = delete;
+</pre></blockquote>
+and does not include a declaration of <tt>ranges::iter_swap</tt>. If the function selected by
+overload resolution does not exchange the values denoted by <tt>E1</tt> and <tt>E2</tt>, the program
+is ill-formed with no diagnostic required.
+</p></blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
