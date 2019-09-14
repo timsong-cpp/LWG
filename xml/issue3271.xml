@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3271" status="New">
+<title>Parsing functions should save and restore stream format state</title>
+<section><sref ref="[time.parse]"/></section>
+<submitter>Howard Hinnant</submitter>
+<date>2 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>from_stream</tt> overloads may need to set various formatting state and flags of the <tt>basic_istream</tt> 
+to implement the parsing functionality. Such settings must not persist beyond the parsing functions. Thus 
+these functions need to save and restore any settings on the <tt>basic_istream</tt> they may need to change.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The modification of <sref ref="[time.parse]"/> p10 is intended to be non-conflictingly 
+mergeable with the change suggested by LWG <iref ref="3269"/> at the same paragraph.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[time.parse]"/> as indicated:</p>
+
+<blockquote>
+<p> 
+-1- Each parse overload specified in this subclause calls <tt>from_stream</tt> unqualified, 
+so as to enable argument dependent lookup (<sref ref="[basic.lookup.argdep]"/>).
+<ins>In the following paragraphs, let <tt>is</tt> denote an object of type 
+<tt>basic_istream&lt;charT, traits&gt;</tt>, where <tt>charT</tt> and
+<tt>traits</tt> are template parameters in that context.</ins>
+<p/>
+[&hellip;]
+<p/>
+-10- All <tt>from_stream</tt> overloads behave as unformatted input functions, except that they have an 
+unspecified effect on the value returned by subsequent calls to <tt>basic_istream&lt;&gt;::gcount()</tt>.
+<ins>Any changes made to <tt>is.fill()</tt>, <tt>is.width()</tt> or <tt>is.flags()</tt> are undone 
+prior to an ordinary or exceptional return.</ins> 
+Each overload takes a format string containing ordinary characters and flags which have special meaning. 
+Each flag begins with a <tt>%</tt>. Some flags can be modified by <tt>E</tt> or <tt>O</tt>. During parsing 
+each flag interprets characters as parts of date and time types according to Table [tab:time.parse.spec]. 
+Some flags can be modified by a width parameter given as a positive decimal integer called out as 
+<tt><i>N</i></tt> below which governs how many characters are parsed from the stream in interpreting the 
+flag. All characters in the format string that are not represented in Table [tab:time.parse.spec], except 
+for white space, are parsed unchanged from the stream. A white space character matches zero or more white
+space characters in the input stream.
+</p>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+</issue>
