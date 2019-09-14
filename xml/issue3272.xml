@@ -1,0 +1,133 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3272" status="New">
+<title><tt>%I%p</tt> should parse/format <tt>duration</tt> since midnight</title>
+<section><sref ref="[time.format]"/><sref ref="[time.parse]"/></section>
+<submitter>Howard Hinnant</submitter>
+<date>2 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It is clear how <tt>"%I%p"</tt> parses and formats time points. What is not clear is how these 
+flags interact with durations. We should treat durations as "elapsed time since midnight". For example:
+</p>
+<blockquote>
+<pre>
+#include &lt;chrono&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;sstream&gt;
+
+int main()
+{
+  using namespace std;
+  using namespace std::chrono;
+  <i>// Format</i>
+  {
+    <i>// format time_point with %I%p</i>
+    cout &lt;&lt; format("{:%F %I%p}", sys_days{2019_y/August/10}+14h) &lt;&lt; '\n';
+  }
+  {
+    <i>// format duration with %I%p</i>
+    cout &lt;&lt; format("{:%I%p}", 14h) &lt;&lt; '\n';
+  }
+
+  <i>// Parse</i>
+  {
+    <i>// Parse %I%p as day-of-year combined with an hour into a time_point</i>
+    istringstream in{"2019-08-10 2pm"};
+    system_clock::time_point tp;
+    in &gt;&gt; parse("%F %I%p", tp);
+    cout &lt;&lt; tp &lt;&lt; '\n';
+  }
+  {
+    <i>// Parse %I%p as number of hours into a duration</i>
+    istringstream in{"2pm"};
+    hours d;
+    in &gt;&gt; parse("%I%p", d);
+    cout &lt;&lt; d &lt;&lt; '\n';
+  }
+}
+</pre>
+</blockquote>
+<p>
+Output:
+</p>
+<blockquote>
+<pre>
+2019-08-10 02PM
+02PM
+2019-08-10 14:00:00.000000
+14h
+</pre>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.format]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- Unless explicitly requested, the result of formatting a chrono type does not contain time zone abbreviation
+and time zone offset information. If the information is available, the conversion specifiers <tt>%Z</tt> and 
+<tt>%z</tt> will format this information (respectively). [<i>Note:</i> If the information is not available and 
+a <tt>%Z</tt> or <tt>%z</tt> conversion specifier appears in the <i>chrono-format-spec</i>, an exception of 
+type <tt>format_error</tt> is thrown, as described above. &mdash; <i>end note</i>]
+<p/>
+<ins>-?- If the type being formatted does not contain the information that the format flag needs, an exception 
+of type <tt>format_error</tt> is thrown. For example a <tt>duration</tt> does not contain enough information to 
+format as a <tt>weekday</tt>. However if a flag refers to a "time of day" (e.g. <tt>%H</tt>, <tt>%I</tt>, 
+<tt>%p</tt>, etc.), then a specialization of <tt>duration</tt> is interpreted as the time of day elapsed since 
+midnight.</ins>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[time.parse]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The modification of <sref ref="[time.parse]"/> p1 is intended to be non-conflictingly 
+mergeable with the change suggested by LWG <iref ref="3269"/> and LWG <iref ref="3271"/> at the same paragraph.
+</p>
+</blockquote>
+
+<blockquote>
+<p> 
+-1- Each parse overload specified in this subclause calls <tt>from_stream</tt> unqualified, 
+so as to enable argument dependent lookup (<sref ref="[basic.lookup.argdep]"/>).
+<ins>In the following paragraphs, let <tt>is</tt> denote an object of type 
+<tt>basic_istream&lt;charT, traits&gt;</tt>, where <tt>charT</tt> and
+<tt>traits</tt> are template parameters in that context.</ins>
+<p/>
+[&hellip;]
+<p/>
+-10- All <tt>from_stream</tt> overloads behave as unformatted input functions, except that they have an 
+unspecified effect on the value returned by subsequent calls to <tt>basic_istream&lt;&gt;::gcount()</tt>.
+Each overload takes a format string containing ordinary characters and flags which have special meaning. 
+Each flag begins with a <tt>%</tt>. Some flags can be modified by <tt>E</tt> or <tt>O</tt>. During parsing 
+each flag interprets characters as parts of date and time types according to Table [tab:time.parse.spec]. 
+Some flags can be modified by a width parameter given as a positive decimal integer called out as 
+<tt><i>N</i></tt> below which governs how many characters are parsed from the stream in interpreting the 
+flag. All characters in the format string that are not represented in Table [tab:time.parse.spec], except 
+for white space, are parsed unchanged from the stream. A white space character matches zero or more white
+space characters in the input stream.
+<p/>
+<ins>-?- If the type being parsed can not represent the information that the format flag refers to, 
+<tt>is.setstate(ios_base::failbit)</tt> is called. For example a <tt>duration</tt> cannot represent a 
+<tt>weekday</tt>. However if a flag refers to a "time of day" (e.g. <tt>%H</tt>, <tt>%I</tt>, <tt>%p</tt>, 
+etc.), then a specialization of <tt>duration</tt> is parsed as the time of day elapsed since midnight.</ins>
+</p>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+</issue>
