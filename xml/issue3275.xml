@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3275" status="New">
+<title>Why does <tt>time_get::do_get</tt> require a valid pointer when none of the others do?</title>
+<section><sref ref="[locale.time.get.virtuals]"/></section>
+<submitter>Marshall Clow</submitter>
+<date>9 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+According to <sref ref="[locale.time.get.virtuals]"/> p11:
+</p>
+<blockquote><p>
+<i>Requires:</i> <tt>t</tt> shall point to an object
+</p></blockquote>
+<p>
+[Note: In my "Mandates" paper, I changed this to "<i>Expects:</i> <tt>t</tt> points to an object"]
+<p/>
+Nevertheless, it's odd, and inconsistent. <tt>time_get::get</tt> does not have any such stated requirement, 
+and it calls <tt>do_get</tt>. None of the other "time" calls in <tt>time_get</tt> have such a (stated) 
+requirement.
+<p/>
+I believe that this requirement is redundant, that it is implied by the wording in P12 and P14.
+<p/>
+P12: "or until it has extracted and assigned those <tt>struct tm</tt> members"
+<p/>
+P14: "It is unspecified whether multiple calls to <tt>do_get()</tt> with the address of the same 
+<tt>struct tm</tt> object will update the current contents of the object or simply overwrite its members."
+<p/>
+If the pointer is invalid (null, or points to unmapped memory, say), you've got UB anyway.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[locale.time.get.virtuals]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+iter_type do_get(iter_type s, iter_type end, ios_base&amp; f,
+                 ios_base::iostate&amp; err, tm* t, char format, char modifier) const;
+</pre>
+<blockquote>
+<p>
+<del>-11- <i>Requires:</i> <tt>t</tt> shall point to an object.</del>
+<p/>
+-12- <i>Effects:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
