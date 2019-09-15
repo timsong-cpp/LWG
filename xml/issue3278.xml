@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3278" status="New">
+<title><tt>join_view&lt;V&gt;::iterator&lt;true&gt;</tt> tries to write through <tt>const join_view</tt> ptr</title>
+<section><sref ref="[range.join.view]"/></section>
+<submitter>Eric Niebler</submitter>
+<date>9 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The non-<tt>const</tt> <tt>join_view::begin()</tt> returns <tt>iterator&lt;<i>simple-view</i>&lt;V&gt;&gt;</tt>. 
+If <tt><i>simple-view</i>&lt;V&gt;</tt> is <tt>true</tt>, then the iterator stores a <tt>const join_view*</tt> 
+named <tt>parent_</tt>. <tt>iterator::satisfy()</tt> will try to write to <tt>parent_-&gt;inner_</tt> if 
+<tt>ref_is_glvalue</tt> is <tt>false</tt>. That doesn't work because the <tt>inner_</tt> field is not marked 
+mutable.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.join.view]"/>, class <tt>template join_view</tt> synopsis, as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Changing the <tt>join_view&lt;V&gt;::inner_</tt> member to be mutable is safe 
+because this exposition-only member is only used when the <tt>join_view</tt> is single-pass and 
+only modified by operations that invalidate other iterators]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V&gt;
+    requires view&lt;V&gt; &amp;&amp; input_range&lt;range_reference_t&lt;V&gt;&gt;&gt; &amp;&amp;
+            (is_reference_v&lt;range_reference_t&lt;V&gt;&gt; ||
+            view&lt;range_value_t&lt;V&gt;&gt;)
+  class join_view : public view_interface&lt;join_view&lt;V&gt;&gt; {
+  private:
+    [&hellip;]
+    V base_ = V(); <i>// exposition only</i>
+    <ins>mutable</ins> all_view&lt;InnerRng&gt; inner_ = <i>// exposition only, present only when</i> 
+                                        <ins><i>//</i></ins> !is_reference_v&lt;InnerRng&gt;
+      all_view&lt;InnerRng&gt;();
+  public:
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
