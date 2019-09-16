@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3286" status="New">
+<title><tt>ranges::size</tt> is not required to be valid after a call to <tt>ranges::begin</tt> on an input range</title>
+<section><sref ref="[range.take.view]"/><sref ref="[range.subrange.ctor]"/></section>
+<submitter>Eric Niebler</submitter>
+<date>10 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+On an input (but not forward) range, <tt>begin(rng)</tt> is not required to be an equality-preserving 
+expression. If the range is <em>also</em> sized, then it is not valid to call <tt>size(rng)</tt> after 
+<tt>begin(rng)</tt>. In several places in the ranges clause, this precondition is violated. A trivial 
+re-expression of the effects clause fixes the problem.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.take.view]"/>, class template <tt>take_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+  class take_view : public view_interface&lt;take_view&lt;V&gt;&gt; {
+  private:
+    [&hellip;]
+  public:
+    [&hellip;]
+    constexpr auto begin() requires (!<i>simple-view</i>&lt;V&gt;) {
+      if constexpr (sized_range&lt;V&gt;) {
+        if constexpr (random_access_range&lt;V&gt;)
+          return ranges::begin(base_);
+        else <ins>{
+          auto sz = size();</ins>
+          return counted_iterator{ranges::begin(base_), <del>size()</del><ins>sz</ins>};
+        <ins>}</ins>
+      } else
+        return counted_iterator{ranges::begin(base_), count_};
+    }
+
+    constexpr auto begin() const requires range&lt;const V&gt; {
+      if constexpr (sized_range&lt;const V&gt;) {
+        if constexpr (random_access_range&lt;const V&gt;)
+          return ranges::begin(base_);
+        else <ins>{
+          auto sz = size();</ins>
+          return counted_iterator{ranges::begin(base_), <del>size()</del><ins>sz</ins>};
+        <ins>}</ins>
+      } else
+        return counted_iterator{ranges::begin(base_), count_};
+    }
+    
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.subrange.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<i>not-same-as</i>&lt;subrange&gt; R&gt;
+  requires forwarding-range&lt;R&gt; &amp;&amp;
+    convertible_to&lt;iterator_t&lt;R&gt;, I&gt; &amp;&amp; convertible_to&lt;sentinel_t&lt;R&gt;, S&gt;
+constexpr subrange(R&amp;&amp; r) requires (!StoreSize || sized_range&lt;R&gt;);
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to:
+<ol style="list-style-type: none">
+<li><p>(6.1) &mdash; If <tt>StoreSize</tt> is <tt>true</tt>, <tt>subrange{<del>ranges::begin(r), 
+ranges::end(r)</del><ins>r</ins>, ranges::size(r)}</tt>.</p></li>
+<li><p>(6.2) &mdash; Otherwise, <tt>subrange{ranges::begin(r), ranges::end(r)}</tt>.</p></li>
+</ol>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
