@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3288" status="New">
+<title><tt>atomic&lt;T&gt;::notify_one</tt> is unimplementable</title>
+<section><sref ref="[atomics.wait]"/></section>
+<submitter>Anthony Williams</submitter>
+<date>11 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+I am concerned by the wording around <tt>atomic&lt;T&gt;::wait()/atomic&lt;T&gt;::notify_one()</tt>.
+<p/>
+<sref ref="[atomics.wait]"/> p4 requires that the thread that calls <tt>wait()</tt> observed a
+value <tt>X</tt> prior to the value <tt>Y</tt> which results from a store that happens-before 
+the notify in order to be eligible to be unlocked.
+<p/>
+I am not sure how to implement that.
+</p>
+<blockquote><pre>
+atomic&lt;int&gt; a = 0;
+
+T1: int ra=a, read 0
+T1: a.wait(0)
+T2: a=42
+T3: int ra=a, read 42
+T3: a.wait(42)
+T2: a.notify_one()
+</pre></blockquote>
+<p>
+The wording requires that <tt>T1</tt> is eligible to be unlocked, but not <tt>T3</tt>, as
+there is not a write <em>after</em> the value read by <tt>T3</tt> that happens-before
+the notify.
+<p/>
+However, both <tt>T1</tt> and <tt>T3</tt> are waiting, so <tt>T3</tt> may be woken by the OS.
+Waking <tt>T3</tt> is allowed (<tt>wait()</tt> says it may wake spuriously), but waking <tt>T1</tt>
+is currently required as it is the only thread "eligible to be unblocked".
+<p/>
+This requires <tt>notify_one()</tt> to wake <em>all</em> waiters, which defeats the purpose.
+<p/>
+I suspect we need to change <sref ref="[atomics.wait]"/> p4.
+<p/>
+How about:
+</p>
+<blockquote><p>
+"A call to an atomic waiting operation <tt>W</tt> on an atomic object <tt>M</tt> is
+<i>eligible to be unlocked</i> by a call to an atomic notifying operation <tt>N</tt> on
+<tt>M</tt> if
+<ul>
+<li><p><tt>N</tt> does not happen-before <tt>W</tt></p></li>
+<li><p>There are no side effects <tt>X</tt> and <tt>Y</tt> in the modification order of <tt>M</tt> such
+that <tt>N</tt> happens-before <tt>X</tt>, <tt>X</tt> precedes <tt>Y</tt> in the modification order 
+of <tt>M</tt> and an atomic operation that observes the effects of <tt>Y</tt> happens-before <tt>W</tt>.</p></li>
+</ul>
+"
+</p></blockquote>
+<p>
+This would allow <tt>T3</tt> to be woken in the preceding example, but prevent it
+being woken in the following case:
+</p>
+<blockquote><pre>
+T1: int ra=a, read 0
+T1: a.wait(0)
+T2: a=42
+T2: a.notify_one()
+T2: a=69
+T3: int ra=a, read 69
+T3: a.wait(69)
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[atomics.wait]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-4- A call to an atomic waiting operation <ins><tt>W</tt></ins> on an atomic object <tt>M</tt> is 
+<i>eligible to be unblocked</i> by a call to an atomic notifying operation <ins><tt>N</tt></ins> on <tt>M</tt> 
+if <del>there exist side effects <tt>X</tt> and <tt>Y</tt> on <tt>M</tt> such that:</del>
+<ol style="list-style-type: none">
+<li><p>(4.1) &mdash; <ins><tt>N</tt> does not happen before <tt>W</tt></ins><del>the atomic waiting operation 
+has blocked after observing the result of <tt>X</tt></del>,</p></li>
+<li><p>(4.2) &mdash; <ins>There are no side effects</ins> <tt>X</tt> <ins>and</ins><del>precedes</del> <tt>Y</tt> 
+in the modification order of <tt>M</tt><del>, and</del><ins>such that <tt>N</tt> happens before <tt>X</tt>, 
+<tt>X</tt> precedes <tt>Y</tt> in the modification order of <tt>M</tt> and an atomic operation that observes 
+the effects of <tt>Y</tt> happens before <tt>W</tt>.</ins></p></li>
+<li><p><del>(4.3) &mdash; <tt>Y</tt> happens before the call to the atomic notifying operation.</del></p></li>
+</ol>
+</p>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
