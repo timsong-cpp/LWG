@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3287" status="New">
+<title>Exposition-only <tt><i>cpp17-input-iterator</i></tt> concept is needlessly complex</title>
+<section><sref ref="[iterator.traits]"/></section>
+<submitter>Eric Niebler</submitter>
+<date>10 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The new C++20 iterator concepts use <tt>common_reference</tt> to constrain the value, reference, and 
+rvalue_reference associated types in order to support proxy references (see 
+<sref ref="[iterator.concept.readable]"/>).
+<p/>
+However, the C++17 iterators did not support proxy references, so the use of <tt>common_reference</tt> in 
+<sref ref="[iterator.traits]"/>/p2 is needlessly complex. The <tt>common_reference</tt> constraints can be 
+replaced with simple convertibility requirements to a <tt>const</tt> lvalue reference to the value type.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.traits]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The definitions in this subclause make use of the following exposition-only concepts:
+</p>
+<blockquote>
+<pre>
+template&lt;class I&gt;
+concept <i>cpp17-iterator</i> =
+  copyable&lt;I&gt; &amp;&amp; requires(I i) {
+    {   *i } -&gt; <i>can-reference</i>;
+    {  ++i } -&gt; same_as&lt;I&amp;&gt;;
+    { *i++ } -&gt; <i>can-reference</i>;
+  };
+
+template&lt;class I&gt;
+concept <i>cpp17-input-iterator</i> =
+  <i>cpp17-iterator</i>&lt;I&gt; &amp;&amp; equality_comparable&lt;I&gt; &amp;&amp; requires(I i) {
+    typename incrementable_traits&lt;I&gt;::difference_type;
+    typename readable_traits&lt;I&gt;::value_type;
+    <del>typename common_reference_t&lt;iter_reference_t&lt;I&gt;&amp;&amp;,
+                                typename readable_traits&lt;I&gt;::value_type&amp;&gt;;
+    typename common_reference_t&lt;decltype(*i++)&amp;&amp;,
+                                typename readable_traits&lt;I&gt;::value_type&amp;&gt;;</del>
+    <ins>{ *i } -&gt; convertible_to&lt;const typename readable_traits&lt;I&gt;::value_type&amp;&gt;;
+    { *i++ } -&gt; convertible_to&lt;const typename readable_traits&lt;I&gt;::value_type&amp;&gt;;</ins>
+    requires signed_integral&lt;typename incrementable_traits&lt;I&gt;::difference_type&gt;;
+  };
+
+[&hellip;]
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+</issue>
