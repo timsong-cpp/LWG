@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3297" status="New">
+<title>Useless sequence container requirement</title>
+<section><sref ref="[sequence.reqmts]"/></section>
+<submitter>Casey Carter</submitter>
+<date>17 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[sequence.reqmts]"/> paragraph 3 says that the names <tt>i</tt> and <tt>j</tt> denote 
+"iterators that meet the <i>Cpp17InputIterator</i> requirements and refer to elements implicitly 
+convertible to <tt>value_type</tt>". Ignoring for the moment that this is an occurrence of LWG 
+<iref ref="3105"/> &mdash; we really mean that <tt>*i</tt> and <tt>*j</tt> must be implicitly 
+convertible to <tt>value_type</tt> &mdash; this requirement seems to be completely extraneous.
+<p/>
+The names <tt>i</tt> and <tt>j</tt> are used in three places in the requirements table:
+</p>
+<ul>
+<li><p>The range constructors <tt>X(i, j)</tt> and <tt>X u(i, j)</tt>, which require that the 
+container's value type is <i>Cpp17EmplaceConstructible</i> into the container from <tt>*i</tt>; 
+implicit conversion is neither necessary nor sufficient.</p></li>
+<li><p>The range insert overload <tt>a.insert(p, i, j)</tt> which also requires <i>Cpp17EmplaceConstructible</i>, 
+as well as the capability to move elements around for <tt>vector</tt> and <tt>deque</tt>; again, 
+implicit conversion is neither necessary nor sufficient. It <em>would</em> be useful / performant 
+here to require that the container's value type is assignable from <tt>*i</tt>, which may have 
+been the intent of the implicit conversion requirement &mdash; would doing so be too breaking?</p></li>
+<li><p>The range assign overload <tt>a.assign(i, j)</tt> which requires both 
+<i>Cpp17EmplaceConstructible</i> as above and that it can assign the result of dereferencing an 
+iterator directly to the container's value type; again, implicit conversion is not useful here.</p></li>
+</ul>
+<p>
+We should strike the implicit conversion requirement since it is not useful and only serves to confuse 
+readers of the Standard (see e.g. <a href="https://github.com/microsoft/STL/issues/107">here</a>).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[sequence.reqmts]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- In Tables 76 and 77, <tt>X</tt> denotes a sequence container class, <tt>a</tt> denotes a value 
+of type <tt>X</tt> containing elements of type <tt>T</tt>, <tt>u</tt> denotes the name of a variable 
+being declared, <tt>A</tt> denotes <tt>X::allocator_type</tt> if the <i>qualified-id</i>
+<tt>X::allocator_type</tt> is valid and denotes a type (<sref ref="[temp.deduct]"/>) and 
+<tt>allocator&lt;T&gt;</tt> if it doesn't, <tt>i</tt> and <tt>j</tt> denote iterators that meet 
+the <i>Cpp17InputIterator</i> requirements <del>and refer to elements implicitly convertible to
+<tt>value_type</tt></del>, <tt>[i, j)</tt> denotes a valid range, [&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
