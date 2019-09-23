@@ -3,7 +3,7 @@
 
 <issue num="3194" status="New">
 <title><tt>ConvertibleTo</tt> prose does not match code</title>
-<section><sref ref="[concept.convertibleto]"/></section>
+<section><sref ref="[concept.convertible]"/></section>
 <submitter>Hubert Tong </submitter>
 <date>05 Mar 2019</date>
 <priority>1</priority>
@@ -32,12 +32,14 @@ A test() {
 <note>2019-03-15 Priority set to 1 after reflector discussion</note>
 
 <note>2019-07-14 Tim adds PR based on discussion in 2019-07-09 LWG telecon</note>
-</discussion>
-<resolution>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>This wording is relative to <a href="http://wg21.link/n4820">N4820</a>, and also resolves LWG <iref ref="3151"/>.</p>
 
 <ol>
 <li><p>Modify <sref ref="[concept.convertibleto]"/> as indicated:</p>
+
 <blockquote>
 <p>
 -1- The <tt>ConvertibleTo</tt> concept requires <del>an</del><ins>a glvalue</ins> expression of a particular type and
@@ -45,7 +47,7 @@ value category to be both implicitly and explicitly convertible to some other ty
 are required to produce equal results.
 </p>
 
-<blockquote><pre>
+<pre>
 template&lt;class From, class To&gt;
   concept ConvertibleTo =
     is_convertible_v&lt;From, To&gt; &amp;&amp;
@@ -82,6 +84,67 @@ but unspecified (<sref ref="[lib.types.movedfrom]"/>).</p></li>
 </li>
 </ol>
 </blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2019-09-23; Daniel adjusts wording to working draft changes</note>
+<p>
+Due to the concept renaming caused by <a href="http://wg21.link/p1754r1">P1754R1</a> the proposed
+wording is outdated and needs adjustments.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>, and also resolves LWG <iref ref="3151"/>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[concept.convertible]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The <tt>convertible_to</tt> concept requires <del>an</del><ins>a glvalue</ins> expression of a particular type and
+value category to be both implicitly and explicitly convertible to some other type. The implicit and explicit conversions
+are required to produce equal results.
+</p>
+
+<pre>
+template&lt;class From, class To&gt;
+  concept convertible_to =
+    is_convertible_v&lt;From, To&gt; &amp;&amp;
+    requires(<ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins> (&amp;f)()) {
+      static_cast&lt;To&gt;(f());
+    };
+</pre>
+<blockquote>
+<p>
+-2- Let <tt>test</tt> be the invented function:
+</p>
+<blockquote>
+<pre>
+To test(<ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins> (&amp;f)()) {
+  return f();
+}
+</pre>
+</blockquote>
+<p>
+for some types <tt>From</tt> and <tt>To</tt>, and let <tt>f</tt> be a function with no arguments and return type
+<tt><ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins></tt> such that <tt>f()</tt> is equality-preserving.
+<tt>From</tt> and <tt>To</tt> model <tt>convertible_to&lt;From, To&gt;</tt> only if:
+</p>
+<ol style="list-style-type:none">
+<li><p>(2.1) &mdash; <tt>To</tt> is not an object or reference-to-object type, or <tt>static_cast&lt;To&gt;(f())</tt>
+is equal to <tt>test(f)</tt>.</p></li>
+<li><p>(2.2) &mdash; <tt><ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins></tt> is not a reference-to-object type, or</p>
+<ol style="list-style-type:none">
+<li><p>(2.2.1) &mdash; If <tt><ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins></tt> is an rvalue reference 
+to a non const-qualified type, the resulting state of the object referenced by <tt>f()</tt> after either above expression is valid
+but unspecified (<sref ref="[lib.types.movedfrom]"/>).</p></li>
+<li><p>(2.2.2) &mdash; Otherwise, the object referred to by <tt>f()</tt> is not modified by either above expression.</p></li>
+</ol>
+</li>
+</ol>
 </blockquote>
 </blockquote>
 </li>
