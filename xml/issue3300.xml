@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3300" status="New">
+<title>Non-array <tt>ssize</tt> overload is underconstrained</title>
+<section><sref ref="[iterator.range]"/></section>
+<submitter>Casey Carter</submitter>
+<date>27 Sep 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The overload of <tt>ssize</tt> specified in <sref ref="[iterator.range]"/>/18 has no constraints, 
+yet it specializes <tt>make_signed_t</tt> which has a precondition that its type parameter is an 
+integral type or enumeration but not <tt>bool</tt> (<sref ref="[meta.trans.sign]"/>). This 
+precondition needs to be propagated to <tt>ssize</tt> as "<i>Mandates</i> [or <i>Constraints</i>]: 
+<tt>decltype(c.size())</tt> [meets the requirements for the type argument to <tt>make_signed</tt>]". 
+"<i>Mandates</i>" seems to be more in line with LWG guidance since there are no traits nor concepts 
+that observe <tt>ssize</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.range]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C&gt; constexpr auto ssize(const C&amp; c)
+  -&gt; common_type_t&lt;ptrdiff_t, make_signed_t&lt;decltype(c.size())&gt;&gt;;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Mandates:</i> <tt>decltype(c.size())</tt> is a (possibly <i>cv</i>-qualified) integral or 
+enumeration type but not a <tt>bool</tt> type.</ins>
+<p/>
+-18- <i>Returns:</i>
+<blockquote>
+<pre>
+static_cast&lt;common_type_t&lt;ptrdiff_t, make_signed_t&lt;decltype(c.size())&gt;&gt;&gt;(c.size())
+</pre>
+</blockquote>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+</issue>
