@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3304" status="New">
+<title>Isn't <tt>[[nodiscard]]</tt> necessary for allocate functions of <tt>std::polymorphic_allocator</tt>?</title>
+<section><sref ref="[mem.poly.allocator.class]"/></section>
+<submitter>Hiroaki Ando</submitter>
+<date>16 Oct 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>[[nodiscard]]</tt> is specified for <tt>std::polymorphic_allocator&lt;&gt;::allocate()</tt>.
+<p/>
+But the allocate functions added with <a href="https://wg21.link/p0339r6">P0339R6</a> doesn't have it.
+<p/>
+Isn't <tt>[[nodiscard]]</tt> necessary for these functions?
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[mem.poly.allocator.class]"/>, class template <tt>polymorphic_allocator</tt> 
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::pmr {
+  template&lt;class Tp = byte&gt; class polymorphic_allocator {
+    [&hellip;]
+    <i>// <sref ref="[mem.poly.allocator.mem]"/>, member functions</i>
+    [[nodiscard]] Tp* allocate(size_t n);
+    void deallocate(Tp* p, size_t n);
+
+    <ins>[[nodiscard]]</ins> void* allocate_bytes(size_t nbytes, size_t alignment = alignof(max_align_t));
+    void deallocate_bytes(void* p, size_t nbytes, size_t alignment = alignof(max_align_t));
+    template&lt;class T&gt; <ins>[[nodiscard]]</ins> T* allocate_object(size_t n = 1);
+    template&lt;class T&gt; void deallocate_object(T* p, size_t n = 1);
+    template&lt;class T, class... CtorArgs&gt; <ins>[[nodiscard]]</ins> T* new_object(CtorArgs&amp;&amp;... ctor_args);
+    template&lt;class T&gt; void delete_object(T* p);  
+    [&hellip;]
+  };  
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[mem.poly.allocator.mem]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>[[nodiscard]]</ins> void* allocate_bytes(size_t nbytes, size_t alignment = alignof(max_align_t));
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <tt>return memory_rsrc-&gt;allocate(nbytes, alignment);</tt>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class T&gt;
+  <ins>[[nodiscard]]</ins> T* allocate_object(size_t n = 1);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Allocates memory suitable for holding an array of <tt>n</tt> objects of type <tt>T</tt>, as follows:
+<ol style="list-style-type: none">
+<li><p>(8.1) &mdash; if <tt>SIZE_MAX / sizeof(T) &lt; n</tt>, throws <tt>length_error</tt>,</p></li>
+<li><p>(8.2) &mdash; otherwise equivalent to:</p>
+<blockquote><pre>
+return static_cast&lt;T*&gt;(allocate_bytes(n*sizeof(T), alignof(T)));
+</pre></blockquote>
+</li>
+</ol>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class T, class CtorArgs...&gt;
+  <ins>[[nodiscard]]</ins> T* new_object(CtorArgs&amp;&amp;... ctor_args);
+</pre>
+<blockquote>
+<p>
+-11- <i>Effects:</i> Allocates and constructs an object of type <tt>T</tt>, as follows.
+Equivalent to:
+<blockquote><pre>
+T* p = allocate_object&lt;T&gt;();
+try {
+  construct(p, std::forward&lt;CtorArgs&gt;(ctor_args)...);
+} catch (...) {
+  deallocate_object(p);
+  throw;
+}
+return p;
+</pre></blockquote>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
