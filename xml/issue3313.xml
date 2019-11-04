@@ -1,0 +1,120 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3313" status="New">
+<title><tt>join_view::iterator::operator--</tt> is incorrectly constrained</title>
+<section><sref ref="[range.join.iterator]"/></section>
+<submitter>United States</submitter>
+<date>04 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses US 294</b></p>
+
+<p>
+<tt>join_view::iterator::operator--</tt> is improperly constrained. In the <i>Effects:</i> clause in
+paragraph 14, we see the statement:
+</p>
+<blockquote><pre>
+inner_ = ranges::end(*--outer_);
+</pre></blockquote>
+<p>
+However, this only well-formed when <tt>end</tt> returns an iterator, not a sentinel. This
+requirement is not reflected in the constraints of the function(s).
+<p/>
+<b>Eric Niebler:</b>
+<p/>
+From the WD, <tt>join_view::iterator::operator--</tt> is specified as:
+</p>
+<blockquote><pre>
+constexpr iterator&amp; operator--()
+  requires ref_is_glvalue &amp;&amp; bidirectional_range&lt;Base&gt; &amp;&amp;
+    bidirectional_range&lt;range_reference_t&lt;Base&gt;&gt;;
+</pre>
+-14- <i>Effects:</i> Equivalent to:
+<blockquote><pre>
+if (outer_ == ranges::end(parent_-&gt;base_))
+  inner_ = ranges::end(*--outer_);
+while (inner_ == ranges::begin(*outer_))
+  inner_ = ranges::end(*--outer_);
+--inner_;
+return *this;
+</pre></blockquote>
+</blockquote>
+<p>
+The trouble is from the lines that do:
+</p>
+<blockquote><pre>
+  inner_ = ranges::end(*--outer_);
+</pre></blockquote>
+<p>
+Clearly this will only compile when <tt>*--outer</tt> returns a <tt>common_range</tt>, but 
+nowhere is that requirement stated.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.join.iterator]"/>, class template <tt>join_view::iterator</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr iterator&amp; operator--()
+  requires ref_is_glvalue &amp;&amp; bidirectional_range&lt;Base&gt; &amp;&amp;
+           bidirectional_range&lt;range_reference_t&lt;Base&gt;&gt; <ins>&amp;&amp;
+           common_range&lt;range_reference_t&lt;Base&gt;&gt;</ins>;
+
+constexpr iterator operator--(int)
+  requires ref_is_glvalue &amp;&amp; bidirectional_range&lt;Base&gt; &amp;&amp;
+           bidirectional_range&lt;range_reference_t&lt;Base&gt;&gt; <ins>&amp;&amp;
+           common_range&lt;range_reference_t&lt;Base&gt;&gt;</ins>;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.join.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr iterator&amp; operator--()
+  requires ref_is_glvalue &amp;&amp; bidirectional_range&lt;Base&gt; &amp;&amp;
+           bidirectional_range&lt;range_reference_t&lt;Base&gt;&gt; <ins>&amp;&amp;
+           common_range&lt;range_reference_t&lt;Base&gt;&gt;</ins>;
+</pre>
+<blockquote>
+<p>
+-14- <i>Effects:</i> Equivalent to:
+<blockquote><pre>
+if (outer_ == ranges::end(parent_-&gt;base_))
+  inner_ = ranges::end(*--outer_);
+while (inner_ == ranges::begin(*outer_))
+  inner_ = ranges::end(*--outer_);
+--inner_;
+return *this;
+</pre></blockquote>
+</p>
+</blockquote>
+<pre>
+constexpr iterator operator--(int)
+  requires ref_is_glvalue &amp;&amp; bidirectional_range&lt;Base&gt; &amp;&amp;
+           bidirectional_range&lt;range_reference_t&lt;Base&gt;&gt; <ins>&amp;&amp;
+           common_range&lt;range_reference_t&lt;Base&gt;&gt;</ins>;
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects:</i> Equivalent to:
+<blockquote><pre>
+auto tmp = *this;
+--*this;
+return tmp;
+</pre></blockquote>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
