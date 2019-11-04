@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3314" status="New">
+<title>Is stream insertion behavior locale dependent when <tt>Period::type</tt> is <tt>micro</tt>?</title>
+<section><sref ref="[time.duration.io]"/></section>
+<submitter>Tom Honermann</submitter>
+<date>04 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[time.duration.io]"/> states:
+</p>
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Rep, class Period>
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+-3- The units suffix depends on the type <tt>Period::type</tt> as follows:
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+<li><p>(3.5) &mdash; Otherwise, if <tt>Period::type</tt> is <tt>micro</tt>, the suffix is <tt>"&micro;s"</tt> 
+(<tt>"\u00b5\u0073"</tt>).</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+<p/>
+[&hellip;]
+<p/>
+-4- If <tt>Period::type</tt> is <tt>micro</tt>, but the character U+00B5 cannot be represented in the 
+encoding used for <tt>charT</tt>, the unit suffix <tt>"us"</tt> is used instead of <tt>"&micro;s"</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+<p>
+Which encoding is intended by "the encoding used for charT"?  There are two candidates:
+</p>
+<ol>
+<li><p>The associated execution character set as defined by <sref ref="[lex.charset]"/> p3 used to encode 
+character and string literals (e.g., the "execution wide-character set" for <tt>wchar_t</tt>).</p></li>
+<li><p>The locale dependent character set used by the <tt>std::locale ctype</tt> and <tt>codecvt</tt> 
+facets as specified in <sref ref="[category.ctype]"/>, sometimes referred to as the 
+"native character set".</p></li>
+</ol>
+<p>
+The behavior should not be dependent on <tt>locale</tt> and should therefore be specified in terms of 
+the execution character sets.
+<p/>
+The execution character set is implementation defined and some implementations allow the choice of 
+execution character set to be specified via a compiler option or determined based on the locale active 
+when the compiler is run. For example, the Microsoft compiler, when run on a Windows system with regional 
+language settings configured for "English (United States)", will use Windows-1252 for the execution 
+character set, but allows this choice to be overridden with the <tt>/execution-charset</tt> compiler 
+option. The Microsoft compiler might therefore use <tt>"us"</tt> by default, but <tt>"&micro;s"</tt> 
+when invoked with the <tt>/execution-charset:utf-8</tt> or <tt>/execution-charset:.437</tt> options. 
+In the latter two cases, the string contents would contain <tt>"\xb5\x73"</tt> and <tt>"\xe6\x73"</tt> 
+respectively (Unicode and Windows code page 437 map &micro; (U+00B5, MICRO SIGN) to different code points).
+<p/>
+This resolution relies on the character set for the locale used at run-time being compatible with the 
+execution character set if the produced string is to be displayed correctly when written to a terminal 
+or console. This is a typical requirement for character and string literals but is more strongly 
+relevant for this issue since &micro; lacks representation in many character sets. Additionally, if the 
+stream is imbued with a <tt>std::codecvt</tt> facet, the facet must provide appropriate conversion 
+support for behavior to be well defined.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.duration.io]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> "implementation's native character set" is used in <sref ref="[locale.ctype]"/> 
+and <sref ref="[locale.codecvt]"/> to refer to the locale dependent character encoding.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Rep, class Period>
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+-3- The units suffix depends on the type <tt>Period::type</tt> as follows:
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+<li><p>(3.5) &mdash; Otherwise, if <tt>Period::type</tt> is <tt>micro</tt>, the suffix is <tt>"&micro;s"</tt> 
+(<tt>"\u00b5\u0073"</tt>).</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+<p/>
+[&hellip;]
+<p/>
+-4- If <tt>Period::type</tt> is <tt>micro</tt>, but the character U+00B5 <del>cannot be represented in the 
+encoding used</del><ins>lacks representation in the execution character set</ins> for <tt>charT</tt>, the 
+unit suffix <tt>"us"</tt> is used instead of <tt>"&micro;s"</tt>. <ins>If <tt>"&micro;s"</tt> is used but 
+the implementation's native character set lacks representation for U+00B5 and the stream is associated 
+with a terminal or console, or if the stream is imbued with a <tt>std::codecvt</tt> facet that lacks 
+conversion support for the character, then the result is unspecified.</ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
