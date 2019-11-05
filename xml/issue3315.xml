@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3315" status="New">
+<title>Correct Allocator Default Behavior</title>
+<section><sref ref="[allocator.requirements]"/></section>
+<submitter>United States</submitter>
+<date>04 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses US 162/US 163</b></p>
+
+<p>
+<b><a href="https://github.com/cplusplus/nbballot/issues/160">US 162</a>:</b>
+<p/>
+The default behavior for <tt>a.destroy</tt> is now to call <tt>destroy_at</tt>
+<p/>
+Proposed change:
+<p/>
+Replace "default" entry with: <tt>destroy_at(c)</tt>
+</p>
+<p>
+<b><a href="https://github.com/cplusplus/nbballot/issues/161">US 163</a>:</b>
+<p/>
+The default behavior for <tt>a.construct</tt> is now to call <tt>construct_at</tt>
+<p/>
+Proposed change:
+<p/>
+Replace "default" entry with: <tt>construct_at(c, std::forward&lt;Args&gt;(args)...)</tt>
+<p/>
+<b>Dietmar K&uuml;hl:</b>
+<p/>
+In Table 34 [tab:cpp17.allocator] the behavior of <tt>a.construct(c, args)</tt> and
+<tt>a.destroy(c)</tt> are described to have a default behavior of 
+<tt>::new ((void*)c) C(forward&lt;Args&gt;(args))</tt> and <tt>c-&gt;~C()</tt>, respectively.
+However, this table doesn't actually define what is happening if these operations are omitted: 
+The behavior is provided when using an allocator is used via <tt>std::allocator_traits</tt> 
+and is, thus, defined by the corresponding <tt>std::allocator_traits</tt> functions. These
+functions are specified in <sref ref="[allocator.traits.members]"/> paragraphs 5 and 6 to call 
+<tt>construct_at(c, std::forward&lt;Args&gt;(args)</tt> and <tt>destroy_at(p)</tt>, respectively.  
+The text in the table should be updated to match the actual behavior.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[allocator.requirements]"/>, Table [tab:cpp17.allocator] 
+"<tt><i>Cpp17Allocator</i></tt> requirements" as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 34 &mdash; <tt><i>Cpp17Allocator</i></tt> requirements [tab:cpp17.allocator]</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+<th>Default</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.construct(c, args)</tt>
+</td>
+<td>
+(not used)
+</td>
+<td>
+<i>Effects:</i> Constructs an object of type <tt>C</tt> at <tt>c</tt>
+</td>
+<td>
+<tt><del>::new ((void*)c) C(</del><ins>construct_at(c, std::</ins>forward&lt;Args&gt;(args)...)</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a.destroy(c)</tt>
+</td>
+<td>
+(not used)
+</td>
+<td>
+<i>Effects:</i> Destroys the object at <tt>c</tt>
+</td>
+<td>
+<tt><del>c-&gt;~C()</del><ins>destroy_at(c)</ins></tt>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
