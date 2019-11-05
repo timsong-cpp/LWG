@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3316" status="New">
+<title> Correctly define epoch for <tt>utc_clock</tt> / <tt>utc_timepoint</tt></title>
+<section><sref ref="[time.clock.utc.overview]"/></section>
+<submitter>Great Britain</submitter>
+<date>05 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/329">GB 333</a></b></p>
+
+<p>
+UTC epoch is not correctly defined UTC has an officially recorded epoch of 1/1/1972 00:00:00 
+and is 10 seconds behind TAI.
+This can be confirmed through reference to the 
+<a href="https://www.bipm.org/cc/CCTF/Allowed/18/CCTF_09-32_noteUTC.pdf#page=6">BIPM</a> (the 
+body that oversees international metrology)
+</p>
+<blockquote><p>
+"The defining epoch of 1 January 1972, <tt>0 h 0m 0 s</tt> UTC was set 10 s behind TAI, which
+was the approximate accumulated difference between TAI and UT1 since the inception of
+TAI in 1958, and a unique fraction of a second adjustment was applied so that UTC would
+differ from TAI by an integral number of seconds. The recommended maximum departure of 
+UTC from UT1 was 0.7 s. The term "leap second" was introduced for the stepped second."
+</p></blockquote>
+<p>
+Proposed change:
+<p/>
+<tt>utc_clock</tt> and <tt>utc_timepoint</tt> should correctly report relative to the official 
+UTC epoch. 27.2.2.1 footnote 1 should read: 
+</p>
+<blockquote><p>
+In contrast to <tt>sys_time</tt>, which does not take leap seconds into account, 
+<tt>utc_clock</tt> and its associated <tt>time_point</tt>, <tt>utc_time</tt>, count time,
+including leap seconds, since 1972-01-01 00:00:00 UTC. [<i>Example:</i> 
+<tt>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{1972y/January/1}}).time_since_epoch()</tt> 
+is <tt>0s</tt>. <tt>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{2000y/January/1}}).time_since_epoch()</tt>
+is <tt>883'612'822</tt>, which is <tt>10'197 * 86'400s + 22s</tt>. &mdash; <i>end example</i>]
+</p></blockquote>
+<p>
+<b>Howard Hinnant:</b>
+<p/>
+Clarify that the epoch of <code>utc_clock</code> is intended to be <tt>1970-01-01</tt>.
+<p/>
+Rationale: The main use case of <code>utc_clock</code> is to get the correct number of seconds 
+when subtracting time points straddling a leap second insertion point, and this computation 
+is independent of the epoch. Furthermore learning/teaching that <code>utc_clock</code> is 
+<code>system_clock</code> except that <code>utc_clock</code> includes leap seconds is easier.  
+And this fact is more easily understood when comparing the underlying <code>.time_since_epoch()</code> 
+of equivalent time points from each clock.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.clock.utc.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- In contrast to <tt>sys_time</tt>, which does not take leap seconds into account, <tt>utc_clock</tt> 
+and its associated <tt>time_point</tt>, <tt>utc_time</tt>, count time, including leap seconds, since 
+1970-01-01 00:00:00 UTC. <ins>[<i>Note:</i> The UTC time standard began on 
+1972-01-01 00:00:10 TAI. To measure time since this epoch instead, one can add/subtract the 
+constant <tt>sys_days{1972y/1/1} - sys_days{1970y/1/1}</tt> (<tt>63'072'000s</tt>) from the 
+<tt>utc_time</tt> &mdash; <i>end note</i>]</ins> [<i>Example:</i> <tt>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{1970y/January/1}}).time_since_epoch()</tt> is <tt>0s</tt>. 
+<tt>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{2000y/January/1}}).time_since_epoch()</tt>
+is <tt>946'684'822s</tt>, which is <tt>10'957 * 86'400s + 22s</tt>. &mdash; <i>end example</i>]
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
