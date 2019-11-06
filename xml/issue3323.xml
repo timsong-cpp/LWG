@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3323" status="New">
+<title><tt><i>has-tuple-element</i></tt> helper concept needs <tt>convertible_to</tt></title>
+<section><sref ref="[range.elements.view]"/></section>
+<submitter>Great Britain</submitter>
+<date>06 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/295">GB 299</a></b></p>
+
+<p>
+<tt><i>has-tuple-element</i></tt> helper concept needs <tt>convertible_to</tt>
+<p/>
+The exposition-only <tt><i>has-tuple-element</i></tt> concept (for <tt>elements_view</tt>) is defined as
+</p>
+<blockquote><pre>
+template&lt;class T, size_t N&gt;
+concept <i>has-tuple-element</i> = <i>exposition only</i>
+  requires(T t) {
+    typename tuple_size&lt;T&gt;::type;
+    requires N &lt; tuple_size_v&lt;T&gt;;
+    typename tuple_element_t&lt;N, T&gt;;
+    { get&lt;N&gt;(t) } -&gt; const tuple_element_t&lt;N, T&gt;&amp;;
+  };
+</pre></blockquote>
+<p>
+However, the return type constraint for <tt>{ get&lt;N&gt;(t) }</tt> is no longer valid 
+under the latest concepts changes
+<p/>
+Proposed change:
+</p>
+<p>
+Change to:
+</p>
+<blockquote><pre>
+template&lt;class T, size_t N&gt;
+concept <i>has-tuple-element</i> = <i>exposition only</i>
+  requires(T t) {
+    typename tuple_size&lt;T&gt;::type;
+    requires N &lt; tuple_size_v&lt;T&gt;;
+    typename tuple_element_t&lt;N, T&gt;;
+    { get&lt;N&gt;(t) } -&gt; convertible_to&lt;const tuple_element_t&lt;N, T&gt;&amp;&gt;;
+  };
+</pre></blockquote>
+<p>
+<b>Jonathan Wakely:</b>
+<p/>
+The NB comment says "The return type constraint for <tt>{ get(t) }</tt> is no longer valid under 
+the latest concepts changes." The changes referred to are those in <a href="https://wg21.link/p1452r2">P1452R2</a>. 
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.elements.view]"/>, class template <tt>elements_view</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class T, size_t N&gt;
+  concept <i>has-tuple-element</i> = <i>// exposition only</i>
+    requires(T t) {
+      typename tuple_size&lt;T&gt;::type;
+      requires N &lt; tuple_size_v&lt;T&gt;;
+      typename tuple_element_t&lt;N, T&gt;;
+      { get&lt;N&gt;(t) } -&gt; <ins>convertible_to&lt;</ins>const tuple_element_t&lt;N, T&gt;&amp;<ins>&gt;</ins>;
+    };
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+</issue>
