@@ -94,9 +94,8 @@ but unspecified (<sref ref="[lib.types.movedfrom]"/>).</p></li>
 Due to the concept renaming caused by <a href="http://wg21.link/p1754r1">P1754R1</a> the proposed
 wording is outdated and needs adjustments.
 </p>
-</discussion>
-
-<resolution>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>This wording is relative to <a href="http://wg21.link/n4830">N4830</a>, and also resolves LWG <iref ref="3151"/>.</p>
 
 <ol>
@@ -139,6 +138,68 @@ is equal to <tt>test(f)</tt>.</p></li>
 <li><p>(2.2) &mdash; <tt><ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins></tt> is not a reference-to-object type, or</p>
 <ol style="list-style-type:none">
 <li><p>(2.2.1) &mdash; If <tt><ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins></tt> is an rvalue reference 
+to a non const-qualified type, the resulting state of the object referenced by <tt>f()</tt> after either above expression is valid
+but unspecified (<sref ref="[lib.types.movedfrom]"/>).</p></li>
+<li><p>(2.2.2) &mdash; Otherwise, the object referred to by <tt>f()</tt> is not modified by either above expression.</p></li>
+</ol>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+<note>2019-11-16 Tim updates PR based on discussion in Belfast LWG evening session</note>
+<p>
+"glvalue" is incorrect because we want to allow testing <tt>convertible_to&lt;void, void&gt;</tt>. It's also less than clear
+how the "expression" and "a particular type" in the first sentence correspond to the parameters of the concept.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4830">N4835</a>, and also resolves LWG <iref ref="3151"/>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[concept.convertible]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The <tt>convertible_to</tt> concept <ins>for types <tt>From</tt> and <tt>To</tt></ins> requires an expression
+<ins><tt>E</tt> such that <tt>decltype((E))</tt> is <tt>add_rvalue_reference_t&lt;From&gt;</tt></ins>
+<del>of a particular type and value category</del> to be both implicitly and explicitly convertible to 
+<del>some other type</del> <ins><tt>To</tt></ins>. The implicit and explicit conversions are required to produce equal results.
+</p>
+
+<pre>
+template&lt;class From, class To&gt;
+  concept convertible_to =
+    is_convertible_v&lt;From, To&gt; &amp;&amp;
+    requires(<ins>add_rvalue_reference_t&lt;</ins>From<ins>&gt;</ins> (&amp;f)()) {
+      static_cast&lt;To&gt;(f());
+    };
+</pre>
+<blockquote>
+<p>
+-2- Let <ins><tt>FromR</tt> be <tt>add_rvalue_reference_t&lt;From&gt;</tt> and</ins> <tt>test</tt> be the invented function:
+</p>
+<blockquote>
+<pre>
+To test(From<ins>R</ins> (&amp;f)()) {
+  return f();
+}
+</pre>
+</blockquote>
+<p>
+for some types <tt>From</tt> and <tt>To</tt>, and let <tt>f</tt> be a function with no arguments and return type
+<tt>From<ins>R</ins></tt> such that <tt>f()</tt> is equality-preserving.
+<tt>From</tt> and <tt>To</tt> model <tt>convertible_to&lt;From, To&gt;</tt> only if:
+</p>
+<ol style="list-style-type:none">
+<li><p>(2.1) &mdash; <tt>To</tt> is not an object or reference-to-object type, or <tt>static_cast&lt;To&gt;(f())</tt>
+is equal to <tt>test(f)</tt>.</p></li>
+<li><p>(2.2) &mdash; <tt>From<ins>R</ins></tt> is not a reference-to-object type, or</p>
+<ol style="list-style-type:none">
+<li><p>(2.2.1) &mdash; If <tt>From<ins>R</ins></tt> is an rvalue reference 
 to a non const-qualified type, the resulting state of the object referenced by <tt>f()</tt> after either above expression is valid
 but unspecified (<sref ref="[lib.types.movedfrom]"/>).</p></li>
 <li><p>(2.2.2) &mdash; Otherwise, the object referred to by <tt>f()</tt> is not modified by either above expression.</p></li>
