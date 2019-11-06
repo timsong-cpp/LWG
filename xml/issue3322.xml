@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3322" status="New">
+<title>Add <tt>join_view::base()</tt> member function</title>
+<section><sref ref="[range.join.view]"/></section>
+<submitter>United States</submitter>
+<date>06 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/289">US 293</a></b></p>
+
+<p>
+<tt>join_view</tt> is missing a <tt>base()</tt> member for returning the underlying view. All the other
+range adaptors provide this.
+<p/>
+Proposed change:
+</p>
+<p>
+To the <tt>join_view</tt> class template add the member:
+</p>
+<blockquote><pre>
+constexpr V base() const { return base_; }
+</pre></blockquote>
+<p>
+<b>Jonathan Wakely:</b>
+<p/>
+The NB comment says "<code>join_view</code> is missing a <code>base()</code> member for returning the 
+underlying view. All the other range adaptors provide this."
+<p/>
+In fact, <tt>split_view</tt> and <tt>istream_view</tt> do not provide <tt>base()</tt> either. Of the 
+views that do define <tt>base()</tt>, all except <tt>all_view</tt> do so out-of-line, so the proposed 
+resolution adds it out-of-line too.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.join.view]"/>, class template <tt>join_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;input_range R&gt;
+  requires viewable_range&lt;R&gt; &amp;&amp; constructible_from&lt;V, all_view&lt;R&gt;&gt;
+constexpr explicit join_view(R&amp;&amp; r);
+
+<ins>constexpr V base() const;</ins>
+
+constexpr auto begin() {
+  return iterator&lt;<i>simple-view</i>&lt;V&gt;&gt;{*this, ranges::begin(base_)};
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.join.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_range R&gt;
+  requires viewable_range&lt;R&gt; &amp;&amp; constructible_from&lt;V, all_view&lt;R&gt;&gt;
+constexpr explicit join_view(R&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> [&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>constexpr V base() const;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return base_;</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+</issue>
