@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3321" status="New">
+<title><tt>uninitialized_construct_using_allocator</tt> should use <tt>construct_at</tt></title>
+<section><sref ref="[allocator.uses.construction]"/></section>
+<submitter>United States</submitter>
+<date>06 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/210">US 213</a></b></p>
+
+<p>
+<tt>uninitialized_construct_using_allocator</tt> should use <tt>construct_at</tt> instead 
+of <tt>operator new</tt>
+<p/>
+Proposed change:
+</p>
+<blockquote>
+<p>
+<i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return <del>::new(static_cast&lt;void*&gt;(p))</del>
+<ins>construct_at(p,</ins>
+<del>T(</del>make_obj_using_allocator&lt;T&gt;(alloc,
+std::forward&lt;Args&gt;(args)...))<ins>)</ins>;
+</pre></blockquote>
+</blockquote>
+<p>
+<b>Tim Song:</b>
+<p/>
+The proposed wording in the NB comment is incorrect, because it prevents guaranteed elision.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[allocator.uses.construction]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class Alloc, class... Args&gt;
+  constexpr T* uninitialized_construct_using_allocator(T* p, const Alloc&amp; alloc, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-17- <i>Effects:</i> Equivalent to:
+<blockquote><pre>
+return <del>::new(static_cast&lt;void*&gt;(p))
+  T(make_obj_using_allocator&lt;T&gt;(</del><ins>apply([&amp;](auto&amp;&amp;...xs) {
+         return construct_at(p, std::forward&lt;decltype(xs)&gt;(xs)...);
+     }, uses_allocator_construction_args&lt;T&gt;(</ins>alloc, std::forward&lt;Args&gt;(args)...));
+</pre></blockquote>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+</issue>
