@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3320" status="New">
+<title><tt>span::cbegin/cend</tt> methods produce different results than <tt>std::[ranges::]cbegin/cend</tt></title>
+<section><sref ref="[span.iterators]"/></section>
+<submitter>Poland</submitter>
+<date>06 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/243">PL 247</a></b></p>
+
+<p>
+<tt>span&lt;T&gt;</tt> provides a <tt>const</tt>-qualified <tt>begin()</tt> method and <tt>cbegin()</tt> 
+method that produces a different result if <tt>T</tt> is not <tt>const</tt>-qualifed:
+</p>
+<ol>
+<li><p><tt>begin()</tt> produces mutable iterator over <tt>T</tt> (as if <tt>T*</tt>)</p></li>
+<li><p><tt>cbegin()</tt> produces <tt>const</tt> iterator over <tt>T</tt> (as if <tt>T const*</tt>)</p></li>
+</ol>
+<p>
+As consequence for the object <tt>s</tt> of type <tt>span&lt;T&gt;</tt>, the call to the 
+<tt>std::cbegin(s)/std::ranges::cbegin(s)</tt> produces different result than <tt>s.cbegin()</tt>.
+<p/>
+Proposed change:
+<p/>
+Change <tt>span&lt;T&gt;</tt> members <tt>cbegin()/cend()/crbegin()/crend()/const_iterator</tt> 
+to be equivalent to <tt>begin()/end()/rbegin()/rend()/iterator</tt> respectively.
+</p>
+<p>
+<b>Tomasz Kami&nacute;ski:</b>
+<p/>
+Per <a href="https://github.com/cplusplus/nbballot/issues/243">LEWG discussion in Belfast</a> these 
+methods and related typedefs should be removed.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[span.overview]"/>, class template <tt>span</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class ElementType, size_t Extent = dynamic_extent&gt;
+  class span {
+  public:
+    <i>// constants and types</i>
+    using element_type = ElementType;
+    using value_type = remove_cv_t&lt;ElementType&gt;;
+    using index_type = size_t;
+    using difference_type = ptrdiff_t;
+    using pointer = element_type*;
+    using const_pointer = const element_type*;
+    using reference = element_type&amp;;
+    using const_reference = const element_type&amp;;
+    using iterator = <i>implementation-defined</i>; <i>// see <sref ref="[span.iterators]"/></i>
+    <del>using const_iterator = <i>implementation-defined</i>;</del>
+    using reverse_iterator = std::reverse_iterator&lt;iterator&gt;;
+    <del>using const_reverse_iterator = std::reverse_iterator&lt;const_iterator&gt;;</del>
+    static constexpr index_type extent = Extent;
+    
+    [&hellip;]
+    <i>// <sref ref="[span.iterators]"/>, iterator support</i>
+    constexpr iterator begin() const noexcept;
+    constexpr iterator end() const noexcept;
+    <del>constexpr const_iterator cbegin() const noexcept;
+    constexpr const_iterator cend() const noexcept;</del>
+    constexpr reverse_iterator rbegin() const noexcept;
+    constexpr reverse_iterator rend() const noexcept;
+    <del>constexpr const_reverse_iterator crbegin() const noexcept;
+    constexpr const_reverse_iterator crend() const noexcept;</del>
+    friend constexpr iterator begin(span s) noexcept { return s.begin(); }
+    friend constexpr iterator end(span s) noexcept { return s.end(); }
+    [&hellip;]
+  };
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[span.iterators]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+using iterator = <i>implementation-defined</i>;
+<del>using const_iterator = <i>implementation-defined</i>;</del>
+</pre>
+<blockquote>
+<p>
+-1- The type<del>s</del> model<ins>s</ins> <tt>contiguous_iterator</tt> 
+(<sref ref="[iterator.concept.contiguous]"/>), meet<ins>s</ins> the <i>Cpp17RandomAccessIterator</i> 
+requirements (<sref ref="[random.access.iterators]"/>), and meet<ins>s</ins> the requirements for 
+constexpr iterators (<sref ref="[iterator.requirements.general]"/>). All requirements on container 
+iterators (<sref ref="[container.requirements]"/>) apply to <tt>span::iterator</tt> <del>and 
+<tt>span::const_iterator</tt></del> as well.
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+<del>constexpr const_iterator cbegin() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-6- <i>Returns:</i> A constant iterator referring to the first element in the span. If 
+<tt>empty()</tt> is <tt>true</tt>, then it returns the same value as <tt>cend()</tt>.</del>
+</p>
+</blockquote>
+<pre>
+<del>constexpr const_iterator cend() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-7- <i>Returns:</i> A constant iterator which is the past-the-end value.</del>
+</p>
+</blockquote>
+<pre>
+<del>constexpr const_reverse_iterator crbegin() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-8- <i>Effects:</i> Equivalent to: <tt>return const_reverse_iterator(cend());</tt></del>
+</p>
+</blockquote>
+<pre>
+<del>constexpr const_reverse_iterator crend() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-9- <i>Effects:</i> Equivalent to: <tt>return const_reverse_iterator(cbegin());</tt></del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+</issue>
