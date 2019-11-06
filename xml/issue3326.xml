@@ -1,0 +1,158 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3326" status="New">
+<title><tt>enable_view</tt> has false positives</title>
+<section><sref ref="[range.view]"/></section>
+<submitter>Germany</submitter>
+<date>06 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/278">DE 282</a></b></p>
+
+<p>
+"Since the difference between range and view is largely semantic, the
+two are differentiated with the help of <tt>enable_view</tt>." (&sect;3)
+<p/>
+<tt>enable_view</tt> is designed as on opt-in trait to specify that a type is a
+view. It defaults to true for types derived from <tt>view_base</tt> (&sect;4.2) which
+is clearly a form of opt-in. But it also employs a heuristic assuming that anything with 
+<tt>iterator == const_iterator</tt> is also view (&sect;4.3).
+<p/>
+This is a very poor heuristic, the same paragraph already needs to define six
+exceptions from this rule for standard library types (&sect;4.2).
+<p/>
+Experience in working with range-v3 has revealed multiple of our own library types as being 
+affected from needing to opt-out from the "auto-opt-in", as well. This is counter-intuitive: 
+something that was never designed to be a view shouldn't go through hoops so that it isn't
+treated as a view.
+<p/>
+Proposed change:
+</p>
+<p>
+Make <tt>enable_view</tt> truly be opt-in by relying only on explicit specialisation or 
+inheritance from <tt>view_base</tt>. This means removing 24.4.4 &sect;4.2 - &sect;4.4 and 
+introducing new &sect;4.2 "Otherwise, false".
+<p/>
+Double-check if existing standard library types like <tt>basic_string_view</tt> and <tt>span</tt> 
+need to opt-in to being a view now.
+</p>
+<p>
+<b>Casey Carter:</b>
+<p/>
+<tt>enable_view</tt> (<sref ref="[range.view]"/>) is designed as on opt-in trait to specify that a type 
+is a view. It defaults to <tt>true</tt> for types derived from <tt>view_base</tt> &mdash; which is a 
+form of opt-in &mdash; and it also employs a heuristic. Unfortunately, the heuristic has false positives. 
+The working draft itself includes six exceptions to the heuristic for standard library types. Since 
+false positives are much more problematic for users than false negatives, we should eliminate the heuristic.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  inline constexpr bool enable_view = <del><i>see below</i></del><ins>derived_from&lt;T, view_base&gt;</ins>;
+</pre>
+<blockquote>
+<p>
+<del>-4- <i>Remarks:</i> For a type <tt>T</tt>, the default value of <tt>enable_view&lt;T&gt;</tt> is:</del>
+<ol style="list-style-type: none">
+<li><p><del>(4.1) &mdash; If <tt>derived_from&lt;T, view_base&gt;</tt> is <tt>true</tt>, 
+<tt>true</tt>.</del></p></li>
+<li><p><del>(4.2) &mdash; Otherwise, if <tt>T</tt> is a specialization of class template 
+<tt>initializer_list</tt> (<sref ref="[support.initlist]"/>), <tt>set</tt> (<sref ref="[set]"/>),
+<tt>multiset</tt> (<sref ref="[multiset]"/>), <tt>unordered_set</tt> (<sref ref="[unord.set]"/>), 
+<tt>unordered_multiset</tt> (<sref ref="[unord.multiset]"/>), or <tt>match_results</tt>
+(<sref ref="[re.results]"/>), <tt>false</tt>.</del></p></li>
+<li><p><del>(4.3) &mdash; Otherwise, if both <tt>T</tt> and <tt>const T</tt> model <tt>range</tt> and 
+<tt>range_reference_t&lt;T&gt;</tt> is not the same type as <tt>range_reference_t&lt;const T&gt;</tt>, 
+<tt>false</tt>. [<i>Note:</i> Deep <tt>const</tt>-ness implies element ownership, whereas shallow const-ness 
+implies reference semantics. &mdash; <i>end note</i>]</del></p></li>
+<li><p><del>(4.4) &mdash; Otherwise, true.</del></p></li>
+</ol>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[string.view.synop]"/>, header <tt>&lt;string_view&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  <i>// <sref ref="[string.view.template]"/>, class template basic_string_view</i>
+  template&lt;class charT, class traits = char_traits&lt;charT&gt;&gt;
+  class basic_string_view;
+  
+  <ins>template&lt;class charT, class traits&gt;
+    inline constexpr bool ranges::enable_view&lt;basic_string_view&lt;charT, traits&gt;&gt; = true;</ins>
+    
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[span.syn]"/>, header <tt>&lt;apsn&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  <i>// constants</i>
+  inline constexpr size_t dynamic_extent = numeric_limits&lt;size_t&gt;::max();
+  
+  <i>// <sref ref="[views.span]"/>, class template span</i>
+  template&lt;class ElementType, size_t Extent = dynamic_extent&gt;
+  class span;
+    
+  <ins>template&lt;class ElementType, size_t Extent&gt;
+    inline constexpr bool ranges::enable_view&lt;span&lt;ElementType, Extent&gt;&gt; = Extent == 0 || 
+      Extent == dynamic_extent;</ins>
+    
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.split.outer.value]"/>, class <tt>split_view::outer_iterator::value_type</tt>
+synopsis, as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The following applies the proposed wording for LWG <iref ref="3276"/>]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class V, class Pattern&gt;
+  template&lt;bool Const&gt;
+  struct split_view&lt;V, Pattern&gt;::outer_iterator&lt;Const&gt;::value_type 
+    <ins>: view_interface&lt;value_type&gt;</ins> {
+  private:
+    outer_iterator i_ = outer_iterator(); <i>// exposition only</i>
+  public:
+    value_type() = default;
+    constexpr explicit value_type(outer_iterator i);
+
+    constexpr inner_iterator&lt;Const&gt; begin() const;
+    constexpr default_sentinel_t end() const;
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+</issue>
