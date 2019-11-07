@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3329" status="New">
+<title><tt>totally_ordered_with</tt> both directly and indirectly requires <tt>common_reference_with</tt></title>
+<section><sref ref="[concept.totallyordered]"/></section>
+<submitter>United States</submitter>
+<date>07 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/199">US 201</a></b></p>
+
+<p>
+The <tt>totally_ordered_with&lt;T, U&gt;</tt> redundantly requires both
+<tt>common_reference_with&lt;const remove_reference_t&amp;, const
+remove_reference_t&amp;&gt;</tt> and <tt>equality_comparable_with&lt;T,
+U&gt;</tt> (which also has the <tt>common_reference_with</tt> requirement). The
+redundant requirement should be removed.
+<p/>
+Proposed change:
+<p/>
+Change the definition of <tt>totally_ordered_with</tt> to:
+</p>
+<blockquote>
+<pre>
+template&lt;class T, class U&gt;
+  concept totally_ordered_with =
+    totally_ordered&lt;T&gt; &amp;&amp; totally_ordered&lt;U&gt; &amp;&amp;
+    equality_comparable_with&lt;T, U&gt; &amp;&amp;
+    totally_ordered&lt;
+      common_reference_t&lt;
+        const remove_reference_t&lt;T&gt;&amp;,
+        const remove_reference_t&lt;U&lt;&amp;&gt;&gt; &amp;&amp;
+    requires(const remove_reference_t&lt;T&lt;&amp; t,
+                    const remove_reference_t&gt;U&gt;&amp; u) {
+      [&hellip; as before &hellip;]
+</pre>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[concept.totallyordered]"/> as indicated:</p>
+
+<blockquote>
+<p>
+For some type <tt>T</tt>, let <tt>a</tt>, <tt>b</tt>, and <tt>c</tt> be lvalues
+of type <tt>const remove_reference_t&lt;T&gt;</tt>. <tt>T</tt> models
+<tt>totally_ordered</tt> only if
+</p>
+<ol style="list-style-type: none">
+  <li><p>(1.1) &mdash; Exactly one of <tt>bool(a &lt; b)</tt>, <tt>bool(a &gt; b)</tt>, or <tt>bool(a == b)</tt> is
+  <tt>true</tt>.</p></li>
+  <li><p>(1.2) &mdash; If <tt>bool(a &lt; b)</tt> and <tt>bool(b &lt; c)</tt>, then <tt>bool(a &lt; c)</tt>.</p></li>
+  <li><p>(1.3) &mdash; <tt>bool(a &gt; b) == bool(b &lt; a)</tt>.</p></li>
+  <li><p>(1.4) &mdash; <tt>bool(a &lt;= b) == !bool(b &lt; a)</tt>.</p></li>
+  <li><p>(1.5) &mdash; <tt>bool(a &gt;= b) == !bool(a &lt; b)</tt>.</p></li>
+</ol>
+<pre>
+template&lt;class T, class U&gt;
+  concept totally_ordered_with =
+    totally_ordered&lt;T&gt; &amp;&amp; totally_ordered&lt;U&gt; &amp;&amp;
+    <del>common_reference_with&lt;const remove_reference_t&lt;T&gt;&amp;, const remove_reference_t&lt;U&gt;&amp;&gt; &amp;&amp;</del>
+    <ins>equality_comparable_with&lt;T, U&gt; &amp;&amp;</ins>
+    totally_ordered&lt;
+      common_reference_t&lt;
+        const remove_reference_t&lt;T&gt;&amp;,
+        const remove_reference_t&lt;U&gt;&amp;&gt;&gt; &amp;&amp;
+    <del>equality_comparable_with&lt;T, U&gt; &amp;&amp;</del>
+    requires(const remove_reference_t&lt;T&gt;&amp; t,
+             const remove_reference_t&lt;U&gt;&amp; u) {
+      { t &lt;  u } -&gt; boolean;
+      { t &gt;  u } -&gt; boolean;
+      { t &lt;= u } -&gt; boolean;
+      { t &gt;= u } -&gt; boolean;
+      { u &lt;  t } -&gt; boolean;
+      { u &gt;  t } -&gt; boolean;
+      { u &lt;= t } -&gt; boolean;
+      { u &gt;= t } -&gt; boolean;
+    };
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
