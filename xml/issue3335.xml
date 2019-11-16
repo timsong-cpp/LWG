@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3335" status="New">
+<title>Resolve C++20 NB comments US 273 and GB 274</title>
+<section><sref ref="[ranges.syn]"/></section>
+<submitter>United States/Great Britain</submitter>
+<date>08 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/269">US 273</a>/<a href="https://github.com/cplusplus/nbballot/issues/270">GB 274</a></b></p>
+
+<p>
+<b><a href="https://github.com/cplusplus/nbballot/issues/269">US 273</a>:</b>
+<p/>
+<tt>all_view</tt> is not a view like the others. For the other view types, <tt>foo_view{args...}</tt> is a valid
+way to construct an instance of type foo_view. However, <tt>all_view</tt> is just an alias to the type of 
+<tt>view::all(arg)</tt>, which could be one of several different types. <tt>all_view</tt> feels like the wrong name.
+<p/>
+Proposed change:
+<p/>
+Suggest renaming <tt>all_view</tt> to <tt>all_t</tt> and
+moving it into the <tt>views::</tt> namespace.
+</p>
+
+<p>
+<b><a href="https://github.com/cplusplus/nbballot/issues/270">GB 274</a>:</b>
+<p/>
+Add <tt>range_size_t</tt>.
+<p/>
+LEWG asked that <tt>range_size_t</tt> be removed from <a href="https://wg21.link/p1035">P1035</a>, 
+as they were doing a good job of being neutral w.r.t whether or not size-types were signed or 
+unsigned at the time. Now that we've got a policy on what size-types are, and that 
+<a href="https://wg21.link/p1522">P1522</a> and <a href="https://wg21.link/p1523">P1523</a> 
+have been adopted, it makes sense for there to be a <tt>range_size_t</tt>.
+<p/>
+Proposed change:
+<p/>
+Add to [ranges.syn]:
+</p>
+<blockquote><pre>
+template&lt;range R&gt;
+  using range_difference_t = iter_difference_t&lt;iterator_t&lt;R&gt;&gt;;
+<ins>template&lt;sized_range R&gt;
+  using range_size_t = decltype(ranges::size(declval&lt;R&amp;&gt;()));</ins>
+</pre></blockquote>
+<p>
+<b>David Olsen:</b>
+<p/>
+The proposed wording has been approved by LEWG and LWG in Belfast.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;initializer_list&gt;
+#include &lt;iterator&gt;
+
+namespace std::ranges {
+  [&hellip;]
+  <i>// <sref ref="[range.range]"/>, ranges</i>
+  template&lt;class T&gt;
+  concept range = <i>see below</i>;
+  [&hellip;]
+  template&lt;range R&gt;
+    using range_difference_t = iter_difference_t&lt;iterator_t&lt;R&gt;&gt;;
+  <ins>template&lt;sized_range R&gt;
+    using range_size_t = decltype(ranges::size(declval&lt;R&amp;&gt;()));</ins>
+  template&lt;range R&gt;
+    using range_value_t = iter_value_t&lt;iterator_t&lt;R&gt;&gt;;
+  [&hellip;]
+  <i>// <sref ref="[range.ref.view]"/>, all view</i>
+  namespace views { <del>inline constexpr <i>unspecified</i> all = <i>unspecified</i>; }</del>
+    <ins>inline constexpr <i>unspecified</i> all = <i>unspecified</i>;</ins>
+
+    template&lt;viewable_range R&gt;
+      using all_<ins>t</ins><del>view</del> = decltype(<del>views::</del>all(declval&lt;R&gt;()));
+  <ins>}</ins>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Globally replace all occurrences of <tt>all_view</tt> with <tt>views::all_t</tt>. There are 36 
+occurrences in addition to the definition in the <tt>&lt;ranges&gt;</tt> synopsis that was changed above.</p>
+</li>
+</ol>
+</resolution>
+</issue>
