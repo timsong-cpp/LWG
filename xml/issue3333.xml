@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3333" status="New">
+<title><tt>ranges::cbegin/ranges::cend</tt>, (and maybe <tt>ranges::crbegin/ranges::crend</tt>) are under-specified to allow rvalue-arrays</title>
+<section><sref ref="[range.access.cbegin]"/><sref ref="[range.access.cend]"/></section>
+<submitter>Christopher Di Bella</submitter>
+<date>06 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The following should be ill-formed, but is not, likely due to decay-to-pointer or reference collapsing.
+</p>
+<blockquote><pre>
+double x[321];
+ranges::cbegin(std::move(x)); <i>// should be ill-formed</i>
+ranges::cend(std::move(x));   <i>// should be ill-formed</i>
+</pre></blockquote>
+<p>
+This might be a problem for <tt>ranges::crbegin</tt> and <tt>ranges::crend</tt>, but I haven't implemented 
+any of <tt>rbegin</tt>, <tt>rend</tt>, <tt>crbegin</tt>, and <tt>crend</tt> to confirm as much.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Change <sref ref="[range.access.cbegin]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The name <tt>ranges::cbegin</tt> denotes a customization point object (<sref ref="[customization.point.object]"/>). 
+<ins>If t</ins><del>T</del>he expression <tt>ranges::<del>c</del>begin(E)</tt> for some subexpression 
+<tt>E</tt> of type <tt>T</tt> <ins>is well-formed, then the expression <tt>ranges::cbegin(E)</tt></ins> 
+is expression-equivalent to:
+<ol style="list-style-type: none">
+  <li><p>(1.1) &mdash; <tt>ranges::begin(static_cast&lt;const T&amp;&gt;(E))</tt> if <tt>E</tt> is an lvalue.</p></li>
+  <li><p>(1.2) &mdash; Otherwise, <tt>ranges::begin(static_cast&lt;const T&amp;&amp;&gt;(E))</tt>.</p></li>
+</ol>
+</p>
+</blockquote>
+</li>
+
+<li><p>Change <sref ref="[range.access.cend]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The name <tt>ranges::cend</tt> denotes a customization point object (<sref ref="[customization.point.object]"/>). 
+<ins>If t</ins><del>T</del>he expression <tt>ranges::<del>c</del>end(E)</tt> for some subexpression 
+<tt>E</tt> of type <tt>T</tt> <ins>is well-formed, then the expression <tt>ranges::cend(E)</tt></ins> 
+is expression-equivalent to:
+<ol style="list-style-type: none">
+  <li><p>(1.1) &mdash; <tt>ranges::end(static_cast&lt;const T&amp;&gt;(E))</tt> if <tt>E</tt> is an lvalue.</p></li>
+  <li><p>(1.2) &mdash; Otherwise, <tt>ranges::end(static_cast&lt;const T&amp;&amp;&gt;(E))</tt>.</p></li>
+</ol>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
