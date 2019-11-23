@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3339" status="New">
+<title>Move-constructed empty-container capacity</title>
+<section><sref ref="[basic.string]"/><sref ref="[vector]"/><sref ref="[unord.map]"/>
+<sref ref="[unord.set]"/><sref ref="[container.requirements.general]"/></section>
+<submitter>Nathan Myers</submitter>
+<date>17 Nov 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The Standard leaves unspecified the <tt>capacity()</tt> of a <tt>string</tt> or <tt>vector</tt>, 
+and <tt>bucket_count()</tt> of an <tt>unordered_set</tt> or <tt>unordered_map</tt>, 
+constructed by move from an empty <tt>other</tt>.
+<p/>
+For a non-empty <tt>other</tt>, normative language in the Standard constrains the new object to 
+use (mostly) the same storage as the other, by way of lifetime of iterators and pointers
+to elements.
+<p/>
+For an empty <tt>other</tt>, there can be no such pointers or iterators. However, the empty 
+container may have a non-zero <tt>capacity()</tt> or <tt>bucket_count()</tt>, and having reserved 
+storage there, one naturally expects that storage to be delivered to the new object in the same 
+way as if it had elements.
+<p/>
+Existing implementations, in fact, do move storage to the new container, provided it can be 
+deallocated using the new object's allocator. It is likely that existing programs have come to 
+depend on this behavior.
+<p/>
+The resolution proposed is to add language to the Standard specifying that, if the allocators 
+of the existing and new container objects are compatible, the storage of the new object is the 
+same as of the old, so that no allocations or deallocations are performed in the process, as 
+existing implementations in fact do.
+<p/>
+This appears to affect only <tt>string</tt>, <tt>vector</tt>, <tt>unordered_set</tt>,
+and <tt>unordered_map</tt>, but any new container types may also need similar attention.
+<p/>
+Note that in the case of the hashed containers, the array of buckets appears not to be required 
+to be moved, even when elements contained are. This seems to be a similar oversight; extant 
+implementations do move the bucket array. The resolution should cover this case as well.
+<p/>
+It is expected and intended that the proposed resolution does not require changes to the behavior 
+of implementations.
+<p/>
+See also LWG <iref ref="2321"/> and <a href="http://wg21.link/p0966r1">P0966R1</a>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
