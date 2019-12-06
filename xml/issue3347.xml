@@ -1,0 +1,193 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3347" status="New">
+<title><tt>std::pair&lt;T, U&gt;</tt> now requires <tt>T</tt> and <tt>U</tt> to be less-than-comparable</title>
+<section><sref ref="[pairs.spec]"/><sref ref="[array.overview]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>03 Dec 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<a href="https://wg21.link/p1614r2">P1614R2</a> added <tt>operator&lt;=&gt;</tt> as a hidden friend to 
+<tt>std::pair</tt>:
+</p>
+<blockquote>
+<pre>
+friend constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;T1&gt;, 
+                                              <i>synth-three-way-result</i>&lt;T2&gt;&gt;
+  operator&lt;=&gt;(const pair&amp; x, const pair&amp; y) { <i>see below</i> }
+</pre>
+</blockquote>
+<p>
+That is not a function template, so is not a SFINAE context. If one or both of 
+<tt><i>synth-three-way-result</i>&lt;T1&gt;</tt> or <tt><i>synth-three-way-result</i>&lt;T2&gt;</tt> is an 
+invalid type then the declaration of <tt>operator&lt;=&gt;</tt> is ill-formed, and so the specialization 
+<tt>std::pair&lt;T1, T2&gt;</tt> is ill-formed.
+<p/>
+A similar problem exists for <tt>std::array</tt>.
+<p/>
+There are at least two ways to fix this:
+</p>
+<ol>
+<li><p>Constrain the function and delay the use of synth-three-way-result until we know it's valid.</p></li>
+<li><p>Replace the hidden friend with a namespace-scope function template, so invalid 
+<tt><i>synth-three-way-result</i></tt> types cause substitution failure.</p></li>
+</ol>
+<p>
+The first option is somewhat hard to specify, because current policy is to avoid the use of requires-clauses 
+in most of the library clauses. Even with a requires-clause, the potentially-invalid 
+<tt><i>synth-three-way-result</i></tt> types cannot be used in the function declarator. Furthermore, the 
+<tt>operator&lt;=&gt;</tt> for <tt>std::array</tt> is currently specified in Table [tab:container.opt] and 
+so there's nowhere to add a <i>Constraints:</i> element.
+<p/>
+The second option would partially revert the <a href="https://wg21.link/p1614r2">P1614R2</a> changes for 
+<tt>std::pair</tt> and <tt>std::array</tt> and bring them closer to what was in C++17. The main motivation 
+for making <tt>operator==</tt> a hidden friend was to allow it to be defaulted, so that <tt>std::pair</tt> 
+and <tt>std::array</tt> would be usable as non-type template parameters. Following the acceptance of 
+<a href="https://wg21.link/p1907">P1907</a> in Belfast it isn't necessary to default it, so we can go back 
+to what was in C++17.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[utility.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+
+// <sref ref="[pairs]"/>, class template pair
+template&lt;class T1, class T2&gt;
+struct pair;
+
+<i>// <sref ref="[pairs.spec]"/>, pair specialized algorithms</i>
+<ins>template&lt;class T1, class T2&gt;
+  constexpr bool operator==(const pair&lt;T1, T2&gt;&amp;, const pair&lt;T1, T2&gt;&amp;);
+template&lt;class T1, class T2&gt;
+  constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;T1&gt;, 
+                                         <i>synth-three-way-result</i>&lt;T2&gt;&gt;
+  operator&lt;=&gt;(const pair&lt;T1, T2&gt;&amp;, const pair&lt;T1, T2&gt;&amp;);</ins>
+  
+template&lt;class T1, class T2&gt;
+constexpr void swap(pair&lt;T1, T2&gt;&amp; x, pair&lt;T1, T2&gt;&amp; y) noexcept(noexcept(x.swap(y)));
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[pairs.pair]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+  [&hellip;]
+  constexpr void swap(pair&amp; p) noexcept(<i>see below</i>);
+  
+  <del><i>// <sref ref="[pairs.spec]"/>, pair specialized algorithms</i>
+  friend constexpr bool operator==(const pair&amp;, const pair&amp;) = default;
+  friend constexpr bool operator==(const pair&amp; x, const pair&amp; y)
+    requires (is_reference_v&lt;T1&gt; || is_reference_v&lt;T2&gt;)
+    { return x.first == y.first &amp;&amp; x.second == y.second; }
+  friend constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;T1&gt;,
+                                                <i>synth-three-way-result</i>&lt;T2&gt;&gt;
+    operator&lt;=&gt;(const pair&amp; x, const pair&amp; y) { <i>see below</i> }</del>
+};
+
+template&lt;class T1, class T2&gt;
+pair(T1, T2) -&gt; pair&lt;T1, T2&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[pairs.spec]"/> as indicated:</p>
+
+<blockquote>
+<p>
+<b>20.4.3 Specialized algorithms [pairs.spec]</b>
+</p>
+<pre>
+<ins>template&lt;class T1, class T2&gt;
+  constexpr bool operator==(const pair&lt;T1, T2&gt;&amp; x, const pair&lt;T1, T2&gt;&amp; y);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Returns:</i> <tt>x.first == y.first &amp;&amp; x.second == y.second</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class T1, class T2&gt;</ins>
+<del>friend</del> constexpr
+  common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;T1&gt;, <i>synth-three-way-result</i>&lt;T2&gt;&gt;
+    operator&lt;=&gt;(const pair<ins>&lt;T1, T2&gt;</ins>&amp; x, const pair<ins>&lt;T1, T2&gt;</ins>&amp; y);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+if (auto c = <i>synth-three-way</i>(x.first, y.first); c != 0) return c;
+return <i>synth-three-way</i>(x.second, y.second);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[array.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+
+// <sref ref="[array]"/>, class template array
+template&lt;class T, size_t N&gt; struct array;
+
+<ins>template&lt;class T, size_t N&gt;
+  constexpr bool operator==(const array&lt;T, N&gt;&amp; x, const array&lt;T, N&gt;&amp; y);
+template&lt;class T, size_t N&gt;
+  constexpr <i>synth-three-way-result</i>&lt;T&gt;
+    operator&lt;=&gt;(const array&lt;T, N&gt;&amp; x, const array&lt;T, N&gt;&amp; y);</ins>
+
+template&lt;class T, size_t N&gt;
+constexpr void swap(array&lt;T, N&gt;&amp; x, array&lt;T, N&gt;&amp; y) noexcept(noexcept(x.swap(y)));
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[array.overview]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> there is no need to add definitions of <tt>operator==</tt> and 
+<tt>operator&lt;=&gt;</tt> to <sref ref="[array.spec]"/> because they are defined by Table 71: 
+Container requirements [tab:container.req] and Table 73: Optional container operations 
+[tab:container.opt] respectively.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+  [&hellip;]
+  constexpr T * data() noexcept;
+  constexpr const T * data() const noexcept;
+  
+  <del>friend constexpr bool operator==(const array&amp;, const array&amp;) = default;
+  friend constexpr <i>synth-three-way-result</i>&lt;value_type&gt;
+    operator&lt;=&gt;(const array&amp;, const array&amp;);</del>
+};
+
+template&lt;class T, class... U&gt;
+array(T, U...) -&gt; array&lt;T, 1 + sizeof...(U)&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
