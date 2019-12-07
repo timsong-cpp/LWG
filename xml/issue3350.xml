@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3350" status="New">
+<title>Simplify return type of <tt>lexicographical_compare_three_way</tt></title>
+<section><sref ref="[alg.three.way]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>04 Dec 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current return type is:
+</p>
+<blockquote><pre>
+common_comparison_category_t&lt;decltype(comp(*b1, *b2)), strong_ordering&gt;
+</pre></blockquote>
+<p>
+Finding the common category with <tt>strong_ordering</tt> doesn't do anything. The common category of <tt>X</tt> 
+and <tt>strong_ordering</tt> is always <tt>X</tt>, so we can simplify it to:
+</p>
+<blockquote><pre>
+common_comparison_category_t&lt;decltype(comp(*b1, *b2))&gt;
+</pre></blockquote>
+<p>
+This can further be simplified, because the common category of any comparison category type is just that type. 
+If it's not a comparison category then the result would be <tt>void</tt>, but the function would be ill-formed 
+in that case anyway, as we have:
+</p>
+<blockquote><p>
+<i>Mandates:</i> <tt>decltype(comp(*b1, *b2))</tt> is a comparison category type.
+</p></blockquote>
+<p>
+So the only effect of the complicated return type seems to be to cause the return type to be deduced as 
+<tt>void</tt> for specializations of the function template that are ill-formed if called. That doesn't seem useful.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[algorithm.syn]"/> as indicated:</p>
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[alg.three.way]"/>, three-way comparison algorithms</i>
+template&lt;class InputIterator1, class InputIterator2, class Cmp&gt;
+  constexpr auto
+    lexicographical_compare_three_way(InputIterator1 b1, InputIterator1 e1,
+                                      InputIterator2 b2, InputIterator2 e2,
+                                      Cmp comp)
+      -&gt; <del>common_comparison_category_t&lt;</del>decltype(comp(*b1, *b2))<del>, strong_ordering&gt;</del>;
+template&lt;class InputIterator1, class InputIterator2&gt;
+  constexpr auto
+    lexicographical_compare_three_way(InputIterator1 b1, InputIterator1 e1,
+                                      InputIterator2 b2, InputIterator2 e2);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[alg.three.way]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class InputIterator1, class InputIterator2, class Cmp&gt;
+  constexpr auto
+    lexicographical_compare_three_way(InputIterator1 b1, InputIterator1 e1,
+                                      InputIterator2 b2, InputIterator2 e2,
+                                      Cmp comp)
+      -&gt; <del>common_comparison_category_t&lt;</del>decltype(comp(*b1, *b2))<del>, strong_ordering&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates:</i> <tt>decltype(comp(*b1, *b2))</tt> is a comparison category type.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
