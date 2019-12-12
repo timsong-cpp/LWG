@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3357" status="New">
+<title>[fund.ts.v3] <tt>default_random_engine</tt> is overspecified for per-thread engine</title>
+<section><sref ref="[rand.util.randint]"/></section>
+<submitter>Zhihao Yuan</submitter>
+<date>10 Dec 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: fund.ts.v3</b></p>
+<p>
+Although "implementation may select this type on the basis of performance, size,
+quality, or any combination of such factors," but changing this typedef is an ABI-break
+for implementations. Specifying per-thread engine to use this typedef results in losses
+of performance, size, and/or quality.
+<p/>
+Since this type is not involved in <tt>randint</tt> facilities' interface (other than its member
+typedef), the current specification should be relaxed.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4840">N4840</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[rand.syn]"/>, header <tt>&lt;experimental/random&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;random&gt;
+
+namespace std::experimental {
+inline namespace fundamentals_v3 {
+
+  <i>// 10.1.2.1, Function template randint</i>
+  template &lt;class IntType&gt;
+  IntType randint(IntType a, IntType b);
+  void reseed();
+  void reseed(<del>default_random_engine::result_type</del><ins>uint_fast32_t</ins> value);
+
+} // inline namespace fundamentals_v3
+} // namespace std::experimental
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[rand.util.randint]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- A separate <i>per-thread engine</i> of <del>type <tt>default_random_engine</tt> 
+(C++17 &sect;29.6.5)</del><ins>unspecified type that meets the requirements of random 
+number engine (C++17 [rand.req.eng])</ins>, initialized to an unpredictable state, 
+shall be maintained for each thread. <ins>[<i>Note:</i> The implementation may choose 
+the engine type on the basis of performance, size, quality, or any combination of such 
+factors, so as to provide at least acceptable engine behavior for relatively casual, 
+inexpert, and/or lightweight use. &mdash; <i>end note</i>]</ins>
+</p>
+[&hellip;]
+<pre>
+void reseed();
+void reseed(<del>default_random_engine::result_type</del><ins>uint_fast32_t</ins> value);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Let <tt>g</tt> be the per-thread engine. The first form sets <tt>g</tt> to an unpredictable 
+state. The second form invokes <tt>g.seed(value)</tt>.
+<p/>
+-8- <i>Postconditions:</i> Subsequent calls to <tt>randint</tt> do not depend on values produced by <tt>g</tt> 
+before calling reseed. [<i>Note:</i> <tt>reseed</tt> also resets any instances of 
+<tt>uniform_int_distribution</tt> used by <tt>randint</tt>. &mdash; <i>end note</i>] 
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
