@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3360" status="New">
+<title><tt>three_way_comparable_with</tt> is inconsistent with similar concepts</title>
+<section><sref ref="[cmp.concept]"/></section>
+<submitter>Casey Carter</submitter>
+<date>18 Dec 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The concept <tt>three_way_comparable_with</tt> is defined in <sref ref="[cmp.concept]"/> as:
+</p>
+<blockquote>
+<pre>
+template&lt;class T, class U, class Cat = partial_ordering&gt;
+  concept three_way_comparable_with =
+    <i>weakly-equality-comparable-with</i>&lt;T, U&gt; &amp;&amp;
+    <i>partially-ordered-with</i>&lt;T, U&gt; &amp;&amp;
+    three_way_comparable&lt;T, Cat&gt; &amp;&amp;
+    three_way_comparable&lt;U, Cat&gt; &amp;&amp;
+    common_reference_with&lt;const remove_reference_t&lt;T&gt;&amp;, const remove_reference_t&lt;U&gt;&amp;&gt; &amp;&amp;
+    three_way_comparable&lt;
+      common_reference_t&lt;const remove_reference_t&lt;T&gt;&amp;, const remove_reference_t&lt;U&gt;&amp;&gt;, Cat&gt; &amp;&amp;
+    requires(const remove_reference_t&lt;T&gt;&amp; t, const remove_reference_t&lt;U&gt;&amp; u) {
+      { t &lt;=&gt; u } -&gt; <i>compares-as</i>&lt;Cat&gt;;
+      { u &lt;=&gt; t } -&gt; <i>compares-as</i>&lt;Cat&gt;;
+    };
+</pre>
+</blockquote>
+<p>
+Which notably doesn't follow the requirement ordering:
+</p>
+<ol>
+<li><p>same-type requirements on <tt>T</tt></p></li>
+<li><p>same-type requirements on <tt>U</tt></p></li>
+<li><p><tt>common_reference_with</tt> requirement</p></li>
+<li><p>same-type requirements on <tt>common_reference_t&lt;T, U&gt;</tt></p></li>
+<li><p>cross-type requirements on <tt>T</tt> and <tt>U</tt></p></li>
+</ol>
+<p>
+that the other cross-type comparison concepts (<sref ref="[concept.equalitycomparable]"/>, 
+<sref ref="[concept.totallyordered]"/>) use. There were some motivating reasons for that ordering:
+</p>
+<ol>
+<li><p>The existence of a common reference type is effectively an opt-in to cross-type concepts. 
+Avoiding checking cross-type expressions when no common reference type exists can enable the 
+concepts to work even in the presence of poorly-constrained "accidental" cross-type operator 
+templates which could otherwise produce compile errors instead of dissatisfied concepts.</p></li>
+<li><p>Putting the simpler same-type requirements first can help produce simpler error messages 
+when applying the wrong concept to a pair of types, or the right concept to the wrong pair of types. 
+"<tt>Frobnozzle &lt;=&gt; Frobnozzle</tt> is not a valid expression" is more easily deciphered than 
+is "<tt>std::common_reference&lt;int, FrobNozzle&gt;</tt> has no member named type".</p></li>
+</ol>
+<p>
+<tt>three_way_comparable_with</tt> should be made consistent with <tt>equality_comparable_with</tt> and 
+<tt>totally_ordered_with</tt> for the above reasons and to make it easier to reason about comparison concepts 
+in general.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[cmp.concept]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class U, class Cat = partial_ordering&gt;
+  concept three_way_comparable_with =
+    <del><i>weakly-equality-comparable-with</i>&lt;T, U&gt; &amp;&amp;</del>
+    <del><i>partially-ordered-with</i>&lt;T, U&gt; &amp;&amp;</del>
+    three_way_comparable&lt;T, Cat&gt; &amp;&amp;
+    three_way_comparable&lt;U, Cat&gt; &amp;&amp;
+    common_reference_with&lt;const remove_reference_t&lt;T&gt;&amp;, const remove_reference_t&lt;U&gt;&amp;&gt; &amp;&amp;
+    three_way_comparable&lt;
+      common_reference_t&lt;const remove_reference_t&lt;T&gt;&amp;, const remove_reference_t&lt;U&gt;&amp;&gt;, Cat&gt; &amp;&amp;
+    <ins><i>weakly-equality-comparable-with</i>&lt;T, U&gt; &amp;&amp;</ins>
+    <ins><i>partially-ordered-with</i>&lt;T, U&gt; &amp;&amp;</ins>
+    requires(const remove_reference_t&lt;T&gt;&amp; t, const remove_reference_t&lt;U&gt;&amp; u) {
+      { t &lt;=&gt; u } -&gt; <i>compares-as</i>&lt;Cat&gt;;
+      { u &lt;=&gt; t } -&gt; <i>compares-as</i>&lt;Cat&gt;;
+    };
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
