@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3363" status="New">
+<title><tt>drop_while_view</tt> should opt-out of <tt>sized_range</tt></title>
+<section><sref ref="[range.drop.while.view]"/></section>
+<submitter>Johel Ernesto Guerrero Pe&ntilde;a</submitter>
+<date>07 Jan 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>If <tt>drop_while_view</tt>'s <tt>iterator_t</tt> and <tt>sentinel_t</tt>
+model <tt>forward_iterator</tt> and <tt>sized_sentinel_for</tt>, it will 
+incorrectly satisfy <tt>sized_range</tt> thanks to the size member function
+inherited from <tt>view_interface</tt>.</p>
+
+<p>Because it has to compute its <tt>begin()</tt>, it can never model 
+<tt>sized_range</tt> due to not meeting its non-amortized O(1) requirement.</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/N4842">N4842</a>.</p>
+
+<ol>
+<li><p>Add the following specialization to <sref ref="[ranges.syn]"/>:</p>
+
+<blockquote>
+<pre>
+// [drop.while.view], drop while view
+  template&lt;view V, class Pred&gt;
+    requires input_range&lt;V&gt; &amp;&amp; is_object_v&lt;Pred&gt; &amp;&amp;
+      indirect_unary_predicate&lt;const Pred, iterator_t&lt;V&gt;&gt;
+    class drop_while_view;
+
+<ins>
+  template&lt;view V, class Pred&gt;
+    inline constexpr bool disable_sized_range&lt;drop_while_view&lt;V, Pred&gt;&gt; = true;
+</ins>
+
+  namespace views { inline constexpr unspecified drop_while = unspecified; }
+</pre>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
