@@ -2,19 +2,27 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="3368" status="New">
-<title>LWG 3264 and opting-out of <tt>sized_range</tt></title>
+<title>Exactly when does <tt>size</tt> return <tt>end - begin</tt>?</title>
 <section><sref ref="[range.prim.size]"/></section>
-<submitter>Johel Ernesto Guerrero Pe&ntilde;a</submitter>
+<submitter>Casey Carter</submitter>
 <date>07 Jan 2020</date>
 <priority>99</priority>
 
 <discussion>
 <p>
-LWG <iref ref="3264"/> removes the explicit <tt>disable_sized_range</tt> check in <tt>safe_range</tt> 
-because it is subsumed by its explicit validity check of <tt>ranges::size</tt>. However, when 
-<tt>ranges::size</tt>'s check of <tt>disable_sized_range</tt> is <tt>false</tt>, it evaluates to 
-<tt><i>make-unsigned-like</i>(ranges::end(E) - ranges::begin(E))</tt> given some other conditions. 
-The net result it not being able to opt-out of <tt>sized_range</tt>.
+The specification of <tt>ranges::size</tt> in <sref ref="[range.prim.size]"/> suggests that bullet 1.3 
+("Otherwise, <tt><i>make-unsigned-like</i>(ranges::end(E) - ranges::begin(E)) ...")</tt> only applies 
+when <tt>disable_sized_range&lt;remove_cv_t&lt;T&gt;&gt;</tt> is <tt>true</tt>. This is not the 
+design intent, but the result of an erroneous attempt to factor out the common 
+"<tt>disable_sized_range</tt> is <tt>false</tt>" requirement from the member and non-member <tt>size</tt> 
+cases in bullets 1.2.1 and 1.2.2 that occurred between <a href="http://wg21.link/p0896r3">P0896R3</a> and 
+<a href="http://wg21.link/p0896r4">P0896R4</a>. The intended design has always been that a range with 
+member or non-member <tt>size</tt> with the same syntax but different semantics may opt-out of being 
+sized by specializing <tt>disable_sized_range</tt>. It has never been intended that arrays or ranges 
+whose iterator and sentinel model <tt>sized_sentinel_for</tt> be able to opt out of being sized via 
+<tt>disable_sized_range</tt>. <tt>disable_sized_sentinel_for</tt> can/must be used to opt out in the 
+latter case so that library functions oblivious to the range type that operate on the iterator and 
+sentinel of such a range will avoid subtraction.
 </p>
 </discussion>
 
@@ -26,8 +34,10 @@ The net result it not being able to opt-out of <tt>sized_range</tt>.
 
 <blockquote class="note">
 <p>
-[<i>Drafting note:</i> The effect of the wording change is to move the full content of bullet (1.3) 
-into an additional new sub-bullet (1.2.3) of bullet (1.2). ]
+[<i>Drafting note:</i> There are drive-by changes here to (1) avoid introducing unused type placeholders, 
+(2) avoid reusing "<tt>T</tt>" as both the type of the subexpression and the template parameter of the 
+poison pill, and (3) fix the cross-reference for <tt><i>make-unsigned-like</i></tt> which is defined in 
+[ranges.syn]/1, not in [range.subrange].]
 </p>
 </blockquote>
 
@@ -39,31 +49,31 @@ The expression <tt>ranges::size(E)</tt> for some subexpression <tt>E</tt> with t
 expression-equivalent to:
 </p>
 <ol style="list-style-type: none">
-<li><p>(1.1) &mdash; [&hellip;]</p></li>
-<li><p>(1.2) &mdash; Otherwise, if <tt>disable_sized_range&lt;remove_cv_t&lt;T&gt;&gt;</tt> 
-(<sref ref="[range.sized]"/>) is <tt>false</tt>:</p>
-<ol style="list-style-type: none">
-<li><p>(1.2.1) &mdash; <tt><i>decay-copy</i>(E.size())</tt> if it is a valid expression and its type <tt>I</tt> 
-is integer-like (<sref ref="[iterator.concept.winc]"/>).</p></li>
-<li><p>(1.2.2) &mdash; Otherwise, <tt><i>decay-copy</i>(size(E))</tt> if it is a valid expression and its type 
-<tt>I</tt> is integer-like with overload resolution performed in a context that includes the declaration:
+<li><p>(1.1) &mdash; <tt><i>decay-copy</i>(extent_v&lt;T&gt;)</tt> if <tt>T</tt> is an array type 
+(<sref ref="[basic.compound]"/>).</p></li>
+<li><p><del>(1.2) &mdash; Otherwise, if <tt>disable_sized_range&lt;remove_cv_t&lt;T&gt;&gt;</tt> 
+(<sref ref="[range.sized]"/>) is <tt>false</tt>:</del></p>
+<li><p>(1.<ins>?</ins><del>2.1</del>) &mdash; <ins>Otherwise, if 
+<tt>disable_sized_range&lt;remove_cv_t&lt;T&gt;&gt;</tt> (<sref ref="[range.sized]"/>) is <tt>false</tt> 
+and</ins> <tt><i>decay-copy</i>(E.size())</tt> <del>if it</del> is a valid expression <del>and its 
+type <tt>I</tt> is</del><ins>of</ins> integer-like <ins>type</ins> 
+(<sref ref="[iterator.concept.winc]"/>)<ins>, <tt><i>decay-copy</i>(E.size())</tt></ins>.</p></li>
+<li><p>(1.<ins>?</ins><del>2.2</del>) &mdash; Otherwise, <ins>if 
+<tt>disable_sized_range&lt;remove_cv_t&lt;T&gt;&gt;</tt> is <tt>false</tt> and</ins>
+<tt><i>decay-copy</i>(size(E))</tt> <del>if it</del> is a valid expression <del>and its type 
+<tt>I</tt> is</del><ins>of</ins> integer-like <ins>type</ins> with overload resolution performed in a 
+context that includes the declaration:
 <blockquote><pre>
-template&lt;class T&gt; void size(T&amp;&amp;) = delete;
+<del>template&lt;class T&gt;</del> void size(<del>T</del><ins>auto</ins>&amp;&amp;) = delete;
 </pre></blockquote>
-and does not include a declaration of <tt>ranges::size</tt>.</p></li>
-<li><p><ins>(1.2.3) &mdash; Otherwise, <tt><i>make-unsigned-like</i>(ranges::end(E) - ranges::begin(E))</tt> 
-(<sref ref="[range.subrange]"/>) if it is a valid expression and the types <tt>I</tt> and <tt>S</tt> of 
-<tt>ranges::begin(E)</tt> and <tt>ranges::end(E)</tt> (respectively) model both
-<tt>sized_sentinel_for&lt;S, I&gt;</tt> (<sref ref="[iterator.concept.sizedsentinel]"/>) and 
-<tt>forward_iterator&lt;I&gt;</tt>. However, <tt>E</tt> is evaluated only once.</ins>
-</p></li>
-</ol>
+and does not include a declaration of <tt>ranges::size</tt><ins>, <tt><i>decay-copy</i>(size(E))</tt></ins>.</p></li>
 </li>
-<li><p><del>(1.3) &mdash; Otherwise, <tt><i>make-unsigned-like</i>(ranges::end(E) - ranges::begin(E))</tt> 
-(<sref ref="[range.subrange]"/>) if it is a valid expression and the types <tt>I</tt> and <tt>S</tt> of 
+<li><p>(1.3) &mdash; Otherwise, <tt><i>make-unsigned-like</i>(ranges::end(E) - ranges::begin(E))</tt> 
+(<del><sref ref="[range.subrange]"/></del><ins><sref ref="[ranges.syn]"/></ins>) if it is a valid 
+expression and the types <tt>I</tt> and <tt>S</tt> of 
 <tt>ranges::begin(E)</tt> and <tt>ranges::end(E)</tt> (respectively) model both
 <tt>sized_sentinel_for&lt;S, I&gt;</tt> (<sref ref="[iterator.concept.sizedsentinel]"/>) and 
-<tt>forward_iterator&lt;I&gt;</tt>. However, <tt>E</tt> is evaluated only once.</del>
+<tt>forward_iterator&lt;I&gt;</tt>. However, <tt>E</tt> is evaluated only once.
 </p></li>
 <li><p>(1.4) &mdash; [&hellip;]</p></li>
 </ol>
