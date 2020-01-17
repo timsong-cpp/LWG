@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3371" status="New">
+<title><tt>visit_format_arg</tt> and <tt>make_format_args</tt> are not hidden friends</title>
+<section><sref ref="[format.arg]"/></section>
+<submitter>Tim Song</submitter>
+<date>16 Jan 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+After <a href="https://wg21.link/P1965R0">P1965R0</a>, friend function and function template
+declarations always introduce hidden friends under the new new blanket wording in
+<sref ref="[hidden.friends]"/>. However, <sref ref="[format.arg]"/> contains
+"exposition only" friend declarations of <tt>visit_format_arg</tt> and <tt>make_format_args</tt>,
+and those are not intended to be hidden. The only reason to have these declarations in the first
+place is because these function templates are specified using the exposition-only private data
+members of <tt>basic_format_arg</tt>, but that's unnecessary &mdash; for example,
+<tt>shared_ptr</tt>'s constructors aren not exposition-only friends <tt>enable_shared_from_this</tt>,
+even though the former are shown as assigning to the latter's exposition-only <tt>weak_this</tt>
+private data member (see <sref ref="[util.smartptr.shared.const]"/>p1).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[format.arg]"/>, class template <tt>basic_format_arg</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Context&gt;
+  class basic_format_arg {
+
+    [&hellip;]
+
+<del>    template&lt;class Visitor, class Ctx&gt;
+      friend auto visit_format_arg(Visitor&amp;&amp; vis,
+                                   basic_format_arg&lt;Ctx&gt; arg);                  // <i>exposition only</i>
+
+    template&lt;class Ctx, class... Args>
+      friend <i>format-arg-store</i>&lt;Ctx, Args...&gt;
+        make_format_args(const Args&amp;... args);                                  // <i>exposition only</i></del>
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>

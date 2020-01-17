@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3372" status="New">
+<title><tt>vformat_to</tt> should not try to deduce <tt>Out</tt> twice</title>
+<section><sref ref="[format.functions]"/></section>
+<submitter>Tim Song</submitter>
+<date>16 Jan 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>vformat_to</tt> currently deduces <tt>Out</tt> from its first and last arguments.
+This requires its last argument's type to be a specialization of <tt>basic_format_args</tt>,
+which notably prevents the use of <tt><i>format-arg-store</i></tt> arguments directly.
+This is unnecessary: we should only deduce from the first argument.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[format.syn]"/>, header <tt>&lt;format&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+
+  [&hellip;]
+
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, string_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, wstring_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, string_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, wstring_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+<li><p>Edit <sref ref="[format.functions]"/> p8 through p10 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p> -8- <i>Effects:</i> Equivalent to:</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(out, fmt, <del>{</del>make_format_args&lt;context&gt;(args...)<del>}</del>);
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p> -9- <i>Effects:</i> Equivalent to:</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(out, loc, fmt, <del>{</del>make_format_args&lt;context&gt;(args...)<del>}</del>);
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, string_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, wstring_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, string_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, wstring_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+</pre>
+<blockquote>
+<p> -10- Let <tt>charT</tt> be <tt>decltype(fmt)::value_type</tt>.</p>
+<p> [&hellip;] </p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
