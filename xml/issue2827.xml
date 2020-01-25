@@ -34,6 +34,31 @@ Should that call be considered by the trait?
 <note>2017-01-27 Telecon</note>
 <p>Priority 3</p>
 <p>This issue interacts with <iref ref="2116"/></p>
+
+<note>2020-01-24; Peter Dimov comments</note>
+<p>
+<tt>std::is_trivially_copy_constructible_v&lt;D&gt;</tt>, where <tt>D</tt> is
+</p>
+<blockquote><pre>
+struct D
+{
+  ~D() {}
+};
+</pre></blockquote>
+<p>
+reports <tt>false</tt>. This is because the definition of
+<tt>is_trivially_copy_constructible</tt> requires the invented variable 
+definition <tt>T t(declval&lt;Args&gt;()...);</tt>, which in our case is 
+<tt>D t(declval&lt;D&gt;());</tt>, to not call any nontrivial operations.
+<p/>
+This is interpreted by implementations to include the destructor call,
+presumably for consistency with <tt>is_nothrow_copy_constructible</tt>. 
+But that's wrong; the copy constructor <em>is</em> trivial.
+<p/>
+As a consequence, <tt>variant&lt;D&gt;</tt> also doesn't have a trivial 
+copy constructor, which causes (completely unnecessary) inefficiencies 
+when said <tt>variant</tt> is copied.
+</p>
 </discussion>
 
 <resolution>
