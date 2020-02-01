@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3385" status="New">
+<title><tt>common_iterator</tt> is not sufficiently constrained for non-copyable iterators</title>
+<section><sref ref="[common.iterator]"/></section>
+<submitter>Corentin Jabot</submitter>
+<date>31 Jan 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+We don't actually specify anywhere that non-copyable iterators do not have a <tt>common_iterator</tt> 
+(and it would make little sense for them to as algorithms dealing with C++17 iterators are not expecting 
+non-copyable things) As it stands <tt>common_iterator</tt> can be created from move only iterator but 
+are then non-copyable themselves. <a href="http://wg21.link/p1862">P1862</a> already constrains 
+<tt>common_view</tt> in a similar fashion</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.synopsis]"/>, header <tt>&lt;iterator&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// <sref ref="[iterators.common]"/>, common iterators</i>
+  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+    requires (!same_as&lt;I, S&gt; <ins>&amp;&amp; copyable&lt;I&gt;</ins>)
+      class common_iterator;
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iterator]"/>, class template <tt>common_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+    requires (!same_as&lt;I, S&gt; <ins>&amp;&amp; copyable&lt;I&gt;</ins>)
+  class common_iterator {
+  public:
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
