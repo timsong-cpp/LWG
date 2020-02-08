@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3392" status="New">
+<title>Problems with <tt>ranges::distance()</tt></title>
+<section><sref ref="[range.iter.op.distance]"/></section>
+<submitter>Patrick Palka</submitter>
+<date>7 Feb 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It is not possible to use the two-argument overload of <tt>ranges::distance()</tt> to compute
+the distance between a move-only <tt>counted_iterator</tt> and the <tt>default_sentinel</tt>. 
+In other words, the following is invalid
+</p>
+<blockquote><pre>
+// iter is a counted_iterator with an move-only underlying iterator
+ranges::distance(iter, default_sentinel);
+</pre></blockquote>
+<p>
+and yet
+</p>
+<blockquote><pre>
+(default_sentinel - iter);
+</pre></blockquote>
+<p>
+is valid.
+<p/>
+Suggested resolution:
+<p/>
+For the case where <tt>S</tt> models <tt>sized_sentinel_for&lt;remove_reference_t&lt;I&gt;&gt;</tt>,
+define a constrained overload of <tt>ranges::distance(I, S)</tt> that takes its
+iterator argument by <tt>const</tt> reference instead of by value (and returns <tt>last - first</tt> as before).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.synopsis]"/>, header <tt>&lt;iterator&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;concepts&gt;
+
+namespace std {
+  [&hellip;]
+  <i>// <sref ref="[range.iter.ops]"/>, range iterator operations</i>
+  namespace ranges {
+    [&hellip;]
+    <i>// <sref ref="[range.iter.op.distance]"/>, ranges::distance</i>
+    template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+      constexpr iter_difference_t&lt;I&gt; distance(I first, S last);
+    <ins>template&lt;input_or_output_iterator I, sized_sentinel_for&lt;remove_reference_t&lt;I&gt;&gt; S&gt;
+      constexpr iter_difference_t&lt;remove_reference_t&lt;I&gt;&gt; distance(const I&amp; first, S last);</ins>
+    template&lt;range R&gt;
+      constexpr range_difference_t&lt;R&gt; distance(R&amp;&amp; r);
+    [&hellip;]
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.iter.op.distance]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+  constexpr iter_difference_t&lt;I&gt; ranges::distance(I first, S last);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <tt>[first, last)</tt> denotes a range, or <tt>[last, first)</tt> denotes a range 
+and <tt>S</tt> and <tt>I</tt> model <tt>same_as&lt;S, I&gt; &amp;&amp; sized_sentinel_for&lt;S, I&gt;</tt>.
+<p/>
+-2- <i>Effects:</i> If <tt>S</tt> and <tt>I</tt> model <tt>sized_sentinel_for&lt;S, I&gt;</tt>, returns 
+<tt>(last - first)</tt>; otherwise, returns the number of increments needed to get from <tt>first</tt> to <tt>last</tt>.
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;input_or_output_iterator I, sized_sentinel_for&lt;remove_reference_t&lt;I&gt;&gt; S&gt;
+  constexpr iter_difference_t&lt;remove_reference_t&lt;I&gt;&gt; ranges::distance(const I&amp; first, S last);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions:</i> <tt>[first, last)</tt> denotes a range and <tt>S</tt> and <tt>I</tt> model 
+<tt>sized_sentinel_for&lt;S, remove_reference_t&lt;I&gt;&gt;</tt>.</ins>
+<p/>
+<ins>-? <i>Effects:</i> returns <tt>(last - first)</tt>;</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
