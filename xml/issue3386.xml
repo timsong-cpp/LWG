@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3386" status="New">
+<title><tt>elements_view</tt> needs its own <tt>sentinel</tt> type</title>
+<section><sref ref="[range.elements]"/></section>
+<submitter>Tim Song</submitter>
+<date>7 Feb 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>elements_view</tt> is effectively a specialized version of <tt>transform_view</tt>.
+The latter has a custom <tt>sentinel</tt> type, and so should <tt>elements_view</tt>.
+<p/>
+In particular, it should not use the underlying range's sentinel directly, for that sentinel
+could encode a generic predicate that is equally meaningful for the adapted range. Consider a
+range <tt>[i, s)</tt> whose <tt>value_type</tt> is <tt>pair&lt;array&lt;int, 2&gt;, long&gt;</tt>,
+where <tt>s</tt> is a generic sentinel that checks if the second element (for this range in particular,
+the <tt>long</tt>) is zero:
+</p>
+<blockquote>
+<pre>
+struct S {
+  friend bool operator==(input_iterator auto const&amp; i, S) /* additional constraints */
+  { return get&lt;1&gt;(*i) == 0; }
+};
+</pre>
+</blockquote>
+<p>
+If we adapt <tt>[i, s)</tt> with <tt>views::keys</tt>, then the resulting adapted range would have
+surprising behavior when used with <tt>S{}</tt>: even though it's nominally a range of
+<tt>array&lt;int, 2&gt;</tt>, when its iterator is used with the sentinel <tt>S{}</tt> 
+it doesn't actually check the second element of the array, but the <tt>long</tt> that's not even
+part of the <tt>value_type</tt>:
+</p>
+<blockquote>
+<pre>
+void algo(input_range auto&amp;&amp; r) /* constraints */{
+  // We want to stop at the first element of the range r whose second element is zero.
+  for (auto&amp;&amp; x : subrange{ranges::begin(r), S{}})
+  {
+    std::cout &lt;&lt; get&lt;0&gt;(x);
+  }
+}
+
+using P = pair&lt;array&lt;int, 2&gt;, long&gt;;
+vector&lt;P&gt; vec =  {
+    { {0, 1}, 1L },
+    { {1, 0}, 1L },
+    { {2, 2}, 0L }
+};
+   
+subrange r{vec.begin(), S{}};              // range with two elements: {0, 1}, {1, 0}
+
+algo(r | views::keys);                     // checks the long, prints '01'
+algo(r | views::transform(&amp;P::first));     // checks the second element of the array, prints '0'
+</pre>
+</blockquote>
+<p>
+This is an API break since it changes the return type of <tt>end()</tt>, so it should be
+fixed before we ship C++20.
+</p>
+</discussion>
+
+<resolution>
+<p>The proposed wording is contained in <a href="https://wg21.link/p1994r0">P1994R0</a>.</p>
+</resolution>
+
+</issue>
