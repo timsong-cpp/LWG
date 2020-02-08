@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3391" status="New">
+<title>Problems with <tt>counted_iterator/move_iterator::base() const &amp;</tt></title>
+<section><sref ref="[move.iterators]"/><sref ref="[iterators.counted]"/></section>
+<submitter>Patrick Palka</submitter>
+<date>7 Feb 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It is not possible to use the <tt>const &amp;</tt> overloads of <tt>counted_iterator::base()</tt> or
+<tt>move_iterator::base()</tt> to get at an underlying move-only iterator in order to compare it 
+against a sentinel.
+<p/>
+More concretely, assuming issue LWG <iref ref="3389"/> is fixed, this means that
+</p>
+<blockquote><pre>
+auto v = r | views::take(5);
+ranges::begin(v) == ranges::end(v);
+</pre></blockquote>
+<p>
+is invalid when <tt>r</tt> is a <tt>view</tt> whose <tt>begin()</tt> is a move-only input iterator.
+The code is invalid because <tt>ranges::take_view::sentinel::operator==()</tt> must call 
+<tt>counted_iterator::base()</tt> to compare the underlying iterator against its sentinel, and 
+therefore this <tt>operator==()</tt> requires that the underlying iterator is <tt>copy_constructible</tt>.
+<p/>
+Suggested resolution:
+<p/>
+Make these <tt>const &amp; base()</tt> overloads return the underlying iterator by <tt>const</tt> reference.  
+Remove the <tt>copy_constructible</tt> constraint on these overloads. Perhaps the <tt>base()</tt> 
+overloads for the iterator wrappers in <sref ref="[range.adaptors]"/> could use the same treatment?
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[move.iterator]"/>, class template <tt>move_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    using iterator_type = Iterator;
+    [&hellip;]
+    constexpr <ins>const</ins> iterator_type<ins>&amp;</ins> base() const &amp;;
+    constexpr iterator_type base() &amp;&amp;;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[move.iter.op.conv]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <ins>const</ins> Iterator<ins>&amp;</ins> base() const &amp;;
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Constraints:</i> <tt>Iterator</tt> satisfies <tt>copy_constructible</tt>.</del>
+<p/>
+<del>-2- <i>Preconditions:</i> <tt>Iterator</tt> models <tt>copy_constructible</tt>.</del>
+<p/>
+-3- <i>Returns:</i> <tt>current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[counted.iterator]"/>, class template <tt>counted_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I&gt;
+  class counted_iterator {
+  public:
+    using iterator_type = I;
+    [&hellip;]
+    constexpr <ins>const</ins> I<ins>&amp;</ins> base() const &amp; <del>requires copy_constructible&lt;I&gt;</del>;
+    constexpr I base() &amp;&amp;;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[counted.iter.access]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <ins>const</ins> I<ins>&amp;</ins> base() const &amp; <del>requires copy_constructible&lt;I&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to: <tt>return current;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
