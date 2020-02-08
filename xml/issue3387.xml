@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3387" status="New">
+<title>&sect;[range.reverse.view] <tt>reverse_view&lt;V&gt;</tt> unintentionally requires <tt>range&lt;const V&gt;</tt></title>
+<section><sref ref="[range.reverse.view]"/></section>
+<submitter>Patrick Palka</submitter>
+<date>4 Feb 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>reverse_view&lt;V&gt;</tt> requires <tt>bidirectional_range&lt;V&gt;</tt>, but not <tt>range&lt;const V&gt;</tt>, 
+which means that <tt>iterator_t&lt;const V&gt;</tt> might be an invalid type. The return types of the 
+<tt>begin() const</tt> and <tt>end() const</tt> overloads make use of <tt>iterator_t&lt;const V&gt;</tt> 
+in a non-SFINAE context, which means that instantiating <tt>reverse_view&lt;X&gt;</tt> is ill-formed unless 
+<tt>range&lt;const X&gt;</tt> is satisfied.
+<p/>
+Code like <tt>x | views::filter(p) | views::reverse</tt> fails to compile because 
+<tt>const filter_view&lt;&hellip;&gt;</tt> does not model <tt>range</tt>, so 
+<tt>iterator_t&lt;const filter_view&lt;&hellip;&gt;&gt;</tt> is invalid.
+<p/>
+Either <tt>range&lt;const V&gt;</tt> needs to be in the class' <tt>requires</tt>-clause, or the return types 
+of the <tt>const</tt>-qualified <tt>begin()</tt> and <tt>end()</tt> need to delay use of 
+<tt>iterator_t&lt;const V&gt;</tt> until <tt>range&lt;const V&gt;</tt> is known to be satisfied.
+<p/>
+Giving these overloads an <tt>auto</tt> return type means the type is determined when the member is called. 
+The constraint <tt>common_range&lt;const V&gt;</tt> appropriately restricts the selection of these overloads, 
+so they can only be called when the type is valid. This is what <tt>cmcstl2</tt> does. <tt>range-v3</tt> 
+makes the <tt>begin() const</tt> and <tt>end() const</tt> members into function templates, so that they 
+are SFINAE contexts.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.reverse.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+    requires bidirectional_range&lt;V&gt;
+  class reverse_view : public view_interface&lt;reverse_view&lt;V&gt;&gt; {
+    [&hellip;]
+    constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin();
+    constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin() requires common_range&lt;V&gt;;
+    constexpr <del>reverse_iterator&lt;iterator_t&lt;const V&gt;&gt;</del><ins>auto</ins> begin() const
+      requires common_range&lt;const V&gt;;  
+    
+    constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; end();
+    constexpr <del>reverse_iterator&lt;iterator_t&lt;const V&gt;&gt;</del><ins>auto</ins> end() const
+      requires common_range&lt;const V&gt;;  
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+[&hellip;]
+</blockquote>
+<blockquote>
+<pre>
+constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin() requires common_range&lt;V&gt;;
+constexpr <del>reverse_iterator&lt;iterator_t&lt;const V&gt;&gt;</del><ins>auto</ins> begin() const
+  requires common_range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <tt>return make_reverse_iterator(ranges::end(base_));</tt>
+</p>
+</blockquote>
+<pre>
+constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; end();
+constexpr <del>reverse_iterator&lt;iterator_t&lt;const V&gt;&gt;</del><ins>auto</ins> end() const
+  requires common_range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to: <tt>return make_reverse_iterator(ranges::begin(base_));</tt>
+</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol></resolution>
+
+</issue>
