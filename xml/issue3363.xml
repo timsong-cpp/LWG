@@ -18,10 +18,23 @@ inherited from <tt>view_interface</tt>.</p>
 <tt>sized_range</tt> due to not meeting its non-amortized O(1) requirement.</p>
 
 <note>2020-01-16 Priority set to 1 after discussion on the reflector.</note>
-</discussion>
 
-<resolution>
-<p>This wording is relative to <a href="http://wg21.link/N4842">N4842</a>.</p>
+<note>2020-02-10; Prague 2020; Casey comments and provides alternative wording</note>
+<p>
+The fundamental issue here is that both <tt>ranges::size</tt> and <tt>view_interface::size</tt> 
+(it should be unsurprising that many of the "default" implementations of member <tt>meow</tt> in 
+<tt>view_interface</tt> look just like fallback cases of the <tt>ranges::meow</tt> CPO) have 
+a case that returns the difference of <tt>ranges::end</tt> and <tt>ranges::begin</tt>. If 
+<tt>begin</tt> and <tt>end</tt> are amortized* O(1) but not "true" O(1), then the resulting 
+<tt>size</tt> operation is amortized O(1) and not "true" O(1) as required by the 
+<tt>sized_range</tt> concept. I don't believe we can or should fix this on a case by case basis,
+but we should instead relax the complexity requirement for <tt>sized_range</tt> to be 
+handwavy-amortized O(1).
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/N4849">N4849</a>.</p>
 
 <ol>
 <li><p>Add the following specialization to <sref ref="[ranges.syn]"/>:</p>
@@ -41,6 +54,29 @@ inherited from <tt>view_interface</tt>.</p>
 
   namespace views { inline constexpr unspecified drop_while = unspecified; }
 </pre>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/N4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- Given an lvalue <tt>t</tt> of type <tt>remove_reference_t&lt;T&gt;</tt>, <tt>T</tt> models 
+<tt>sized_range</tt> only if
+</p>
+<ol style="list-style-type: none"> 
+<li><p>(2.1) &mdash; <tt>ranges::size(t)</tt> is <ins>amortized</ins> &#x1d4aa;(<tt>1</tt>), does not modify <tt>t</tt>, 
+and is equal to <tt>ranges::distance(t)</tt>, and</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
 </blockquote>
 
 </li>
