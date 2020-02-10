@@ -19,10 +19,11 @@ I guess that the actual intent is comparing <tt>Duration</tt> with the duration 
 <tt>std::chrono::sys_seconds</tt>, i.e. <tt>std::chrono::seconds</tt>. And thus <tt>sys_seconds</tt> 
 should be replaced with <tt>seconds</tt> here.
 </p>
-<note>2020-02 Prioritized as P1 Monday morning in Prague</note>
-</discussion>
 
-<resolution>
+<note>2020-02 Prioritized as P1 Monday morning in Prague</note>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
 
 <ol>
@@ -52,6 +53,65 @@ namespace std {
 <pre>
 template&lt;three_way_comparable_with&lt;<del>sys_</del>seconds&gt; Duration&gt;
   constexpr auto operator&lt;=&gt;(const leap&amp; x, const sys_time&lt;Duration&gt;&amp; y) noexcept;
+</pre>
+<blockquote>
+<p>
+-12- <i>Returns:</i> <tt>x.date() &lt;=&gt; y</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2020-02-10, Prague; Howard suggests alternative wording</note>
+<p>
+The below shown alternative wording does more directly describe the constrained code (by comparing 
+<tt>time_point</tt>s), even though in the very end the code specifying the effects finally goes down 
+to actually return <tt>x.date().time_since_epoch() &lt;=&gt; y.time_since_epoch()</tt> (thus comparing 
+<tt>duration</tt>s).
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.syn]"/>, header <tt>&lt;chrono&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote class="note">
+<p>
+The synopsis does provide an additional drive-by fix to eliminate the mismatch of the <tt>constexpr</tt>
+in declaration and prototype specification.
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  namespace chrono {
+    [&hellip;]
+    template&lt;<del>three_way_comparable_with&lt;sys_seconds&gt;</del><ins>class</ins> Duration&gt;
+      <ins>requires three_way_comparable_with&lt;sys_seconds, sys_time&lt;Duration&gt;&gt;</ins>
+        <ins>constexpr</ins> auto operator&lt;=&gt;(const leap&amp; x, const sys_time&lt;Duration&gt;&amp; y);
+    [&hellip;]
+  }
+  [&hellip;]
+}
+</pre>
+<blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[time.zone.leap.nonmembers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<del>three_way_comparable_with&lt;sys_seconds&gt;</del><ins>class</ins> Duration&gt;
+  <ins>requires three_way_comparable_with&lt;sys_seconds, sys_time&lt;Duration&gt;&gt;</ins>
+    constexpr auto operator&lt;=&gt;(const leap&amp; x, const sys_time&lt;Duration&gt;&amp; y) noexcept;
 </pre>
 <blockquote>
 <p>
