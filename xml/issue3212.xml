@@ -6,16 +6,16 @@
 <section><sref ref="[span.tuple]"/></section>
 <submitter>Tim Song</submitter>
 <date>31 May 2019</date>
-<priority>99</priority>
+<priority>2</priority>
 
 <discussion>
 <p>
 As currently specified, it uses the <i>cv</i>-qualified partial specialization, which incorrectly 
 adds <i>cv</i>-qualification to the element type.
 </p>
-</discussion>
 
-<resolution>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
 
 <ol>
@@ -82,6 +82,108 @@ template&lt;size_t I, class ElementType, size_t Extent>
 -1- <i>Mandates:</i> <tt>Extent != dynamic_extent &amp;&amp; I &lt; Extent</tt> is <tt>true</tt>.
 </p>
 </blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<note>2020-02-13, Prague</note>
+<p>
+Wording needs to be adjusted, because we accepted <a href="http://wg21.link/p1831r1">P1831R1</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[span.syn]"/>, header <tt>&lt;span&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[span.tuple]"/>, tuple interface</i>
+template&lt;class T&gt; class tuple_size;
+template&lt;size_t I, class T&gt; class tuple_element;
+template&lt;class ElementType, size_t Extent&gt;
+  struct tuple_size&lt;span&lt;ElementType, Extent&gt;&gt;;
+template&lt;class ElementType&gt;
+  struct tuple_size&lt;span&lt;ElementType, dynamic_extent&gt;&gt;; <i>// not defined</i>
+template&lt;size_t I, class ElementType, size_t Extent&gt;
+  struct tuple_element&lt;I, span&lt;ElementType, Extent&gt;&gt;;
+<ins>template&lt;size_t I, class ElementType, size_t Extent&gt;
+  struct tuple_element&lt;I, const span&lt;ElementType, Extent&gt;&gt;;</ins>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[span.tuple]"/> before p1 as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The representation style for the newly added wording follows the new style
+for <tt>tuple_element&lt;I, span&lt;ElementType, Extent&gt;&gt;::type</tt>, which 
+  <a href="https://github.com/cplusplus/draft/pull/2868">had recently been changed editorially</a>.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class ElementType, size_t Extent&gt;
+  struct tuple_size&lt;span&lt;ElementType, Extent&gt;&gt;
+    : integral_constant&lt;size_t, Extent&gt; { };
+
+tuple_element&lt;I, span&lt;ElementType, Extent&gt;&gt;::type
+
+<ins>template&lt;size_t I, class ElementType, size_t Extent&gt;
+  struct tuple_element&lt;I, const span&lt;ElementType, Extent&gt;&gt; {
+    using type = ElementType;
+  };</ins>
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates:</i> <tt>Extent != dynamic_extent &amp;&amp; I &lt; Extent</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Add the following wording to Annex D:</p>
+
+<blockquote>
+<p>
+<ins><b>D.? Deprecated <tt>span</tt> tuple interface [depr.span.syn]</b></ins>
+<p/>
+<ins>1 The header <tt>&lt;span&gt;</tt> (<sref ref="[span.syn]"/>) has the following additions:</ins>
+</p>
+<blockquote><pre>
+<ins>
+namespace std {
+  template&lt;size_t I, class ElementType, size_t Extent&gt;
+    struct tuple_element&lt;I, volatile span&lt;ElementType, Extent&gt;&gt;;
+  template&lt;size_t I, class ElementType, size_t Extent&gt;
+    struct tuple_element&lt;I, const volatile span&lt;ElementType, Extent&gt;&gt;;</ins>
+}
+</pre></blockquote>
+<p>
+<ins><b>D.1.? tuple interface [depr.span.tuple]</b></ins>
+</p>
+<blockquote><pre>
+<ins>template&lt;size_t I, class ElementType, size_t Extent&gt;
+  struct tuple_element&lt;I, volatile span&lt;ElementType, Extent&gt;&gt; {
+    using type = ElementType;
+  };
+
+template&lt;size_t I, class ElementType, size_t Extent>
+  struct tuple_element&lt;I, const volatile span&lt;ElementType, Extent&gt;&gt; {
+    using type = ElementType;
+  };</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Mandates:</i> <tt>Extent != dynamic_extent &amp;&amp; I &lt; Extent</tt> is <tt>true</tt>.</ins>
+</p>
 </blockquote>
 </li>
 
