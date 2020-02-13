@@ -3,7 +3,7 @@
 
 <issue num="3348" status="New">
 <title><tt>__cpp_lib_unwrap_ref</tt> in wrong header</title>
-<section><sref ref="[version.syn]"/></section>
+<section><sref ref="[version.syn]"/><sref ref="[refwrap.unwrapref]"/></section>
 <submitter>Barry Revzin</submitter>
 <date>03 Dec 2019</date>
 <priority>2</priority>
@@ -28,9 +28,9 @@ The smallest diff is just to move the macro into <tt>&lt;functional&gt;</tt>.
 
 <note>2019-12-12 Issue Prioritization</note>
 <p>Priority to 2 after reflector discussion.</p>
-</discussion>
 
-<resolution>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
 
 <ol>
@@ -44,6 +44,135 @@ The smallest diff is just to move the macro into <tt>&lt;functional&gt;</tt>.
 [&hellip;]
 </pre>
 </blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<note>2020-02-13, Prague</note>
+<p>
+During LWG discussions it had been suggested that they considered it is an improvement to move the definitions of
+<tt>unwrap_reference</tt> and <tt>unwrap_ref_decay</tt> from <tt>&lt;functional&gt;</tt> to <tt>&lt;type_traits&gt;</tt>.
+This is what the alternative wording tries to accomplish.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[functional.syn]"/>, header <tt>&lt;functional&gt;</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+<ins>include &lt;type_traits&gt;</ins>
+
+namespace std {
+[&hellip;]
+<del>template&lt;class T&gt; struct unwrap_reference;
+template&lt;class T&gt; using unwrap_reference_t = typename unwrap_reference&lt;T&gt;::type;
+template&lt;class T&gt; struct unwrap_ref_decay;
+template&lt;class T&gt; using unwrap_ref_decay_t = typename unwrap_ref_decay&lt;T&gt;::type;</del>
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Delete sub-clause <sref ref="[refwrap.unwrapref]"/>completely, as indicated:</p>
+<blockquote>
+<p>
+<del><b>20.14.5.6 Transformation type trait <tt>unwrap_reference</tt> [refwrap.unwrapref]</b></del>
+</p>
+<pre>
+<del>template&lt;class T&gt;
+  struct unwrap_reference;</del>
+</pre>
+<blockquote>
+<p>
+<del>-1- If <tt>T</tt> is a specialization <tt>reference_wrapper&lt;X&gt;</tt> for some type <tt>X</tt>, the member typedef 
+<tt>type</tt> of <tt>unwrap_reference&lt;T&gt;</tt> is <tt>X&amp;</tt>, otherwise it is <tt>T</tt>.</del>
+</p>
+</blockquote>
+<pre>
+<del>template&lt;class T&gt;
+  struct unwrap_ref_decay;</del>
+</pre>
+<blockquote>
+<p>
+<del>-2- The member typedef <tt>type</tt> of <tt>unwrap_ref_decay&lt;T&gt;</tt> denotes the type 
+<tt>unwrap_reference_t&lt;decay_t&lt;T&gt;&gt;</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[meta.type.synop]"/>, header <tt>&lt;type_traits&gt;</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+namespace std {
+[&hellip;]
+<i>// <sref ref="[meta.trans.other]"/>, other transformations</i>
+[&hellip;]
+template&lt;class T&gt; struct underlying_type;
+template&lt;class Fn, class... ArgTypes&gt; struct invoke_result;
+<ins>template&lt;class T&gt; struct unwrap_reference;
+template&lt;class T&gt; struct unwrap_ref_decay;</ins>
+
+template&lt;class T&gt;
+  using type_identity_t = typename type_identity&lt;T&gt;::type;
+[&hellip;]
+template&lt;class Fn, class... ArgTypes&gt;
+  using invoke_result_t = typename invoke_result&lt;Fn, ArgTypes...&gt;::type;
+<ins>template&lt;class T&gt; 
+  using unwrap_reference_t = typename unwrap_reference&lt;T&gt;::type;
+template&lt;class T&gt; 
+  using unwrap_ref_decay_t = typename unwrap_ref_decay&lt;T&gt;::type;</ins>
+template&lt;class...&gt;
+  using void_t = void;
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[meta.trans.other]"/>, Table 55 &mdash; "Sign modifications" in <sref ref="[tab:meta.trans.sign]"/> as indicated:</p>
+
+<table border="1">
+<caption>Table 52 &mdash; Other transformations [tab:meta.trans.other]</caption>
+<tr>
+<th>Template</th>
+<th>Comments</th>
+</tr> 
+
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>template &lt;class T&gt;<br/>
+struct unwrap_reference;</tt></ins>
+</td>
+<td>
+<ins>If <tt>T</tt> is a specialization <tt>reference_wrapper&lt;X&gt;</tt> for some type <tt>X</tt>, the member typedef 
+<tt>type</tt> of <tt>unwrap_reference&lt;T&gt;</tt> is <tt>X&amp;</tt>, otherwise it is <tt>T</tt>.</ins>
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><tt>template &lt;class T&gt;<br/>
+struct unwrap_ref_decay;</tt></ins>
+</td>
+<td>
+<ins>The member typedef <tt>type</tt> of <tt>unwrap_ref_decay&lt;T&gt;</tt> denotes the type 
+<tt>unwrap_reference_t&lt;decay_t&lt;T&gt;&gt;</tt>.</ins>
+</td>
+</tr>
+</table>
+
 </li>
 
 </ol>
