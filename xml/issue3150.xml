@@ -37,9 +37,9 @@ validated by the concept.
 </p>
 
 <note>2018-08-20 Priority set to 3 after reflector discussion</note>
-</discussion>
 
-<resolution>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
 
 <ol>
@@ -85,6 +85,64 @@ expressions (<sref ref="[expr.const]"/>),</del>
 </p><p>
 3 A class <tt>G</tt> meets the <i>uniform random bit generator</i> requirements
 if <tt>G</tt> models <tt>UniformRandomBitGenerator</tt>,
+<tt>invoke_­result_­t&lt;G&amp;&gt;</tt> is an unsigned integer type
+(<sref ref="[basic.fundamental]"/>), and <tt>G</tt> provides a nested
+<i>typedef-name</i> <tt>result_­type</tt> that denotes the same type as
+<tt>invoke_­result_­t&lt;G&amp;&gt;</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2020-02-13; Prague</note>
+<p>
+LWG provided some improved wording.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[rand.req.urng]"/> as follows:</p>
+
+<blockquote>
+<p>1 A <i>uniform random bit generator</i> <tt>g</tt> of type <tt>G</tt> is a
+function object returning unsigned integer values such that each value in the
+range of possible results has (ideally) equal probability of being returned.
+[<i>Note:</i> The degree to which <tt>g</tt>'s results approximate the ideal is
+often determined statistically.&mdash;<i>end note</i>]
+</p>
+<blockquote>
+<pre>
+template&lt;class G&gt;
+  concept uniform_random_bit_generator =
+    invocable&lt;G&amp;&gt; &amp;&amp; unsigned_integral&lt;invoke_result_t&lt;G&amp;&gt;&gt; &amp;&amp;
+    requires {
+      { G::min() } -> same_as&lt;invoke_result_t&lt;G&amp;&gt;&gt;;
+      { G::max() } -> same_as&lt;invoke_result_t&lt;G&amp;&gt;&gt;;
+      <ins>requires bool_constant&lt;(G::min() &lt; G::max())&gt;::value;</ins>
+    };
+</pre>
+</blockquote>
+<p>
+-2- Let <tt>g</tt> be an object of type <tt>G</tt>. <tt>G</tt> models
+<tt>uniform_random_bit_generator</tt> only if
+</p><p>
+<del>(2.1) &mdash; both <tt>G​::​min()</tt> and <tt>G​::​max()</tt> are constant
+expressions (<sref ref="[expr.const]"/>),</del>
+</p><p>
+<del>(2.2) &mdash; <tt>G​::​min() &lt; G​::​max()</tt>,</del>
+</p><p>
+(2.3) &mdash; <tt>G​::​min() &lt;= g()</tt>,
+</p><p>
+(2.4) &mdash; <tt>g() &lt;= G​::​max()</tt>, and
+</p><p>
+(2.5) &mdash; <tt>g()</tt> has amortized constant complexity.
+</p><p>
+3 A class <tt>G</tt> meets the <i>uniform random bit generator</i> requirements
+if <tt>G</tt> models <tt>uniform_random_bit_generator</tt>,
 <tt>invoke_­result_­t&lt;G&amp;&gt;</tt> is an unsigned integer type
 (<sref ref="[basic.fundamental]"/>), and <tt>G</tt> provides a nested
 <i>typedef-name</i> <tt>result_­type</tt> that denotes the same type as
