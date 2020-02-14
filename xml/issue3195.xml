@@ -65,9 +65,10 @@ and stored pointer value, so it seems cleaner to pin down the stored pointer val
 </p>
 
 <note>2019-06-09 Priority set to 2 after reflector discussion</note>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]</strong></p>
+
+<blockquote class="note">
 <p>This wording is relative to <a href="http://wg21.link/n4810">N4810</a>.</p>
 
 <ol>
@@ -99,6 +100,66 @@ null pointer value</ins>; otherwise, constructs a <tt>weak_ptr</tt> object that 
 and stores a copy of the pointer stored in <tt>r</tt>.
 <p/>
 -5- <i>Ensures:</i> <tt>use_count() == r.use_count()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2020-02-14 Casey updates P/R per LWG instruction</note>
+While reviewing the P/R in Prague, Tim Song noticed that the stored pointer
+value of a moved-from <tt>weak_ptr</tt> must also be specified.
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="http://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[util.smartptr.weak.const]"/> as indicated:</p>
+
+<blockquote><pre>
+constexpr weak_ptr() noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Constructs an empty <tt>weak_ptr</tt> object <ins>that stores a null pointer value</ins>.
+<p/>
+-2- <i>Postconditions:</i> <tt>use_count() == 0</tt>.
+</p>
+</blockquote>
+<pre>
+weak_ptr(const weak_ptr&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr(const weak_ptr&lt;Y&gt;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr(const shared_ptr&lt;Y&gt;&amp; r) noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Remarks:</i> The second and third constructors shall not participate in overload resolution unless <tt>Y*</tt> is
+compatible with <tt>T*</tt>.
+<p/>
+-4- <i>Effects:</i> If <tt>r</tt> is empty, constructs an empty <tt>weak_ptr</tt> object <ins>that stores a
+null pointer value</ins>; otherwise, constructs a <tt>weak_ptr</tt> object that shares ownership with <tt>r</tt>
+and stores a copy of the pointer stored in <tt>r</tt>.
+<p/>
+-5- <i>Postconditions:</i> <tt>use_count() == r.use_count()</tt>.
+</p>
+</blockquote>
+<pre>
+weak_ptr(weak_ptr&amp;&amp; r) noexcept;
+template&lt;class Y&gt; weak_ptr(weak_ptr&lt;Y&gt;&amp;&amp; r) noexcept;
+</pre>
+<blockquote>
+<p>
+-6- <i>Remarks</i>: The second constructor shall not participate in overload resolution unless <tt>Y*</tt>
+is compatible with <tt>T*</tt>.
+<p/>
+-7- <i>Effects</i>: Move constructs a <tt>weak_ptr</tt> instance from <tt>r</tt>.
+<p/>
+-8- <i>Postconditions</i>: <tt>*this</tt> shall contain the old value of <tt>r</tt>. <tt>r</tt>
+<del>shall be</del><ins>is</ins> empty<del>.</del><ins>, stores a null pointer value, and</ins>
+<tt>r.use_count() == 0</tt>.
 </p>
 </blockquote>
 </blockquote>
