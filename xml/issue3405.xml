@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3405" status="New">
+<title><tt>common_view</tt>'s converting constructor is bad, too</title>
+<section><sref ref="[range.common.view]"/></section>
+<submitter>Casey Carter</submitter>
+<date>20 Feb 2019</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="3280"/> struck the problematic/extraneous converting constructor templates from the 
+<tt><i>meow</i>_view</tt> range adaptor types in the standard library with the exception of <tt>common_view</tt>. 
+The omission of <tt>common_view</tt> seems to have been simply an oversight: its converting constructor 
+template is no less problematic or extraneous. We should remove <tt>common_view</tt>'s converting 
+constructor template as well to finish the task. Both <tt>cmcstl2</tt> and <tt>range-v3</tt> removed 
+the converting constructor template from <tt>common_view</tt> when removing the other converting 
+constructor templates, so we have implementation experience that this change is good as well as 
+consistent with the general thrust of LWG <iref ref="3280"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4849">N4849</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.common.view]"/>, class template <tt>common_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+  
+  [&hellip;]
+  constexpr explicit common_view(V r);
+  
+  <del>template&lt;viewable_range R&gt;
+    requires (!common_range&lt;R&gt; &amp;&amp; constructible_from&lt;V, all_view&lt;R&gt;&gt;)
+  constexpr explicit common_view(R&amp;&amp; r);</del>
+  
+  constexpr V base() const&amp; requires copy_constructible&lt;V&gt; { return base_; }
+  [&hellip;]
+  
+</pre>
+[&hellip;]
+<pre>
+<del>template&lt;viewable_range R&gt;
+  requires (!common_range&lt;R&gt; &amp;&amp; constructible_from&lt;V, all_view&lt;R&gt;&gt;)
+constexpr explicit common_view(R&amp;&amp; r);</del>
+</pre>
+<blockquote>
+<p>
+<del>-2- <i>Effects:</i> Initializes <tt>base_</tt> with <tt>views::all(std::forward&lt;R&gt;(r))</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
