@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3406" status="New">
+<title><tt>elements_view::begin()</tt> and <tt>elements_view::end()</tt> have incompatible
+constraints</title>
+<section><sref ref="[range.elements.view]"/></section>
+<submitter>Patrick Palka</submitter>
+<date>21 Feb 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<a href="http://wg21.link/p1994r1">P1994R1</a> (<tt>elements_view</tt> needs its own 
+<tt>sentinel</tt>) introduces a distinct <tt><i>sentinel</i></tt> type for <tt>elements_view</tt>.  
+In doing so, it replaces the two existing overloads of <tt>elements_view::end()</tt> with four new ones:
+</p>
+<blockquote><pre>
+<del>-    constexpr auto end() requires (!<i>simple-view</i>&lt;V&gt;)
+-    { return ranges::end(base_); }
+-
+-    constexpr auto end() const requires <i>simple-view</i>&lt;V&gt;
+-    { return ranges::end(base_); }</del>
+
+<ins>+    constexpr auto end()
++    { return <i>sentinel</i>&lt;false&gt;{ranges::end(base_)}; }
++
++    constexpr auto end() requires common_range&lt;V&gt;
++    { return <i>iterator</i>&lt;false&gt;{ranges::end(base_)}; }
++
++    constexpr auto end() const
++      requires range&lt;const V&gt;
++    { return <i>sentinel</i>&lt;true&gt;{ranges::end(base_)}; }
++
++    constexpr auto end() const
++      requires common_range&lt;const V&gt;
++    { return <i>iterator</i>&lt;true&gt;{ranges::end(base_)}; }</ins>
+</pre></blockquote>
+<p>
+But now these new overloads of <tt>elements_view::end()</tt> have constraints
+that are no longer consistent with the constraints of <tt>elements_view::begin()</tt>:
+</p>
+<blockquote><pre>
+     constexpr auto begin() requires (!<i>simple-view</i>&lt;V&gt;)
+     { return <i>iterator</i>&lt;false&gt;(ranges::begin(base_)); }
+     
+     constexpr auto begin() const requires <i>simple-view</i>&lt;V&gt;
+     { return <i>iterator</i>&lt;true&gt;(ranges::begin(base_)); }
+</pre></blockquote>
+<p>
+This inconsistency means that we can easily come up with a view <tt>V</tt> for
+which <tt>elements_view&lt;V&gt;::begin()</tt> returns an <tt><i>iterator</i>&lt;true&gt;</tt> 
+and <tt>elements_view&lt;V&gt;::end()</tt> returns an <tt><i>sentinel</i>&lt;false&gt;</tt>, 
+i.e. incomparable things of opposite constness. For example:
+</p>
+<blockquote><pre>
+tuple&lt;int, int&gt; x[] = {{0,0}};
+ranges::subrange r = {counted_iterator(x, 1), default_sentinel};
+auto v = r | views::elements&lt;0&gt;;
+v.begin() == v.end(); <i>// ill-formed</i>
+</pre></blockquote>
+<p>
+Here, overload resolution for <tt>begin()</tt> selects the <tt>const</tt> overload because
+the subrange <tt>r</tt> models <tt><i>simple-view</i></tt>. But overload resolution for 
+<tt>end()</tt> selects the non-<tt>const</tt> non-<tt>common_range</tt> overload. Hence 
+the last line of this snippet is ill-formed because it is comparing an iterator and
+sentinel of opposite constness, for which we have no matching <tt>operator==</tt>
+overload. So in this example <tt>v</tt> does not even model range because its <tt>begin()</tt> 
+and <tt>end()</tt> are incomparable.
+<p/>
+This issue can be resolved by making sure the constraints on <tt>elements_view::begin()</tt> 
+and on <tt>elements_view::end()</tt> are consistent and compatible. The following proposed 
+resolution seems to be one way to achieve that and takes inspiration from the design of 
+<tt>transform_view</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4849">N4849</a> after application of
+<a href="http://wg21.link/p1994r1">P1994R1</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.elements.view]"/>, class template <tt>elements_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+      <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt;
+  class elements_view : public view_interface&lt;elements_view&lt;V, N&gt;&gt; {
+  public:
+    [&hellip;]
+    constexpr V base() &amp;&amp; { return std::move(base_); }
+    
+    constexpr auto begin() <del>requires (!<i>simple-view</i>&lt;V&gt;)</del>
+    { return <i>iterator</i>&lt;false&gt;(ranges::begin(base_)); }
+    constexpr auto begin() const requires <del><i>simple-view</i>&lt;V&gt;</del><ins>range&lt;const V&gt;</ins>
+    { return <i>iterator</i>&lt;true&gt;(ranges::begin(base_)); }    
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
