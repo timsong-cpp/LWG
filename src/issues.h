@@ -40,7 +40,7 @@ struct order_by_issue_number {
 auto parse_issue_from_file(std::string file_contents, std::string const & filename, lwg::section_map & section_db) -> issue;
   // Seems appropriate constructor behavior.
   //
-  // Note that 'section_db' is modifiable as new (unkonwn) sections may be inserted,
+  // Note that 'section_db' is modifiable as new (unknown) sections may be inserted,
   // typically for issues reported against older documents with sections that have
   // since been removed, replaced or merged.
   //
