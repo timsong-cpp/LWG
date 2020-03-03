@@ -204,6 +204,13 @@ auto mailing_info::get_statuses() const -> std::string {
    return m_data.substr(i, j-i);
 }
 
+auto mailing_info::get_date() const -> std::string {
+   return get_attribute("date");
+}
+
+auto mailing_info::get_title() const -> std::string {
+   return get_attribute("title");
+}
 
 auto mailing_info::get_attribute(std::string const & attribute_name) const -> std::string {
     std::string search_string{attribute_name + "=\""};

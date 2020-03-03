@@ -697,6 +697,7 @@ void check_is_directory(std::string const & directory) {
 int main(int argc, char* argv[]) {
    try {
       std::string path;
+      bool revhist = false;
       std::cout << "Preparing new LWG issues lists..." << std::endl;
       if (argc == 2) {
          path = argv[1];
@@ -708,6 +709,9 @@ int main(int argc, char* argv[]) {
             return 1;
          }
          path = cwd;
+
+         if (argc == 3 && std::string(argv[1]) == "revision" && std::string(argv[2]) == "history")
+            revhist = true;
       }
 
       if (path.back() != '/') { path += '/'; }
@@ -768,6 +772,14 @@ int main(int argc, char* argv[]) {
       // Collect a report on all issues that have changed status
       // This will be added to the revision history of the 3 standard documents
       auto const new_issues = prepare_issues_for_diff_report(issues);
+
+      if (revhist) {
+         std::cout << "\n<revision tag=\"" << lwg_issues_xml.get_revision() << "\">\n"
+            << lwg_issues_xml.get_title() << '\n';
+         print_current_revisions(std::cout, old_issues, new_issues);
+         std::cout << "</revision>\n";
+         return 0;
+      }
 
       std::ostringstream os_diff_report;
       print_current_revisions(os_diff_report, old_issues, new_issues );
