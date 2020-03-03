@@ -18,7 +18,10 @@
 #include <iostream>  // eases debugging
 
 #include <ctime>
-#include <sys/stat.h>  // plan to factor this dependency out
+#include <chrono>
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 namespace {
 // date utilites may factor out again
@@ -60,12 +63,11 @@ auto make_date(std::tm const & mod) -> gregorian::date {
 }
 
 auto report_date_file_last_modified(std::string const & filename) -> gregorian::date {
-   struct stat buf;
-   if (stat(filename.c_str(), &buf) == -1) {
-      throw std::runtime_error{"call to stat failed for " + filename};
-   }
+   auto file_mtime = fs::last_write_time(filename);
+   auto sys_mtime = std::chrono::system_clock::now() - (fs::file_time_type::clock::now() - file_mtime);
+   std::time_t mtime = std::chrono::duration_cast<std::chrono::seconds>(sys_mtime.time_since_epoch()).count();
 
-   return make_date(*std::localtime(&buf.st_mtime));
+   return make_date(*std::localtime(&mtime));
 }
 
 } // close unnamed namespace

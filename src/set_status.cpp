@@ -15,50 +15,29 @@
 #include <string>
 #include <ctime>
 
-// platform headers - requires a Posix compatible platform
-// The hope is to replace all of this with the filesystem TS
-#include <dirent.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 // solution specific headers
 //#include "issues.h"
 //#include "sections.h"
 #include "status.h"
 
-#if 0
-// Revisit this after AJM works out linker issues on his Mac
-#if 1
-// workaround until <experimental/filesystem> is widely available:
-##include <boost/filesystem.hpp>
-namespace std {
-namespace experimental {
-namespace filesystem {
-using namespace boost::filesystem;
-}
-}
-}
-#else
-#include <experimental/filesystem>
-#endif
-#endif
-
 struct bad_issue_file : std::runtime_error {
-   bad_issue_file(std::string const & filename, std::string const & error_message)
-      : runtime_error{"Error parsing issue file " + filename + ": " + error_message}
+   bad_issue_file(fs::path const & filename, std::string const & error_message)
+      : runtime_error{"Error parsing issue file " + filename.string() + ": " + error_message}
       {
    }
 };
 
 
-auto read_file_into_string(std::string const & filename) -> std::string {
+auto read_file_into_string(fs::path const & filename) -> std::string {
    // read a text file completely into memory, and return its contents as
    // a 'string' for further manipulation.
 
-   std::ifstream infile{filename.c_str()};
+   std::ifstream infile{filename};
    if (!infile.is_open()) {
-      throw std::runtime_error{"Unable to open file " + filename};
+      throw std::runtime_error{"Unable to open file " + filename.string()};
    }
 
    std::istreambuf_iterator<char> first{infile}, last{};
@@ -67,10 +46,9 @@ auto read_file_into_string(std::string const & filename) -> std::string {
 
 // ============================================================================================================
 
-void check_is_directory(std::string const & directory) {
-   struct stat sb;
-   if (stat(directory.c_str(), &sb) != 0 or !S_ISDIR(sb.st_mode)) {
-      throw std::runtime_error(directory + " is not an existing directory");
+void check_is_directory(fs::path const & directory) {
+   if (!is_directory(directory)) {
+      throw std::runtime_error(directory.string() + " is not an existing directory");
    }
 }
 
@@ -95,19 +73,12 @@ int main(int argc, char const * argv[]) {
 
       std::string const comment = argc == 4 ? argv[3] : std::string{};
 
-      std::string path;
-      char cwd[1024];
-      if (getcwd(cwd, sizeof(cwd)) == 0) {
-         std::cerr << "unable to getcwd\n";
-         return -3;
-      }
-      path = cwd;
-      if (path.back() != '/') { path.push_back('/'); }
+      fs::path path = fs::current_path();
 
       check_is_directory(path);
 
       std::string issue_file = std::string{"issue"} + argv[1] + ".xml";
-      auto const filename = path + "xml/" + issue_file;
+      auto const filename = path / "xml" / issue_file;
 
       auto issue_data = read_file_into_string(filename);
 
@@ -158,7 +129,7 @@ int main(int argc, char const * argv[]) {
 
       std::ofstream out_file{filename};
       if (!out_file.is_open()) {
-         throw std::runtime_error{"Unable to re-open file " + filename};
+         throw std::runtime_error{"Unable to re-open file " + filename.string()};
       }
 
       out_file << issue_data;
