@@ -78,8 +78,8 @@ int main(int argc, char const * argv[]) {
    try {
 //       bool trace_on{false};  // Will pick this up from the command line later
 
-      if (argc != 3) {
-         std::cerr << "Must specify exactly one issue, followed by its new status\n";
+      if (argc != 3 && argc != 4) {
+         std::cerr << "Must specify exactly one issue, followed by its new status, followed by an optional comment.\n";
 //         for (auto arg : argv) {
          for (int i{0}; argc != i;  ++i) {
             char const * arg = argv[i];
@@ -92,6 +92,8 @@ int main(int argc, char const * argv[]) {
 
       std::string new_status{argv[2]};
       std::replace(new_status.begin(), new_status.end(), '_', ' ');  // simplifies unix shell scripting
+
+      std::string const comment = argc == 4 ? argv[3] : std::string{};
 
       std::string path;
       char cwd[1024];
@@ -144,8 +146,14 @@ int main(int argc, char const * argv[]) {
          std::time_t t{ std::time(nullptr) };
          std::tm utc = *std::gmtime(&t);
          char date[11]; // YYYY-mm-dd + null
-         if(std::strftime(&date[0], sizeof date, "%Y-%m-%d", &utc) != (sizeof date - 1)) throw std::logic_error("Datestamp size is borked");
-         issue_data.insert(eod, "<note>\n" + std::string(date) + " Status changed: " + old_status + " &rarr; " + new_status + ".\n</note>\n");
+         if(std::strftime(&date[0], sizeof date, "%Y-%m-%d", &utc) != (sizeof date - 1))
+            throw std::logic_error("Datestamp size is borked");
+         std::ostringstream note;
+         note << "<note>" << date;
+         if (comment.size())
+            note << ' ' << comment << '.';
+         note << " Status changed: " + old_status + " &rarr; " + new_status + ".</note>\n";
+         issue_data.insert(eod, note.str());
       }
 
       std::ofstream out_file{filename};
