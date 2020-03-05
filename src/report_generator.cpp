@@ -421,7 +421,6 @@ R"(<table>
 std::string prune_title_tags(const std::string& title){
     static const std::regex rx("<[^>]*>");
     return std::regex_replace(title, rx, "");
-
 }
 
 } // close unnamed namespace
@@ -433,13 +432,13 @@ namespace lwg
 // A precondition for calling any of these functions is that the list of issues is sorted in numerical order, by issue number.
 // While nothing disasterous will happen if this precondition is violated, the published issues list will list items
 // in the wrong order.
-void report_generator::make_active(std::vector<issue> const & issues, std::string const & path, std::string const & diff_report) {
+void report_generator::make_active(std::vector<issue> const & issues, fs::path const & path, std::string const & diff_report) {
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-active.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-active.html"};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Active Issues List");
    print_paper_heading(out, "active", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("active") << '\n';
@@ -451,13 +450,13 @@ void report_generator::make_active(std::vector<issue> const & issues, std::strin
 }
 
 
-void report_generator::make_defect(std::vector<issue> const & issues, std::string const & path, std::string const & diff_report) {
+void report_generator::make_defect(std::vector<issue> const & issues, fs::path const & path, std::string const & diff_report) {
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-defects.html"};
-   std::ofstream out(filename.c_str());
+   fs::path filename{path / "lwg-defects.html"};
+   std::ofstream out(filename);
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Defect Reports and Accepted Issues");
    print_paper_heading(out, "defect", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("defect") << '\n';
@@ -468,13 +467,13 @@ void report_generator::make_defect(std::vector<issue> const & issues, std::strin
 }
 
 
-void report_generator::make_closed(std::vector<issue> const & issues, std::string const & path, std::string const & diff_report) {
+void report_generator::make_closed(std::vector<issue> const & issues, fs::path const & path, std::string const & diff_report) {
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-closed.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-closed.html"};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Closed Issues List");
    print_paper_heading(out, "closed", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("closed") << '\n';
@@ -486,14 +485,14 @@ void report_generator::make_closed(std::vector<issue> const & issues, std::strin
 
 
 // Additional non-standard documents, useful for running LWG meetings
-void report_generator::make_tentative(std::vector<issue> const & issues, std::string const & path) {
+void report_generator::make_tentative(std::vector<issue> const & issues, fs::path const & path) {
    // publish a document listing all tentative issues that may be acted on during a meeting.
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-tentative.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-tentative.html"};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Tentative Issues");
 //   print_paper_heading(out, "active", lwg_issues_xml);
 //   out << lwg_issues_xml.get_intro("active") << '\n';
@@ -506,14 +505,14 @@ void report_generator::make_tentative(std::vector<issue> const & issues, std::st
 }
 
 
-void report_generator::make_unresolved(std::vector<issue> const & issues, std::string const & path) {
+void report_generator::make_unresolved(std::vector<issue> const & issues, fs::path const & path) {
    // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-unresolved.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-unresolved.html"};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Unresolved Issues");
 //   print_paper_heading(out, "active", lwg_issues_xml);
 //   out << lwg_issues_xml.get_intro("active") << '\n';
@@ -525,14 +524,14 @@ void report_generator::make_unresolved(std::vector<issue> const & issues, std::s
    print_file_trailer(out);
 }
 
-void report_generator::make_immediate(std::vector<issue> const & issues, std::string const & path) {
+void report_generator::make_immediate(std::vector<issue> const & issues, fs::path const & path) {
    // publish a document listing all non-tentative, non-ready issues that must be reviewed during a meeting.
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-immediate.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-immediate.html"};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Issues Resolved Directly In [INSERT CURRENT MEETING HERE]");
 out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT MEETING HERE]</h1>
 <table>
@@ -560,14 +559,14 @@ out << R"(<h1>C++ Standard Library Issues Resolved Directly In [INSERT CURRENT M
    print_file_trailer(out);
 }
 
-void report_generator::make_ready(std::vector<issue> const & issues, std::string const & path) {
+void report_generator::make_ready(std::vector<issue> const & issues, fs::path const & path) {
    // publish a document listing all ready issues for a formal vote
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-ready.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-ready.html"};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]");
 out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING HERE]</h1>
 <table>
@@ -595,14 +594,14 @@ out << R"(<h1>C++ Standard Library Issues to be moved in [INSERT CURRENT MEETING
    print_file_trailer(out);
 }
 
-void report_generator::make_editors_issues(std::vector<issue> const & issues, std::string const & path) {
+void report_generator::make_editors_issues(std::vector<issue> const & issues, fs::path const & path) {
    // publish a single document listing all 'Voting' and 'Immediate' resolutions (only).
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
 
-   std::string filename{path + "lwg-issues-for-editor.html"};
-   std::ofstream out{filename.c_str()};
+   fs::path filename{path / "lwg-issues-for-editor.html"};
+   std::ofstream out{filename};
    if (!out) {
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    }
    print_file_header(out, "C++ Standard Library Issues Resolved Directly In [INSERT CURRENT MEETING HERE]");
    out << "<h1>C++ Standard Library Issues Resolved In [INSERT CURRENT MEETING HERE]</h1>\n";
@@ -610,12 +609,12 @@ void report_generator::make_editors_issues(std::vector<issue> const & issues, st
    print_file_trailer(out);
 }
 
-void report_generator::make_sort_by_num(std::vector<issue>& issues, std::string const & filename) {
+void report_generator::make_sort_by_num(std::vector<issue>& issues, fs::path const & filename) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
 
-   std::ofstream out{filename.c_str()};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "LWG Table of Contents");
 
    out <<
@@ -632,12 +631,12 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 }
 
 
-void report_generator::make_sort_by_priority(std::vector<issue>& issues, std::string const & filename) {
+void report_generator::make_sort_by_priority(std::vector<issue>& issues, fs::path const & filename) {
    sort(issues.begin(), issues.end(), order_by_priority{section_db});
 
-   std::ofstream out{filename.c_str()};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "LWG Table of Contents");
 
    out <<
@@ -670,15 +669,15 @@ R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revis
 }
 
 
-void report_generator::make_sort_by_status(std::vector<issue>& issues, std::string const & filename) {
+void report_generator::make_sort_by_status(std::vector<issue>& issues, fs::path const & filename) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
    stable_sort(issues.begin(), issues.end(), [](issue const & x, issue const & y) { return x.mod_date > y.mod_date; } );
    stable_sort(issues.begin(), issues.end(), order_by_section{section_db});
    stable_sort(issues.begin(), issues.end(), order_by_status{});
 
-   std::ofstream out{filename.c_str()};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "LWG Index by Status and Section");
 
    out <<
@@ -705,15 +704,15 @@ This document is the Index by Status and Section for the <a href="lwg-active.htm
 }
 
 
-void report_generator::make_sort_by_status_mod_date(std::vector<issue> & issues, std::string const & filename) {
+void report_generator::make_sort_by_status_mod_date(std::vector<issue> & issues, fs::path const & filename) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
    stable_sort(issues.begin(), issues.end(), order_by_section{section_db});
    stable_sort(issues.begin(), issues.end(), [](issue const & x, issue const & y) { return x.mod_date > y.mod_date; } );
    stable_sort(issues.begin(), issues.end(), order_by_status{});
 
-   std::ofstream out{filename.c_str()};
+   std::ofstream out{filename};
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "LWG Index by Status and Date");
 
    out <<
@@ -739,7 +738,7 @@ This document is the Index by Status and Date for the <a href="lwg-active.html">
 }
 
 
-void report_generator::make_sort_by_section(std::vector<issue>& issues, std::string const & filename, bool active_only) {
+void report_generator::make_sort_by_section(std::vector<issue>& issues, fs::path const & filename, bool active_only) {
    sort(issues.begin(), issues.end(), order_by_issue_number{});
    stable_sort(issues.begin(), issues.end(), [](issue const & x, issue const & y) { return x.mod_date > y.mod_date; } );
    stable_sort(issues.begin(), issues.end(), order_by_status{});
@@ -761,9 +760,9 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, std::str
       }
    }
 
-   std::ofstream out(filename.c_str());
+   std::ofstream out(filename);
    if (!out)
-     throw std::runtime_error{"Failed to open " + filename};
+     throw std::runtime_error{"Failed to open " + filename.string()};
    print_file_header(out, "LWG Index by Section");
 
    out << "<h1>C++ Standard Library Issues List (Revision " << lwg_issues_xml.get_revision() << ")</h1>\n";
@@ -816,7 +815,7 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, std::str
 }
 
 // Create individual HTML files for each issue, to make linking easier
-void report_generator::make_individual_issues(std::vector<issue> const & issues, std::string const & path) {
+void report_generator::make_individual_issues(std::vector<issue> const & issues, fs::path const & path) {
    assert(std::is_sorted(issues.begin(), issues.end(), order_by_issue_number{}));
    issue_set_by_first_tag const  all_issues{ issues.begin(), issues.end()} ;
    issue_set_by_status    const  issues_by_status{ issues.begin(), issues.end() };
@@ -829,10 +828,10 @@ void report_generator::make_individual_issues(std::vector<issue> const & issues,
    }
 
    for(auto & iss : issues){
-       std::string filename{path + "issue" + std::to_string(iss.num) + ".html"};
-       std::ofstream out{filename.c_str()};
+       fs::path filename{path / ("issue" + std::to_string(iss.num) + ".html")};
+       std::ofstream out{filename};
        if (!out)
-         throw std::runtime_error{"Failed to open " + filename};
+         throw std::runtime_error{"Failed to open " + filename.string()};
        print_file_header(out, std::string("Issue ") + std::to_string(iss.num) + ": " + prune_title_tags(iss.title));
        print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues, print_issue_type::individual);
        print_file_trailer(out);
