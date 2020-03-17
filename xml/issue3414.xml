@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3414" status="New">
+<title>[networking.ts] <tt>service_already_exists</tt>has no usable constructors</title>
+<section><sref ref="[async.exec.ctx]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>17 Mar 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: networking.ts</b></p>
+<p>
+In the Networking TS, the <tt>service_already_exists</tt> exception type
+has no constructors declared. The <tt>logic_error</tt> base class is not
+default constructible, so <tt>service_already_exists</tt>'s implicit default
+constructor is defined as deleted.
+</p>
+<p>
+Implementations can add one or more private constructors that can be used
+by <tt>make_service</tt>, but there seems to be little benefit to that.
+The Boost.Asio type of the same name has a public default constructor.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4734">N4734</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[async.exec.ctx]"/> p1, as indicated:</p>
+
+<blockquote>
+<pre>
+<i>// service access</i>
+template&lt;class Service> typename Service::key_type&amp;
+use_service(execution_context&amp; ctx);
+template&lt;class Service, class... Args&gt; Service&amp;
+make_service(execution_context&amp; ctx, Args&amp;&amp;... args);
+template&lt;class Service&gt; bool has_service(const execution_context&amp; ctx) noexcept;
+class service_already_exists : public logic_error <del>{ };</del>
+<ins>{
+  service_already_exists();
+};</ins>
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Add a new subclause after [async.exec.ctx.globals]:</p>
+
+<blockquote>
+<p>
+<b>13.7.6 Class <tt>service_already_exists</tt> [async.exec.ctx.except]</b>
+</p>
+
+<p>
+-1- The class <tt>service_already_exists</tt> defines the type of objects
+thrown as exceptions to report an attempt to add an existing service
+to an <tt>execution_context</tt>.
+</p>
+<pre>
+service_already_exists()
+</pre>
+<blockquote>
+<p>-2- <i>Postconditions:</i> <tt>what()</tt> returns an implementation-defined NTBS.</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
