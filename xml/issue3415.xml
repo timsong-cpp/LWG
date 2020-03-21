@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3415" status="New">
+<title><tt>back_insert_iterator</tt> fails when a container is also its value type</title>
+<section><sref ref="[back.insert.iterator]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>03 Mar 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following:
+</p>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;iterator&gt;
+#include &lt;vector&gt;
+
+struct example_container 
+{
+  using value_type = std::back_insert_iterator&lt;example_container&gt;;
+  void push_back(const value_type&amp;) {}
+};
+
+int main() 
+{
+  std::vector&lt;std::back_insert_iterator&lt;example_container&gt;&gt; v;
+  example_container ex;
+  std::copy(v.begin(), v.end(), std::back_inserter(ex));
+}
+</pre></blockquote>
+<p>
+This example is out-of-contract in the current standard because it creates 
+<tt>back_insert_iterator&lt;<em>incomplete</em>&gt;</tt>, as per <sref ref="[res.on.functions]"/>/2. 
+However, it might be something we are considering for future iterators and proxy reference types. 
+In practice, the "Ill-formed, no diagnostic required" the user is likely to get is an ambiguity between 
+what <tt>back_insert_iterator</tt>'s copy assignment operator, and its "push back assigning operator". 
+We could resolve this by changing the return type of <tt>operator*</tt> to a proxy in the same way 
+<tt>istream_iterator</tt> does, though that might be ABI breaking for some implementations.
+<p/>
+We should consider having a standing LWG/LEWG policy that iterators are not their own proxy 
+<tt>operator*</tt> type if we intend to leave the door open to more incomplete type support in 
+the standard library.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+</issue>
