@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3419" status="New">
+<title>&sect;[algorithms.requirements]/15 doesn't reserve as many rights as it intends to</title>
+<section><sref ref="[algorithms.requirements]"/></section>
+<submitter>Richard Smith</submitter>
+<date>24 Mar 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[algorithms.requirements]"/>/15 says:
+</p>
+<blockquote><p>
+"The number and order of deducible template parameters for algorithm declarations are unspecified, except 
+where explicitly stated otherwise. [<i>Note:</i> Consequently, the algorithms may not be called with 
+explicitly-specified template argument lists. &mdash; <i>end note</i>]"
+</p></blockquote>
+<p>
+But the note doesn't follow from the normative rule. For example, we felt the need to explicitly allow 
+deduction for <tt>min</tt>'s template parameter:
+</p>
+<blockquote><pre>
+template&lt;typename T&gt; const T&amp; min(const T&amp;, const T&amp;);
+</pre></blockquote>
+<p>
+&hellip; but if only the order and number of <em>deducible</em> template parameters is permitted to vary, 
+then because of the required deduction behavior of this function template, there are only three possible 
+valid declarations:
+</p>
+<blockquote><pre>
+template&lt;typename T&gt; ??? min(const T&amp;, const T&amp;);
+template&lt;typename T, typename U&gt; ??? min(const T&amp;, const U&amp;);
+template&lt;typename T, typename U&gt; ??? min(const U&amp;, const T&amp;);
+</pre></blockquote>
+<p>
+(up to minor differences in the parameter type). This doesn't prohibit calls with an explicitly-specified 
+template argument list, contrary to the claim in the note. (Indeed, because a call such as <tt>min(1, {})</tt> 
+is valid, either the first of the above three overloads must be present or there must be a default template 
+argument <tt>typename U = T</tt>, which further adds to the fact that there may be valid calls with an 
+explicitly-specified template argument list.)
+<p/>
+Also, the "explicitly stated otherwise" cases use phrasing such as: "An invocation may explicitly specify 
+an argument for the template parameter <tt>T</tt> of the overloads in namespace <tt>std</tt>." which 
+doesn't "specify otherwise" the normative rule, but does "specify otherwise" the claim in the note.
+<p/>
+All this leads me to believe that [algorithms.requirements]/15 is backwards: the normative rule should be a 
+note and the note should be the normative rule.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wiki.edg.com/pub/Wg21summer2020/Documents/post-prague-wd.pdf">the 
+post-Prague working draft preview</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[algorithms.requirements]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-15- The <ins>well-formedness and behavior of a call to an algorithm with an explicitly-specified template 
+argument list is</ins><del>number and order of deducible template parameters for algorithm declarations are</del> 
+unspecified, except where explicitly stated otherwise. [<i>Note:</i> Consequently, <ins>an implementation can 
+declare an algorithm with more template parameters than those presented</ins><del>the algorithms may not be 
+called with explicitly-specified template argument lists</del>. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
