@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3420" status="New">
+<title><tt><i>cpp17-iterator</i></tt> should check that the type looks like an iterator first</title>
+<section><sref ref="[iterator.traits]"/></section>
+<submitter>Tim Song</submitter>
+<date>29 Feb 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It is common in pre-C++20 code to rely on SFINAE-friendly <tt>iterator_traits</tt> 
+to rule out non-iterators in template constraints (<tt>std::filesystem::path</tt> 
+is one example in the standard library).
+<p/>
+C++20 changed <tt>iterator_traits</tt> to automatically detect its members in
+some cases, and this detection can cause constraint recursion. LWG <iref ref="3244"/> 
+tries to fix this for <tt>path</tt> by short-circuiting the check when the source type is 
+<tt>path</tt> itself, but this isn't sufficient:
+</p>
+<blockquote><pre>
+struct Foo 
+{
+  Foo(const std::filesystem::path&amp;);
+};
+
+static_assert(std::copyable&lt;Foo&gt;);
+</pre></blockquote>
+<p>
+Here the copyability determination will ask whether a <tt>path</tt> can be
+constructed from a <tt>Foo</tt>, which asks whether <tt>Foo</tt> is an iterator, which
+checks whether <tt>Foo</tt> is <tt>copyable</tt> [&hellip;].
+<p/>
+To reduce the risk of constraint recursion, we should change <tt><i>cpp17-iterator</i></tt> 
+so that it does not ask about copyability until the type is known to resemble an iterator.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wiki.edg.com/pub/Wg21summer2020/Documents/post-prague-wd.pdf">the 
+post-Prague working draft preview</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.traits]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The definitions in this subclause make use of the following exposition-only concepts:
+</p>
+<blockquote>
+<pre>
+template&lt;class I&gt;
+concept <i>cpp17-iterator</i> =
+  <del>copyable&lt;I&gt; &amp;&amp;</del> requires(I i) {
+    { *i } -&gt; <i>can-reference</i>;
+    { ++i } -&gt; same_as&lt;I&amp;&gt;;
+    { *i++ } -&gt; <i>can-reference</i>;
+  } <ins>&amp;&amp; copyable&lt;I&gt;</ins>;
+  
+[&hellip;]
+</pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
