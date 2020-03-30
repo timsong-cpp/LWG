@@ -2,7 +2,8 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="3413" status="New">
-<title>[fund.ts.v3] <tt>propagate_const</tt>'s <tt>swap</tt>'s <tt>noexcept</tt> specification needs to use a trait</title>
+<title>[fund.ts.v3] <tt>propagate_const</tt>'s <tt>swap</tt>'s <tt>noexcept</tt> specification needs to 
+be constrained and use a trait</title>
 <section><sref ref="[propagate_const.modifiers]"/><sref ref="[propagate_const.algorithms]"/></section>
 <submitter>Thomas K&ouml;ppe</submitter>
 <date>29 Feb 2020</date>
@@ -16,9 +17,9 @@ functions for <tt>propagate_const</tt> are using the old, ill-formed pattern of 
 "<tt>noexcept(swap(...))</tt>" as the boolean predicate. According to LWG <iref ref="2456"/>, this is 
 ill-formed, and a resolution such as in <a href="http://wg21.link/p0185r1">P0185R1</a> is required.
 </p>
-</discussion>
 
-<resolution>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="http://wg21.link/n4840">N4840</a>.
 </p>
@@ -73,6 +74,71 @@ template &lt;class T&gt;
 <blockquote>
 <p>
 <del>-2- The constant-expression in the exception-specification is <tt>noexcept(pt1.swap(pt2))</tt>.</del>
+<p/>
+-3- <i>Effects:</i> <tt>pt1.swap(pt2)</tt>. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2020-03-30; Reflector discussion</note>
+<p>
+This issue has very much overlap with LWG <iref ref="2561"/>, especially now that the library fundamentals has been rebased
+to C++20 the there reported problem for the corresponding <tt>swap</tt> problem for <tt>optional</tt> is now mood. During the
+reflector discussion of this issue here it was also observed that the free <tt>swap</tt> template for <tt>propagate_const</tt>
+needs to be constrained. This has been done below in the revised wording which also attempts to use a similar style as
+the IS.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4840">N4840</a>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[propagate_const.overview]"/>, class template <tt>propagate_const</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+<i>// <sref ref="[propagate_const.modifiers]"/>, propagate_const modifiers</i>
+constexpr void swap(propagate_const&amp; pt) noexcept(<del><i>see below</i></del><ins>is_nothrow_swappable_v&lt;T&gt;</ins>);
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[propagate_const.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr void swap(propagate_const&amp; pt) noexcept(<del><i>see below</i></del><ins>is_nothrow_swappable_v&lt;T&gt;</ins>);
+</pre>
+<blockquote>
+<p>
+<del>-2- The constant-expression in the exception-specification is <tt>noexcept(swap(t_, pt.t_))</tt>.</del>
+<p/>
+-3- <i>Effects:</i> <tt>swap(t_, pt.t_)</tt>. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[propagate_const.algorithms]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template &lt;class T&gt;
+  constexpr void swap(propagate_const&lt;T&gt;&amp; pt1, propagate_const&lt;T&gt;&amp; pt2) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>is_swappable_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-2- <ins><i>Remarks:</i></ins> The constant-expression in the exception-specification is <tt>noexcept(pt1.swap(pt2))</tt>.
 <p/>
 -3- <i>Effects:</i> <tt>pt1.swap(pt2)</tt>. 
 </p>
