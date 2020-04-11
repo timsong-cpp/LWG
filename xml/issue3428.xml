@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3428" status="New">
+<title><tt>single_view</tt>'s in place constructor should be explicit</title>
+<section><sref ref="[range.single.view]"/></section>
+<submitter>Tim Song</submitter>
+<date>7 Apr 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>in_place_t</tt> constructor template of <tt>single_view</tt> is not explicit:
+</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  requires constructible_from&lt;T, Args...&gt;
+constexpr single_view(in_place_t, Args&amp;&amp;... args);
+</pre></blockquote>
+<p>
+so it defines an implicit conversion from <tt>std::in_place_t</tt> to
+<tt>single_view&lt;T&gt;</tt> whenever <tt>constructible_from&lt;T&gt;</tt> is modeled, 
+which seems unlikely to be the intent.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wiki.edg.com/pub/Wg21summer2020/Documents/post-prague-wd.pdf">the 
+post-Prague working draft preview</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.single.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;copy_constructible T&gt;
+    requires is_object_v&lt;T&gt;
+  class single_view : public view_interface&lt;single_view&lt;T&gt;&gt; {
+    [&hellip;]
+  public:
+    [&hellip;]
+    template&lt;class... Args&gt;
+      requires constructible_from&lt;T, Args...&gt;
+    constexpr <ins>explicit</ins> single_view(in_place_t, Args&amp;&amp;... args);
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class... Args&gt;
+constexpr <ins>explicit</ins> single_view(in_place_t, Args&amp;&amp;... args);
+</pre>
+
+<blockquote>
+<p>
+-3- <i>Effects:</i> Initializes <tt>value_</tt> as if by <tt>value_{in_place, std::forward&lt;Args&gt;(args)...}</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
