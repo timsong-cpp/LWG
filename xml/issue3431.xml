@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3431" status="New">
+<title><tt>&lt;=&gt;</tt> for containers should require <tt>three_way_comparable&lt;T&gt;</tt> instead of <tt>&lt;=&gt;</tt></title>
+<section><sref ref="[container.requirements.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>17 Apr 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The precondition for <tt>&lt;=&gt;</tt> on containers is:
+<p/>
+"Either <tt>&lt;=&gt;</tt> is defined for values of type (possibly <tt>const</tt>) <tt>T</tt>, 
+or <tt>&lt;</tt> is defined for values of type (possibly <tt>const</tt>) <tt>T</tt> and 
+<tt>&lt;</tt> is a total ordering relationship."
+<p/>
+I don't think <tt>&lt;=&gt;</tt> is sufficient, because <tt><i>synth-three-way</i></tt> won't 
+use <tt>&lt;=&gt;</tt> unless <tt>three_way_comparable&lt;T&gt;</tt> is satisfied, which requires
+<tt><i>weakly-equality-comparable-with</i>&lt;T, T&gt;</tt> as well as <tt>&lt;=&gt;</tt>.
+<p/>
+So to use <tt>&lt;=&gt;</tt> I think the type also requires <tt>==</tt>, or more precisely, it
+must satisfy <tt>three_way_comparable</tt>.
+<p/>
+The problem becomes clearer with the following example:
+</p>
+<blockquote><pre>
+#include &lt;compare&gt;
+#include &lt;vector&gt;
+
+struct X
+{
+  std::strong_ordering operator&lt;=&gt;(X) const { return std::strong_ordering::equal; }
+};
+
+std::vector&lt;X&gt; v(1);
+std::strong_ordering c = v &lt;=&gt; v;
+</pre></blockquote>
+<p>
+This doesn't compile, because despite <tt>X</tt> meeting the preconditions for <tt>&lt;=&gt;</tt> in 
+[tab:container.opt], <tt><i>synth-three-way</i></tt> will return <tt>std::weak_ordering</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wiki.edg.com/pub/Wg21summer2020/Documents/post-prague-wd.pdf">the 
+post-Prague working draft preview</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[container.requirements.general]"/>, Table [tab:container.opt], as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 75: Optional container operations [tab:container.opt]</caption>
+<tr>
+<th align="center">Expression</th>
+<th align="center">Return type</th>
+<th align="center">Operational<br/>semantics</th>
+<th align="center">Assertion/note<br/>pre-/post-condition</th>
+<th align="center">Complexity</th>
+</tr>
+
+<tr>
+<td colspan="5" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>a &lt;=&gt; b</tt>
+</td>
+<td>
+<tt><i>synth-threeway-result</i>&lt;value_type&gt;</tt>
+</td>
+<td>
+<tt>lexicographical_compare_three_way(<br/>
+a.begin(), a.end(), b.begin(), b.end(),<br/>
+<i>synth-three-way</i>)</tt>
+</td>
+<td>
+<i>Preconditions:</i> Either
+<del><tt>&lt;=&gt;</tt> is defined for<br/>
+values of type (possibly <tt>const</tt>)</del><br/>
+<tt>T</tt> <ins>satisfies <tt>three_way_comparable</tt></ins>,<br/>
+or <tt>&lt;</tt> is defined for values of type<br/>
+(possibly <tt>const</tt>) <tt>T</tt> and<br/> 
+<tt>&lt;</tt> is a total ordering relationship.
+</td>
+<td>
+linear
+</td>
+</tr>
+
+<tr>
+<td colspan="5" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+</table>
+
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
