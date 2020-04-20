@@ -40,6 +40,32 @@ std::strong_ordering c = v &lt;=&gt; v;
 <p>
 This doesn't compile, because despite <tt>X</tt> meeting the preconditions for <tt>&lt;=&gt;</tt> in 
 [tab:container.opt], <tt><i>synth-three-way</i></tt> will return <tt>std::weak_ordering</tt>.
+<p/>
+Here is another example:
+</p>
+<blockquote><pre>
+#include &lt;compare&gt;
+#include &lt;vector&gt;
+
+struct X
+{
+  friend bool operator&lt;(X, X) { return true; } // <i>The return value is intentional, see below</i>
+  friend std::strong_ordering operator&lt;=&gt;(X, X) { return std::strong_ordering::equal; }
+};
+
+std::vector&lt;X&gt; v(1);
+std::weak_ordering c = v &lt;=&gt; v;
+</pre></blockquote>
+<p>
+This meets the precondition because it defines <tt>&lt;=&gt;</tt>, but the result of <tt>&lt;=&gt;</tt> 
+on <tt>vector&lt;X&gt;</tt> will be nonsense, because <tt><i>synth-three-way</i></tt> will use 
+<tt>operator&lt;</tt> not <tt>operator&lt;=&gt;</tt> and that defines a broken ordering.
+<p/>
+So we're stating a precondition which implies "if you do this, you don't get garbage results" and 
+then we give garbage results anyway.
+<p/>
+The proposed resolution is one way to fix that, by tightening the precondition so that it matches 
+what <tt><i>synth-three-way</i></tt> actually does.
 </p>
 </discussion>
 
