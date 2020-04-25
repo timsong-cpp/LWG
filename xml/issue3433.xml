@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3433" status="New">
+<title><tt>subrange::advance(n)</tt> has UB when <tt>n &lt; 0</tt></title>
+<section><sref ref="[range.subrange.access]"/></section>
+<submitter>Casey Carter</submitter>
+<date>21 Apr 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>subrange::advance(n)</tt> is specified to call <tt>ranges::advance(<i>begin_</i>, n, <i>end_</i>)</tt> 
+in both <tt><i>StoreSize</i></tt> and <tt>!<i>StoreSize</i></tt> cases (<sref ref="[range.subrange.access]"/>/9). 
+Unfortunately, <tt>ranges::advance(<i>begin_</i>, n, <i>end_</i>)</tt> has undefined behavior when 
+<tt>n &lt; 0</tt> unless <tt>[<i>end_</i>, <i>begin_</i>)</tt> denotes a valid range 
+(<sref ref="[range.iter.op.advance]"/>/5). This would all be perfectly fine &mdash; the UB is exposed to 
+the caller via effects-equivalent-to &mdash; were it not the design intent that <tt>subrange::advance(-n)</tt> 
+be usable to reverse the effects of <tt>subrange::advance(n)</tt> when the <tt>subrange</tt> has a 
+bidirectional iterator type. That is, however, clearly the design intent: <tt>subrange::prev()</tt>, 
+for example, is equivalent to <tt>subrange::advance(-1)</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.subrange.access]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr subrange&amp; advance(iter_difference_t&lt;I&gt; n);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Equivalent to:
+<ol style="list-style-type: none">
+<li><p><del>(9.1) &mdash; If <tt><i>StoreSize</i></tt> is <tt>true</tt>,</del></p>
+<blockquote><pre>
+<del>auto d = n - ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+if (d &gt;= 0)
+  <i>size_</i> -= <i>to-unsigned-like</i>(d);
+else
+  <i>size_</i> += <i>to-unsigned-like</i>(-d);
+return *this;</del>
+</pre></blockquote>
+</li>
+<li><p><del>(9.2) &mdash; Otherwise,</del></p>
+<blockquote><pre>
+<del>ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+return *this;</del>
+</pre></blockquote>
+</li>
+</ol>
+<blockquote><pre>
+<ins>if constexpr (bidirectional_iterator&lt;I&gt;) {
+  if (n &lt; 0) {
+    ranges::advance(<i>begin_</i>, n);
+    if constexpr (<i>StoreSize</i>)
+      <i>size_</i> += <i>to-unsigned-like</i>(-n);
+    return *this;
+  }
+}</ins>
+<ins></ins><ins>
+auto d = n - ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+if constexpr (<i>StoreSize</i>)
+  <i>size_</i> -= <i>to-unsigned-like</i>(d);
+return *this;</ins>
+</pre></blockquote>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
