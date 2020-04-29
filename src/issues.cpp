@@ -13,6 +13,8 @@
 #include <string>
 #include <stdexcept>
 
+#include <iterator>
+#include <fstream>
 #include <sstream>
 
 #include <iostream>  // eases debugging
@@ -62,10 +64,33 @@ auto make_date(std::tm const & mod) -> gregorian::date {
    return gregorian::year((unsigned short)(mod.tm_year+1900)) / (mod.tm_mon+1) / mod.tm_mday;
 }
 
-auto report_date_file_last_modified(std::string const & filename) -> gregorian::date {
-   auto file_mtime = fs::last_write_time(filename);
-   auto sys_mtime = std::chrono::system_clock::now() - (fs::file_time_type::clock::now() - file_mtime);
-   std::time_t mtime = std::chrono::duration_cast<std::chrono::seconds>(sys_mtime.time_since_epoch()).count();
+struct issue_mod_time {
+   int id;
+   std::time_t t;
+   operator std::pair<const int, std::time_t>() const { return { id, t }; }
+   friend std::istream& operator>>(std::istream& in, issue_mod_time& v) { return in >> v.id >> v.t; }
+};
+
+auto git_commit_times() -> std::map<int, std::time_t>
+{
+  using Iter = std::istream_iterator<issue_mod_time>;
+  std::ifstream f{"meta-data/dates"};
+  std::map<int, std::time_t> times{ Iter{f}, Iter{} };
+  return times;
+}
+
+auto report_date_file_last_modified(std::filesystem::path const & filename) -> gregorian::date {
+   std::time_t mtime;
+   int id = std::stoi(filename.filename().stem().native().substr(5));
+   static auto git_times = git_commit_times();
+   if (auto it = git_times.find(id); it != git_times.end())
+      mtime = it->second;
+   else
+   {
+      auto file_mtime = fs::last_write_time(filename);
+      auto sys_mtime = std::chrono::system_clock::now() - (fs::file_time_type::clock::now() - file_mtime);
+      mtime = std::chrono::duration_cast<std::chrono::seconds>(sys_mtime.time_since_epoch()).count();
+   }
 
    return make_date(*std::localtime(&mtime));
 }

@@ -50,6 +50,7 @@ clean:
 
 distclean: clean
 	rm -f meta-data/annex-f meta-data/networking-annex-f
+	rm -f meta-data/dates
 	rm -f -r mailing
 
 history: bin/lists
@@ -58,7 +59,7 @@ history: bin/lists
 mailing:
 	mkdir $@
 
-lists: mailing bin/lists
+lists: mailing bin/lists dates
 	bin/lists
 
 define update
@@ -92,3 +93,36 @@ meta-data/section.data: meta-data/annex-f meta-data/networking-section.data bin/
 	$(call update,$@)
 
 .PHONY: all pgms clean distclean lists history
+
+dates: meta-data/dates
+
+# Generate file with issue number and unix timestamp of last change.
+meta-data/dates: xml/issue[0-9]*.xml
+	for i in xml/issue[0-9]*.xml ; do \
+	  n=$${i:9} ; n=$${n%.xml} ; \
+	  test -e $@ && grep -q "^$$n " $@ && test $$i -ot $@ && continue ; \
+	  echo $$i >&2 ; \
+	  git log -1 --pretty="format:$$n %ct%n" $$i ; \
+	done > $@.new
+	cat $@ $@.new | sort -n -r | sort -n -k 1 -u > $@.tmp
+	rm $@.new
+	$(call update,$@)
+
+.PRECIOUS: meta-data/dates
+
+/tmp/%.html: xml/issue%.xml
+	xmllint --noout --nowarning --dtdvalid xml/lwg-issue.dtd $<
+	@ echo "<html><head><style type="text/css"><!--" > $@
+	@ echo "ins {background-color:#A0FFA0}" >> $@
+	@ echo "del {background-color:#FFA0A0}" >> $@
+	@ echo "--></style></head><body>" >> $@
+	@ echo >> $@
+	@ echo >> $@
+	@ echo >> $@
+	@ sed 1,4d $< >> $@
+	@ echo >> $@
+	@ echo >> $@
+	@ echo >> $@
+	@ echo "</body></html>" >> $@
+
+.PHONY: dates
