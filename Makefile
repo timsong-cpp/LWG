@@ -110,19 +110,4 @@ meta-data/dates: xml/issue[0-9]*.xml
 
 .PRECIOUS: meta-data/dates
 
-/tmp/%.html: xml/issue%.xml
-	xmllint --noout --nowarning --dtdvalid xml/lwg-issue.dtd $<
-	@ echo "<html><head><style type="text/css"><!--" > $@
-	@ echo "ins {background-color:#A0FFA0}" >> $@
-	@ echo "del {background-color:#FFA0A0}" >> $@
-	@ echo "--></style></head><body>" >> $@
-	@ echo >> $@
-	@ echo >> $@
-	@ echo >> $@
-	@ sed 1,4d $< >> $@
-	@ echo >> $@
-	@ echo >> $@
-	@ echo >> $@
-	@ echo "</body></html>" >> $@
-
 .PHONY: dates
