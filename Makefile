@@ -49,6 +49,7 @@ clean:
 	rm -f $(PGMS) src/*.o
 
 distclean: clean
+	rm -f meta-data/annex-f meta-data/networking-annex-f
 	rm -f -r mailing
 
 history: bin/lists
@@ -59,5 +60,35 @@ mailing:
 
 lists: mailing bin/lists
 	bin/lists
+
+define update
+  if diff -u $(1) $(1).tmp ; then rm $(1).tmp ; else mv $(1).tmp $(1) ; fi
+endef
+
+WG21 := $(HOME)/src/cplusplus
+DRAFT := $(WG21)/draft
+NET := $(WG21)/networking-ts
+filter-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Clause \([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Annex \([^}]*\)}.*/\1 \2/' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
+
+meta-data/annex-f: $(wildcard $(DRAFT)/source/*.aux)
+	test -d "$(DRAFT)" && grep newlabel $^ | $(filter-annex-f) > $@
+
+meta-data/networking-annex-f: $(wildcard $(NET)/src/*.aux)
+	grep newlabel $^ /dev/null | $(filter-annex-f) > $@
+
+meta-data/networking-section.data: meta-data/networking-annex-f bin/section_data
+	if [ -s $< ]; then \
+	  grep '^[^[:upper:][:digit:]]' $< | grep -v ISO/IEC | bin/section_data networking.ts >> $@.tmp ; \
+	  $(call update,$@) ; \
+	fi
+
+meta-data/section.data: meta-data/annex-f meta-data/networking-section.data bin/section_data
+	grep '^[^[:upper:][:digit:]]' $< | grep -v ISO/IEC | bin/section_data > $@.tmp
+	cat meta-data/networking-section.data >> $@.tmp
+	cat meta-data/tr1_section.data >> $@.tmp
+	cat meta-data/filesystem-section.data >> $@.tmp
+	cat meta-data/lfts-old-section.data >> $@.tmp
+	cat meta-data/lfts-v3-section.data >> $@.tmp
+	$(call update,$@)
 
 .PHONY: all pgms clean distclean lists history
