@@ -3,7 +3,7 @@
 
 <issue num="3435" status="New">
 <title><tt>three_way_comparable_with&lt;reverse_iterator&lt;int*&gt;, reverse_iterator&lt;const int*&gt;&gt;</tt></title>
-<section><sref ref="[reverse.iter.cons]"/></section>
+<section><sref ref="[move.iter.cons]"/><sref ref="[reverse.iter.cons]"/></section>
 <submitter>Casey Carter</submitter>
 <date>26 Apr 2020</date>
 <priority>99</priority>
@@ -23,6 +23,8 @@ causing the <tt>common_reference</tt> requirement in <tt>three_way_comparable_wi
 I think we should correct this by constraining <tt>reverse_iterator</tt>'s conversion constructor (and converting 
 assignment operator, while we're here) correctly so we can use the concept to determine when it's ok to compare 
 specializations of <tt>reverse_iterator</tt> with <tt>&lt;=&gt;</tt>.
+<p/>
+<tt>move_iterator</tt> has similar issues due to its similarly unconstrained conversions. We should fix both similarly.
 </p>
 </discussion>
 
@@ -32,6 +34,63 @@ This wording is relative to <a href="http://wg21.link/n4861">N4861</a>.
 </p>
 
 <ol>
+<li><p>Modify <sref ref="[move.iter.cons]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> this incorporates and supercedes the P/R of LWG <iref ref="3265"/>.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+constexpr move_iterator();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> <del>Constructs a <tt>move_iterator</tt>, v</del><ins>V</ins>alue-initializ<ins>es</ins><del>ing</del> 
+<tt>current</tt>. <del>Iterator operations applied to the resulting iterator have defined behavior if and only if 
+the corresponding operations are defined on a value-initialized iterator of type <tt>Iterator</tt>.</del>
+</p>
+</blockquote>
+<pre>
+constexpr explicit move_iterator(Iterator i);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> <del>Constructs a <tt>move_iterator</tt>, i</del><ins>I</ins>nitializ<ins>es</ins><del>ing</del> 
+<tt>current</tt> with <tt>std::move(i)</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-3- <del><i>Mandates:</i> <tt>U</tt> is convertible to <tt>Iterator</tt></del><ins><i>Constraints:</i> 
+<tt>is_same_v&lt;U, Iterator&gt;</tt> is <tt>false</tt> and <tt>const U&amp;</tt> models 
+<tt>convertible_to&lt;Iterator&gt;</tt></ins>.
+<p/>
+-4- <i>Effects:</i> <del>Constructs a <tt>move_iterator</tt>, i</del><ins>I</ins>nitializ<ins>es</ins><del>ing</del> 
+<tt>current</tt> with <tt>u.<ins>current</ins><del>base()</del></tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator&amp; operator=(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-5- <del><i>Mandates:</i> <tt>U</tt> is convertible to <tt>Iterator</tt></del><ins><i>Constraints:</i> 
+<tt>is_same_v&lt;U, Iterator&gt;</tt> is <tt>false</tt>, <tt>const U&amp;</tt> models 
+<tt>convertible_to&lt;Iterator&gt;</tt>, and <tt>assignable_from&lt;Iterator&amp;, const U&amp;&gt;</tt> 
+is modeled</ins>.
+<p/>
+-6- <i>Effects:</i> Assigns <tt>u.<ins>current</ins><del>base()</del></tt> to <tt>current</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
 <li><p>Modify <sref ref="[reverse.iter.cons]"/> as indicated:</p>
 
 <blockquote>
