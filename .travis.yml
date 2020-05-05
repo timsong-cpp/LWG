@@ -8,6 +8,11 @@ git:
 matrix:
   include:
     - env: BUILD_TYPE=CRLF
+    - env: BUILD_TYPE=validate
+      addons:
+        apt:
+          packages:
+            - libxml2-utils
     - env: BUILD_TYPE=generate GCC_VERSION=9
       addons: &gcc9
         apt:
@@ -25,6 +30,10 @@ matrix:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+    - env: BUILD_TYPE=make CXX=g++-9
+      addons: *gcc9
+    - env: BUILD_TYPE=make CXX=clang++-9
+      addons: *clang9
 
 script:
   - |
@@ -48,5 +57,14 @@ script:
         bash -ex ./bin/build_pgms.sh || exit 1
         echo "Generating lists..."
         mkdir mailing && bash -ex ./bin/build_lists_only.sh || exit 1
+        ;;
+      (make)
+        touch meta-data/dates # this is too slow to generate
+        make lists -j4 CXX=$CXX
+        ;;
+      (validate)
+        for i in xml/issue*.xml ; do
+          xmllint --noout --nowarning --dtdvalid xml/lwg-issue.dtd $i
+        done
         ;;
     esac
