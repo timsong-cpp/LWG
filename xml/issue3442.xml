@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3442" status="New">
+<title>Unsatisfiable suggested implementation of customization points</title>
+<section><sref ref="[namespace.std]"/></section>
+<submitter>Michael Park</submitter>
+<date>08 May 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Footnote 173 under [namespace.std]/7 reads (emphasis mine):
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Any library customization point must be prepared to work adequately with any user-defined 
+overload that meets the minimum requirements of this document. <b>Therefore an implementation 
+may elect, under the as-if rule (<sref ref="[intro.execution]"/>), to provide any customization 
+point in the form of an instantiated function object (<sref ref="[function.objects]"/>) even 
+though the customization point's specification is in the form of a function template.</b> 
+The template parameters of each such function object and the function parameters and return 
+type of the object's <tt>operator()</tt> must match those of the corresponding customization 
+point's specification.
+</p>
+</blockquote>
+<p>
+This implementation suggestion doesn't seem to be satisfiable with the as-if rule.
+</p>
+<ol>
+<li><p>In order to maintain as-if rule for qualified calls to <tt>std::swap</tt>, <tt>std::swap</tt> 
+cannot perform ADL look-up like <tt>std::ranges::swap</tt> does.</p></li>
+<li><p>But then we cannot maintain as-if rule for two-step calls to <tt>std::swap</tt>, since ADL 
+is turned off when function objects are involved.</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+
+namespace S {
+#ifdef CPO
+  static constexpr auto swap = [](auto&amp;, auto&amp;) { std::cout &lt;&lt; "std"; };
+#else
+  template&lt;typename T&gt; swap(T&amp;, T&amp;) { std::cout &lt;&lt; "std"; }
+#endif
+}
+
+namespace N {
+  struct X {};
+  void swap(X&amp;, X&amp;) { std::cout &lt;&lt; "mine"; }
+}
+
+int main() {
+  N::X a, b;
+  S::swap(a, b);  // (1) prints `std` in both cases
+  using S::swap;
+  swap(a, b);     // (2) prints `std` with `-DCPO`, and `mine` without.
+}
+</pre></blockquote>
+</li>
+<li><p>We can try to satisfy the as-if rule for (2) by having <tt>std::swap</tt> perform ADL like 
+<tt>std::ranges::swap</tt>, but then that would break (1) since qualified calls to <tt>std::swap</tt> 
+would also ADL when it did not do so before.</p></li>
+</ol>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[namespace.std]"/>, footnote 173, as indicated:</p>
+
+<blockquote>
+<p>
+footnote 173) Any library customization point must be prepared to work adequately with any user-defined overload 
+that meets the minimum requirements of this document. <del>Therefore an implementation may elect, under the 
+as-if rule (<sref ref="[intro.execution]"/>), to provide any customization point in the form of an 
+instantiated function object (<sref ref="[function.objects]"/>) even though the customization point's 
+specification is in the form of a function template. The template parameters of each such function 
+object and the function parameters and return type of the object's <tt>operator()</tt> must match those 
+of the corresponding customization point's specification.</del>
+</p>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
