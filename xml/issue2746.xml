@@ -3,7 +3,7 @@
 
 <issue num="2746" status="New">
 <title>Inconsistency between requirements for <tt>emplace</tt> between <tt>optional</tt> and <tt>variant</tt></title>
-<section><sref ref="[optional.optional]"/></section>
+<section><sref ref="[optional.assign]"/><sref ref="[variant.mod]"/><sref ref="[any.modifiers]"/></section>
 <submitter>Richard Smith</submitter>
 <date>13 Jul 2016</date>
 <priority>3</priority>
@@ -104,9 +104,107 @@ Add SFINAE requirements to <tt>optional::emplace(Args&amp;&amp;... args)</tt> an
 <note>2016-08 Chicago</note>
 <p>During issue prioritization, people suggested that this might apply to <tt>any</tt> as well.</p>
 <p>Ville notes that <iref ref="2746"/>, <iref ref="2754"/> and <iref ref="2756"/> all go together.</p>
+
+<note>2020-05-10; Daniel comments and provides wording</note>
+<p>
+The inconsistency between the two <tt>any::emplace</tt> overloads have been removed by resolving LWG
+<iref ref="2754"/> to use <i>Constraints:</i> elements. The last Mandating paper 
+(<a href="https://wg21.link/p1460r1">P1460R1</a>), adopted in Prague, changed the <i>Requires:</i> elements
+for <tt>variant::emplace</tt>, "<tt>I &lt; sizeof...(Types)</tt>" to <i>Mandates:</i>, but that paper
+was focused on fixing inappropriate preconditions, not searching for consistency here. Given that the
+<tt>in_place_index_t</tt> constructors of <tt>variant</tt> uses SFINAE-conditions for this form of static
+precondition violation, I recommend that its <tt>emplace</tt> functions use the same style, which would bring 
+them also in consistency with their corresponding type-based <tt>emplace</tt> forms that are 
+<i>Mandates:</i>-free but delegate to the index-based forms.
+</p>
 </discussion>
 
 <resolution>
-</resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.assign]"/>, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class... Args&gt; T&amp; emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-29- <i><del>Mandates</del><ins>Constraints</ins>:</i> <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class U, class... Args&gt; T&amp; emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-35- <i>Constraints:</i> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[variant.mod]"/>, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt; T&amp; emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> <tt>is_constructible_v&lt;T, Args...&gt;</tt> is <tt>true</tt>, and <tt>T</tt> 
+occurs exactly once in <tt>Types</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class T, class U, class... Args&gt; T&amp; emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-3- <i>Constraints:</i> <tt>is_constructible_v&lt;T, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is <tt>true</tt>, 
+and <tt>T</tt> occurs exactly once in <tt>Types</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;size_t I, class... Args&gt;
+  variant_alternative_t&lt;I, variant&lt;Types...&gt;&gt;&amp; emplace(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<del>-5- <i>Mandates:</i> <tt>I &lt; sizeof...(Types)</tt>.</del>
+<p/>
+-6- <i>Constraints:</i> <tt>is_constructible_v&lt;T<sub><i>I</i></sub>, Args...&gt;</tt> is <tt>true</tt> 
+<ins>and <tt>I &lt; sizeof...(Types)</tt> is <tt>true</tt></ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;size_t I, class U, class... Args&gt;
+  variant_alternative_t&lt;I, variant&lt;Types...&gt;&gt;&amp; emplace(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+<del>-12- <i>Mandates:</i> <tt>I &lt; sizeof...(Types)</tt>.</del>
+<p/>
+-13- <i>Constraints:</i> <tt>is_constructible_v&lt;T<sub><i>I</i></sub>, initializer_list&lt;U&gt;&amp;, Args...&gt;</tt> is 
+<tt>true</tt> <ins>and <tt>I &lt; sizeof...(Types)</tt> is <tt>true</tt></ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol></resolution>
 
 </issue>
