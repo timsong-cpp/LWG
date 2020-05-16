@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3445" status="New">
+<title>[networking.ts] <tt>net::basic_socket_istream::connect</tt> should be constrained</title>
+<section><sref ref="[socket.iostream.cons]"/><sref ref="[socket.iostream.members]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>14 May 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: networking.ts</b></p>
+<p>
+<tt>basic_socket_streambuf&lt;P, C, W&gt;::connect(Args&amp;&amp;...)</tt> is constrained to only exist when 
+<tt>P</tt> meets the <tt>InternetProtocol</tt> requirements, but <tt>basic_socket_iostream&lt;P, C, W&gt;::connect(Args&amp;&amp;...)</tt> 
+is not constrained. Since it just passes those arguments straight to the <tt>streambuf</tt>, the outer 
+<tt>connect(Args&amp;&amp;...)</tt> should be constrained too.
+<p/>
+In addition to that, the <tt>basic_socket_iostream(Args&amp;&amp;...)</tt> constructor should be constrained, so that 
+<tt>is_constructible</tt> gives the right answer.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4771">N4771</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[socket.iostream.cons]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As a drive-by fix, a missing <tt>std::</tt> qualification in front of <tt>forward</tt> has been added]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class... Args&gt;
+  explicit basic_socket_iostream(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Initializes the base class as <tt>basic_iostream&lt;char&gt;(&amp;sb_))</tt>, 
+value-initializes <tt>sb_</tt>, and performs <tt>setf(std::ios_base::unitbuf)</tt>. Then calls 
+<tt>rdbuf()-&gt;connect(<ins>std::</ins>forward&lt;Args&gt;(args)...)</tt>. If that function returns a null pointer, 
+calls <tt>setstate(failbit)</tt>.
+<p/>
+<ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless the expression 
+<tt>rdbuf()-&gt;connect(std::forward&lt;Args&gt;(args)...)</tt> is well-formed.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[socket.iostream.members]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As a drive-by fix, a missing <tt>std::</tt> qualification in front of <tt>forward</tt> has been added]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class... Args&gt;
+  void connect(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Calls <tt>rdbuf()-&gt;connect(<ins>std::</ins>forward&lt;Args&gt;(args)...)</tt>. If that function 
+returns a null pointer, calls <tt>setstate(failbit)</tt> (which may throw <tt>ios_base::failure</tt>).
+<p/>
+<ins>-?- <i>Remarks:</i> This function shall not participate in overload resolution unless the expression 
+<tt>rdbuf()-&gt;connect(std::forward&lt;Args&gt;(args)...)</tt> is well-formed.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
