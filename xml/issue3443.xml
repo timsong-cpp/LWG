@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3443" status="New">
+<title>[networking.ts] <tt>net::basic_socket_iostream</tt> should use <tt>addressof</tt></title>
+<section><sref ref="[socket.iostream.cons]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>14 May 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p><b>Addresses: networking.ts</b></p>
+<p>
+<sref ref="[socket.iostream.cons]"/> uses <tt>&amp;sb_</tt> which could find something bad via ADL.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4771">N4771</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[socket.iostream.cons]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As a drive-by fix, a missing <tt>std::</tt> qualification in front of <tt>forward</tt> has been added]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+basic_socket_iostream();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Initializes the base class as <tt>basic_iostream&lt;char&gt;(<del>&amp;</del><ins>addressof(</ins>sb_<ins>)</ins>)</tt>, value-initializes <tt>sb_</tt>, and performs <tt>setf(std::ios_base::unitbuf)</tt>.
+</p>
+</blockquote>
+<pre>
+explicit basic_socket_iostream(basic_stream_socket&lt;protocol_type&gt; s);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Initializes the base class as <tt>basic_iostream&lt;char&gt;(<del>&amp;</del><ins>addressof(</ins>sb_<ins>)</ins>)</tt>, 
+initializes <tt>sb_</tt> with <tt>std::move(s)</tt>, and performs <tt>setf(std::ios_base::unitbuf)</tt>.
+</p>
+</blockquote>
+<pre>
+basic_socket_iostream(basic_socket_iostream&amp;&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Move constructs from the rvalue <tt>rhs</tt>. This is accomplished by move constructing the base class, 
+and the contained <tt>basic_socket_streambuf</tt>. Next <tt>basic_iostream&lt;char&gt;::set_rdbuf(<del>&amp;</del><ins>addressof(</ins>sb_<ins>)</ins>)</tt> is called to install the contained <tt>basic_socket_streambuf</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class... Args&gt;
+  explicit basic_socket_iostream(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Initializes the base class as <tt>basic_iostream&lt;char&gt;(<del>&amp;</del><ins>addressof(</ins>sb_<ins>)</ins>)</tt>, 
+value-initializes <tt>sb_</tt>, and performs <tt>setf(std::ios_base::unitbuf)</tt>. Then calls 
+<tt>rdbuf()-&gt;connect(<ins>std::</ins>forward&lt;Args&gt;(args)...)</tt>. If that function returns a null pointer, calls 
+<tt>setstate(failbit)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
