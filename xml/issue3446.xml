@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3446" status="New">
+<title><tt>indirectly_readable_traits</tt> ambiguity for types with both <tt>value_type</tt> and <tt>element_type</tt></title>
+<section><sref ref="[readable.traits]"/></section>
+<submitter>Casey Carter</submitter>
+<date>15 May 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Per <sref ref="[readable.traits]"/>, <tt>indirectly_readable_traits&lt;T&gt;::value_type</tt> is the same type as 
+<tt>remove_cv_t&lt;T::value_type&gt;</tt> if it denotes an object type, or <tt>remove_cv_t&lt;T::element_type&gt;</tt> 
+if it denotes an object type. If both <tt>T::value_type</tt> and <tt>T::element_type</tt> denote types,  
+<tt>indirectly_readable_traits&lt;T&gt;::value_type</tt> is ill-formed. This was perhaps not the best design, 
+given that there are iterators in the wild (Boost's unordered containers) that define both nested types. 
+<tt>indirectly_readable_traits</tt> should tolerate iterators that define both nested types consistently.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[readable.traits]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class&gt; struct <i>cond-value-type</i> { }; <i>// exposition only</i>
+
+template&lt;class T&gt;
+  requires is_object_v&lt;T&gt;
+struct <i>cond-value-type</i>&lt;T&gt; {
+  using value_type = remove_cv_t&lt;T&gt;;
+};
+
+template&lt;class&gt; struct indirectly_readable_traits { };
+
+[&hellip;]
+
+template&lt;class T&gt;
+  requires requires { typename T::value_type; }
+struct indirectly_readable_traits&lt;T&gt;
+  : <i>cond-value-type</i>&lt;typename T::value_type&gt; { };
+  
+template&lt;class T&gt;
+  requires requires { typename T::element_type; }
+struct indirectly_readable_traits&lt;T&gt;
+  : <i>cond-value-type</i>&lt;typename T::element_type&gt; { };
+  
+<ins>template&lt;class T&gt;</ins>
+  <ins>requires requires {</ins>
+    <ins>typename T::element_type;</ins>
+    <ins>typename T::value_type;</ins>
+    <ins>requires same_as&lt;</ins>
+      <ins>remove_cv_t&lt;typename T::element_type&gt;,</ins>
+      <ins>remove_cv_t&lt;typename T::value_type&gt;&gt;;</ins>
+  <ins>}</ins>
+<ins>struct indirectly_readable_traits&lt;T&gt;</ins>
+  <ins>: <i>cond-value-type</i>&lt;typename T::value_type&gt; { };</ins>
+  
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
