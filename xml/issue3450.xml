@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3450" status="New">
+<title>The <tt>const</tt> overloads of <tt>take_while_view::begin/end</tt> are underconstrained</title>
+<section><sref ref="[range.take.while.view]"/></section>
+<submitter>Tim Song</submitter>
+<date>6 Jun 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>const</tt> overloads of <tt>take_while_view::begin</tt>
+and <tt>take_while_view::end</tt> are underconstrained: they should require
+the predicate to model <tt>indirect_unary_predicate&lt;iterator_t&lt;const V&gt;&gt;</tt>.
+A simple example is
+</p>
+<blockquote><pre>
+    #include &lt;ranges&gt;
+
+    auto v = std::views::single(1) | std::views::take_while([](int&amp; x) { return true;});
+    static_assert(std::ranges::range&lt;decltype(v)&gt;);
+    static_assert(std::ranges::range&lt;decltype(v) const&gt;);
+    bool b = std::ranges::cbegin(v) == std::ranges::cend(v);
+</pre></blockquote>
+<p>
+Here, the <tt>static_assert</tt>s pass but the comparison fails to compile. The other
+views using <tt>indirect_unary_predicate</tt> (<tt>filter_view</tt> and
+<tt>drop_while_view</tt>) do not have this problem because they do not support
+const-iteration.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[range.take.while.view]"/>, class template <tt>take_while_view</tt> synopsis, as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+    template&lt;view V, class Pred&gt;
+      requires input_range&lt;V&gt; &amp;&amp; is_object_v&lt;Pred&gt; &amp;&amp;
+               indirect_unary_predicate&lt;const Pred, iterator_t&lt;V&gt;&gt;
+    class take_while_view : public view_interface&lt;take_while_view&lt;V, Pred&gt;&gt; {
+    [&hellip;]
+
+    constexpr auto begin() requires (!<i>simple-view</i>&lt;V&gt;)
+    { return ranges::begin(<i>base_</i>); }
+
+    constexpr auto begin() const requires range&lt;const V&gt; <ins>&amp;&amp; indirect_unary_predicate&lt;const Pred, iterator_t&lt;const V&gt;&gt;</ins>
+    { return ranges::begin(<i>base_</i>); }
+
+    constexpr auto end() requires (!<i>simple-view</i>&lt;V&gt;)
+    { return sentinel&lt;false&gt;(ranges::end(<i>base_</i>), addressof(*<i>pred_</i>)); }
+
+    constexpr auto end() const requires range&lt;const V&gt; <ins>&amp;&amp; indirect_unary_predicate&lt;const Pred, iterator_t&lt;const V&gt;&gt;</ins>
+    { return sentinel&lt;true&gt;(ranges::end(<i>base_</i>), addressof(*<i>pred_</i>)); }
+    };
+}
+</pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
