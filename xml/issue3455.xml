@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3455" status="New">
+<title>Incorrect <i>Postcondition</i> on <tt>unique_ptr</tt> move assignment</title>
+<section><sref ref="[unique.ptr.single.asgn]"/></section>
+<submitter>Howard Hinnant</submitter>
+<date>22 Jun 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[unique.ptr.single.asgn]"/>/p5 says this about the <tt>unique_ptr</tt> move assignment operator:
+</p>
+<blockquote>
+<p>
+<i>Postconditions:</i> <tt>u.get() == nullptr</tt>.
+</p>
+</blockquote>
+<p>
+But this is only true if <tt>this != &amp;u</tt>. For example:
+</p>
+<blockquote>
+<pre>
+#include &lt;iostream&gt;
+#include &lt;memory&gt;
+
+int main()
+{
+  auto x = std::unique_ptr&lt;int&gt;(new int{3});
+  x = std::move(x);
+  if (x)
+    std::cout &lt;&lt; *x &lt;&lt; '\n';
+  else
+    std::cout &lt;&lt; "nullptr\n";
+}
+</pre>
+</blockquote>
+<p>
+Output:
+</p>
+<blockquote>
+<pre>
+3
+</pre>
+</blockquote>
+<p>
+An alternative resolution to that proposed below is to just delete the <i>Postcondition</i> altogether as 
+the <i>Effects</i> element completely specifies everything. If we do that, then we should also remove p10, 
+the <i>Postconditions</i> element for the converting move assignment operator. I have a slight preference 
+for the proposed change below as it is more informative, at the expense of being a little more repetitive.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[unique.ptr.single.asgn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+unique_ptr&amp; operator=(unique_ptr&amp;&amp; u) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> <tt>is_move_assignable_v&lt;D&gt;</tt> is <tt>true</tt>.
+<p/>
+-2- <i>Preconditions:</i> If <tt>D</tt> is not a reference type, <tt>D</tt> meets the 
+<i>Cpp17MoveAssignable</i> requirements (Table [tab:cpp17.moveassignable]) and assignment of the 
+deleter from an rvalue of type <tt>D</tt> does not throw an exception. Otherwise, <tt>D</tt> is a
+reference type; <tt>remove_reference_t&lt;D&gt;</tt> meets the <i>Cpp17CopyAssignable</i> 
+requirements and assignment of the deleter from an lvalue of type <tt>D</tt> does not throw an exception.
+<p/>
+-3- <i>Effects:</i> Calls <tt>reset(u.release())</tt> followed by <tt>get_deleter() = std::forward&lt;D&gt;(u.get_deleter())</tt>.
+<p/>
+-4- <i>Returns:</i> <tt>*this</tt>.
+<p/>
+-5- <i>Postconditions:</i> <ins>If <tt>this != addressof(u)</tt>,</ins> <tt>u.get() == nullptr</tt> <ins>, 
+otherwise <tt>u.get()</tt> is unchanged</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
