@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3459" status="New">
+<title>Why doesn't <tt>std::convertible_to</tt> have semantic requirement when <tt>To</tt> is reference-to-function type?</title>
+<section><sref ref="[concept.convertible]"/></section>
+<submitter>S. B. Tam</submitter>
+<date>30 Jun 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[concept.convertible]"/> p2:
+</p>
+<blockquote>
+<p>
+Types <tt>From</tt> and <tt>To</tt> model <tt>convertible_to&lt;From, To&gt;</tt> only if:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; <tt>To</tt> is not an object or reference-to-object type, or <tt>static_cast&lt;To&gt;(f())</tt> is 
+equal to <tt>test(f)</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+<p>
+This requires the implicit and explicit conversions to produce equal results.
+<p/>
+However, it seems that when <tt>To</tt> is a reference-to-function type, this restriction does not apply. 
+This makes it possible to create a class that models <tt>convertible_to</tt>, but produces different 
+results depending on the kind of conversion:
+</p>
+<blockquote><pre>
+#include &lt;concepts&gt;
+
+int foo() { return 0; }
+int bar() { return 42; }
+
+using FT = int();
+struct A 
+{
+  operator FT&amp;() const { return foo; }
+  explicit operator FT&amp;() { return bar; }
+};
+
+static_assert(std::convertible_to&lt;A, FT&amp;&gt;);
+
+A a;
+FT&amp; x = a;                    // x == foo
+auto y = static_cast&lt;FT&amp;&gt;(a); // y == bar
+</pre></blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
