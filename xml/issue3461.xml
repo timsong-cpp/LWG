@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3461" status="New">
+<title><tt>convertible_to</tt>'s description mishandles <i>cv</i>-qualified <tt>void</tt></title>
+<section><sref ref="[concept.convertible]"/></section>
+<submitter>Tim Song</submitter>
+<date>3 Jul 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+There are no expressions of type <i>cv</i>-qualified <tt>void</tt> because any such
+expression must be prvalues and <sref ref="[expr.type]"/>/2 states:
+</p>
+<blockquote><p>
+If a prvalue initially has the type "<i>cv</i> <tt>T</tt>", where <tt>T</tt> is a
+<i>cv</i>-unqualified non-class, non-array type, the type of the expression is adjusted 
+to <tt>T</tt> prior to any further analysis.
+</p></blockquote>
+<p>
+However, <sref ref="[concept.convertible]"/> p1 states:
+</p>
+<blockquote><p>
+Given types <tt>From</tt> and <tt>To</tt> and an expression <tt>E</tt> such that 
+<tt>decltype((E))</tt> is <tt>add_rvalue_reference_t&lt;From&gt;</tt>, 
+<tt>convertible_to&lt;From, To&gt;</tt> requires <tt>E</tt> to be both implicitly and 
+explicitly convertible to type <tt>To</tt>.
+</p></blockquote>
+<p>
+When <tt>From</tt> is <i>cv</i>-qualified <tt>void</tt>, <tt>E</tt> does not exist, yet we do want
+<tt>convertible_to&lt;const void, void&gt;</tt> to be modeled.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[concept.convertible]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Given types <tt>From</tt> and <tt>To</tt> and an expression <tt>E</tt> <del>such that <tt>decltype((E))</tt> 
+is <tt>add_rvalue_reference_t&lt;From&gt;</tt></del><ins>whose type and value category are the same as those of 
+<tt>declval&lt;From&gt;()</tt></ins>, <tt>convertible_to&lt;From, To&gt;</tt> requires <tt>E</tt> 
+to be both implicitly and explicitly convertible to type <tt>To</tt>. The implicit and explicit conversions 
+are required to produce equal results.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
