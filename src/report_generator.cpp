@@ -212,7 +212,9 @@ R"(<table border="1" cellpadding="4">
       out << "<tr>\n";
 
       // Number
-      out << "<td align=\"right\">" << make_html_anchor(*i) << "</td>\n";
+      out << "<td align=\"right\">" << make_html_anchor(*i)
+          << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << i->num
+          << "\">(i)</a></sup></td>\n";
 
       // Status
       out << "<td align=\"left\"><a href=\"lwg-active.html#" << lwg::remove_qualifier(i->stat) << "\">" << i->stat << "</a><a name=\"" << i->num << "\"></a></td>\n";
