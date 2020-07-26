@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3469" status="New">
+<title>Precondition of <tt>coroutine_handle::promise</tt> may be insufficient</title>
+<section><sref ref="[coroutine.handle.promise]"/></section>
+<submitter>Jiang An</submitter>
+<date>25 Jul 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The issue is related to LWG <iref ref="3460"/>.
+<p/>
+Because the <tt>coroutine_handle&lt;&gt;</tt> base subobject of a <tt>coroutine_handle&lt;P1&gt;</tt> 
+can be assigned from the one of a <tt>coroutine_handle&lt;P2&gt;</tt>, a <tt>coroutine_handle&lt;P1&gt;</tt> 
+may refer to a coroutine whose promise type is <tt>P2</tt>. If a <tt>coroutine_handle&lt;P&gt;</tt> refers 
+to a coroutine with difference, a call to <tt>promise()</tt> should result in undefined behavior IMO.
+<p/>
+I think that <sref ref="[coroutine.handle.promise]"/>/1 should be changed to: "<i>Preconditions:</i> 
+<tt>*this</tt> refers to a coroutine whose promise type is <tt>Promise</tt>.", and the same precondition 
+should be added to <sref ref="[coroutine.handle.noop.promise]"/>, and hence <tt>noexcept</tt> should be 
+removed from <tt>coroutine_handle&lt;noop_coroutine_promise&gt;::promise</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[coroutine.handle.promise]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+Promise&amp; promise() const;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <tt>*this</tt> refers to a coroutine <ins>whose promise type is <tt>Promise</tt></ins>.
+<p/>
+-2- <i>Returns:</i> A reference to the promise of the coroutine.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[coroutine.handle.noop]"/>, class <tt>coroutine_handle&lt;noop_coroutine_promise&gt;</tt> 
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[coroutine.handle.noop.promise]"/>, promise access</i>
+noop_coroutine_promise&amp; promise() const <del>noexcept</del>;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[coroutine.handle.noop.promise]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+noop_coroutine_promise&amp; promise() const <del>noexcept</del>;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions:</i> <tt>*this</tt> refers to a coroutine whose promise type is <tt>noop_coroutine_promise</tt>.</ins>
+<p/>
+-1- <i>Returns:</i> A reference to the promise object associated with this coroutine handle.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
