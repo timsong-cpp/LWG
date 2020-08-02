@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3471" status="New">
+<title><tt>polymorphic_allocator::allocate</tt> does not satisfy <i>Cpp17Allocator</i> requirements</title>
+<section><sref ref="[mem.res]"/></section>
+<submitter>Alisdair Meredith</submitter>
+<date>27 Jul 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+With the adoption of <a href="http://wg21.link/p0593r6">P0593R6</a> in Prague, 
+<tt>std::ptr::polymorphic_allocator</tt> no longer satisfies the of <i>Cpp17Allocator</i> 
+requirements. Specifically, all calls to <tt>allocate(n)</tt> need to create an object 
+for an array of <tt>n T</tt>s (but not initialize any of those elements).
+<tt>std::pmr::polymorphic_allocator</tt> calls its underlying memory resource to allocate
+sufficient bytes of storage, but it does not create (and start the lifetime of) the array
+object within that storage.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[mem.res.public]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[[nodiscard]] void* allocate(size_t bytes, size_t alignment = max_align);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Equivalent to: <del><tt>return do_allocate(bytes, alignment);</tt></del>
+</p>
+<blockquote><pre>
+<ins>void* p = do_allocate(bytes, alignment);
+return launder(new (p) byte[bytes]);</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
