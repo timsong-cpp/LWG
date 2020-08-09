@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3474" status="New">
+<title>Nesting <tt>join_view</tt>s is broken because of CTAD</title>
+<section><sref ref="[range.join]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>04 Aug 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Let's say I had a range of range of ranges and I wanted to recursively flatten it. That would involve 
+repeated invocations of <tt>join</tt>. But this doesn't work:
+</p>
+<blockquote><pre>
+std::vector&lt;std::vector&lt;std::vector&lt;int&gt;&gt;&gt; nested_vectors = {
+  {{1, 2, 3}, {4, 5}, {6}},
+  {{7},       {8, 9}, {10, 11, 12}},
+  {{13}}
+};
+auto joined = nested_vectors | std::views::join | std::views::join;
+</pre></blockquote>
+<p>
+The expectation here is that the <tt>value_type</tt> of joined is <tt>int</tt>, but it's actually 
+<tt>vector&lt;int&gt;</tt> &mdash; because the 2nd invocation of <tt>join</tt> ends up just copying 
+the first. This is because <tt>join</tt> is specified to do:
+</p>
+<blockquote><p>
+The name <tt>views::join</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>). 
+Given a subexpression <tt>E</tt>, the expression <tt>views::join(E)</tt> is expression-equivalent to 
+<tt>join_view{E}</tt>.
+</p></blockquote>
+<p>
+And <tt>join_view{E}</tt> for an <tt>E</tt> that's already a specialization of a <tt>join_view</tt> 
+just gives you the same <tt>join_view</tt> back. Yay CTAD. We need to do the same thing with <tt>join</tt> 
+that we did with <tt>reverse</tt> in <a href="http://wg21.link/p1252">P1252</a>. We can do that either in 
+exposition (<b>Option A</b>) my modifying <sref ref="[range.join.overview]"/> p2
+</p>
+<blockquote><p>
+The name <tt>views::join</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>). Given 
+a subexpression <tt>E</tt>, the expression <tt>views::join(E)</tt> is expression-equivalent to 
+<tt>join_view<ins>&lt;views::all_t&lt;decltype((E))&gt;&gt;</ins>{E}</tt>.
+</p>
+</blockquote>
+<p>
+Or in code (<b>Option B</b>) add a deduction guide to <sref ref="[range.join.view]"/>:
+</p>
+<blockquote><pre>
+  template&lt;class R&gt;
+    explicit join_view(R&amp;&amp;) -&gt; join_view&lt;views::all_t&lt;R&gt;&gt;;
+
+  <ins>template&lt;class V&gt;
+    explicit join_view(join_view&lt;V&gt;) -&gt; join_view&lt;join_view&lt;V&gt;&gt;;</ins>
+
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> Two mutually exclusive options are prepared, depicted below by <b>Option A</b> and 
+<b>Option B</b>, respectively.] 
+</p>
+</blockquote>
+
+<p>
+<b>Option A:</b>
+</p>
+<ol>
+<li><p>Modify <sref ref="[range.join.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- <tt>The name views::join</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>). 
+Given a subexpression <tt>E</tt>, the expression <tt>views::join(E)</tt> is expression-equivalent to 
+<tt>join_view<ins>&lt;views::all_t&lt;decltype((E))&gt;&gt;</ins>{E}</tt>.
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+<p>
+<b>Option B:</b>
+</p>
+<ol>
+<li><p>Modify <sref ref="[range.join.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  
+  template&lt;class R&gt;
+    explicit join_view(R&amp;&amp;) -&gt; join_view&lt;views::all_t&lt;R&gt;&gt;;
+  
+  <ins>template&lt;class V&gt;
+    explicit join_view(join_view&lt;V&gt;) -&gt; join_view&lt;join_view&lt;V&gt;&gt;;</ins>
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
