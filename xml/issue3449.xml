@@ -30,12 +30,14 @@ the <tt><i>maybe-const</i></tt> helper introduced by the P/R of LWG <iref ref="3
 <ol>
 <li><p>Modify <sref ref="[range.take.sentinel]"/> as indicated:</p>
 
-<blockquote class="note">
-<i>Drafting note</i>: Unlike LWG 3448, these operators can't be easily templatized,
+<blockquote class="note"> 
+<p>
+[<i>Drafting note</i>: Unlike LWG <iref ref="3448"/>, these operators can't be easily templatized,
 so the approach taken here is to add an overload for the opposite constness instead.
 However, because <tt>const V</tt> may not even be a range (and therefore
 <tt>iterator_t&lt;const V&gt;</tt> may not be well-formed), we need to defer
-instantiating the signature of the new overload until the point of use.
+instantiating the signature of the new overload until the point of use. ]
+</p>
 </blockquote>
 <blockquote>
 <blockquote>
@@ -74,7 +76,7 @@ friend constexpr bool operator==(const <i>CI</i>&lt;OtherConst&gt;&amp; y, const
 </pre>
 <blockquote>
 <p>
--3- <i>Effects:</i> Equivalent to: <tt>return y.count() == 0 || y.base() == x.<i>end_</i>;</tt>
+-4- <i>Effects:</i> Equivalent to: <tt>return y.count() == 0 || y.base() == x.<i>end_</i>;</tt>
 </p>
 </blockquote>
 </blockquote>
@@ -89,23 +91,23 @@ namespace std::ranges {
                 indirect_unary_predicate&lt;const Pred, iterator_t&lt;V&gt;&gt;
     template&lt;bool Const&gt;
     class take_while_view&lt;V&gt;::<i>sentinel</i> {
-    [&hellip;]
+      [&hellip;]
 
-    constexpr sentinel_t&lt;<i>Base</i>&gt; base() const;
+      constexpr sentinel_t&lt;<i>Base</i>&gt; base() const { return <i>end_</i>; }
 
-    friend constexpr bool operator==(const iterator_t&lt;Base&gt;&amp; x, const <i>sentinel</i>&amp; y);
-    <ins>
-    template&lt;bool OtherConst = !Const&gt;
-        requires sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;
-    friend constexpr bool operator==(const iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&amp; x, const <i>sentinel</i>&amp; y);
-    </ins>
+      friend constexpr bool operator==(const iterator_t&lt;<i>Base</i>&gt;&amp; x, const <i>sentinel</i>&amp; y);
+      <ins>
+      template&lt;bool OtherConst = !Const&gt;
+          requires sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;
+      friend constexpr bool operator==(const iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&amp; x, const <i>sentinel</i>&amp; y);
+      </ins>
     };
 }
 </pre>
 </blockquote>
 [&hellip;]
 <pre>
-friend constexpr bool operator==(const iterator_t&lt;Base&gt;&amp; x, const <i>sentinel</i>&amp; y);
+friend constexpr bool operator==(const iterator_t&lt;<i>Base</i>&gt;&amp; x, const <i>sentinel</i>&amp; y);
 <ins>
 template&lt;bool OtherConst = !Const&gt;
     requires sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;
@@ -114,7 +116,7 @@ friend constexpr bool operator==(const iterator_t&lt;<i>maybe-const</i>&lt;Other
 </pre>
 <blockquote>
 <p>
--3- <i>Effects:</i> Equivalent to: <tt>return y.<i>end_</i>> == x || !invoke(*y.<i>pred_</i>, *x);</tt>
+-3- <i>Effects:</i> Equivalent to: <tt>return y.<i>end_</i> == x || !invoke(*y.<i>pred_</i>, *x);</tt>
 </p>
 </blockquote>
 </blockquote>
