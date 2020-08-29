@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3481" status="New">
+<title><tt>viewable_range</tt> mishandles lvalue move-only views</title>
+<section><sref ref="[range.refinements]"/></section>
+<submitter>Casey Carter</submitter>
+<date>29 Aug 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>viewable_range concept</tt> (<sref ref="[range.refinements]"/>) and the <tt>views:all</tt> 
+range adaptor (<sref ref="[range.all]"/>) are duals: <tt>viewable_range</tt> is intended to admit 
+exactly types <tt>T</tt> for which <tt>views::all(declval&lt;T&gt;())</tt> is well-formed. (Recall 
+that <tt>views::all(<i>meow</i>)</tt> is a prvalue whose type models <tt>view</tt> when it is 
+well-formed.) Before the addition of move-only view types to the design, this relationship was in 
+place (modulo an incredibly pathological case: a <tt>volatile</tt> value of a view type with 
+<tt>volatile</tt>-qualified <tt>begin</tt> and <tt>end</tt> models <tt>viewable_range</tt> but is 
+rejected by <tt>views::all</tt> unless it also has a <tt>volatile</tt>-qualified copy constructor 
+and copy assignment operator). Adding move-only views to the design punches a bigger hole, however: 
+<tt>viewable_range</tt> admits lvalues of move-only view types for which <tt>views::all</tt> is 
+ill-formed because these lvalues cannot be decay-copied.
+<p/>
+It behooves us to restore the correspondence between <tt>viewable_range</tt> and <tt>views::all</tt> 
+so that instantiations of components constrained with <tt>viewable_range</tt> (which often appears 
+indirectly as <tt>views::all_t&lt;R&gt;</tt> in deduction guides) continue to be well-formed when 
+the constraints are satisfied.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="http://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.refinements]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-5- The <tt>viewable_range</tt> concept specifies the requirements of a <tt>range</tt> 
+type that can be converted to a <tt>view</tt> safely.
+</p>
+<pre>
+template&lt;class T&gt;
+  concept viewable_range =
+    range&lt;T&gt; &amp;&amp; <del>(borrowed_range&lt;T&gt; || view&lt;remove_cvref_t&lt;T&gt;&gt;);</del>
+    <ins>((view&lt;remove_cvref_t&lt;T&gt;&gt; &amp;&amp; constructible_from&lt;remove_cvref_t&lt;T&gt;, T&gt;) ||</ins>
+    <ins>(!view&lt;remove_cvref_t&lt;T&gt;&gt; &amp;&amp; borrowed_range&lt;T&gt;));</ins>
+</pre>
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
