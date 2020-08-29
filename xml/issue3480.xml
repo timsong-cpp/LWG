@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3480" status="New">
+<title><tt>directory_iterator</tt> and <tt>recursive_directory_iterator</tt> are not C++20 ranges</title>
+<section><sref ref="[fs.class.directory.iterator]"/><sref ref="[fs.class.rec.dir.itr]"/></section>
+<submitter>Barry Revzin </submitter>
+<date>27 Aug 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::filesystem::directory_iterator</tt> and <tt>std::filesystem::recursive_directory_iterator</tt> are 
+intended to be ranges, but both fail to satisfy the concept <tt>std::ranges::range</tt>.
+<p/>
+They both opt in to being a range the same way, via non-member functions:
+</p>
+<blockquote><pre>
+directory_iterator begin(directory_iterator iter) noexcept;
+directory_iterator end(const directory_iterator&amp;) noexcept;
+
+recursive_directory_iterator begin(recursive_directory_iterator iter) noexcept;
+recursive_directory_iterator end(const recursive_directory_iterator&amp;) noexcept;
+</pre></blockquote>
+<p>
+This is good enough for a range-based for statement, but for the <tt>range</tt> concept, non-member 
+<tt>end</tt> is looked up in a context that includes (<sref ref="[range.access.end]"/>/2.6) the declarations:
+</p>
+<blockquote><pre>
+void end(auto&amp;) = delete;
+void end(const auto&amp;) = delete;
+</pre></blockquote>
+<p>
+Which means that non-<tt>const</tt> <tt>directory_iterator</tt> and non-<tt>const</tt> 
+<tt>recursive_directory_iterator</tt>, the <tt>void end(auto&amp;)</tt> overload ends up being 
+a better match and thus the CPO <tt>ranges::end</tt> doesn't find a candidate. Which means that 
+<tt>{recursive_,}directory_iterator</tt> is not a range, even though <tt>const {recursive_,}directory_iterator</tt> 
+<em>is</em> a range.
+<p/>
+This could be fixed by having the non-member <tt>end</tt> for both of these types just take by value 
+(as libstdc++ currently does anyway) or by adding member functions <tt>begin() const</tt> and <tt>end() const</tt>. 
+<p/>
+A broader direction would be to consider removing the poison pill overloads. Their motivation from 
+<a href="http://wg21.link/p0970">P0970</a> was to support what are now called borrowed ranges &mdash; but 
+that design now is based on specializing a variable template instead of providing a non-member <tt>begin</tt> 
+that takes an rvalue, so the initial motivation simply no longer exists. And, in this particular case, 
+causes harm. 
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
