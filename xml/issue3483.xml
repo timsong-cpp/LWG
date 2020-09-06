@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3483" status="New">
+<title><tt>transform_view::<i>iterator</i></tt>'s difference is overconstrained</title>
+<section><sref ref="[range.transform.iterator]"/></section>
+<submitter>Casey Carter</submitter>
+<date>04 Sep 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The difference operation for <tt>transform_view::<i>iterator</i></tt> is specified in 
+<sref ref="[range.transform.iterator]"/> as:
+</p>
+<blockquote>
+<pre>
+friend constexpr difference_type operator-(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+</pre>
+<blockquote>
+<p>
+-22- <i>Effects:</i> Equivalent to: <tt>return x.<i>current_</i> - y.<i>current_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+<p>
+The member <tt><i>current_</i></tt> is an iterator of type <tt>iterator_t&lt;<i>Base</i>&gt;</tt>, where 
+<tt><i>Base</i></tt> is <tt>V</tt> for <tt>transform_view&lt;V, F&gt;::<i>iterator</i>&lt;false&gt;</tt> 
+and <tt>const V</tt> for <tt>transform_view&lt;V, F&gt;::<i>iterator</i>&lt;true&gt;</tt>. The difference 
+of iterators that appears in the above <i>Effects:</i> element is notably well-defined if their type models 
+<tt>sized_sentinel_for&lt;iterator_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</tt> which 
+<tt>random_access_range&lt;<i>Base</i>&gt;</tt> refines. This overstrong requirement seems to be simply the 
+result of an oversight; it has been present since <a href="https://wg21.link/p0789r0">P0789R0</a>, without 
+&mdash; to my recollection &mdash; ever having been discussed. We should relax this requirement to provide 
+difference capability for <tt>transform_view</tt>'s iterators whenever the underlying iterators do.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.transform.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, copy_constructible F&gt;
+    requires view&lt;V&gt; &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;   
+             regular_invocable&lt;F&amp;, range_reference_t&lt;V&gt;&gt; &amp;&amp;
+             <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;V&gt;&gt;&gt;
+  template&lt;bool Const&gt;
+  class transform_view&lt;V, F&gt;::<i>iterator</i> {
+  public:
+    [&hellip;]
+    friend constexpr <i>iterator</i> operator-(<i>iterator</i> i, difference_type n)
+      requires random_access_range&lt;<i>Base</i>&gt;;
+    friend constexpr difference_type operator-(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <del>random_access_range&lt;<i>Base</i>&gt;</del><ins>sized_sentinel_for&lt;iterator_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</ins>;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+friend constexpr difference_type operator-(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <del>random_access_range&lt;<i>Base</i>&gt;</del><ins>sized_sentinel_for&lt;iterator_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</ins>;
+</pre>
+<blockquote>
+<p>
+-22- <i>Effects:</i> <tt>return x.<i>current_</i> - y.<i>current_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
