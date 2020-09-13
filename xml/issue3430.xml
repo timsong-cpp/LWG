@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3430" status="LEWG">
+<issue num="3430" status="Open">
 <title><tt>std::fstream</tt> &amp; co. should be constructible from <tt>string_view</tt></title>
 <section><sref ref="[fstream.syn]"/></section>
 <submitter>Jonathan Wakely</submitter>
@@ -64,6 +64,7 @@ could be changed to template parameters which are constrained to be exactly
 <tt>path</tt>, and not things like <tt>string_view</tt> which can convert
 to <tt>path</tt>.
 </p>
+
 <note>2020-08-21; Issue processing telecon: send to LEWG</note>
 <p>
 Just adding support for <tt>string_view</tt> doesn't prevent expensive
@@ -83,8 +84,167 @@ from "strings of character types <code>wchar_t</code>, <code>char16_t</code>,
 and <code>char32_t</code>". Those conversions don't need to be implicit
 for that to be supported.
 </p>
+
+<note>2020-09-11; Tomasz comments and provides wording</note>
+<p>
+During the <a href="https://wiki.edg.com/bin/view/Wg21summer2020/LWG3430">LEWG 2020-08-24 telecon</a> 
+the LEWG provided following guidance on the issue:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+We took one poll (exact wording in the notes) to constrain the constructor which takes 
+<tt>filesystem::path</tt> to only take <tt>filesystem::path</tt> and not things convertible to it, 
+but only 9 out of 26 people present actually voted. Our interpretation: LWG should go ahead with 
+making this change. There is still plenty of time for someone who hasn't yet commented on this to 
+bring it up even if it is in a tentatively ready state. It would be nice to see a paper to address 
+the problem of the templated path constructor, but no one has yet volunteered to do so. 
+Note: the issue description is now a misnomer, as adding a <tt>string_view</tt> constructor 
+is no longer being considered at this time.
+</p>
+</blockquote>
+<p>
+The proposed P/R  follows original LWG proposal and makes the <tt>path</tt> constructor of the 
+<tt>basic_*fstreams</tt> "<tt>explicit</tt>". To adhere to current policy, we refrain from use of 
+requires clauses and abbreviated function syntax, and introduce a <i>Constraints</i> element.
+</p>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ifstream]"/>, class template <tt>basic_ifstream</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+explicit basic_ifstream(const string&amp; s,
+                        ios_base::openmode mode = ios_base::in);
+<ins>template&lt;class T&gt;</ins>
+explicit basic_ifstream(const <del>filesystem::path</del><ins>T</ins>&amp; s,
+                        ios_base::openmode mode = ios_base::in);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[ifstream.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+explicit basic_ifstream(const string&amp; s,
+                        ios_base::openmode mode = ios_base::in);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>basic_ifstream(s.c_str(), mode)</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class T&gt;</ins>
+explicit basic_ifstream(const <del>filesystem::path</del><ins>T</ins>&amp; s,
+                        ios_base::openmode mode = ios_base::in);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>std::is_same_v&lt;T, filesystem::path&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-3- <i>Effects:</i> Equivalent to: <tt>basic_ifstream(s.c_str(), mode)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[ofstream]"/>, class template <tt>basic_ofstream</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+explicit basic_ofstream(const string&amp; s,
+                        ios_base::openmode mode = ios_base::out);
+<ins>template&lt;class T&gt;</ins>
+explicit basic_ofstream(const <del>filesystem::path</del><ins>T</ins>&amp; s,
+                        ios_base::openmode mode = ios_base::out);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[ofstream.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+explicit basic_ofstream(const string&amp; s,
+                        ios_base::openmode mode = ios_base::out);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>basic_ofstream(s.c_str(), mode)</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class T&gt;</ins>
+explicit basic_ofstream(const <del>filesystem::path</del><ins>T</ins>&amp; s,
+                        ios_base::openmode mode = ios_base::out);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>std::is_same_v&lt;T, filesystem::path&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-3- <i>Effects:</i> Equivalent to: <tt>basic_ofstream(s.c_str(), mode)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[fstream]"/>, class template <tt>basic_fstream</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+explicit basic_fstream(
+  const string&amp; s,
+  ios_base::openmode mode = ios_base::in | ios_base::out);
+<ins>template&lt;class T&gt;</ins>
+explicit basic_fstream(
+  const <del>filesystem::path</del><ins>T</ins>&amp; s,
+  ios_base::openmode mode = ios_base::in | ios_base::out);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[fstream.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+explicit basic_fstream(
+  const string&amp; s,
+  ios_base::openmode mode = ios_base::in | ios_base::out);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>basic_fstream(s.c_str(), mode)</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class T&gt;</ins>
+explicit basic_fstream(
+  const <del>filesystem::path</del><ins>T</ins>&amp; s,
+  ios_base::openmode mode = ios_base::in | ios_base::out);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>std::is_same_v&lt;T, filesystem::path&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-3- <i>Effects:</i> Equivalent to: <tt>basic_fstream(s.c_str(), mode)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
 </resolution>
 </issue>
