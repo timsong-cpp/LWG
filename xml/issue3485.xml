@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3485" status="New">
+<title><tt>atomic_ref</tt> safety should be based on operations that "potentially conflict" rather than lifetime</title>
+<section><sref ref="[atomics.ref.generic]"/></section>
+<submitter>Billy O'Neal III</submitter>
+<date>12 Sep 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following program:
+</p>
+<blockquote><pre>
+#include &lt;atomic&gt;
+#include &lt;iostream&gt;
+#include &lt;thread&gt;
+
+using namespace std;
+
+int main() {
+  int i{500};
+  atomic_ref atom{i};
+  i += 500;
+  thread t1{[&amp;atom] { for (int val{0}, x{0}; x &lt; 70;) {
+    if (atom.compare_exchange_weak(val, val + 10)) { ++x; }}}};
+  thread t2{[&amp;atom] { for (int val{0}, y{0}; y &lt; 29;) {
+    if (atom.compare_exchange_weak(val, val + 1)) { ++y; }}}};
+  t1.join(); t2.join();
+  cout &lt;&lt; i &lt;&lt; endl; // 1729
+}
+</pre></blockquote>
+<p>
+Technically this program has undefined behavior. <sref ref="[atomics.ref.generic]"/> p3 says 
+that, during the lifetime of any <tt>atomic_ref</tt> referring to an object, that the object 
+may only be accessed through the <tt>atomic_ref</tt> instances. However, in this example the 
+<tt>atomic_ref</tt> is constructed before the <tt>i+=500</tt> and is not destroyed before the 
+print, even though we have a happens-before relationship between the atomic and non-atomic 
+'phases' of access of the value.
+<p/>
+The user would instead have to write:
+</p>
+<blockquote><pre>
+#include &lt;atomic&gt;
+#include &lt;iostream&gt;
+#include &lt;thread&gt;
+
+using namespace std;
+
+int main() {
+  int i{500};
+  i += 500;
+  {
+    atomic_ref atom{i};
+    thread t1{[&amp;atom] { for (int val{0}, x{0}; x &lt; 70;) {
+      if (atom.compare_exchange_weak(val, val + 10)) { ++x; }}}};
+    thread t2{[&amp;atom] { for (int val{0}, y{0}; y &lt; 29;) {
+      if (atom.compare_exchange_weak(val, val + 1)) { ++y; }}}};
+    t1.join(); t2.join();
+  } // destroy atom
+  cout &lt;&lt; i &lt;&lt; endl; // 1729
+}
+</pre></blockquote>
+<p>
+We should probably get SG1 on record clarifying whether they intend the first program to be acceptable. 
+I can think of a reason to for <tt>atomic_ref</tt>'s ctor to do something (zeroing out padding), but 
+in our implementation it does nothing. I can't think of any reason for <tt>atomic_ref</tt>'s dtor to 
+do anything.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
