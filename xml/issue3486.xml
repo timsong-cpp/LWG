@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3486" status="LEWG">
+<title><tt>is_constructible&lt;T[], T...&gt;</tt> may be misleading in C++20</title>
+<section><sref ref="[meta.unary.prop]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>01 Oct 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+According to the current wording,
+<tt>std::is_constructible&lt;int[], int&gt;</tt>
+should be true, because the preconditions are met
+(all types are complete types or unbounded arrays)
+and the variable definition is well-formed since C++20:
+</p>
+<blockquote><pre>
+using T = int[];
+T t(declval&lt;int&gt;()); <i>// equiv. to</i> int t[] = {1};
+</pre></blockquote>
+
+<p>
+However, this doesn't construct an object of type <tt>int[]</tt>
+because it deduces the array bound from the initializers,
+and so constructs <tt>int[1]</tt>, which is not the type being asked about.
+It seems more logical for the trait to give a false result
+for an unbounded array, because it's an incomplete type,
+and no <tt>int[]</tt> can ever be constructed.
+</p>
+
+<p>
+On the reflector Tim Song noted:
+</p>
+<blockquote>
+On the other hand, the result is something to which an <tt>int(&amp;)[]</tt>
+can be bound directly thanks to another C++20 change,
+so a lot of things might Just Work (for some definition of "Work")
+despite the type difference.
+</blockquote>
+
+<p>
+This seems to me a reasonable rationale for
+<tt>is_constructible&lt;int(&amp;&amp;)[], int&gt;</tt>
+to be true (which it is today),
+but not for <tt>int[]</tt>.
+</p>
+
+<p>
+Peter Dimov replied:
+</p>
+<blockquote>
+Placement new, which is often the way to construct we're interested in,
+is not going to work even for <tt>T[2]</tt>.
+</blockquote>
+
+<p>For example:</p>
+<blockquote><pre>
+using T2 = int[2];
+T2 x;
+new(x) T2(1, 2); <i>// ill-formed</i>
+</pre></blockquote>
+
+<p>
+We need to decide what behaviour we want here.
+Do we just want <tt>is_constructible</tt>
+to reflect the <tt>T(declval&lt;Args...&gt;);</tt> construct
+as currently specified in <sref ref="[meta.unary.prop]"/> p8,
+or do we want to give a more useful/meaningful answer here?
+</p>
+
+<p>
+Should we revisit <sref ref="[meta.unary.prop]"/> p8
+in the light of parenthesized aggregate init,
+so that <tt>is_constructible&lt;T[], T&gt;</tt>
+and <tt>is_constructible&lt;T[1], T&gt;</tt> are false?
+</p>
+
+<p>
+There may be some interaction with LWG <iref ref="3436"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+</p>
+</resolution>
+
+</issue>
