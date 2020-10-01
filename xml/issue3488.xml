@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3488" status="New">
+<title>Is <tt>array&lt;const int, 0&gt;</tt> swappable or not?</title>
+<section><sref ref="[array.special]"/></section>
+<submitter>Casey Carter</submitter>
+<date>01 Oct 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Per <sref ref="[array.special]"/>/1,
+<tt>std::array</tt>'s non-member swap participates in overload resolution
+when the array has size 0 or swappable elements.
+The effects of non-member swap are "As if by [member swap]",
+but member swap's effects are simply
+"Equivalent to swap_ranges(begin(), end(), y.begin())"
+per <sref ref="[array.members]"/>/4.
+In effect, we've gone out of our way to ensure that
+<tt>is_swappable_v&lt;array&lt;T, 0&gt;&gt;</tt>
+and <tt>swappable&lt;array&lt;T, 0&gt;&gt;</tt>
+are always true
+despite that actually swapping such an array may be ill-formed.
+</p>
+
+<p>
+It seems that the wording stops half-way to making
+<tt>array&lt;T, 0&gt;</tt> swappable regardless of <tt>T</tt>.
+I personally find that design distasteful
+- it seems a gratuitous difference between
+<tt>array&lt;T, N&gt;</tt> and <tt>array&lt;T, 0&gt;</tt>
+- but I'd prefer a consistent design over the status quo
+even if it's the "wrong" design.
+</p>
+</discussion>
+
+<resolution>
+<p>
+Wording relative to N4861. This resolution proposes two wording alternatives:
+Option A makes <tt>array&lt;T, 0&gt;</tt> swappable regardless of <tt>T</tt>,
+and the clearly superior Option B makes <tt>array&lt;T, N&gt;</tt> swappable
+only if <tt>T</tt> is swappable (i.e., regardless of <tt>N</tt>)
+removing gratuitous special-case behavior for the <tt>N == 0</tt> case.
+</p>
+
+<p><b>Option A:</b></p>
+<ol>
+<li>
+<p>Change <sref ref="[array.members]"/> as follows:</p>
+<blockquote>
+<pre>
+constexpr void swap(array&amp; y) noexcept(<ins>N == 0 || </ins>is_nothrow_swappable_v&lt;T&gt;);
+</pre>
+</blockquote>
+<p>
+-4- <i>Effects:</i> <ins>If <tt>N == 0</tt>, no effects. Otherwise, equivalent</ins> <del>Equivalent</del> to <tt>swap_ranges(begin(), end(), y.begin())</tt>.
+</p>
+<p>-5- [&hellip;]</p>
+</li>
+<li>
+<p>
+Also remove the now-redundant paragraph four from <sref ref="[array.zero]"/> as follows:
+</p>
+<blockquote>
+<p>
+<del>-4- Member function <tt>swap()</tt> shall have a non-throwing exception specification.</del>
+</p>
+</blockquote>
+</li>
+</ol>
+
+<p><b>Option B:</b></p>
+<ol>
+<li>
+<p>Change <sref ref="[array.special]"/> as follows:</p>
+<blockquote>
+<pre>
+template&lt;class T, size_t N&gt;
+constexpr void swap(array&lt;T, N&gt;&amp; x, array&lt;T, N&gt;&amp; y) noexcept(noexcept(x.swap(y)));
+</pre>
+</blockquote>
+<p>
+-1- <i>Constraints:</i> <del><tt>N == 0</tt> or</del> <tt>is_swappable_v&lt;T&gt;</tt> is <tt>true</tt>.
+</p>
+</li>
+<li>
+<p>
+Also remove paragraph four from <sref ref="[array.zero]"/> as follows:
+</p>
+<blockquote>
+<p>
+<del>-4- Member function <tt>swap()</tt> shall have a non-throwing exception specification.</del>
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
