@@ -1,0 +1,132 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3489" status="New">
+<title>Improve <tt>istream_view</tt> wording</title>
+<section><sref ref="[range.istream.iterator]"/></section>
+<submitter>Michael Schellenberger Costa</submitter>
+<date>09 Oct 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+While implementing <tt>iranges::stream_view</tt> we found some issues with he <i>Preconditions</i> 
+on the member functions of <tt>istream_view::iterator</tt>, which are superfluous or incorrect.
+</p>
+
+<ol>
+<li>
+<p>
+<sref ref="[range.istream.iterator]"/> p2 reads as:
+</p>
+<blockquote><p>
+<i>Preconditions:</i> <tt><i>parent_</i>-&gt;<i>stream_</i> != nullptr</tt> is <tt>true</tt>.
+</p></blockquote>
+<p>
+However in the <i>Effects</i> element <sref ref="[range.istream.iterator]"/> p3 it reads:
+</p>
+<blockquote>
+<p>
+<i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+*<i>parent_</i>-&gt;<i>stream_</i> &gt;&gt; <i>parent_</i>-&gt;<i>object_</i>;
+return *this;
+</pre></blockquote>
+</blockquote>
+<p>
+For the <i>Effects</i> element to be valid, we implicitly require that <tt><i>parent_</i> != nullptr</tt>, 
+<tt><i>parent_</i>-&gt;<i>stream_</i> != nullptr</tt> and &mdash; because we are reading from the underlying 
+stream &mdash; <tt>!*x.<i>parent_</i>-&gt;<i>stream_</i></tt>.
+<p/>
+Given that the <i>Preconditions</i> element only mentions one of the three preconditions and essentially 
+means that we are not at the end of the stream, we should replace <sref ref="[range.istream.iterator]"/> p2 
+by:
+</p>
+<blockquote><p>
+<i>Preconditions:</i> <tt>*this != default_sentinel</tt>.
+</p></blockquote>
+</li>
+<li>
+<p>
+We should use the same precondition for <sref ref="[range.istream.iterator]"/> p4, even if it is implicit 
+via the <i>Effects</i> element in <sref ref="[range.istream.iterator]"/> p5, as that requires experts knowledge 
+of the standard.
+</p>
+</li>
+<li>
+<p>
+The Precondition in <sref ref="[range.istream.iterator]"/> p6 is completely bogus, as accessing the 
+cached object has no dependency on the stream. We assume it is meant that we are not at the end of the stream. 
+Again we should change this to:
+</p>
+<blockquote><p>
+<i>Preconditions:</i> <tt>*this != default_sentinel</tt>.
+</p></blockquote>
+</li>
+</ol>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>. 
+</p>
+
+<ol>
+<li>
+<p>
+Modify <sref ref="[range.istream.iterator]"/> as indicated:
+</p>
+<blockquote>
+<pre>
+<i>iterator</i>&amp; operator++();
+</pre>
+<blockquote>
+<p>
+-2- <i>Preconditions:</i> <tt><del><i>parent_</i>-&gt;<i>stream_</i> != nullptr</del><ins>*this != default_sentinel</ins></tt> 
+is <tt>true</tt>.
+<p/>
+-3- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+*<i>parent_</i>-&gt;<i>stream_</i> &gt;&gt; <i>parent_</i>-&gt;<i>object_</i>;
+return *this;
+</pre></blockquote>
+</blockquote>
+<pre>
+void operator++(int);
+</pre>
+<blockquote>
+<p>
+-4- <i>Preconditions:</i> <tt><del><i>parent_</i>-&gt;<i>stream_</i> != nullptr</del><ins>*this != default_sentinel</ins></tt> 
+is <tt>true</tt>.
+<p/>
+-5- <i>Effects:</i> Equivalent to <tt>++*this</tt>.
+</p>
+</blockquote>
+<pre>
+Val&amp; operator*() const;
+</pre>
+<blockquote>
+<p>
+-6- <i>Preconditions:</i> <tt><del><i>parent_</i>-&gt;<i>stream_</i> != nullptr</del><ins>*this != default_sentinel</ins></tt> 
+is <tt>true</tt>.
+<p/>
+-7- <i>Effects:</i> Equivalent to: <tt>return <i>parent_</i>-&gt;<i>object_</i>;</tt>
+</p>
+</blockquote>
+<pre>
+friend bool operator==(const <i>iterator</i>&amp; x, default_sentinel_t);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <tt>return x.<i>parent_</i> == nullptr || !*x.<i>parent_</i>-&gt;<i>stream_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
