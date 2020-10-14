@@ -69,13 +69,14 @@ endef
 WG21 := $(HOME)/src/cplusplus
 DRAFT := $(WG21)/draft
 NET := $(WG21)/networking-ts
-filter-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Clause \([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Annex \([^}]*\)}.*/\1 \2/' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
+filter-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\(Clause\|Annex\) //' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
+filter-net-ts-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Clause \([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Annex \([^}]*\)}.*/\1 \2/' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
 
 meta-data/annex-f: $(wildcard $(DRAFT)/source/*.aux)
 	test -d "$(DRAFT)" && grep newlabel $^ | $(filter-annex-f) > $@
 
 meta-data/networking-annex-f: $(wildcard $(NET)/src/*.aux)
-	grep newlabel $^ /dev/null | $(filter-annex-f) > $@
+	grep newlabel $^ /dev/null | $(filter-net-ts-annex-f) > $@
 
 meta-data/networking-section.data: meta-data/networking-annex-f bin/section_data
 	if [ -s $< ]; then \
