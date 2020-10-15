@@ -5,6 +5,8 @@
 # Currently the only option is to include "Tentatively NAD" issues or not.
 # Would be useful to create a pre-meeting document of "Ready" issues,
 # then another document of "Immediate" issues during the meeting.
+# Maybe take a JSON file as input like:
+# {"Ready": "Intro text for <b>Ready</b>", "Immediate": "Intro text ..."}
 
 usage()
 {
@@ -154,12 +156,13 @@ cat <<EOT
 </table>
 <ul>
 EOT
-  for st in "${statuses[@]}"
-  do
-    [ -n "${issues[$st]}" ] || continue
-    printf '<li><a href="#%s">%s Issues</a></li>\n' "${anchors[$st]}" "$st"
-  done
-  echo '</ul>'
+
+for st in "${statuses[@]}"
+do
+  [ -n "${issues[$st]}" ] || continue
+  printf '<li><a href="#%s">%s Issues</a></li>\n' "${anchors[$st]}" "$st"
+done
+echo '</ul>'
 
 dump_issues
 
