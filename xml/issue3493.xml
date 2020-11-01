@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3493" status="New">
+<title>The constructor of <tt>std::function</tt> taking an <tt>F</tt> is missing a constraint</title>
+<section><sref ref="[func.wrap.func.con]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>31 Oct 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <a href="https://wg21.link/p0288">P0288</a>, <tt>any_invocable</tt> is (correctly) constraining 
+its constructor that takes an <tt>F</tt>:
+</p>
+<blockquote>
+<pre>
+template&lt;class F&gt; any_invocable(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+Let <tt>VT</tt> be <tt>decay_t&lt;F&gt;</tt>.
+<p/>
+<i>Constraints:</i>
+</p>
+<ol style="list-style-type: none">
+<li><p>&mdash; [&hellip;]</p></li>
+<li><p>&mdash; <tt>is_constructible_v&lt;VT, F&gt;</tt> is <tt>true</tt>, and</p></li>
+<li><p>&mdash; [&hellip;]</p></li>
+</ol>
+</blockquote>
+</blockquote>
+<p>
+<tt>std::function</tt> doesn't do that. According to <a href="https://wg21.link/n4868">N4868</a>, 
+<sref ref="[func.wrap.func.con]"/> p8 has a constraint for Lvalue-Callable, but not for 
+copy-constructibility. There is a precondition in p9, but that's not enough for portable 
+well/ill-formedness.
+<p/>
+Since this is a constructor, and we want to give the right answer to 
+<tt>is_constructible</tt>/<tt>constructible_from</tt> queries, we should 
+add the relevant constraint.
+</p>
+
+<note>2020-11-01; Daniel comments</note>
+<p>
+This issue has some overlap with LWG <iref ref="2774"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4868">N4868</a>. 
+</p>
+
+<ol>
+<li>
+<p>
+Modify <sref ref="[func.wrap.func.con]"/> as indicated:
+</p>
+
+<blockquote>
+<pre>
+template&lt;class F&gt; function(F f);
+</pre>
+<blockquote>
+<p>
+-8- <i>Constraints:</i> <tt>F</tt> is Lvalue-Callable (<sref ref="[func.wrap.func.general]"/>) for 
+argument types <tt>ArgTypes...</tt> and return type <tt>R</tt><ins>, and 
+<tt>is_copy_constructible_v&lt;F&gt;</tt> is <tt>true</tt></ins>.
+<p/>
+-9- <i>Preconditions:</i> <tt>F</tt> meets the <i>Cpp17CopyConstructible</i> requirements.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
