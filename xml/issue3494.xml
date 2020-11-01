@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3494" status="New">
+<title>Allow ranges to be conditionally borrowed</title>
+<section><sref ref="[range.reverse]"/><sref ref="[range.take]"/><sref ref="[range.drop]"/>
+<sref ref="[range.drop.while]"/><sref ref="[range.common]"/><sref ref="[range.drop.while]"/>
+<sref ref="[range.elements]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>1 Nov 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the LWG telecon on Friday, we discussed <a href="https://wg21.link/p2017R1">P2017R1</a>. 
+The group approved it moving forward (though not for this plenary, it'll be in the next one), 
+but thought it would be good to nevertheless retroactively create an LWG issue for this case 
+that this paper immediately resolved. So this is a request for that new issue.
+<p/>
+Consider the following approach to trimming a std::string:
+</p>
+<blockquote><pre>
+auto trim(std::string const&amp; s) {
+  auto isalpha = [](unsigned char c){ return std::isalpha(c); };
+  auto b = ranges::find_if(s, isalpha);
+  auto e = ranges::find_if(s | views::reverse, isalpha).base();
+  return subrange(b, e);
+}
+</pre></blockquote>
+<p>
+This is a fairly nice and, importantly, safe way to implement <tt>trim</tt>. The iterators <tt>b</tt> 
+and <tt>e</tt> returned from <tt>find_if</tt> will not dangle, since they point into the <tt>string s</tt> 
+whose lifetime outlives the function. But the status quo in C++20 is that <tt>s | views::reverse</tt> 
+is not a borrowed range (because <tt>reverse_view&lt;V&gt;</tt> is never a borrowed range for any <tt>V</tt>). 
+As a result, <tt>find_if(s | views::reverse, isalpha)</tt> returns <em>dangling</em> rather than 
+a real iterator.
+<p/>
+Instead, you have to write it this way, introducing a new named variable for the reversed view:
+</p>
+<blockquote><pre>
+auto trim(std::string const&amp; s) {
+  auto isalpha = [](unsigned char c){ return std::isalpha(c); };
+  auto b = ranges::find_if(s, isalpha);
+  auto reversed = s | views::reverse;
+  auto e = ranges::find_if(reversed, isalpha).base();
+  return subrange(b, e);
+}
+</pre></blockquote>
+<p>
+But borrowed range can be a transitive property. <tt>s</tt> itself is a borrowed range (as all 
+lvalue references are) so <tt>s | views::reverse</tt> could be made to be too, which would allow 
+the first example above to work with really no downside. We know such an iterator would not dangle, 
+we just need to teach the library this.
+<p/>
+<a href="https://wg21.link/p2017R1">P2017R1</a> resolves this by making <tt>reverse_view&lt;V&gt;</tt> 
+a borrowed range when <tt>V</tt> is a borrowed range (and likewise several other range adapters).
+</p>
+</discussion>
+
+<rationale>
+Resolved by <a href="https://wg21.link/p2017R1">P2017R1</a>.
+</rationale>
+
+<resolution>
+</resolution>
+
+</issue>
