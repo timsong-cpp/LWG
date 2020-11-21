@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3502" status="New">
+<title><tt>elements_view</tt> should not be allowed to return dangling references</title>
+<section><sref ref="[range.elements.iterator]"/></section>
+<submitter>Tim Song</submitter>
+<date>18 Nov 2020</date>
+<priority>99</priority>
+
+<discussion>
+This compiles but the resulting view is full of dangling references:
+<blockquote><pre>
+std::vector&lt;int&gt; vec = {42};
+auto r = vec | std::views::transform([](auto c) { return std::make_tuple(c, c); })
+             | std::views::keys;
+</pre></blockquote>
+<p>
+This is because <tt>elements_view::iterator::operator*</tt> is specified as
+</p>
+<blockquote><pre>
+constexpr decltype(auto) operator*() const { return get&lt;N&gt;(*<i>current_</i>); }
+</pre></blockquote>
+<p>
+Here <tt>*<i>current_</i></tt> is a prvalue, and so the <tt>get&lt;N&gt;</tt> produces a reference
+into the materialized temporary that becomes dangling as soon as <tt>operator*</tt> returns.
+<p/>
+We should either ban this case altogether, or make <tt>operator*</tt> (and <tt>operator[]</tt>) return by
+value when <tt>*<i>current_</i></tt> is a prvalue (since this <tt>get</tt> is <tt>std::get</tt>, we need
+not worry about weird user-defined overloads.)
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
