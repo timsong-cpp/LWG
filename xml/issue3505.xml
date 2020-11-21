@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3505" status="New">
+<title><tt>split_view::<i>outer-iterator</i>::operator++</tt> misspecified</title>
+<section><sref ref="[range.split.outer]"/></section>
+<submitter>Tim Song</submitter>
+<date>20 Nov 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Prior to the application of <a href="https://wg21.link/p1862r1">P1862R1</a>, the part of
+<tt>split_view::<i>outer-iterator</i>::operator++</tt> that searches for the pattern
+is specified as:
+</p>
+<blockquote><pre>
+do {
+  const auto [b, p] = ranges::mismatch(<i>current</i>, end, pbegin, pend);
+  if (p == pend) {
+    <i>current</i> = b; // The pattern matched; skip it
+    break;
+  }
+} while (++<i>current</i> != end);
+</pre></blockquote>
+<p>
+<a href="https://wg21.link/p1862r1">P1862R1</a>, trying to accommodate move-only iterators, respecified this as
+</p>
+<blockquote><pre>
+do {
+  auto [b, p] = ranges::mismatch(std::move(<i>current</i>), end, pbegin, pend);
+  <i>current</i> = std::move(b);
+  if (p == pend) {
+    break; // The pattern matched; skip it
+  }
+} while (++<i>current</i> != end);
+</pre></blockquote>
+<p>
+but this is not correct, because if the pattern didn't match, it advances <tt><i>current</i></tt> 
+to the point of first mismatch, skipping elements before that point. This is totally wrong if the 
+pattern contains more than one element. 
+<p/>
+Consider <tt>std::views::split("xxyx"sv, "xy"sv)</tt>:
+</p>
+<ul>
+<li><p>at the beginning, <tt><i>current</i></tt> points to the first <tt>'x'</tt></p></li>
+<li><p><tt>ranges::mismatch</tt> produces <tt>[</tt>iterator to second <tt>'x'</tt>, 
+iterator to <tt>'y'</tt> in pattern<tt>]</tt></p></li>
+<li><p><tt><i>current</i></tt> now points to second <tt>'x'</tt></p></li>
+<li><p>we increment <tt><i>current</i></tt> in the condition, so it now points to <tt>'y'</tt></p></li>
+</ul>
+<p>
+At this point there's no way we can find the <tt>"xy"</tt> in the middle. In fact, 
+in this particular example, we'll increment past the end of the source range at the 
+end of the third iteration.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4868">N4868</a>. 
+</p>
+
+<ol>
+<li>
+<p>
+Modify <sref ref="[range.split.outer]"/> as indicated:
+</p>
+
+<blockquote>
+<pre>
+constexpr <i>outer-iterator</i>&amp; operator++();
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+const auto end = ranges::end(<i>parent_</i>-&gt;<i>base_</i>);
+if (<i>current</i> == end) return <tt>*this</tt>;
+const auto [pbegin, pend] = subrange{<i>parent_</i>-&gt;<i>pattern_</i>};
+if (pbegin == pend) ++<i>current</i>;
+<ins>else if constexpr (<i>tiny-range</i>&lt;Pattern&gt;) {
+  <i>current</i> = ranges::find(std::move(<i>current</i>), end, *pbegin);
+  if (<i>current</i> != end) {
+    ++<i>current</i>;
+  }
+}</ins>
+else {
+  do {
+    auto [b, p] = ranges::mismatch(<del>std::move(</del><i>current</i><del>)</del>, end, pbegin, pend);
+    <del><i>current</i> = std::move(b);</del>
+    if (p == pend) {
+      <ins><i>current</i> = b;</ins>
+      break; <i>// The pattern matched; skip it</i>
+    }
+  } while (++<i>current</i> != end);
+}
+return *this;
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
