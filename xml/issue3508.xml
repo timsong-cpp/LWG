@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3508" status="New">
+<title><tt>atomic_ref&lt;<i>cv</i> T&gt;</tt> is not well-specified</title>
+<section><sref ref="[atomics.ref.generic.general]"/></section>
+<submitter>Casey Carter</submitter>
+<date>02 Dec 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>atomic_ref&lt;T&gt;</tt> requires only that its template parameter <tt>T</tt> is trivially copyable, 
+which is not sufficient to implement many of the class template's member functions. Consider, for example:
+</p>
+<blockquote><pre>
+int main() {
+  static const int x = 42;
+  std::atomic_ref&lt;const int&gt; meow{x};
+  meow.store(0);
+  return meow.load();
+}
+</pre></blockquote>
+<p>
+Since <tt>const int</tt> is trivially copyable, this is a well-formed C++20 program that returns <tt>0</tt>. 
+That said, the <tt>store</tt> call that mutates the value of a constant object is (a) not implementable with 
+library technology, and (b) pure madness that violates the language semantics. <tt>atomic_ref::store</tt> 
+should presumably require <tt>is_copy_constructible_v&lt;T&gt;</tt>, and other operations need to have their 
+requirements audited as well. (Related: LWG <iref ref="3012"/> made similar changes to atomic.)
+<p/>
+As a related issue, <tt>volatile atomic&lt;T&gt;</tt> recently had its member functions deprecated when they 
+are not lock-free. Presumably <tt>atomic_ref&lt;volatile T&gt;</tt> should require that atomic operations on 
+<tt>T</tt> be lock-free for consistency.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
