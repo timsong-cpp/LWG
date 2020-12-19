@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3509" status="New">
+<title>Range adaptor objects are underspecified</title>
+<section><sref ref="[range.adaptor.object]"/></section>
+<submitter>Tim Song</submitter>
+<date>15 Dec 2020</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+There is implementation divergence in the handling of this example::
+</p>
+<blockquote><pre>
+template&lt;class F&gt;
+auto filter(F f) {
+  return std::views::filter(f);
+}
+std::vector&lt;int&gt; v = {1, 2, 3, 4};
+auto f = filter([i = std::vector{4}] (auto x) { return x == i[0]; });
+auto x = v | f;
+</pre></blockquote>
+<p>
+libstdc++'s <tt>views::filter</tt> stores a reference to the argument if it is
+passed as an lvalue, so <tt>f</tt> contains a dangling reference in the above
+example. MSVC's <tt>views::filter</tt> always stores a copy, and forwards that
+as either an lvalue or an rvalue depending on the range adaptor closure object's 
+value category.
+<p/>
+MSVC's behavior here seems desirable and is consistent with range-v3's
+behavior as well: the ability to form range adapter pipelines like
+this is an important feature, and there's nothing in the above example
+that even hints at a dangling reference problem.
+<p/>
+However, the wording in <sref ref="[range.adaptor.object]"/> is unclear at best
+about exactly how the arguments are stored in the <tt>adaptor(args...)</tt>
+case; arguably, the requirement that <tt>adaptor(range, args...)</tt> be
+equivalent to <tt>adaptor(args...)(range)</tt> may even rule out the ability to
+make an extra copy. Certainly nothing in the wording guarantees that
+it is safe to reuse lvalue range pipelines (that is, <tt>v | f</tt> doesn't
+move from <tt>f</tt>).
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
