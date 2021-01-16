@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3514" status="New">
+<title>Range algorithms do not compose with <tt>input_iterator</tt>'s</title>
+<section><sref ref="[algorithms]"/></section>
+<submitter>Michael Schellenberger Costa</submitter>
+<date>4 Jan 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider a simple algorithm that finds something and does whatever he needs to do with it 
+(Projections and predicates are omitted here) :
+</p>
+<blockquote><pre>
+template&lt;input_iterator it,  sentinel_for&lt;it&gt; sen&gt;
+void find_and_do_something(it first, sen last, const std::ranges::iter_value_t&lt;it&gt;&amp; target) 
+{
+  auto result = std::ranges::find(first, last, target);
+  if (result != last) {
+    <i>// Do something fancy</i>
+  }
+  [&hellip;]
+}
+</pre></blockquote>
+<p>
+Now this is actually broken. <tt>input_iterator</tt>`s are not required to be copyable, so we need 
+to move them around:
+</p>
+<blockquote><pre>
+template&lt;input_iterator it,  sentinel_for&lt;it&gt; sen&gt;
+void find_and_do_something(it first, sen last, const std::ranges::iter_value_t&lt;it&gt;&amp; target) 
+{
+  auto result = std::ranges::find(std::move(first), std::move(last), target);
+  if (result != last) { <i>//</i> <span style="color:#C80000;font-weight:bold">&lt;- URGH</span>
+    <i>// Do something fancy</i>
+  }
+  [&hellip;]
+}
+</pre></blockquote>
+<p>
+As shown above, we cannot do anything here after the call to <tt>std::ranges::find</tt>, because the 
+algorithm ate an iterator/sentinel pair but only gave us back an iterator. If we indeed feed a move 
+only non copyable input iterator to that algorithm we are done. 
+<p/>
+I got an iterator that tells me whether I found something, but I cannot compare it to anything because 
+my sentinel is gone.
+<p/>
+This is true for essentially all algorithms that take input iterators but return something derived from `in_meow_result` or as in the example a plain iterator.
+
+The worst part is that we still must consider them in our algorithms, but a user cannot ever use those 
+algorithms if he wants to do anything else with that range.
+<p/>
+At least there is a simple solution to this problem. We need to return a <tt>subrange</tt> just as for example 
+<tt>std::ranges::search</tt> does. With that we get our full range/iterator-sentinel-pair back and can 
+go on with our lives.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
