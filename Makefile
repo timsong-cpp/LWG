@@ -72,6 +72,8 @@ NET := $(WG21)/networking-ts
 filter-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\(Clause\|Annex\) //' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
 filter-net-ts-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Clause \([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Annex \([^}]*\)}.*/\1 \2/' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
 
+# Before running this, rebuild the C++ draft at the desired commit.
+# That ensures the .aux files match the content of the relevant draft.
 meta-data/annex-f: $(wildcard $(DRAFT)/source/*.aux)
 	test -d "$(DRAFT)" && grep newlabel $^ | $(filter-annex-f) > $@
 
