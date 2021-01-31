@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3516" status="New">
+<title><tt>thread::id</tt> spaceship may be inconsistent with equality</title>
+<section><sref ref="[thread.thread.id]"/></section>
+<submitter>Casey Carter</submitter>
+<date>26 Jan 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[thread.thread.id]"/>/5-7 specify the behavior of <tt>==</tt> and <tt>&lt;=&gt;</tt> for 
+<tt>std::thread::id</tt>:
+</p>
+<blockquote>
+<pre>
+bool operator==(thread::id x, thread::id y) noexcept;
+</pre>
+<blockquote>
+<p>
+-5- <i>Returns:</i> <tt>true</tt> only if <tt>x</tt> and <tt>y</tt> represent the same thread of execution 
+or neither <tt>x</tt> nor <tt>y</tt> represents a thread of execution.
+</p>
+</blockquote>
+<pre>
+strong_ordering operator&lt;=&gt;(thread::id x, thread::id y) noexcept;
+</pre>
+<blockquote>
+<p>
+-6- Let <tt><i>P</i>(x, y)</tt> be an unspecified total ordering over <tt>thread::id</tt> as described in 25.8.
+<p/>
+-7- <i>Returns:</i> <tt>strong_ordering::less</tt> if <tt><i>P</i>(x, y)</tt> is <tt>true</tt>. Otherwise, 
+<tt>strong_ordering::greater</tt> if <tt><i>P</i>(y, x)</tt> is <tt>true</tt>. Otherwise, <tt>strong_ordering::equal</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+"Unspecified total ordering" provides too much freedom, since it does not require that <tt>!P(x, y)</tt> 
+holds when <tt>x</tt> and <tt>y</tt> both represent the same thread of execution or both represent no 
+thread of execution. A conforming implementation could return <tt>strong_ordering::equal</tt> from 
+<tt>&lt;=&gt;</tt> for a pair of <tt>thread::id</tt> values for which <tt>==</tt> returns <tt>false</tt>. 
+We should guarantee consistency of <tt>==</tt> and <tt>&lt;=&gt;</tt> for <tt>thread::id</tt> to 
+preserve sanity of the programming model.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[thread.thread.id]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+strong_ordering operator&lt;=&gt;(thread::id x, thread::id y) noexcept;
+</pre>
+<blockquote>
+<p>
+-6- Let <tt><i>P</i>(x, y)</tt> be <del>an unspecified</del><ins>a</ins> total ordering over <tt>thread::id</tt> 
+as described in <sref ref="[alg.sorting]"/><ins>, unspecified except that <tt><i>P</i>(x, y)</tt> is <tt>false</tt> 
+when <tt>x</tt> and <tt>y</tt> both represent the same thread of execution, or when neither represents a thread 
+of execution</ins>.
+<p/>
+-7- <i>Returns:</i> <tt>strong_ordering::less</tt> if <tt><i>P</i>(x, y)</tt> is <tt>true</tt>. Otherwise, 
+<tt>strong_ordering::greater</tt> if <tt><i>P</i>(y, x)</tt> is <tt>true</tt>. Otherwise, <tt>strong_ordering::equal</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
