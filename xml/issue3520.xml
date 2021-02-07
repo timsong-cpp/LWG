@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3520" status="New">
+<title><tt>iter_move</tt> and <tt>iter_swap</tt> are inconsistent for <tt>transform_view::<i>iterator</i></tt></title>
+<section><sref ref="[range.transform.iterator]"/></section>
+<submitter>Tim Song</submitter>
+<date>03 Feb 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+For <tt>transform_view::<i>iterator</i></tt>, <tt>iter_move</tt> is specified to operate on the
+transformed value but <tt>iter_swap</tt> is specified to operate on the underlying iterator.
+<p/>
+Consider the following test case:
+</p>
+<blockquote><pre>
+struct X { int x; int y; };
+std::vector&lt;X&gt; v = {...};
+auto t = v | views::transform(&amp;X::x);
+ranges::sort(t);
+</pre></blockquote>
+<p>
+<tt>iter_swap</tt> on <tt>t</tt>'s iterators would swap the whole <tt>X</tt>, including the 
+<tt>y</tt> part, but <tt>iter_move</tt> will only move the <tt>x</tt> data member and leave 
+the <tt>y</tt> part intact. Meanwhile, <tt>ranges::sort</tt> can use both <tt>iter_move</tt> and
+<tt>iter_swap</tt>, and does so in at least one implementation. The mixed behavior means that we 
+get neither "sort <tt>X</tt>s by their <tt>x</tt> data member" (as <tt>ranges::sort(v, {}, &amp;X::x)</tt> 
+would do), nor "sort the <tt>x</tt> data member of these <tt>X</tt>s and leave the rest unchanged", 
+as one might expect, but instead some arbitrary permutation of <tt>y</tt>. This seems like a
+questionable state of affairs.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.transform.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, copy_constructible F&gt;
+    requires view&lt;V&gt; &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+             regular_invocable&lt;F&amp;, range_reference_t&lt;V&gt;&gt; &amp;&amp;
+             <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;V&gt;&gt;&gt;
+  template&lt;bool Const&gt;
+  class transform_view&lt;V, F&gt;::<i>iterator</i> {
+    [&hellip;]
+    <del>friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      noexcept(noexcept(ranges::iter_swap(x.<i>current_</i>, y.<i>current_</i>)))
+      requires indirectly_swappable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;;</del>
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+<del>friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  noexcept(noexcept(ranges::iter_swap(x.<i>current_</i>, y.<i>current_</i>)))
+  requires indirectly_swappable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-23- <i>Effects:</i> Equivalent to <tt>ranges::iter_swap(x.<i>current_</i>, y.<i>current_</i>)</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
