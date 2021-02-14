@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3521" status="New">
+<title>Overly strict requirements on <tt>qsort</tt> and <tt>bsearch</tt></title>
+<section><sref ref="[alg.c.library]"/></section>
+<submitter>Richard Smith</submitter>
+<date>02 Feb 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Per <sref ref="[alg.c.library]"/>/2, for <tt>qsort</tt> and <tt>bsearch</tt>, we have:
+</p>
+<blockquote>
+<p>
+<i>Preconditions:</i> The objects in the array pointed to by <tt>base</tt> are of trivial type.
+</p>
+</blockquote>
+<p>
+This seems like an unnecessarily strict requirement. <tt>qsort</tt> only needs the objects to be of a 
+trivially-copyable type (because it will use <tt>memcpy</tt> or equivalent to relocate them), and 
+<tt>bsearch</tt> doesn't need any particular properties of the array element type. Presumably it 
+would be in improvement to specify the more-precise requirements instead.
+<p/>
+We should also reconsider the other uses of the notion of a trivial type. It's really not a useful or 
+meaningful type property by itself, because it doesn't actually require that any operations on the type 
+are valid (due to the possibility of them being ambiguous or only some of them being available) and the 
+places that consider it very likely actually mean <tt>is_trivially_copyable</tt> plus 
+<tt>is_trivially_default_constructible</tt> instead, or perhaps <tt>is_trivially_copy_constructible</tt> 
+and <tt>is_trivially_move_constructible</tt> and so on.
+<p/>
+Other than <tt>qsort</tt> and <tt>bsearch</tt>, the only uses of this type property in the standard are 
+to constrain <tt>max_align_t</tt>, <tt>aligned_storage</tt>, <tt>aligned_union</tt>, and the element type 
+of <tt>basic_string</tt> (and in the definition of the deprecated <tt>is_pod</tt> trait), all of which 
+(other than <tt>is_pod</tt>) I think really mean "is trivially default constructible", not "has at least 
+one eligible default constructor and all eligible default constructors are trivial". And in fact I think 
+the alignment types are underspecified &mdash; we don't want to require merely that they be 
+trivially-copyable, since that doesn't require any particular operation on them to actually be valid &mdash; 
+we also want to require that they actually model <tt>semiregular</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
