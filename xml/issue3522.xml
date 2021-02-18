@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3522" status="New">
+<title>Missing requirement on <tt>InputIterator</tt> template parameter for <tt>priority_queue</tt> constructors</title>
+<section><sref ref="[priority.queue]"/></section>
+<submitter>Tim Song</submitter>
+<date>17 Feb 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+There is nothing in <sref ref="[priority.queue]"/> or more generally <sref ref="[container.adaptors]"/>
+saying that <tt>InputIterator</tt> in the following constructor templates has to be an input iterator.
+</p>
+<blockquote><pre>
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x,
+                    const Container&amp;);
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last,
+                    const Compare&amp; x = Compare(), Container&amp;&amp; = Container());
+</pre></blockquote>
+<p>
+The second constructor template above therefore accepts
+</p>
+<blockquote><pre>
+std::priority_queue&lt;int&gt; x = {1, 2};
+</pre></blockquote>
+<p>
+to produce a <tt>priority_queue</tt> that contains a single element <tt>2</tt>. This behavior seems extremely questionable.
+</p>
+</discussion>
+
+<resolution>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: Because <a href="https://wg21.link/P1425">an upcoming paper</a>
+provides iterator-pair constructors for other container adaptors, the wording below
+adds the restriction to <sref ref="[container.adaptors.general]"/> so that it also
+covers the constructors that will be added by that paper.
+&mdash; <i>end drafting note</i>]
+</p>
+</blockquote>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Add the following paragraph to <sref ref="[container.adaptors.general]"/> after p3:</p>
+<blockquote>
+<p>
+<ins>-?- A constructor template of a container adaptor shall not participate in
+overload resolution if it has an <tt>InputIterator</tt> template parameter and a
+type that does not qualify as an input iterator is deduced for that parameter.</ins>
+</p>
+<p>
+-4- A deduction guide for a container adaptor shall not participate in overload resolution if any of the following are true:
+</p>
+<ol style="list-style-type: none">
+<li><p>(4.1) &mdash; It has an <tt>InputIterator</tt> template parameter and a type that does not qualify as an input iterator is deduced for that parameter.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
