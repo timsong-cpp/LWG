@@ -14,7 +14,7 @@ There are various problems with the specification of <tt>list::unique</tt> and i
 <ul>
 <li>It refers to the identifiers <tt>first</tt> and <tt>last</tt>, which aren't even defined.</li>
 <li>It uses <tt>i - 1</tt> on non-random-access iterators - in the case of <tt>forward_list</tt>, on forward-only iterators.</li>
-<li>The resolution of LWG <iref ref="202"/>, changing the specification of <tt>std::unique</tt> to require an equivalence relation 
+<li>The resolution of LWG <iref ref="202"/>, changing the specification of <tt>std::unique</tt> to require an equivalence relation
     and adjusting the order of comparison, weren't applied to these member functions.</li>
 </ul>
 <p/>
@@ -27,7 +27,7 @@ That implementations somehow managed to do the right thing in spite of obviously
 
 <note>2017-07 Toronto Tuesday PM issue prioritization</note>
 <p>Priority 3; by the way, there's general wording in <sref ref="[algorithms.requirements]"/> p10 that lets us specify iterator arithmetic as if we were using random access iterators.</p>
-    
+
 <note>2017-07-11 Tim comments</note>
 <p>I drafted the P/R fully aware of the general wording in <sref ref="[algorithms.requirements]"/> p10. However, that general wording is limited to Clause 28, so to make use of the shorthand permitted
 by that wording, we would need additional wording importing it to these subclauses.
@@ -35,9 +35,9 @@ by that wording, we would need additional wording importing it to these subclaus
 Moreover, that general wording only defines <tt>a+n</tt> and <tt>b-a</tt>; it notably doesn't define <tt>a-n</tt>, which is needed here. And one cannot merely define <tt>a-n</tt> as
 <tt>a+(-n)</tt> since that has undefined behavior for forward iterators.
 </p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="https://wg21.link/n4659">N4659</a>.
 </p>
@@ -52,7 +52,7 @@ template &lt;class BinaryPredicate&gt; void unique(BinaryPredicate binary_pred);
 <blockquote><p>
 <ins>-?- <i>Requires:</i> The comparison function shall be an equivalence relation. </ins>
 <p/>
--19- <i>Effects:</i> <ins>If <tt>empty()</tt>, has no effects. Otherwise, e</ins><del>E</del>rases all but the first element from every consecutive 
+-19- <i>Effects:</i> <ins>If <tt>empty()</tt>, has no effects. Otherwise, e</ins><del>E</del>rases all but the first element from every consecutive
 group of <del>equal</del><ins>equivalent</ins> elements referred to by the iterator <tt>i</tt> in the range <tt><del>[first + 1, last)</del><ins>[next(begin()), end())</ins></tt>
 for which <tt><del>*i == *(i-1)</del><ins>*j == *i</ins></tt> (for the version of <tt>unique</tt> with no arguments) or
 <tt><del>pred(*i, *(i - 1))</del><ins>pred(*j, *i)</ins></tt> (for the version of <tt>unique</tt> with a predicate argument) holds<ins>,
@@ -76,17 +76,116 @@ template &lt;class BinaryPredicate&gt; void unique(BinaryPredicate binary_pred);
 <blockquote><p>
 <ins>-?- <i>Requires:</i> The comparison function shall be an equivalence relation. </ins>
 <p/>
--16- <i>Effects:</i> <ins>If <tt>empty()</tt>, has no effects. Otherwise, e</ins><del>E</del>rases all but the first element from every consecutive 
+-16- <i>Effects:</i> <ins>If <tt>empty()</tt>, has no effects. Otherwise, e</ins><del>E</del>rases all but the first element from every consecutive
 group of <del>equal</del><ins>equivalent</ins> elements referred to by the iterator <tt>i</tt> in the range <tt><del>[first + 1, last)</del><ins>[next(begin()), end())</ins></tt>
-for which <tt><del>*i == *(i-1)</del><ins>*j == *i</ins></tt> (for the version with no arguments) or 
+for which <tt><del>*i == *(i-1)</del><ins>*j == *i</ins></tt> (for the version with no arguments) or
 <tt><del>pred(*i, *(i - 1))</del><ins>pred(*j, *i)</ins></tt> (for the version with a predicate argument) holds<ins>,
 where <tt>j</tt> is an iterator in <tt>[begin(), end())</tt> such that <tt>next(j) == i</tt></ins>. Invalidates only the iterators and references to the erased elements.
 <p/>
 -17- <i>Throws:</i> Nothing unless an exception is thrown by the equality comparison or the predicate.
 <p/>
--18- <i>Complexity:</i> If <del>the range <tt>[first, last)</tt> is not empty</del><ins><tt>!empty()</tt></ins>, exactly 
+-18- <i>Complexity:</i> If <del>the range <tt>[first, last)</tt> is not empty</del><ins><tt>!empty()</tt></ins>, exactly
 <tt><del>(last - first) - 1</del><ins>distance(begin(), end()) - 1</ins></tt> applications of the corresponding predicate,
- otherwise no applications of the predicate.
+    otherwise no applications of the predicate.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+<note>2021-02-21 Tim redrafts</note>
+<p>The wording below incorporates
+<a href="https://github.com/cplusplus/draft/pull/4465">editorial pull request 4465</a>. </p>
+</discussion>
+
+<resolution>
+
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[list.ops]"/> as indicated:</p>
+<blockquote><p>
+-1- Since lists allow fast insertion and erasing from the middle of a list,
+certain operations are provided specifically for them.<sup>222</sup>
+In this subclause, arguments for a template parameter named <tt>Predicate</tt>> or
+<tt>BinaryPredicate</tt> shall meet the corresponding requirements in
+<sref ref="[algorithms.requirements]" />. <ins>The semantics of <tt>i + n</tt>
+and <tt>i - n</tt>, where <tt>i</tt> is an iterator into the list and <tt>n</tt>
+is an integer, are the same as those of <tt>next(i, n)</tt> and <tt>prev(i, n)</tt>,
+respectively.</ins>
+For <tt>merge</tt> and <tt>sort</tt>, the definitions and requirements in
+<sref ref="[alg.sorting]" /> apply.
+<p/>
+[...]
+</p>
+<pre>
+void unique();
+template &lt;class BinaryPredicate&gt; void unique(BinaryPredicate binary_pred);
+</pre>
+<blockquote><p>
+<ins>-?- Let <tt>binary_pred</tt> be <tt>equal_to&lt;&gt;{}</tt> for the first overload. </ins>
+<p/>
+<ins>-?- <i>Preconditions:</i> <tt>binary_pred</tt> is an equivalence relation. </ins>
+<p/>
+-20- <i>Effects:</i> Erases all but the first element from every consecutive
+group of <del>equal</del><ins>equivalent</ins> elements<ins>. That is, for a nonempty list, erases all elements</ins>
+referred to by the iterator <tt>i</tt> in the range <tt><del>[first + 1, last)</del><ins>[begin() + 1, end())</ins></tt>
+for which <del><tt>*i == *(i-1)</tt> (for the version of <tt>unique</tt> with no arguments) or</del>
+<tt><ins>binary_</ins>pred(*i, *(i - 1))</tt> <ins>is <tt>true</tt></ins><del>(for the version of <tt>unique</tt> with a predicate argument) holds</del>.
+Invalidates only the iterators and references to the erased elements.
+<p/>
+-21- <i>Returns</i>:The number of elements erased.
+<p/>
+-22- <i>Throws:</i> Nothing unless an exception is thrown by <del><tt>*i == *(i-1)</tt> or <tt>pred(*i, *(i - 1))</tt></del><ins>the predicate</ins>.
+<p/>
+-23- <i>Complexity:</i> If <del>the range <tt>[first, last)</tt> is not empty</del><ins><tt>empty()</tt> is <tt>false</tt></ins>, exactly <tt><del>(last - first) - 1</del><ins>size() - 1</ins></tt>
+applications of the corresponding predicate, otherwise no applications of the predicate.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[forwardlist.ops]" /> as indicated:</p>
+<blockquote>
+<p>
+-1- In this subclause, arguments for a template parameter named <tt>Predicate</tt>> or
+<tt>BinaryPredicate</tt> shall meet the corresponding requirements in
+<sref ref="[algorithms.requirements]" />. <ins>The semantics of <tt>i + n</tt>,
+where <tt>i</tt> is an iterator into the list and <tt>n</tt>
+is an integer, are the same as those of <tt>next(i, n)</tt>. The expression
+<tt>i - n</tt>, where <tt>i</tt> is an iterator into the list and <tt>n</tt>
+is an integer, means an iterator <tt>j</tt> such that <tt>j + n == i</tt> is
+<tt>true</tt>.</ins>
+For <tt>merge</tt> and <tt>sort</tt>, the definitions and requirements in
+<sref ref="[alg.sorting]" /> apply.
+<p/>
+[...]
+</p>
+<pre>
+void unique();
+template &lt;class BinaryPredicate&gt; void unique(BinaryPredicate binary_pred);
+</pre>
+<blockquote><p>
+<ins>-?- Let <tt>binary_pred</tt> be <tt>equal_to&lt;&gt;{}</tt> for the first overload. </ins>
+<p/>
+<ins>-?- <i>Preconditions:</i> <tt>binary_pred</tt> is an equivalence relation. </ins>
+<p/>
+-18- <i>Effects:</i> Erases all but the first element from every consecutive
+group of <del>equal</del><ins>equivalent</ins> elements<ins>. That is, for a nonempty list, erases all elements</ins>
+referred to by the iterator <tt>i</tt> in the range <tt><del>[first + 1, last)</del><ins>[begin() + 1, end())</ins></tt>
+for which <del><tt>*i == *(i-1)</tt> (for the version with no arguments) or</del>
+<tt><ins>binary_</ins>pred(*i, *(i - 1))</tt> <ins>is <tt>true</tt></ins> <del>(for the version with a predicate argument) holds</del>.
+Invalidates only the iterators and references to the erased elements.
+<p/>
+-19- <i>Returns</i>:The number of elements erased.
+<p/>
+-20- <i>Throws:</i> Nothing unless an exception is thrown by <del>the equality comparison or</del> the predicate.
+<p/>
+-21- <i>Complexity:</i> If <del>the range <tt>[first, last)</tt> is not empty</del><ins><tt>empty()</tt> is <tt>false</tt></ins>, exactly
+<tt><del>(last - first) - 1</del><ins>distance(begin(), end()) - 1</ins></tt> applications of the corresponding predicate,
+otherwise no applications of the predicate.
 </p>
 </blockquote>
 </blockquote>
