@@ -53,7 +53,7 @@ fi
 
 meeting="$1"
 docno="$2"
-date=$(date +%F ${3:+-d} "$3") # YYYY-MM-DD (either today, or $3 if given)
+date=$(date +%F ${3:+-d "$3"}) # YYYY-MM-DD (either today, or $3 if given)
 author="${4:-Jonathan Wakely}"
 email="${5:-lwgchair@gmail.com}"
 
