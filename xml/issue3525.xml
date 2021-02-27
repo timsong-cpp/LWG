@@ -25,13 +25,277 @@ void f() {
 }
 </pre></blockquote>
 <p>
-There's no matching overload for <tt>uses_allocator_construction_args&lt;pair&lt;const int, int&gt;&gt;(alloc, S&amp;&amp;)</tt>, 
-since <tt>S</tt> is not a <tt>pair</tt> and every overload for constructing <tt>pair</tt>s that takes one 
+There's no matching overload for <tt>uses_allocator_construction_args&lt;pair&lt;const int, int&gt;&gt;(alloc, S&amp;&amp;)</tt>,
+since <tt>S</tt> is not a <tt>pair</tt> and every overload for constructing <tt>pair</tt>s that takes one
 non-allocator argument expects a <tt>pair</tt> from which template arguments can be deduced.
 </p>
+<note>2021-02-27 Tim adds PR and comments</note>
+<p>The superseded resolution below attempts to solve this issue by adding two
+additional overloads of <tt>uses_allocator_construction_args</tt> to
+handle this case. However, the new overloads forces implicit conversions
+at the call to <tt>uses_allocator_construction_args</tt>, which requires
+the result to be consumed within the same full-expression
+before any temporary created from the conversion is destroyed.
+This is not the case for the <tt>piecewise_construct</tt> overload of
+<tt>uses_allocator_construction_args</tt>, which recursively calls
+<tt>uses_allocator_construction_args</tt> for the two elements of the pair, which
+might themselves be <tt>pair</tt>s. In general, there does not appear to be
+a way to handle this solely within <tt>uses_allocator_construction_args</tt>:
+we need to perform a conversion at an arbitrarily deep level of nesting in order
+to take the resulting <tt>pair</tt> apart and then put it back together with
+the necessary additional arguments for uses-allocator construction, all without
+dangling references or unnecessary copying (after all, <tt>S</tt> might be
+something like a <tt>reference_wrapper&lt;pair&gt;</tt> where the conversion function returns
+by reference instead of by value, and we can't currently reliably differentiate this case in
+the library).
+</p>
+<p>
+It appears to me that there are three possible options:
+</p>
+<ol>
+<li>
+<p>Close this issue as NAD. Uses-allocator construction is simply ill-formed for this case,
+and the <tt>pmr::</tt> containers are not drop-in replacements as far as <tt>pair</tt>s are concerned.
+Users must convert types like <tt>S</tt> to <tt>pair</tt> themselves.</p></li>
+<li>
+<p>Bite the bullet and add allocator-extended constructors to <tt>pair</tt>, removing
+the special handling in <tt>uses_allocator_construction_args</tt>. This incidentally
+would allow types derived from <tt>pair</tt> (say, to add better named accessor functions)
+to support uses-allocator construction more easily.</p></li>
+<li>
+<p>
+Add an internal constructor to <tt>pair</tt> to handle this case and a new
+overload of <tt>uses_allocator_construction_args</tt> to use this internal API.
+The public API of <tt>pair</tt> remains unchanged; the internal constructor
+is merely an implementation detail of uses-allocator construction.
+</p>
+</li>
+</ol>
+
+<p>The new proposed resolution below attempts to implement option 3.</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[memory.syn]"/>, header <tt>&lt;memory&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// <sref ref="[allocator.uses.construction]"/>, uses-allocator construction</i>
+  [&hellip;]
+
+<ins>  template&lt;class T, class Alloc&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const remove_cv_t&lt;T&gt;&amp; pr) noexcept;</ins>
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const pair&lt;U, V&gt;&amp; pr) noexcept -&gt; <i>see below</i>;
+
+<ins>  template&lt;class T, class Alloc&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    remove_cv_t&lt;T&gt;&amp;&amp; pr) noexcept;</ins>
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[allocator.uses.construction]"/> as indicated:</p>
+<blockquote>
+<pre>
+<ins>template&lt;class T, class Alloc&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  const remove_cv_t&lt;T&gt;&amp; pr) noexcept;</ins>
+template&lt;class T, class Alloc, class U, class V&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  const pair&lt;U, V&gt;&amp; pr) noexcept -&gt; <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-12- <i>Constraints:</i> <tt>T</tt> is a specialization of <tt>pair</tt>. <ins>For the second overload, <tt>is_same_v&lt;pair&lt;U, V&gt;, remove_cv_t&lt;T&gt;&gt;</tt> is <tt>false</tt>.</ins>
+<p/>
+-13- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return uses_allocator_construction_args&lt;T&gt;(alloc, piecewise_construct,
+                                            forward_as_tuple(pr.first),
+                                            forward_as_tuple(pr.second));
+</pre></blockquote>
+</blockquote>
+<pre>
+<ins>template&lt;class T, class Alloc&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  remove_cv_t&lt;T&gt;&amp;&amp; pr) noexcept;</ins>
+template&lt;class T, class Alloc, class U, class V&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-14- <i>Constraints:</i> <tt>T</tt> is a specialization of <tt>pair</tt>. <ins>For the second overload, <tt>is_same_v&lt;pair&lt;U, V&gt;, remove_cv_t&lt;T&gt;&gt;</tt> is <tt>false</tt>.</ins>
+<p/>
+-15- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return uses_allocator_construction_args&lt;T&gt;(alloc, piecewise_construct,
+                                            forward_as_tuple(std::move(pr).first),
+                                            forward_as_tuple(std::move(pr).second));
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[utility.syn]"/>, header <tt>&lt;utility&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// <sref ref="[pair.piecewise]"/>, class template pair</i>
+  struct piecewise_construct_t {
+    explicit piecewise_construct_t() = default;
+  };
+  inline constexpr piecewise_construct_t piecewise_construct{};
+  template&lt;class... Types&gt; class tuple;         // defined in &lt;tuple&gt;
+
+<ins>  struct <i>memberwise-uses-allocator-construct-tag</i> { <i>unspecified</i> };  // exposition only
+  inline constexpr <i>memberwise-uses-allocator-construct-tag</i> <i>memberwise-uses-allocator-construct</i>{<i>unspecified</i>}; // exposition only </ins>
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+<li><p>Edit <sref ref="[pairs.pair]"/> as indicated:</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T1, class T2&gt;
+  struct pair {
+    using first_type  = T1;
+    using second_type = T2;
+
+    T1 first;
+    T2 second;
+
+    pair(const pair&amp;) = default;
+    pair(pair&amp;&amp;) = default;
+    constexpr explicit(see below) pair();
+    constexpr explicit(see below) pair(const T1&amp; x, const T2&amp; y);
+    template&lt;class U1, class U2&gt;
+      constexpr explicit(see below) pair(U1&amp;&amp; x, U2&amp;&amp; y);
+    template&lt;class U1, class U2&gt;
+      constexpr explicit(see below) pair(const pair&lt;U1, U2&gt;&amp; p);
+    template&lt;class U1, class U2&gt;
+      constexpr explicit(see below) pair(pair&lt;U1, U2&gt;&amp;&amp; p);
+    template&lt;class... Args1, class... Args2&gt;
+      constexpr pair(piecewise_construct_t,
+                      tuple&lt;Args1...&gt; first_args, tuple&lt;Args2...&gt; second_args);
+
+<ins>    template&lt;class Alloc&gt;
+      constexpr pair(const <i>memberwise-uses-allocator-construct-tag</i>&amp;,
+                     const Alloc&amp; alloc, const pair&amp; p);     // exposition only
+    template&lt;class Alloc&gt;
+      constexpr pair(const <i>memberwise-uses-allocator-construct-tag</i>&amp;,
+                     const Alloc&amp; alloc, pair&amp;&amp; p);      // exposition only </ins>
+    [&hellip;]
+  };
+
+  [&hellip;]
+}
+</pre>
+[&hellip;]
+<pre>
+<ins>    template&lt;class Alloc&gt;
+    constexpr pair(const <i>memberwise-uses-allocator-construct-tag</i>&amp;,
+                   const Alloc&amp; alloc, const pair&amp; p);    // exposition only</ins>
+</pre>
+<blockquote>
+<p><ins>-?- <i>Effects:</i> Initializes <tt>first</tt> with <tt>make_obj_using_allocator&lt;first_type&gt;(alloc, p.first)</tt>,
+and <tt>second</tt> with <tt>make_obj_using_allocator&lt;second_type&gt;(alloc, p.second)</tt>.</ins></p>
+</blockquote>
+<pre><ins>
+  template&lt;class Alloc&gt;
+    constexpr pair(const <i>memberwise-uses-allocator-construct-tag</i>&amp;,
+                   const Alloc&amp; alloc, pair&amp;&amp; p);</ins>
+</pre>
+<blockquote>
+<p><ins>-?- <i>Effects:</i> Initializes <tt>first</tt> with <tt>make_obj_using_allocator&lt;first_type&gt;(alloc, std::forward&lt;first_type&gt;(p.first))</tt>,
+and <tt>second</tt> with <tt>make_obj_using_allocator&lt;second_type&gt;(alloc, std::forward&lt;second_type&gt;(p.second))</tt>.</ins></p>
+</blockquote>
+</blockquote>
+</li>
+<li><p>Edit <sref ref="[memory.syn]"/>, header <tt>&lt;memory&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// <sref ref="[allocator.uses.construction]"/>, uses-allocator construction</i>
+  [&hellip;]
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const pair&lt;U, V&gt;&amp; pr) noexcept -&gt; <i>see below</i>;
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+
+
+<ins>  template&lt;class T, class Alloc, class U&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc, U&amp;&amp; u) noexcept;</ins>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add the following to <sref ref="[allocator.uses.construction]"/>:</p>
+<blockquote>
+<pre>
+<ins>  template&lt;class T, class Alloc, class U&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc, U&amp;&amp; u) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt><i>FUN</i></tt> be the function template:</ins>
+</p>
+<blockquote><pre><ins>
+  template&lt;class A, class B&gt;
+  void <i>FUN</i>(const pair&lt;A, B&gt;&amp;);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <tt>T</tt> is a specialization of <tt>pair</tt>, and the expression <tt><i>FUN</i>(u)</tt> is not well-formed when considered as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to:</ins>
+</p>
+<blockquote><pre><ins>
+return forward_as_tuple(<i>memberwise-uses-allocator-construct</i>, alloc, std::forward&lt;U&gt;(u));</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
