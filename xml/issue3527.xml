@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3527" status="New">
+<title><tt>uses_allocator_construction_args</tt> handles rvalue pairs of rvalue references incorrectly</title>
+<section><sref ref="[allocator.uses.construction]"/></section>
+<submitter>Tim Song</submitter>
+<date>27 Feb 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+For an rvalue pair <tt>pr</tt>, <tt>uses_allocator_construction_args</tt> is specified to forward
+<tt>std::move(pr).first</tt> and <tt>std::move(pr).second</tt>. This is correct
+for non-references and lvalue references, but wrong for rvalue refrences because
+the class member access produces an lvalue (see <sref ref="[expr.ref]"/>/6).
+<tt>get</tt> produces an xvalue, which is what is desired here.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[allocator.uses.construction]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class T, class Alloc, class U, class V&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-15- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return uses_allocator_construction_args&lt;T&gt;(alloc, piecewise_construct,
+                                            forward_as_tuple(<del>std::move(pr).first</del><ins>get&lt;0&gt;(std::move(pr))</ins>),
+                                            forward_as_tuple(<del>std::move(pr).second</del><ins>get&lt;1&gt;(std::move(pr))</ins>));
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
