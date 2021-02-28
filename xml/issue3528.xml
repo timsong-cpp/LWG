@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3528" status="New">
+<title><tt>make_from_tuple</tt> can perform (the equivalent of) a C-style cast</title>
+<section><sref ref="[tuple.apply]"/></section>
+<submitter>Tim Song</submitter>
+<date>28 Feb 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>make_from_tuple</tt> is specified to return <tt>return T(get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);</tt>.
+When there is only a single argument, this is equivalent to a C-style cast
+that may be an <tt>reinterpret_cast</tt> or an access-bypassing <tt>static_cast</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Edit <sref ref="[tuple.apply]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class T, class Tuple&gt;
+  constexpr T make_from_tuple(Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Effects:</i>  Given the exposition-only function:
+</p>
+<blockquote><pre>
+template&lt;class T, class Tuple, size_t... I&gt;
+<ins>  requires is_constructible_v&lt;T, decltype(get&lt;I&gt;(declval&lt;Tuple&gt;()))...></ins>
+constexpr T <i>make-from-tuple-impl</i>(Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) {     // exposition only
+  return T(get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);
+}
+</pre></blockquote>
+<p>
+Equivalent to:
+</p>
+<blockquote><pre>
+return <i>make-from-tuple-impl</i>&lt;T&gt;(
+  <ins>std::</ins>forward&lt;Tuple&gt;(t),
+  make_index_sequence&lt;tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;&gt;{});
+</pre></blockquote>
+<p>
+[<i>Note 1:</i> The type of T must be supplied as an explicit template parameter,
+as it cannot be deduced from the argument list. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
