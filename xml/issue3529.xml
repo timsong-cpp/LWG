@@ -1,0 +1,170 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3529" status="New">
+<title><code>priority_queue(first, last)</code> should construct <code>c</code> with <code>(first, last)</code></title>
+<section><sref ref="[priority.queue]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>01 Mar 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Tim's new constructors for <code>priority_queue</code> (LWG<iref ref="3506"/>)
+are specified so that when you construct
+</p>
+<pre>
+    auto pq = PQ(first, last, a);
+</pre>
+<p>
+it calls this new-in-LWG3506 constructor:
+</p>
+<blockquote>
+<pre>
+template&lt;class InputIterator, class Alloc&gt;
+  priority_queue(InputIterator first, InputIterator last, const Alloc&amp; a);
+</pre>
+<p>
+<i>Effects:</i>
+Initializes <code>c</code> with <code>first</code> as the first argument,
+<code>last</code> as the second argument,
+and <code>a</code> as the third argument,
+and value-initializes <code>comp</code>;
+calls <code>make_heap(c.begin(), c.end(), comp)</code>.
+</p>
+</blockquote>
+<p>
+But the pre-existing constructors are specified so that when you construct
+</p>
+<pre>
+    auto pq = PQ(first, last);
+</pre>
+<p>
+it calls this pre-existing constructor:
+</p>
+<blockquote>
+<pre>
+template&lt;class InputIterator&gt;
+  priority_queue(InputIterator first, InputIterator last, const Compare&amp; x = Compare(), Container&amp;&amp; y = Container());
+</pre>
+<p>
+<i>Preconditions:</i>
+<code>x</code> defines a strict weak ordering ([alg.sorting]).
+</p>
+<p>
+<i>Effects:</i>
+Initializes <code>comp</code> with <code>x</code>
+and <code>c</code> with <code>y</code>
+(copy constructing or move constructing as appropriate);
+calls <code>c.insert(c.end(), first, last)</code>;
+and finally calls <code>make_heap(c.begin(), c.end(), comp)</code>.
+</p>
+</blockquote>
+
+<p>
+In other words,
+</p>
+<pre>
+    auto pq = PQ(first, last);
+</pre>
+<p>
+will default-construct a <code>Container</code>,
+then move-construct <code>c</code> from that object,
+then <code>c.insert(first, last)</code>,
+and finally <code>make_heap</code>.
+</p>
+<p>
+But our new
+</p>
+<pre>
+    auto pq = PQ(first, last, a);
+</pre>
+<p>
+will simply construct <code>c</code> with <code>(first, last)</code>,
+then <code>make_heap</code>.
+</p>
+<p>
+The latter is obviously better.
+</p>
+<p>
+Also, Corentin's <a href="https://wg21.link/p1425r3">P1425R3</a>
+specifies the new iterator-pair constructors for
+<code>stack</code> and <code>queue</code>
+to construct <code>c</code> from <code>(first, last)</code>. Good.
+</p>
+<p>
+LWG should refactor the existing constructor overload set so that
+the existing non-allocator-taking constructors simply construct <code>c</code>
+from <code>(first, last)</code>.
+This will improve consistency with the resolutions of LWG3506 and P1425,
+and reduce the surprise factor for users.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li>
+<p>Edit <sref ref="[priqueue.overview]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x = Compare());</ins>
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x, const Container&amp; y);
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x, Container&amp;&amp; y<del> = Container()</del>);
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Edit <sref ref="[priqueue.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x = Compare());
+</ins>
+</pre>
+<p>
+<ins>
+<i>Preconditions:</i>
+<code>x</code> defines a strict weak ordering ([alg.sorting]).
+</ins>
+</p>
+<p>
+<ins>
+<i>Effects:</i>
+Initializes <code>c</code> with <code>first</code> as the first argument and <code>last</code> as the second argument, and initializes <code>comp</code> with <code>x</code>; then calls <code>make_heap(c.begin(), c.end(), comp)</code>.
+</ins>
+</p>
+
+<pre>
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x, const Container&amp; y);
+template&lt;class InputIterator&gt;
+    priority_queue(InputIterator first, InputIterator last, const Compare&amp; x, Container&amp;&amp; y<del> = Container()</del>);
+</pre>
+<p>
+<i>Preconditions:</i>
+<code>x</code> defines a strict weak ordering ([alg.sorting]).
+</p>
+<p>
+<i>Effects:</i>
+Initializes <code>comp</code> with <code>x</code> and <code>c</code> with <code>y</code> (copy constructing or
+move constructing as appropriate); calls <code>c.insert(c.end(), first, last)</code>;
+and finally calls <code>make_heap(c.begin(), c.end(), comp)</code>.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
