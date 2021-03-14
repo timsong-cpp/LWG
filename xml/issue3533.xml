@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3533" status="New">
+<title>Make <tt>base() const &amp;</tt> consistent across iterator wrappers that supports <tt>input_iterator</tt>s</title>
+<section><sref ref="[range.filter.iterator]"/><sref ref="[range.transform.iterator]"/><sref ref="[range.elements.iterator]"/></section>
+<submitter>Tomasz Kami&nacute;ski</submitter>
+<date>14 Mar 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The resolution of LWG issue <iref ref="3391"/> changed the <tt>base()</tt> function for the 
+<tt>counted_iterator</tt>/<tt>move_iterator</tt> to return <tt>const &amp;</tt>, because the previous 
+specification prevented non-mutating uses of the base iterator (comparing against sentinel) and made 
+<tt>take_view</tt> unimplementable. However, this change was not applied for all other iterators wrappers, 
+that may wrap move-only input iterators. As consequence, we end-up with inconsistency where a user can 
+perform the following operations on some adapters, but not on others (e. g. <tt>take_view</tt> uses 
+<tt>counted_iterator</tt> so it supports them).
+</p>
+<ol style="list-style-type:upper-alpha">
+<li><p>read the original value of the base iterator, by calling <tt>operator*</tt></p></li>
+<li><p>find position of an element in the underlying iterator, when sentinel is sized by calling <tt>operator-</tt> 
+(e.g. all input iterators wrapped into <tt>counted_iterator</tt>).</p></li>
+</ol>
+<p>
+To fix above, the proposed wording below proposes to modify the signature of <tt>iterator::base() const &amp;</tt> 
+member function for all iterators adapters that support input iterator. These include:
+</p>
+<ul>
+<li><p><tt>filter_view::<i>iterator</i></tt> (uses case B)</p></li>
+<li><p><tt>transform_view::<i>iterator</i></tt> (uses case A)</p></li>
+<li><p><tt>elements_view::<i>iterator</i></tt> (uses case B)</p></li>
+<li><p><tt>lazy_split_view&lt;V, Pattern&gt;::<i>inner-iterator</i></tt> (uses case B) if 
+<a href="https://wg21.link/p2210">P2210</a> is accepted</p></li>
+</ul>
+<p>
+Note: <tt>common_iterator</tt> does not expose the <tt>base()</tt> function (because it can either point to 
+iterator or sentinel), so changes to above are not proposed. However, both (A) and (B) use cases are supported.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<blockquote style="note">
+<p>
+If <a href="https://wg21.link/p2210">P2210</a> would become accepted, the corresponding sub-clause 
+[range.lazy.split.inner] (?) for <tt>lazy_split_view::<i>inner-iterator</i></tt> would require a similar change.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[range.filter.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+[&hellip;]
+constexpr <ins>const</ins> iterator_t&lt;V&gt;<ins>&amp;</ins> base() const &amp;
+  <del>requires copyable&lt;iterator_t&lt;V&gt;&gt;</del>;
+[&hellip;]
+</pre>
+</blockquote>
+</blockquote>
+[&hellip;]
+<blockquote>
+<pre>
+constexpr <ins>const</ins> iterator_t&lt;V&gt;<ins>&amp;</ins> base() const &amp;
+  <del>requires copyable&lt;iterator_t&lt;V&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <tt>return <i>current_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.transform.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+[&hellip;]
+constexpr <ins>const</ins> iterator_t&lt;<i>Base</i>&gt;<ins>&amp;</ins> base() const &amp;
+  <del>requires copyable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+[&hellip;]
+</pre>
+</blockquote>
+</blockquote>
+[&hellip;]
+<blockquote>
+<pre>
+constexpr <ins>const</ins> iterator_t&lt;<i>Base</i>&gt;<ins>&amp;</ins> base() const &amp;
+  <del>requires copyable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <tt>return <i>current_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.elements.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+[&hellip;]
+constexpr <ins>const</ins> iterator_t&lt;<i>Base</i>&gt;<ins>&amp;</ins> base() const &amp;
+  <del>requires copyable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+[&hellip;]
+</pre>
+</blockquote>
+</blockquote>
+[&hellip;]
+<blockquote>
+<pre>
+constexpr <ins>const</ins> iterator_t&lt;<i>Base</i>&gt;<ins>&amp;</ins> base() const &amp;
+  <del>requires copyable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to: <tt>return <i>current_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
