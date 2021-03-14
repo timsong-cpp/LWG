@@ -1,7 +1,5 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
-<!DOCTYPE issue SYSTEM "lwg-issue.dtd" [ 
-  <!ENTITY nbsp "&#160;">
-] >
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2157" status="Open">
 <title>How does <tt>std::array&lt;T,0&gt;</tt> initialization work when <tt>T</tt> is not default-constructible?</title>
@@ -13,14 +11,15 @@
 <discussion>
 
 <p>
-Objects of <tt>std::array&lt;T,N&gt;</tt> are supposed to be initialized with aggregate initialization (when 
+Objects of <tt>std::array&lt;T, N&gt;</tt> are supposed to be initialized with aggregate initialization (when 
 not the destination of a copy or move). This clearly works when <tt>N</tt> is positive. What happens when <tt>N</tt> 
-is zero?  To continue using an (inner) set of braces for initialization, a <tt>std::array&lt;T,0&gt;</tt> implementation 
+is zero?  To continue using an (inner) set of braces for initialization, a <tt>std::array&lt;T, 0&gt;</tt> implementation 
 must have an array member of at least one element, and let default initialization take care of those secret elements.  
 This cannot work when <tt>T</tt> has a set of constructors and the default constructor is deleted from that set.
 Solution: Add a new paragraph in <sref ref="[array.zero]"/>:
 </p>
-<blockquote><p>
+<blockquote>
+<p>
 The unspecified internal structure of array for this case shall allow initializations like:
 </p>
 <blockquote><pre>
@@ -28,19 +27,20 @@ array&lt;T, 0&gt; a = { };
 </pre></blockquote>
 <p>
 and said initializations must be valid even when <tt>T</tt> is not default-constructible.
-</p></blockquote>
+</p>
+</blockquote>
 
 <note>2012, Portland: Move to Open</note>
 <p>
 Some discussion to understand the issue, which is that implementations currently have freedom to implement
 an empty <tt>array</tt> by holding a dummy element, and so might not support value initialization, which is
-surprising when trying to construct an empty container.  However, this is not mandated, it is an unspecified
+surprising when trying to construct an empty container. However, this is not mandated, it is an unspecified
 implementation detail.
 </p>
 
 <p>
 Jeffrey points out that the implication of <sref ref="[array.overview]"/> is that this initialization syntax
-must be supported by empty <tt>array</tt> objects already.  This is a surprising inference that was not
+must be supported by empty <tt>array</tt> objects already. This is a surprising inference that was not
 obvious to the room, but consensus is that the reading is accurate, so the proposed resolution is not necessary,
 although the increased clarity may be useful.
 </p>
@@ -67,7 +67,6 @@ is zero. But the wording of p2 needs to be fixed to make clear that it does <em>
 Conclusion: Update wording, revisit later. 
 </p>
 
-
 <note>2015-10, Kona Saturday afternoon</note>
 <p>MC: How important is this? Can you not just use default construction for empty arrays? </p>
 <p>TK: It needs to degenerate properly from a pack. STL agrees.</p> 
@@ -89,7 +88,8 @@ specifically the unique value part.</p>
 
 <p>Add the following new paragraph between the current <sref ref="[array.zero]"/> p1 and p2:</p>
 
-<blockquote><p>
+<blockquote>
+<p>
 -1- <tt>array</tt> shall provide support for the special case <tt>N == 0</tt>.
 <p/>
 <ins>-?- The unspecified internal structure of <tt>array</tt> for this case shall allow initializations like:</ins>
@@ -107,7 +107,8 @@ specifically the unique value part.</p>
 <p/>
 -4- Member function <tt>swap()</tt> shall have a <em>noexcept-specification</em> which is equivalent to 
 <tt>noexcept(true)</tt>.
-</p></blockquote>
+</p>
+</blockquote>
 </blockquote>
 
 <note>2018-06-14, Jonathan Wakely comments and provides revised wording</note>
@@ -125,7 +126,8 @@ This wording is relative to <a href="https://wg21.link/n4750">N4750</a>.
 
 <p>Modify <sref ref="[array.zero]"/> as indicated:</p>
 
-<blockquote><p>
+<blockquote>
+<p>
 -1- <tt>array</tt> <del>shall</del> provide<ins>s</ins> support for the special case <ins>of a zero-sized <tt>array</tt> 
 that is always empty, i.e.</ins> <tt>N == 0</tt><ins>, with the properties described in this subclause</ins>.
 <p/>
@@ -134,16 +136,17 @@ that is always empty, i.e.</ins> <tt>N == 0</tt><ins>, with the properties descr
 <tt>DefaultConstructible</tt> type. [<i>Note:</i> This allows initialization of the form <tt>array&lt;T, 0&gt; a = {{}};</tt>. 
 There is no requirement for <tt>T</tt> to be <tt>DefaultConstructible</tt>. &mdash; <i>end note</i>]</ins>
 <p/>
--2- <del>In the case that <tt>N == 0</tt>, <tt>begin() == end() ==</tt> unique value</del><ins><tt>begin()</tt> and <tt>end()</tt> return
-non-dereferenceable iterators such that <tt>begin() == end()</tt> and <tt>a.begin() != b.begin()</tt> where <tt>a</tt> and <tt>b</tt> 
-are distinct objects of the same zero-sized <tt>array</tt> type</ins>. The return value of <tt>data()</tt> is unspecified.
+-2- <del>In the case that <tt>N == 0</tt>, <tt>begin() == end() ==</tt> unique value</del><ins><tt>begin()</tt> and 
+<tt>end()</tt> return non-dereferenceable iterators such that <tt>begin() == end()</tt> and <tt>a.begin() != b.begin()</tt> 
+where <tt>a</tt> and <tt>b</tt> are distinct objects of the same zero-sized <tt>array</tt> type</ins>. The return value 
+of <tt>data()</tt> is unspecified.
 <p/>
 -3- The effect of calling <tt>front()</tt> or <tt>back()</tt> for a zero-sized array is undefined.
 <p/>
 -4- Member function <tt>swap()</tt> <del>shall have</del><ins>has constant complexity and</ins> a non-throwing exception specification.
-</p></blockquote>
+</p>
 </blockquote>
-
+</blockquote>
 
 <note>2018-08-30, Jonathan revises wording following feedback from Daniel Kruegler and Tim Song.</note>
 <p>
@@ -156,34 +159,102 @@ and tells implementors they can't return value-initialized iterators.
 Tim noted that it's not sufficient to say the unspecified type in a zero-sized array is DefaultConstructible,
 it also needs to be constructible from <tt>= {}</tt>. Also, a zero-sized array should be CopyAssignable.
 </p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.
 </p>
 
 <p>Modify <sref ref="[array.zero]"/> as indicated:</p>
 
-<blockquote><p>
+<blockquote>
+<p>
 -1- <tt>array</tt> <del>shall</del> provide<ins>s</ins> support for the special case <ins>of a zero-sized <tt>array</tt> 
 that is always empty, i.e.</ins> <tt>N == 0</tt><ins>, with the properties described in this subclause</ins>.
 <p/>
 <ins>-?- A zero-sized <tt>array</tt> type is an aggregate that meets the <i>Cpp17DefaultConstructible</i> (Table 24) and 
-<i>Cpp17CopyConstructible</i> (Table 26) and <i>Cpp17CopyAssignable</i> (Table 28) requirements. There is a single element of the aggregate, of an unspecified 
-<i>Cpp17DefaultConstructible</i> type that is copy-list-initializable from an empty list.
-[<i>Note:</i> This allows initialization of the form <tt>array&lt;T, 0&gt; a = {{}};</tt>. 
-There is no requirement for <tt>T</tt> to be <i>Cpp17DefaultConstructible</i>. &mdash; <i>end note</i>]</ins>
+<i>Cpp17CopyConstructible</i> (Table 26) and <i>Cpp17CopyAssignable</i> (Table 28) requirements. There is a single element 
+of the aggregate, of an unspecified <i>Cpp17DefaultConstructible</i> type that is copy-list-initializable from an empty list.
+[<i>Note:</i> This allows initialization of the form <tt>array&lt;T, 0&gt; a = {{}};</tt>. There is no requirement for 
+<tt>T</tt> to be <i>Cpp17DefaultConstructible</i>. &mdash; <i>end note</i>]</ins>
 <p/>
--2- <del>In the case that <tt>N == 0</tt>, <tt>begin() == end() ==</tt> unique value</del><ins><tt>begin()</tt> and <tt>end()</tt> return
-non-dereferenceable iterators such that <tt>begin() == end()</tt>.
-When <tt>a</tt> and <tt>b</tt> are distinct objects of the same zero-sized <tt>array</tt> type,
-<tt>a.begin()</tt> and <tt>b.begin()</tt> are not iterators over the same underlying sequence. <i>[Note:</i> Therefore <tt>begin()</tt> does not return a value-initialized iterator &mdash; <i>end note]</i></ins>. The return value of <tt>data()</tt> is unspecified.
+-2- <del>In the case that <tt>N == 0</tt>, <tt>begin() == end() ==</tt> unique value</del><ins><tt>begin()</tt> and <tt>end()</tt> 
+return non-dereferenceable iterators such that <tt>begin() == end()</tt>. When <tt>a</tt> and <tt>b</tt> are distinct objects 
+of the same zero-sized <tt>array</tt> type, <tt>a.begin()</tt> and <tt>b.begin()</tt> are not iterators over the same 
+underlying sequence. [<i>Note:</i> Therefore <tt>begin()</tt> does not return a value-initialized iterator &mdash; 
+<i>end note]</i></ins>. The return value of <tt>data()</tt> is unspecified.
 <p/>
 -3- The effect of calling <tt>front()</tt> or <tt>back()</tt> for a zero-sized array is undefined.
 <p/>
 -4- Member function <tt>swap()</tt> <del>shall have</del><ins>has constant complexity and</ins> a non-throwing exception specification.
+</p>
+</blockquote></blockquote>
+
+<note>2021-03-14; Johel Ernesto Guerrero Pe&ntilde;a comments and provides improved wording</note>
+<p>
+The currently proposed wording specifies:
+</p>
+<blockquote><p>
+There is a single element of the aggregate, of an unspecified <i>Cpp17DefaultConstructible</i> 
+type that is copy-list-initializable from an empty list.
 </p></blockquote>
+<p>
+This doesn't specify which expressions involving zero-sized array specializations are constant expressions. 
+<sref ref="[array.overview]"/> p4 specifies <tt>array&lt;T, 0&gt;</tt> to be a structural type when <tt>T</tt> 
+is a structural type. This requires that its single element, let's call it <i>single-element</i>, be a 
+structural type. But that says nothing about which of the special member functions of <i>single-element</i> 
+are constant expressions. By being a structural type, <i>single-element</i> is permitted to be implemented 
+as a literal class type. To meet this requirement, <i>single-element</i> can be implemented to have one 
+constexpr constructor that is not a copy or move constructor (<sref ref="[basic.types.general]"/> p10), so 
+its default constructor needn't be constexpr. This is unlike non-zero-sized array specializations, which 
+inherit these properties from <tt>T</tt>. Furthermore, this permits an implementation of <i>single-element</i> 
+whose default constructor stores the result of <tt>std::source_location::current()</tt> in a data member 
+(as exemplified in the specification for <tt>current</tt>). <i>Cpp17DefaultConstructible</i> doesn't 
+require the default constructor to produce equal values. The simplest way to solve these issues and any other 
+that might arise from future changes and oversights would be to specify <i>single-element</i> as an empty 
+aggregate type. Then the wording from <sref ref="[array.cons]"/> p1 makes it clear that all the special 
+member functions are constant expressions. It would also mean that the default constructor produces 
+template-argument-equivalent values.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<p>Modify <sref ref="[array.zero]"/> as indicated:</p>
+
+<ol>
+<li>
+<blockquote>
+<p>
+-1- <tt>array</tt> <del>shall</del> provide<ins>s</ins> support for the special case <ins>of a zero-sized <tt>array</tt> 
+that is always empty, i.e.</ins> <tt>N == 0</tt><ins>, with the properties described in this subclause</ins>.
+<p/>
+<ins>-?- A zero-sized <tt>array</tt> type is an aggregate that meets the <i>Cpp17DefaultConstructible</i> 
+(Table 29 [tab:cpp17.defaultconstructible]) and <i>Cpp17CopyConstructible</i> (Table 31 [tab:cpp17.copyconstructible]) 
+and <i>Cpp17CopyAssignable</i> (Table 33 [tab:cpp17.copyassignable]) requirements. There is a single element 
+of the aggregate, of an unspecified empty aggregate type. [<i>Note:</i> This allows initialization of the form 
+<tt>array&lt;T, 0&gt; a = {{}};</tt>. There is no requirement for <tt>T</tt> to be <i>Cpp17DefaultConstructible</i>. 
+&mdash; <i>end note</i>]</ins>
+<p/>
+-2- <del>In the case that <tt>N == 0</tt>, <tt>begin() == end() ==</tt> unique value</del><ins><tt>begin()</tt> and 
+<tt>end()</tt> return non-dereferenceable iterators such that <tt>begin() == end()</tt>. When <tt>a</tt> and <tt>b</tt> 
+are distinct objects of the same zero-sized <tt>array</tt> type, <tt>a.begin()</tt> and <tt>b.begin()</tt> are not iterators 
+over the same underlying sequence. [<i>Note:</i> Therefore <tt>begin()</tt> does not return a value-initialized iterator 
+&mdash; <i>end note</i>].</ins>. The return value of <tt>data()</tt> is unspecified.
+<p/>
+-3- The effect of calling <tt>front()</tt> or <tt>back()</tt> for a zero-sized array is undefined.
+<p/>
+-4- Member function <tt>swap()</tt> <del>shall have</del><ins>has constant complexity and</ins> a non-throwing exception 
+specification.
+</p>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
