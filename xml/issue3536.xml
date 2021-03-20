@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3536" status="New">
+<title>Should <tt>chrono::from_stream()</tt> assign zero to <tt>duration</tt> for failure?</title>
+<section><sref ref="[time.duration.io]"/></section>
+<submitter>Matt Stephanson</submitter>
+<date>19 Mar 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>duration</tt> specialization of <tt>from_stream</tt> says in <a href="https://wg21.link/n4878">N4878</a> 
+<sref ref="[time.duration.io]"/>/3:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;"><p>
+If the parse parses everything specified by the parsing format flags without error, and yet none of the flags impacts a duration, 
+<tt>d</tt> will be assigned a zero value.
+</p></blockquote>
+<p>
+This is in contrast to the other specializations that say, for example, <sref ref="[time.cal.day.nonmembers]"/>/8:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;"><p>
+If the parse fails to decode a valid day, <tt>is.setstate(ios_base::failbit)</tt> is called and <tt>d</tt> 
+is not modified.
+</p></blockquote>
+<p>
+The wording ("none of the flags impacts a duration" vs. "parse fails to decode a valid [meow]") and semantics 
+("assigned a zero value" vs. "not modified") are different, and it's not clear why that should be so. It also 
+leaves unspecified what should be done in case of a parse failure, for example parsing <tt>"%j"</tt> from a 
+stream containing <tt>"meow"</tt>. <sref ref="[time.parse]"/>/12 says that <tt>failbit</tt> should be set, 
+but neither it nor <sref ref="[time.duration.io]"/>/3 mention the <tt>duration</tt> result if parsing fails.
+<p/>
+This has been discussed at the Microsoft STL project, where Howard Hinnant, coauthor of 
+<a href="https://wg21.link/p0355R7">P0355R7</a> that added these functions, 
+<a href="https://github.com/microsoft/STL/issues/1740#issuecomment-802414649">commented</a>:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+This looks like a bug in the standard to me, due to two errors on my part.
+<p/>
+I believe that the standard should clearly say that if <tt>failbit</tt> is set, the parsed variable 
+(<tt>duration</tt>, <tt>time_point</tt>, whatever) is not modified. I mistakenly believed that the 
+definition of unformatted input function covered this behavior. But after review, I don't believe it 
+does. Instead each extraction operator seems to say this separately.
+<p/>
+I also at first did not have my example implementation coded to leave the duration unchanged. So that's how 
+the wording got in in the first place. Here's the commit where I fixed my implementation: 
+<a href="https://github.com/HowardHinnant/date/commit/d53db7a1cb61dc2651374e5b9660ed07e6d28358">HowardHinnant/date@d53db7a</a>. 
+And I failed to propagate that fix into the proposal/standard.
+</p>
+</blockquote>
+<p>
+It would be clearer and simpler for users if the <tt>from_stream</tt> specializations were consistent in wording 
+and behavior.
+<p/>
+Thanks to Stephan T. Lavavej, Miya Natsuhara, and Howard Hinnant for valuable investigation and discussion 
+of this issue.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.duration.io]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Rep, class Period, class Alloc = allocator&lt;charT&gt;&gt;
+  basic_istream&lt;charT, traits&gt;&amp;
+    from_stream(basic_istream&lt;charT, traits&gt;&amp; is, const charT* fmt,
+                duration&lt;Rep, Period&gt;&amp; d,
+                basic_string&lt;charT, traits, Alloc&gt;* abbrev = nullptr,
+                minutes* offset = nullptr);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Attempts to parse the input stream <tt>is</tt> into the duration <tt>d</tt> using 
+the format flags given in the NTCTS <tt>fmt</tt> as specified in <sref ref="[time.parse]"/>. <del>If the parse 
+parses everything specified by the parsing format flags without error, and yet none of the flags impacts 
+a duration, <tt>d</tt> will be assigned a zero value</del><ins>If the parse fails to decode a valid duration, 
+<tt>is.setstate(ios_base::failbit)</tt> is called and <tt>d</tt> is not modified.</ins>. If <tt>%Z</tt> is 
+used and successfully parsed, that value will be assigned to <tt>*abbrev</tt> if <tt>abbrev</tt> is non-null. 
+If <tt>%z</tt> (or a modified variant) is used and successfully parsed, that value will be assigned to 
+<tt>*offset</tt> if <tt>offset</tt> is non-null.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
