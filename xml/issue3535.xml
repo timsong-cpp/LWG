@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3535" status="New">
+<title><tt>join_view::<i>iterator</i>::iterator_category</tt> and <tt>::iterator_concept</tt> lie</title>
+<section><sref ref="[range.join.iterator]"/></section>
+<submitter>Casey Carter</submitter>
+<date>16 Mar 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Per <sref ref="[range.join.iterator]"/>/1, <tt>join_view::<i>iterator</i>::iterator_concept</tt> denotes 
+<tt>bidirectional_iterator_tag</tt> if <tt><i>ref-is-glvalue</i></tt> is <tt>true</tt> and <tt><i>Base</i></tt> and 
+<tt>range_reference_t&lt;<i>Base</i>&gt;</tt> each model <tt>bidirectional_range</tt>. Similarly, paragraph 2 says that 
+<tt>join_view::<i>iterator</i>::iterator_category</tt> is present if <tt><i>ref-is-glvalue</i></tt> is <tt>true</tt>, 
+and denotes <tt>bidirectional_iterator_tag</tt> if the categories of the iterators of both <tt><i>Base</i></tt> and 
+<tt>range_reference_t&lt;<i>Base</i>&gt;</tt> derive from <tt>bidirectional_iterator_tag</tt>.
+<p/>
+However, the constraints on the declarations of <tt>operator--</tt> and <tt>operator--(int)</tt> in the synopsis 
+that immediately precedes paragraph 1 disagree. Certainly they also consistently require <tt><i>ref-is-glvalue</i> 
+&amp;&amp; bidirectional_range&lt;<i>Base</i>&gt; &amp;&amp; bidirectional_range&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;</tt>, 
+but they additionally require <tt>common_range&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;</tt>. So as currently specified, 
+this iterator sometimes declares itself to be bidirectional despite not implementing <tt>--</tt>. This is not 
+incorrect for iterator_concept &mdash; recall that <tt>iterator_concept</tt> is effectively an upper bound since 
+the concepts require substantial syntax &mdash; but slightly misleading. It is, however, very much incorrect for 
+<tt>iterator_category</tt> which must not denote a type derived from a tag that corresponds to a stronger category 
+than that iterator implements.
+<p/>
+It's worth pointing out, that LWG <iref ref="3313"/> fixed the constraints on <tt>operator--()</tt> and 
+<tt>operator--(int)</tt> by adding the <tt>common_range</tt> requirements, but failed to make a consistent change 
+to the definitions of <tt>iterator_concept</tt> and <tt>iterator_category</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to the post-2021-February-virtual-meeting working draft.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.join.iterator]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <tt><i>iterator</i>::iterator_concept</tt> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; If <tt><i>ref-is-glvalue</i></tt> is <tt>true</tt><ins>,</ins> <del>and</del> <tt><i>Base</i></tt> 
+<del>and <tt>range_reference_t&lt;<i>Base</i>&gt;</tt> each</del> model<ins>s</ins> <tt>bidirectional_range</tt>, 
+<ins>and <tt>range_reference_t&lt;<i>Base</i>&gt;</tt> models both <tt>bidirectional_range</tt> and <tt>common_range</tt>,</ins> 
+then <tt>iterator_concept</tt> denotes <tt>bidirectional_iterator_tag</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+-2- The member <i>typedef-name</i> <tt>iterator_category</tt> is defined if and only if <tt><i>ref-is-glvalue</i></tt> 
+is <tt>true</tt>, <tt><i>Base</i></tt> models <tt>forward_range</tt>, and <tt>range_reference_t&lt;<i>Base</i>&gt;</tt> 
+models <tt>forward_range</tt>. In that case, <tt><i>iterator</i>::iterator_category</tt> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; Let <tt><i>OUTERC</i></tt> denote <tt>iterator_traits&lt;iterator_t&lt;<i>Base</i>&gt;&gt;::iterator_category</tt>, 
+and let <tt><i>INNERC</i></tt> denote <tt>iterator_traits&lt;iterator_t&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;::iterator_category</tt>.</p></li>
+<li><p>(2.2) &mdash; If <tt><i>OUTERC</i></tt> and <tt><i>INNERC</i></tt> each model 
+<tt>derived_from&lt;bidirectional_iterator_tag&gt;</tt>, <ins>and <tt>range_reference_t&lt;<i>Base</i>&gt;</tt> models 
+<tt>common_range</tt>,</ins> <tt>iterator_category</tt> denotes <tt>bidirectional_iterator_tag</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
