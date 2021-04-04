@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3539" status="New">
+<title><tt>format_to</tt> must not copy models of <tt>output_iterator&lt;const charT&amp;&gt;</tt></title>
+<section><sref ref="[format.functions]"/></section>
+<submitter>Casey Carter</submitter>
+<date>31 Mar 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[format.functions]"/> specifies the overloads of <tt>format_to</tt> as:
+</p>
+<blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(out, fmt, make_format_args&lt;context&gt;(args...));
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, wstring_view fmt, const Args&amp;... args);
+  Out format_to(Out out, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(out, loc, fmt, make_format_args&lt;context&gt;(args...));
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+<p>
+but the overloads of <tt>vformat_to</tt> take their first argument by value (from the same subclause):
+</p>
+<blockquote>
+<pre>
+template&lt;class Out&gt;
+  Out vformat_to(Out out, string_view fmt,
+                 format_args_t&lt;type_identity_t&lt;Out&gt;, char&gt; args);
+template&lt;class Out&gt;
+  Out vformat_to(Out out, wstring_view fmt,
+                 format_args_t&lt;type_identity_t&lt;Out&gt;, wchar_t&gt; args);
+template&lt;class Out&gt;
+  Out vformat_to(Out out, const locale&amp; loc, string_view fmt,
+                 format_args_t&lt;type_identity_t&lt;Out&gt;, char&gt; args);
+template&lt;class Out>
+  Out vformat_to(Out out, const locale&amp; loc, wstring_view fmt,
+                 format_args_t&lt;type_identity_t&lt;Out&gt;, wchar_t&gt; args);
+</pre>
+<blockquote>
+<p>
+-10- Let <tt>charT</tt> be <tt>decltype(fmt)::value_type</tt>.
+<p/>
+-11- <i>Constraints:</i> <tt>Out</tt> satisfies <tt>output_iterator&lt;const charT&amp;&gt;</tt>.
+<p/>
+-12- <i>Preconditions:</i> <tt>Out</tt> models <tt>output_iterator&lt;const charT&amp;&gt;</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+and require its type to model <tt>output_iterator&lt;const charT&amp;&gt;</tt>. <tt>output_iterator&lt;T, U&gt;</tt> 
+refines <tt>input_or_output_iterator&lt;T&gt;</tt> which refines <tt>movable&lt;T&gt;</tt>, but it notably does not 
+refine <tt>copyable&lt;T&gt;</tt>. Consequently, the "Equivalent to" code for the <tt>format_to</tt> overloads is 
+copying an iterator that could be move-only. I suspect it is not the intent that calls to <tt>format_to</tt> with 
+move-only iterators be ill-formed, but that it was simply an oversight that this wording needs updating to be 
+consistent with the change to allow move-only single-pass iterators in C++20.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.functions]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(<ins>std::move(</ins>out<ins>)</ins>, fmt, make_format_args&lt;context&gt;(args...));
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(<ins>std::move(</ins>out<ins>)</ins>, loc, fmt, make_format_args&lt;context&gt;(args...));
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
