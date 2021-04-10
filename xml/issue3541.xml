@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3541" status="New">
+<title><tt>indirectly_readable_traits</tt> should be SFINAE-friendly for all types</title>
+<section><sref ref="[readable.traits]"/></section>
+<submitter>Christopher Di Bella</submitter>
+<date>8 Apr 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Following the outcome of LWG <iref ref="3446"/>, a strict implementation of <tt>std::indirectly_readable_traits</tt> 
+isn't SFINAE-friendly for types that have different <tt>value_type</tt> and <tt>element_type</tt> members due to 
+the ambiguity between the <tt><i>has-member-value-type</i></tt> and <tt><i>has-member-element-type</i></tt> 
+specialisations. Other traits types are empty when requirements aren't met; we should follow suit here.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[readable.traits]"/> p1 as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class T&gt;
+  concept <i>has-member-value-type</i> = requires { typename T::value_type; }; <i>// exposition only</i>
+
+template&lt;class T&gt;
+  concept <i>has-member-element-type</i> = requires { typename T::element_type; }; <i>// exposition only</i>
+
+template&lt;class&gt; struct indirectly_readable_traits { };
+
+[&hellip;]
+
+template&lt;<i>has-member-value-type</i> T&gt;
+struct indirectly_readable_traits&lt;T&gt;
+  : <i>cond-value-type</i>&lt;typename T::value_type&gt; { };
+
+template&lt;<i>has-member-element-type</i> T&gt;
+struct indirectly_readable_traits&lt;T&gt;
+  : <i>cond-value-type</i>&lt;typename T::element_type&gt; { };
+  
+template&lt;<i>has-member-value-type</i> T&gt;
+  requires <i>has-member-element-type</i>&lt;T&gt; &amp;&amp;
+           same_as&lt;remove_cv_t&lt;typename T::element_type&gt;, remove_cv_t&lt;typename T::value_type&gt;&gt;
+struct indirectly_readable_traits&lt;T&gt;
+  : cond-value-type&lt;typename T::value_type&gt; { };
+
+<ins>template&lt;<i>has-member-value-type</i> T&gt;
+  requires <i>has-member-element-type</i>&lt;T&gt;
+struct indirectly_readable_traits&lt;T&gt; { };</ins>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
