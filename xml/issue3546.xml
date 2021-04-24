@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3546" status="New">
+<title><tt>common_iterator</tt>'s <tt><i>postfix-proxy</i></tt> is not quite right</title>
+<section><sref ref="[common.iter.nav]"/></section>
+<submitter>Tim Song</submitter>
+<date>23 Apr 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<a href="https://wg21.link/p2259r1">P2259R1</a> modeled <tt>common_iterator::operator++(int)</tt>'s 
+<tt><i>postfix-proxy</i></tt> class on the existing proxy class used by <tt>common_iterator::operator-&gt;</tt>, 
+but in doing so it overlooked two differences:
+</p>
+<ul>
+<li><p><tt>operator-&gt;</tt>'s proxy is only used when <tt>iter_reference_t&lt;I&gt;</tt> is not a
+reference type; this is not the case for <tt><i>postfix-proxy</i></tt>;</p></li>
+<li><p><tt>operator-&gt;</tt> returns a prvalue proxy, while <tt>operator++</tt>'s <tt><i>postfix-proxy</i></tt>
+is returned by (elidable) move, so the latter needs to require <tt>iter_value_t&lt;I&gt;</tt> to be 
+<tt>move_constructible</tt>.</p></li>
+</ul>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[common.iter.nav]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+decltype(auto) operator++(int);
+</pre>
+<blockquote>
+<p>
+-4- <i>Preconditions:</i> <tt>holds_alternative&lt;I&gt;(v_)</tt> is <tt>true</tt>.
+<p/>
+-5- <i>Effects:</i> If <tt>I</tt> models <tt>forward_iterator</tt>, equivalent to:
+</p>
+<blockquote><pre>
+common_iterator tmp = *this;
+++*this;
+return tmp;
+</pre></blockquote>
+<p>
+Otherwise, if <tt>requires (I&amp; i) { { *i++ } -&gt; <i>can-reference</i>; }</tt> is <tt>true</tt> 
+or <tt>constructible_from&lt;iter_value_t&lt;I&gt;, iter_reference_t&lt;I&gt;&gt; <ins>&amp;&amp;
+move_constructible&lt;iter_value_t&lt;I&gt;&gt;</ins></tt> is <tt>false</tt>, equivalent to:
+</p>
+<blockquote><pre>
+return get&lt;I&gt;(v_)++;
+</pre></blockquote>
+<p>
+Otherwise, equivalent to:
+</p>
+<blockquote><pre>
+<i>postfix-proxy</i> p(**this);
+++*this;
+return p;
+</pre></blockquote>
+<p>
+where <tt><i>postfix-proxy</i></tt> is the exposition-only class:
+</p>
+<blockquote><pre>
+class <i>postfix-proxy</i> {
+  iter_value_t&lt;I&gt; keep_;
+  <i>postfix-proxy</i>(iter_reference_t&lt;I&gt;&amp;&amp; x)
+    : keep_(std::<del>move</del><ins>forward&lt;iter_reference_t&lt;I&gt;&gt;</ins>(x)) {}
+public:
+  const iter_value_t&lt;I&gt;&amp; operator*() const {
+    return keep_;
+  }
+};
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
