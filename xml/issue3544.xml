@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3544" status="New">
+<title><tt><i>format-arg-store</i>::args</tt> is unintentionally not exposition-only</title>
+<section><sref ref="[format.arg.store]"/></section>
+<submitter>Casey Carter</submitter>
+<date>22 Apr 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Despite the statement in <sref ref="[format.args]"/>/1: 
+</p>
+<blockquote><p>
+An instance of <tt>basic_format_args</tt> provides access to formatting arguments. Implementations should 
+optimize the representation of <tt>basic_format_args</tt> for a small number of formatting arguments.
+[<i>Note 1:</i> For example, by storing indices of type alternatives separately from values and packing 
+the former. &mdash; <i>end note</i>]
+</p></blockquote>
+<p>
+<tt>make_format_args</tt> and <tt>make_wformat_args</tt> are specified to return an object whose type is 
+a specialization of the exposition-only class template <tt><i>format-arg-store</i></tt> which has a public 
+non-static data member that is an <tt>array</tt> of <tt>basic_format_arg</tt>. In order to actually 
+"optimize the representation of <tt>basic_format_args</tt>" an implementation must internally avoid using 
+<tt>make_format_args</tt> (and <tt>make_wformat_args</tt>) and instead use a different mechanism to type-erase 
+arguments. <tt>basic_format_args</tt> must still be convertible from <tt><i>format-arg-store</i></tt> as 
+specified, however, so internally <tt>basic_format_args</tt> must support both the bad/slow standard mechanism 
+and a good/fast internal-only mechanism for argument storage.
+<p/>
+While this complicated state of affairs is technically implementable, it greatly complicates the implementation 
+of <tt>&lt;format&gt;</tt> with no commensurate benefit. Indeed, naive users may make the mistake of thinking 
+that e.g. <tt>vformat(fmt, make_format_args(args...))</tt> is as efficient as <tt>format(fmt, args...)</tt> &mdash; 
+that's what the "<i>Effects:</i> Equivalent to" in <sref ref="[format.functions]"/>/2 implies &mdash; and 
+inadvertently introduce performance regressions. It would be better for both implementers and users if 
+<tt><i>format-arg-store</i></tt> had no public data members and its member <tt>args</tt> were made exposition-only.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.syn]"/>, header <tt>&lt;format&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[format.arg.store]"/>, class template format-arg-store</i>
+template&lt;class Context, class... Args&gt; <del>struct</del><ins>class</ins> <i>format-arg-store</i>; <i>// exposition only</i>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[format.arg.store]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Context, class... Args&gt;
+  <del>struct</del><ins>class</ins> <i>format-arg-store</i> { <i>// exposition only</i>
+    array&lt;basic_format_arg&lt;Context&gt;, sizeof...(Args)&gt; args; <ins><i>// exposition only</i></ins>
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
