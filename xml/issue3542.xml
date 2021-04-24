@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3542" status="Tentatively Ready">
+<title><tt>basic_format_arg</tt> mis-handles <tt>basic_string_view</tt> with custom traits</title>
+<section><sref ref="[format.arg]"/></section>
+<submitter>Casey Carter</submitter>
+<date>20 Apr 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>basic_format_arg</tt> has a constructor that accepts a <tt>basic_string_view</tt> of an appropriate character type, 
+with <em>any</em> <tt>traits</tt> type. The constructor is specified in <sref ref="[format.arg]"/> as:
+</p>
+<blockquote><pre>
+template&lt;class traits&gt;
+explicit basic_format_arg(basic_string_view&lt;char_type, traits&gt; s) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Initializes <tt>value</tt> with <tt>s</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+Recall that <tt>value</tt> is a <tt>variant&lt;monostate, bool, char_type, int, unsigned int, long long int, 
+unsigned long long int, float, double, long double, const char_type*, basic_string_view&lt;char_type&gt;, const void*, handle&gt;</tt> 
+as specified earlier in the subclause. Since <tt>basic_string_view&lt;<i>meow</i>, <i>woof</i>&gt;</tt> cannot be 
+initialized with an lvalue <tt>basic_string_view&lt;<i>meow</i>, <i>quack</i>&gt;</tt> &mdash; and certainly none 
+of the other alternative types can be initialized by such an lvalue &mdash; the effects of this constructor are 
+ill-formed when <tt>traits</tt> is not <tt>std::char_traits&lt;char_type&gt;</tt>.
+<p/>
+The <tt>basic_string</tt> constructor deals with this same issue by ignoring the deduced traits type when initializing 
+<tt>value</tt>'s <tt>basic_string_view</tt> member:
+</p>
+<blockquote><pre>
+template&lt;class traits, class Allocator&gt;
+  explicit basic_format_arg(
+    const basic_string&lt;char_type, traits, Allocator&gt;&amp; s) noexcept;
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects:</i> Initializes <tt>value</tt> with <tt>basic_string_view&lt;char_type&gt;(s.data(), s.size())</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+which immediately begs the question of "why doesn't the <tt>basic_string_view</tt> constructor do the same?"
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.arg]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class traits&gt;
+  explicit basic_format_arg(basic_string_view&lt;char_type, traits&gt; s) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Initializes <tt>value</tt> with <tt><del>s</del><ins>basic_string_view&lt;char_type&gt;(s.data(), s.size())</ins></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
