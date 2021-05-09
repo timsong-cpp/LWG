@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3549" status="New">
+<title><tt>view_interface</tt> is overspecified to derive from <tt>view_base</tt></title>
+<section><sref ref="[view.interface]"/><sref ref="[range.view]"/></section>
+<submitter>Tim Song</submitter>
+<date>09 May 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>view_interface&lt;D&gt;</tt> is currently specified to publicly derive from
+<tt>view_base</tt>. This derivation requires unnecessary padding in range adaptors
+like <tt>reverse_view&lt;V&gt;</tt>: the <tt>view_base</tt> subobject of the
+<tt>reverse_view</tt> is required to reside at a different address than the
+<tt>view_base</tt> subobject of <tt>V</tt> (assuming that <tt>V</tt> similarly
+opted into being a view through derivation from <tt>view_interface</tt> or
+<tt>view_base</tt>).
+<p/>
+This appears to be a case of overspecification: we want public and unambiguous
+derivation from <tt>view_interface</tt> to make the class a <tt>view</tt>; the exact
+mechanism of how that opt-in is accomplished should have been left as an
+implementation detail.
+<p/>
+The proposed resolution below has been implemented on top of libstdc++ master
+and passes its ranges testsuite, with the exception of a test that checks for the size of
+various range adaptors (and therefore asserts the existence of
+<tt>view_base</tt>-induced padding).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class T&gt;
+  inline constexpr bool <i>is-derived-from-view-interface</i> = <i>see below</i>;   // exposition only</ins>
+template&lt;class T&gt;
+  inline constexpr bool enable_view = derived_from&lt;T, view_base&gt; <ins>|| <i>is-derived-from-view-interface</i>&lt;T&gt;</ins>;
+</pre>
+<blockquote>
+<p>
+<ins>-?- For a type <tt>T</tt>, <tt><i>is-derived-from-view-interface</i>&lt;T&gt;</tt>
+is <tt>true</tt> if and only if <tt>T</tt> has exactly one public base class
+<tt>view_interface&lt;U&gt;</tt> for some type <tt>U</tt> and
+<tt>T</tt> has no base classes of type <tt>view_interface&lt;V&gt;</tt> for any
+other type <tt>V</tt>.</ins>
+<p/>
+-5- Remarks: Pursuant to <sref ref="[namespace.std]"/>, users may specialize
+<tt>enable_view</tt> to <tt>true</tt> for cv-unqualified program-defined types which
+model <tt>view</tt>, and <tt>false</tt> for types which do not. Such specializations
+shall be usable in constant expressions (<sref ref="[expr.const]"/>) and have
+type <tt>const bool</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+<li>
+<p>Modify <sref ref="[view.interface.general]"/> as indicated: </p>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class D&gt;
+    requires is_class_v&lt;D&gt; &amp;&amp; same_as&lt;D, remove_cv_t&lt;D&gt;&gt;
+  class view_interface <del>: public view_base</del> {
+
+  [&hellip;]
+
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
