@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3551" status="New">
+<title><tt>borrowed_{iterator,subrange}_t</tt> are overspecified</title>
+<section><sref ref="[range.dangling]"/></section>
+<submitter>Tim Song</submitter>
+<date>12 May 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+As discussed in <a href="https://wg21.link/p1715r0">P1715R0</a>, 
+there are ways to implement something equivalent to <tt>std::conditional_t</tt> 
+that are better for compile times. However, <tt>borrowed_{iterator,subrange}_t</tt> 
+are currently specified to use <tt>conditional_t</tt>, and this appears to be 
+user-observable due to the transparency of alias templates. We should simply 
+specify the desired result and leave the actual definition to the implementation.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+  [&hellip;]
+namespace std::ranges {
+  [&hellip;]
+  <i>// <sref ref="[range.dangling]"/>, dangling iterator handling</i>
+  struct dangling;
+  
+  template&lt;range R&gt;
+    using borrowed_iterator_t = <ins><i>see below</i></ins><del>conditional_t&lt;borrowed_range&lt;R&gt;, iterator_t&lt;R&gt;, dangling&gt;</del>;
+
+  template&lt;range R&gt;
+    using borrowed_subrange_t = <ins><i>see below</i></ins>
+      <del>conditional_t&lt;borrowed_range&lt;R&gt;, subrange&lt;iterator_t&lt;R&gt;&gt;, dangling&gt;</del>;
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+<li>
+<p>Modify <sref ref="[range.dangling]"/> as indicated: </p>
+<blockquote>
+<p>
+-1- The tag type <tt>dangling</tt> is used together with the template aliases <tt>borrowed_iterator_t</tt> and 
+<tt>borrowed_subrange_t</tt>. When an algorithm that typically returns an iterator into, or a subrange of, a 
+range argument is called with an rvalue range argument that does not model <tt>borrowed_range</tt> 
+(<sref ref="[range.range]"/>), the return value possibly refers to a range whose lifetime has ended. In such 
+cases, the tag type <tt>dangling</tt> is returned instead of an iterator or subrange.
+</p>
+<blockquote><pre>
+namespace std::ranges {
+  struct dangling {
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+<p>
+-2- [<i>Example 1:</i> [&hellip;] &mdash; <i>end example</i>]
+<p/>
+<ins>-?- For a type <tt>R</tt> that models <tt>range</tt>:</ins>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; if <tt>R</tt> models <tt>borrowed_range</tt>, then <tt>borrowed_iterator_t&lt;R&gt;</tt>
+denotes <tt>iterator_t&lt;R&gt;</tt>, and <tt>borrowed_subrange_t&lt;R&gt;</tt> denotes 
+<tt>subrange&lt;iterator_t&lt;R&gt;&gt;</tt>;</ins></p></li>
+<li><p><ins>(?.2) &mdash; otherwise, both <tt>borrowed_iterator_t&lt;R&gt;</tt> and <tt>borrowed_subrange_t&lt;R&gt;</tt> 
+denote <tt>dangling</tt>.</ins></p></li>
+</ol>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
