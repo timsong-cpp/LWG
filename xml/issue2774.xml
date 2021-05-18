@@ -16,16 +16,16 @@ I think there's a minor defect in the <tt>std::function</tt> interface. The cons
 template &lt;class F&gt; function(F f);
 </pre></blockquote>
 <p>
-while the assignment operator template is 
+while the assignment operator template is
 </p>
 <blockquote><pre>
 template &lt;class F&gt; function&amp; operator=(F&amp;&amp; f);
 </pre></blockquote>
 <p>
-The latter came about as a result of LWG <iref ref="1288"/>, but that one was dealing with a specific issue that 
-wouldn't have affected the constructor. I think the constructor should also take <tt>f</tt> by forwarding reference, 
-this saves a move in the lvalue/xvalue cases and is also just generally more consistent. Should just make sure 
-that it's stored as <tt>std::decay_t&lt;F&gt;</tt> instead of <tt>F</tt>. 
+The latter came about as a result of LWG <iref ref="1288"/>, but that one was dealing with a specific issue that
+wouldn't have affected the constructor. I think the constructor should also take <tt>f</tt> by forwarding reference,
+this saves a move in the lvalue/xvalue cases and is also just generally more consistent. Should just make sure
+that it's stored as <tt>std::decay_t&lt;F&gt;</tt> instead of <tt>F</tt>.
 <p/>
 Is there any reason to favor a by-value constructor over a forwarding-reference constructor?
 </p>
@@ -72,7 +72,7 @@ template&lt;class F&gt; function(F<ins>&amp;&amp;</ins> f);
 <tt>F</tt></del> <ins><i>Constraints:</i></ins></p>
 <ol style="list-style-type:none">
 <li><p><ins>(8.1) &mdash; <tt>is_same_v&lt;FD, function&gt;</tt> is <tt>false</tt>; and</ins></p></li>
-<li><p><ins>(8.2) &mdash; <tt>FD</tt></ins> is Lvalue-Callable 
+<li><p><ins>(8.2) &mdash; <tt>FD</tt></ins> is Lvalue-Callable
 (<sref ref="[func.wrap.func]"/>) for argument types <tt>ArgTypes...</tt>
 and return type <tt>R</tt>.</p>
 </li>
@@ -83,7 +83,7 @@ and return type <tt>R</tt>.</p>
 <ol style="list-style-type:none">
 <li><p>(9.1) &mdash; <tt>f</tt> is a null function pointer value.</p></li>
 <li><p>(9.2) &mdash; <tt>f</tt> is a null member pointer value.</p></li>
-<li><p>(9.3) &mdash; <del><tt>F</tt> is an instance</del> <ins><tt>remove_cvref_t&lt;F&gt;</tt> is 
+<li><p>(9.3) &mdash; <del><tt>F</tt> is an instance</del> <ins><tt>remove_cvref_t&lt;F&gt;</tt> is
 a specialization</ins> of the <tt>function</tt> class template, and <tt>!f</tt> <ins>is <tt>true</tt></ins>.
 </p></li>
 </ol>
@@ -91,11 +91,11 @@ a specialization</ins> of the <tt>function</tt> class template, and <tt>!f</tt> 
 <del>a copy of <tt>f</tt></del><ins>an object of type <tt>FD</tt>
 direct-non-list-</ins>initialized with <del><tt>std::move(f)</tt></del>
 <ins><tt>std::forward&lt;F&gt;(f)</tt></ins>. [<i>Note:</i> Implementations should
-avoid the use of dynamically allocated memory for small callable objects, for example, where <tt>f</tt> 
-<del>is</del> <ins>refers to</ins> an object holding only a pointer or reference to an object 
+avoid the use of dynamically allocated memory for small callable objects, for example, where <tt>f</tt>
+<del>is</del> <ins>refers to</ins> an object holding only a pointer or reference to an object
 and a member function pointer. &mdash; <i>end note</i>]</p>
 <p> -11- <i>Throws:</i> <del>Shall</del> <ins>Does</ins> not throw exceptions when <del><tt>f</tt></del>
-<ins><tt>FD</tt></ins> is a function pointer <ins>type</ins> or 
+<ins><tt>FD</tt></ins> is a function pointer <ins>type</ins> or
 a <ins>specialization of</ins> <tt>reference_wrapper</tt><del><tt>&lt;T&gt;</tt> for some <tt>T</tt></del>.
 Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by <del><tt>F</tt>’s copy or move constructor</del>
 <ins>the initialization of the target object</ins>.</p>
@@ -114,9 +114,10 @@ by the recently agreed on elements.
 <p/>
 See also the related issue LWG <iref ref="3493"/>.
 </p>
-</discussion>
 
-<resolution>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to <a href="https://wg21.link/n4868">N4868</a>.</p>
 
 <ol>
@@ -156,10 +157,10 @@ template&lt;class F&gt; function(F<ins>&amp;&amp;</ins> f);
 <p>
 <ins>Let <tt>FD</tt> be <tt>decay_t&lt;F&gt;</tt>.</ins>
 </p>
--8- <i>Constraints:</i> 
+-8- <i>Constraints:</i>
 <ol style="list-style-type:none">
 <li><p><ins>(8.1) &mdash; <tt>is_same_v&lt;remove_cvref_t&lt;F&gt;, function&gt;</tt> is <tt>false</tt>,</ins></p></li>
-<li><p><ins>(8.2) &mdash; <tt>FD</tt></ins><del><tt>F</tt></del> is Lvalue-Callable (<sref ref="[func.wrap.func.general]"/>) 
+<li><p><ins>(8.2) &mdash; <tt>FD</tt></ins><del><tt>F</tt></del> is Lvalue-Callable (<sref ref="[func.wrap.func.general]"/>)
 for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt><ins>,</ins></p></li>
 <li><p><ins>(8.3) &mdash; <tt>is_copy_constructible_v&lt;FD&gt;</tt> is <tt>true</tt>, and</ins></p></li>
 <li><p><ins>(8.4) &mdash; <tt>is_constructible_v&lt;FD, F&gt;</tt> is <tt>true</tt></ins>.</p></li>
@@ -172,19 +173,113 @@ for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt><ins>,</ins></
 <ol style="list-style-type:none">
 <li><p>(10.1) &mdash; <tt>f</tt> is a null function pointer value.</p></li>
 <li><p>(10.2) &mdash; <tt>f</tt> is a null member pointer value.</p></li>
-<li><p>(10.3) &mdash; <del><tt>F</tt> is an instance</del><ins><tt>remove_cvref_t&lt;F&gt;</tt> is 
+<li><p>(10.3) &mdash; <del><tt>F</tt> is an instance</del><ins><tt>remove_cvref_t&lt;F&gt;</tt> is
 a specialization</ins> of the function class template, and <tt>!f</tt> <ins>is <tt>true</tt></ins>.</p></li>
 </ol>
 <p>
 -11- Otherwise, <tt>*this</tt> targets <del>a copy of <tt>f</tt></del><ins>an object of type <tt>FD</tt>
 direct-non-list-</ins>initialized with <tt><del>std::move(f)</del><ins>std::forward&lt;F&gt;(f)</ins></tt>.
 <p/>
--12- <i>Throws:</i> Nothing if <tt><del>f</del><ins>FD</ins></tt> is a specialization of <tt>reference_wrapper</tt> 
-or a function pointer <ins>type</ins>. Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by 
+-12- <i>Throws:</i> Nothing if <tt><del>f</del><ins>FD</ins></tt> is a specialization of <tt>reference_wrapper</tt>
+or a function pointer <ins>type</ins>. Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by
 <del><tt>F</tt>'s copy or move constructor</del><ins>the initialization of the target object</ins>.
 <p/>
 -13- <i>Recommended practice:</i> Implementations should avoid the use of dynamically allocated memory for
-small callable objects, for example, where <tt>f</tt> <del>is</del><ins>refers to</ins> an object holding 
+small callable objects, for example, where <tt>f</tt> <del>is</del><ins>refers to</ins> an object holding
+only a pointer or reference to an object and a member function pointer.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2021-05-17; Tim comments and revises the wording</note>
+<p>
+The additional constraints added in the previous wording can induce
+constraint recursion, as noted in the discussion of LWG <iref ref="3493"/>.
+The wording below changes them to <i>Mandates:</i> instead to allow this issue
+to make progress independently of that issue.
+<p/>
+The proposed resolution below has been implemented and tested on top of
+libstdc++.
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.</p>
+
+<ol>
+<li><p>Edit <sref ref="[func.wrap.func.general]"/>, class template <tt>function</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class&gt; class function; <i>// not defined</i>
+
+  template&lt;class R, class... ArgTypes&gt; {
+  public:
+    using result_type = R;
+
+    // <sref ref="[func.wrap.func.con]" />, construct/copy/destroy
+    function() noexcept;
+    function(nullptr_t) noexcept;
+    function(const function&amp;);
+    function(function&amp;&amp;) noexcept;
+    template&lt;class F&gt; function(F<ins>&amp;&amp;</ins>);
+
+    [&hellip;]
+  };
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[func.wrap.func.con]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class F&gt; function(F<ins>&amp;&amp;</ins> f);
+</pre>
+<blockquote>
+<p>
+<ins>Let <tt>FD</tt> be <tt>decay_t&lt;F&gt;</tt>.</ins>
+</p>
+-8- <i>Constraints:</i>
+<ol style="list-style-type:none">
+<li><p><ins>(8.1) &mdash; <tt>is_same_v&lt;remove_cvref_t&lt;F&gt;, function&gt;</tt> is <tt>false</tt>, and</ins></p></li>
+<li><p><ins>(8.2) &mdash; <tt>FD</tt></ins><del><tt>F</tt></del> is Lvalue-Callable (<sref ref="[func.wrap.func.general]"/>)
+for argument types <tt>ArgTypes...</tt> and return type <tt>R</tt>.</p></li>
+</ol>
+<p>
+<ins>-?- <i>Mandates:</i></ins>
+</p>
+<ol style="list-style-type:none">
+<li><p><ins>(?.1) &mdash; <tt>is_copy_constructible_v&lt;FD&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.2) &mdash; <tt>is_constructible_v&lt;FD, F&gt;</tt> is <tt>true</tt>.</ins></p></li>
+</ol>
+<p>
+-9- <i>Preconditions:</i> <tt><del>F</del><ins>FD</ins></tt> meets the <i>Cpp17CopyConstructible</i> requirements.
+<p/>
+-10- <i>Postconditions:</i> <tt>!*this</tt> <ins>is <tt>true</tt></ins> if any of the following hold:
+</p>
+<ol style="list-style-type:none">
+<li><p>(10.1) &mdash; <tt>f</tt> is a null function pointer value.</p></li>
+<li><p>(10.2) &mdash; <tt>f</tt> is a null member pointer value.</p></li>
+<li><p>(10.3) &mdash; <del><tt>F</tt> is an instance</del><ins><tt>remove_cvref_t&lt;F&gt;</tt> is
+a specialization</ins> of the <tt>function</tt> class template, and <tt>!f</tt> <ins>is <tt>true</tt></ins>.</p></li>
+</ol>
+<p>
+-11- Otherwise, <tt>*this</tt> targets <del>a copy of <tt>f</tt></del><ins>an object of type <tt>FD</tt>
+direct-non-list-</ins>initialized with <tt><del>std::move(f)</del><ins>std::forward&lt;F&gt;(f)</ins></tt>.
+<p/>
+-12- <i>Throws:</i> Nothing if <tt><del>f</del><ins>FD</ins></tt> is a specialization of <tt>reference_wrapper</tt>
+or a function pointer <ins>type</ins>. Otherwise, may throw <tt>bad_alloc</tt> or any exception thrown by
+<del><tt>F</tt>'s copy or move constructor</del><ins>the initialization of the target object</ins>.
+<p/>
+-13- <i>Recommended practice:</i> Implementations should avoid the use of dynamically allocated memory for
+small callable objects, for example, where <tt>f</tt> <del>is</del><ins>refers to</ins> an object holding
 only a pointer or reference to an object and a member function pointer.
 </p>
 </blockquote>
@@ -194,4 +289,3 @@ only a pointer or reference to an object and a member function pointer.
 </resolution>
 
 </issue>
-
