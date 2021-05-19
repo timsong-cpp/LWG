@@ -10,28 +10,28 @@
 
 <discussion>
 <p>
-Section 6.1 of <a href="https://wg21.link/p1739r4">P1739R4</a> changes the specification of 
+Section 6.1 of <a href="https://wg21.link/p1739r4">P1739R4</a> changes the specification of
 <tt>views::take</tt> as follows:
 </p>
 <blockquote>
 <p>
 -2- The name <tt>views::take</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
-<del>Given subexpressions <tt>E</tt> and <tt>F</tt>, the expression <tt>views::take(E, F)</tt> is 
+<del>Given subexpressions <tt>E</tt> and <tt>F</tt>, the expression <tt>views::take(E, F)</tt> is
 expression-equivalent to <tt>take_view{E, F}</tt>.</del>
 <ins>Let <tt>E</tt> and <tt>F</tt> be expressions, let <tt>T</tt> be <tt>remove_cvref_t&lt;decltype((E))&gt;</tt>,
 and let <tt>D</tt> be <tt>range_difference_t&lt;decltype((E))&gt;</tt>.
-If <tt>decltype((F))</tt> does not model <tt>convertible_to&lt;D&gt;</tt>, <tt>views::take(E, F)</tt> 
+If <tt>decltype((F))</tt> does not model <tt>convertible_to&lt;D&gt;</tt>, <tt>views::take(E, F)</tt>
 is ill-formed. Otherwise, the expression <tt>views::take(E, F)</tt> is expression-equivalent to:</ins>
 </p>
 <ol style="list-style-type: none">
-<li><p><ins>&mdash; if <tt>T</tt> is a specialization of <tt>ranges::empty_view</tt> (<sref ref="[range.empty.view]"/>), 
+<li><p><ins>&mdash; if <tt>T</tt> is a specialization of <tt>ranges::empty_view</tt> (<sref ref="[range.empty.view]"/>),
 then <tt>((void) F, <i>decay-copy</i>(E))</tt>;</ins>
 </p></li>
-<li><p><ins>&mdash; otherwise, if <tt>T</tt> models <tt>random_access_range</tt> and <tt>sized_range</tt> and 
+<li><p><ins>&mdash; otherwise, if <tt>T</tt> models <tt>random_access_range</tt> and <tt>sized_range</tt> and
 is</ins>
 </p>
 <ol style="list-style-type: none">
-<li><p><ins>&mdash; a specialization of <tt>span</tt> (<sref ref="[views.span]"/>) where 
+<li><p><ins>&mdash; a specialization of <tt>span</tt> (<sref ref="[views.span]"/>) where
 <tt>T::extent == dynamic_extent</tt>,</ins></p></li>
 <li><p><ins>&mdash; a specialization of <tt>basic_string_view</tt> (<sref ref="[string.view]"/>),</ins></p></li>
 <li><p><ins>&mdash; a specialization of <tt>ranges::iota_view</tt> (<sref ref="[range.iota.view]"/>), or</ins></p></li>
@@ -60,32 +60,125 @@ constructor that takes an <tt>iterator-iterator</tt> pair.
 More generally the above issue applies anytime <tt>T</tt> is a specialization of
 <tt>subrange</tt> that does not model <tt>common_range</tt>. But a similar issue also
 exists when <tt>T</tt> is a specialization of <tt>iota_view</tt> whose value type differs
-from its bound type. In this case yet another issue arises: In order for the expression 
-<tt><i>(*)</i></tt> to be well-formed when <tt>T</tt> is a specialization of <tt>iota_view</tt>, 
-we need to be able to construct an <tt>iota_view</tt> out of an <tt>iterator-iterator</tt> pair, 
+from its bound type. In this case yet another issue arises: In order for the expression
+<tt><i>(*)</i></tt> to be well-formed when <tt>T</tt> is a specialization of <tt>iota_view</tt>,
+we need to be able to construct an <tt>iota_view</tt> out of an <tt>iterator-iterator</tt> pair,
 and for that it seems we need to add another constructor to <tt>iota_view</tt>.
 </p>
 
 <note>2020-02-24, Casey comments</note>
 <p>
-Furthermore, the pertinent subrange constructor is only available when <tt>subrange::StoreSize</tt> is 
-<tt>false</tt> (i.e., when either the <tt>subrange</tt> specialization's third template argument is 
-not <tt>subrange_kind::sized</tt> or its iterator and sentinel types <tt>I</tt> and <tt>S</tt> model 
+Furthermore, the pertinent subrange constructor is only available when <tt>subrange::StoreSize</tt> is
+<tt>false</tt> (i.e., when either the <tt>subrange</tt> specialization's third template argument is
+not <tt>subrange_kind::sized</tt> or its iterator and sentinel types <tt>I</tt> and <tt>S</tt> model
 <tt>sized_sentinel_for&lt;S, I&gt;</tt>).
 </p>
 
 <note>2020-03-16, Tomasz comments</note>
 <p>
-A similar problem occurs for the <tt>views::drop</tt> for the <tt>subrange&lt;I, S, subrange_kind::sized&gt;</tt>, 
-that explicitly stores size (i.e. <tt>sized_sentinel_for&lt;I, S&gt;</tt> is <tt>false</tt>). In such case, 
+A similar problem occurs for the <tt>views::drop</tt> for the <tt>subrange&lt;I, S, subrange_kind::sized&gt;</tt>,
+that explicitly stores size (i.e. <tt>sized_sentinel_for&lt;I, S&gt;</tt> is <tt>false</tt>). In such case,
 the <tt>(iterator, sentinel)</tt> constructor that <tt>views::drop</tt> will be expression-equivalent is
 not available.
 </p>
 
 <note>2020-03-29 Issue Prioritization</note>
 <p>Priority to 2 after reflector discussion.</p>
+
+<note>2021-05-18 Tim adds wording</note>
+<p>The proposed resolution below is based on the MSVC implementation, with one caveat:
+the MSVC implementation uses a SCARY iterator type for <tt>iota_view</tt> and therefore
+its <tt>iota_view</tt> case for <tt>take</tt> is able to directly construct the new view
+from the iterator type of the original. This is not required to work, so the wording below
+constructs the <tt>iota_view</tt> from the result of dereferencing the iterators instead
+in this case.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4885">N4885</a> and includes the
+changes to these paragraphs made by <a href="https://wg21.link/P2367R0">P2367R0</a>.</p>
+<ol>
+<li>
+<p>Edit <sref ref="[range.take.overview]"/> as indicated: </p>
+<blockquote>
+<p>
+-2- The name <tt>views::take</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+Let <tt>E</tt> and <tt>F</tt> be expressions, let <tt>T</tt> be <tt>remove_cvref_t&lt;decltype((E))&gt;</tt>,
+and let <tt>D</tt> be <tt>range_difference_t&lt;decltype((E))&gt;</tt>.
+If <tt>decltype((F))</tt> does not model <tt>convertible_to&lt;D&gt;</tt>, <tt>views::take(E, F)</tt>
+is ill-formed. Otherwise, the expression <tt>views::take(E, F)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; if <tt>T</tt> is a specialization of <tt>ranges::empty_view</tt> (<sref ref="[range.empty.view]"/>),
+then <tt>((void) F, <i>decay-copy</i>(E))</tt><ins>, except that the evaluations of <tt>E</tt>
+and <tt>F</tt> are indeterminately sequenced</ins>;
+</p></li>
+<li><p>(2.2) &mdash; otherwise, if <tt>T</tt> models <tt>random_access_range</tt> and <tt>sized_range</tt>,
+and is <ins>a specialization of <tt>span</tt> (<sref ref="[views.span]"/>), <tt>basic_string_view</tt> (<sref ref="[string.view]"/>),
+or <tt>ranges::subrange</tt> (<sref ref="[range.subrange]"/>),
+then <tt>U(ranges::begin(E), ranges::begin(E) + min&lt;D&gt;(ranges::size(E), F))</tt>,
+except that <tt>E</tt> is evaluated only once, where <tt>U</tt> is a type determined as follows:</ins>
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.2.1) &mdash; <ins>if <tt>T</tt> is</ins> a specialization of <tt>span</tt> <del>(<sref ref="[views.span]"/>) where
+<tt>T::extent == dynamic_extent</tt></del>,<ins> then <tt>U</tt> is <tt>span&lt;typename T::element_type&gt;</tt>;</ins></p></li>
+<li><p>(2.2.2) &mdash; <ins>otherwise, if <tt>T</tt> is</ins> a specialization of <tt>basic_string_view</tt> <del>(<sref ref="[string.view]"/>)</del>, <ins>then <tt>U</tt> is <tt>T</tt>;</ins></p></li>
+<li><p><del>(2.2.3) &mdash; a specialization of <tt>ranges::iota_view</tt> (<sref ref="[range.iota.view]"/>), or</del></p></li>
+<li><p>(2.2.4) &mdash; <ins>otherwise, <tt>T</tt> is</ins> a specialization of <tt>ranges::subrange</tt> <del>(<sref ref="[range.subrange]"/>)</del>,
+<ins>and <tt>U</tt> is <tt>ranges::subrange&lt;iterator_t&lt;T&gt;&gt;</tt>;</ins></p></li>
+</ol>
+<p><del>then <tt>T{ranges::begin(E), ranges::begin(E) + min&lt;D&gt;(ranges::size(E), F)}</tt>,
+except that <tt>E</tt> is evaluated only once;</del>
+</p></li>
+<li><p><ins>(2.?) &mdash; otherwise, if <tt>T</tt> is a specialization of <tt>ranges::iota_view</tt> (<sref ref="[range.iota.view]"/>)
+that models <tt>random_access_range</tt> and <tt>sized_range</tt>, then
+<tt>ranges::iota_view(*ranges::begin(E), *(ranges::begin(E) + min&lt;D&gt;(ranges::size(E), F)))</tt>,
+except that <tt>E</tt> and <tt>F</tt> are each evaluated only once;</ins></p></li>
+<li><p>(2.3) &mdash; otherwise, <tt>ranges::take_view<del>{</del><ins>(</ins>E, F<ins>)</ins><del>}</del></tt>.
+</p></li>
+</ol>
+</blockquote>
+</li>
+<li>
+<p>Edit <sref ref="[range.drop.overview]"/> as indicated: </p>
+<blockquote>
+<p>
+-2- The name <tt>views::drop</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+Let <tt>E</tt> and <tt>F</tt> be expressions, let <tt>T</tt> be <tt>remove_cvref_t&lt;decltype((E))&gt;</tt>,
+and let <tt>D</tt> be <tt>range_difference_t&lt;decltype((E))&gt;</tt>.
+If <tt>decltype((F))</tt> does not model <tt>convertible_to&lt;D&gt;</tt>, <tt>views::drop(E, F)</tt>
+is ill-formed. Otherwise, the expression <tt>views::drop(E, F)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; if <tt>T</tt> is a specialization of <tt>ranges::empty_view</tt> (<sref ref="[range.empty.view]"/>),
+then <tt>((void) F, <i>decay-copy</i>(E))</tt><ins>, except that the evaluations of <tt>E</tt>
+and <tt>F</tt> are indeterminately sequenced</ins>;
+</p></li>
+<li><p>(2.2) &mdash; otherwise, if <tt>T</tt> models <tt>random_access_range</tt> and <tt>sized_range</tt>,
+and is
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.2.1) &mdash;a specialization of <tt>span</tt> (<sref ref="[views.span]"/>) <del>where
+<tt>T::extent == dynamic_extent</tt></del>,</p></li>
+<li><p>(2.2.2) &mdash; a specialization of <tt>basic_string_view</tt> (<sref ref="[string.view]"/>), </p></li>
+<li><p>(2.2.3) &mdash; a specialization of <tt>ranges::iota_view</tt> (<sref ref="[range.iota.view]"/>), or</p></li>
+<li><p>(2.2.4) &mdash; a specialization of <tt>ranges::subrange</tt> (<sref ref="[range.subrange]"/>)
+<ins>where <tt>T::<i>StoreSize</i></tt> is <tt>false</tt></ins>,</p></li>
+</ol>
+<p>then <tt><del>T{</del><ins>U(</ins>ranges::begin(E) + min&lt;D&gt;(ranges::size(E), F), ranges::end(E)<ins>)</ins><del>}</del></tt>,
+except that <tt>E</tt> is evaluated only once<ins>, where <tt>U</tt> is <tt>span&lt;typename T::element_type&gt;</tt>
+if <tt>T</tt> is a specialization of <tt>span</tt> and <tt>T</tt> otherwise</ins>;
+</p></li>
+<li><p><ins>(2.?) &mdash; otherwise, if <tt>T</tt> is a specialization of <tt>ranges::subrange</tt>
+(<sref ref="[range.subrange]"/>) that models <tt>random_access_range</tt> and <tt>sized_range</tt>, then
+<tt>T(ranges::begin(E) + min&lt;D&gt;(ranges::size(E), F), ranges::end(E), ranges::size(E) - min&lt;D&gt;(ranges::size(E), F))</tt>,
+except that <tt>E</tt> and <tt>F</tt> are each evaluated only once;</ins></p></li>
+<li><p>(2.3) &mdash; otherwise, <tt>ranges::drop_view<del>{</del><ins>(</ins>E, F<ins>)</ins><del>}</del></tt>.
+</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
 </resolution>
 </issue>
