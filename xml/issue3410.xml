@@ -10,16 +10,68 @@
 
 <discussion>
 <p>
-<sref ref="[alg.three.way]"/>/2 specifies the effects of the <tt>lexicographical_compare_three_way</tt> 
-algorithm via a large "equivalent to" codeblock. This codeblock specifies one more iterator comparison 
+<sref ref="[alg.three.way]"/>/2 specifies the effects of the <tt>lexicographical_compare_three_way</tt>
+algorithm via a large "equivalent to" codeblock. This codeblock specifies one more iterator comparison
 than necessary when the first input sequence is greater than the second, and two more than necessary
 in other cases. Requiring unnecessary work is the antithesis of C++.
 </p>
 
 <note>2020-03-29 Issue Prioritization</note>
 <p>Priority to 3 after reflector discussion.</p>
+
+<note>2021-05-19 Tim adds wording</note>
+<p>The wording below simply respecifies the algorithm in words. It seems pointless
+to try to optimize the code when the reading in the discussion above would
+entirely rule out things like <tt>memcmp</tt> optimizations for arbitrary
+contiguous iterators of bytes.
+</p>
 </discussion>
 
 <resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[alg.three.way]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class InputIterator1, class InputIterator2, class Cmp&gt;
+  constexpr auto
+    lexicographical_compare_three_way(InputIterator1 b1, InputIterator1 e1,
+                                      InputIterator2 b2, InputIterator2 e2,
+                                      Cmp comp)
+        -&gt; decltype(comp(*b1, *b2));
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <i>N</i> be min(<tt>e1 - b1, e2 - b2</tt>). Let <i>E(n)</i>
+be <tt>comp(*(b1 + <i>n</i>), *(b2 + <i>n</i>))</tt>.</ins>
+<p/>
+-1- <i>Mandates:</i> <tt>decltype(comp(*b1, *b2))</tt> is a comparison category type.
+<p/>
+<ins>-?- <i>Returns:</i> <i>E(i)</i>, where <i>i</i> is the smallest integer
+in [0, <i>N</i>) such that <i>E(i)</i> <tt>!= 0</tt> is <tt>true</tt>, or
+<tt>(e1 - b1) &lt;=&gt; (e2 - b2)</tt> if no such integer exists.</ins>
+<p/>
+<ins>-?- <i>Complexity</i>: At most <i>N</i> applications of <tt>comp</tt>.</ins>
+<p/>
+<del>
+-2- <i>Effects:</i> Lexicographically compares two ranges and produces a result
+of the strongest applicable comparison category type. Equivalent to:</del>
+</p>
+<blockquote>
+<pre>
+<del>for ( ; b1 != e1 &amp;&amp; b2 != e2; void(++b1), void(++b2) )
+  if (auto cmp = comp(*b1,*b2); cmp != 0)
+      return cmp;
+return b1 != e1 ? strong_ordering::greater :
+       b2 != e2 ? strong_ordering::less :
+                  strong_ordering::equal;</del>
+</pre>
+</blockquote>
+
+</blockquote>
+</blockquote>
+</li>
+</ol>
 </resolution>
 </issue>
