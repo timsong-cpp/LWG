@@ -10,9 +10,9 @@
 
 <discussion>
 <p>
-With the adoption of <a href="https://wg21.link/p0593r6">P0593R6</a> in Prague, 
-<tt>std::ptr::polymorphic_allocator</tt> no longer satisfies the of <i>Cpp17Allocator</i> 
-requirements. Specifically, all calls to <tt>allocate(n)</tt> need to create an object 
+With the adoption of <a href="https://wg21.link/p0593r6">P0593R6</a> in Prague,
+<tt>std::ptr::polymorphic_allocator</tt> no longer satisfies the of <i>Cpp17Allocator</i>
+requirements. Specifically, all calls to <tt>allocate(n)</tt> need to create an object
 for an array of <tt>n T</tt>s (but not initialize any of those elements).
 <tt>std::pmr::polymorphic_allocator</tt> calls its underlying memory resource to allocate
 sufficient bytes of storage, but it does not create (and start the lifetime of) the array
@@ -30,16 +30,15 @@ has impact on implementors for this issue.
 Set priority to 3 after reflector discussions.
 </p>
 
-</discussion>
-
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.
 </p>
 
 <blockquote class="note">
 <p>
-[<i>Drafting note:</i> The proposed wording is inspired by the example given in the "Assertion/note" column of the expression 
+[<i>Drafting note:</i> The proposed wording is inspired by the example given in the "Assertion/note" column of the expression
 <tt>a.allocate(n)</tt> in table [tab:cpp17.allocator].]
 </p>
 </blockquote>
@@ -59,6 +58,46 @@ This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.
 <ins>void* p = do_allocate(bytes, alignment);
 return launder(new (p) byte[bytes]);</ins>
 </pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2021-05-20 Tim comments and updates wording</note>
+<p>
+<tt>memory_resource::allocate</tt> is the PMR equivalent of <tt>malloc</tt>
+and <tt>operator new</tt>. It therefore needs the "suitable created object"
+wording (see <sref ref="[intro.object]"/>, <sref ref="[c.malloc]"/>).
+This ensures that it creates the requisite array object automatically for all
+the allocation functions of <tt>polymorphic_allocator</tt>,
+and returns the correct pointer value in all cases.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[mem.res.public]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[[nodiscard]] void* allocate(size_t bytes, size_t alignment = max_align);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> <del>Equivalent to: <tt>return</tt></del>
+<ins>Allocates storage by calling</ins> <tt>do_allocate(bytes, alignment)</tt><del><tt>;</tt></del>
+<ins>and implicitly creates objects within the allocated region of storage.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> A pointer to a suitable created object
+(<sref ref="[intro.object]"/>) in the allocated region of storage.</ins>
+<p/>
+<ins>-?- <i>Throws:</i> What and when the call to <tt>do_allocate</tt> throws.</ins>
+</p>
 </blockquote>
 </blockquote>
 </li>
