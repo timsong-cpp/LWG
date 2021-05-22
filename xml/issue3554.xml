@@ -1,0 +1,279 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3554" status="New">
+<title><tt>chrono::parse</tt> needs <tt>const charT*</tt> and <tt>basic_string_view&lt;charT&gt;</tt> overloads</title>
+<section><sref ref="[time.parse]"/></section>
+<submitter>Howard Hinnant</submitter>
+<date>22 May 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>chrono::parse</tt> functions take <tt>const basic_string&lt;charT, traits, Alloc&gt;&amp;</tt> parameters 
+to specify the format strings for the parse. Due to an oversight on my part in the proposal, overloads taking 
+<tt>const charT*</tt> and <tt>basic_string_view&lt;charT, traits&gt;</tt> were omitted. These are necessary when 
+the supplied arguments is a string literal or <tt>string_view</tt> respectively:
+</p>
+<blockquote><pre>
+in &gt;&gt; parse("%F %T", tp);
+</pre></blockquote>
+<p>
+These overloads have been implemented in the <a href="https://github.com/HowardHinnant/date">example implementation</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.syn]"/>, header <tt>&lt;chrono&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace chrono {
+  <i>// <sref ref="[time.parse]"/>, parsing</i>
+  <ins>template&lt;class charT, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const charT* fmt, Parsable&amp; tp);
+
+  template&lt;class charT, class traits, class Parsable&gt;
+    <i>unspecified</i>
+      parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp);
+
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const charT* fmt, Parsable&amp; tp,
+            basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp,
+            basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);
+  
+  template&lt;class charT, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const charT* fmt, Parsable&amp; tp, minutes&amp; offset);
+  
+  template&lt;class charT, class traits, class Parsable&gt;
+    <i>unspecified</i>
+      parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp, minutes&amp; offset);
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const charT* fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp,
+            basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);</ins>
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; format, Parsable&amp; tp);
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; format, Parsable&amp; tp,
+            basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; format, Parsable&amp; tp,
+            minutes&amp; offset);
+  
+  template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+    <i>unspecified</i>
+      parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; format, Parsable&amp; tp,
+            basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);
+  
+  [&hellip;]
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[time.parse]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class charT, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const charT* fmt, Parsable&amp; tp);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT&gt;&amp;&gt;(), fmt, tp)</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>parse(basic_string&lt;charT&gt;{fmt}, tp)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class traits, class Parsable&gt;
+  <i>unspecified</i>
+    parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.data(), tp)</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>parse(basic_string&lt;charT, traits&gt;{fmt}, tp)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const charT* fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt, tp, addressof(abbrev))</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>parse(basic_string&lt;charT, traits, Alloc&gt;{fmt}, tp, abbrev)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.data(), tp, addressof(abbrev))</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>parse(basic_string&lt;charT, traits, Alloc&gt;{fmt}, tp, abbrev)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const charT* fmt, Parsable&amp; tp, minutes&amp; offset);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT&gt;&amp;&gt;(), fmt, tp,
+            declval&lt;basic_string&lt;charT&gt;*&gt;(),
+            &amp;offset)</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>parse(basic_string&lt;charT&gt;{fmt}, tp, offset)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class traits, class Parsable&gt;
+  <i>unspecified</i>
+    parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp, minutes&amp; offset);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.data(), tp,
+            declval&lt;basic_string&lt;charT, traits&gt;*&gt;(),
+            &amp;offset)</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to <tt>parse(basic_string&lt;charT, traits&gt;{fmt}, tp, offset)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+<i>unspecified</i>
+  parse(const charT* fmt, Parsable&amp; tp,
+        basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt, tp, addressof(abbrev), &amp;offset)</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effect:</i> Equivalent to <tt>parse(basic_string&lt;charT, traits, Alloc&gt;{fmt}, tp, abbrev, offset)</tt></ins>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(basic_string_view&lt;charT, traits&gt; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The expression</ins>
+</p>
+<blockquote><pre>
+<ins>from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.data(), tp, addressof(abbrev), &amp;offset)</ins>
+</pre></blockquote>
+<p>
+<ins>is well-formed when treated as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effect:</i> Equivalent to <tt>parse(basic_string&lt;charT, traits, Alloc&gt;{fmt}, tp, abbrev, offset)</tt></ins>
+</p>
+</blockquote><pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; format, Parsable&amp; tp);
+</pre>
+<blockquote>
+<p>
+-2- <i>Constraints:</i> The expression
+</p>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp)
+</pre></blockquote>
+<p>
+is well-formed when treated as an unevaluated operand.
+<p/>
+-3- <i>Returns:</i> A manipulator such that the expression <tt>is &gt;&gt; parse(fmt, tp)</tt> has type <tt>I</tt>, 
+has value <tt>is</tt>, and calls <tt>from_stream(is, fmt.c_str(), tp)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
