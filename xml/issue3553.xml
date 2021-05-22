@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3553" status="New">
+<title>Useless constraint in <tt>split_view::<i>outer-iterator</i>::value_type::begin()</tt></title>
+<section><sref ref="[range.split.outer.value]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>18 May 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+From <a href="https://stackoverflow.com/questions/67586442/under-what-circumstances-does-the-iterator-of-rangessplit-view-not-satisfy-cop">
+stack overflow</a>: The copyable constraint in <tt>split_view::<i>outer-iterator</i>::value_type::begin()</tt> is useless 
+because <tt>outer-iterator</tt> always satisfies <tt>copyable</tt>.
+<p/>
+When <tt>V</tt> does not model <tt>forward_range</tt>, the <i>outer-iterator</i> only contains a pointer, so it 
+is obviously copyable; When <tt>V</tt> is a <tt>forward_range</tt>, the <tt>iterator_t&lt;Base&gt;</tt> is a 
+<tt>forward_iterator</tt>, so it is copyable, which makes <i>outer-iterator</i> also copyable.
+<p/>
+Suggested resolution: Remove the no-<tt>const begin()</tt> and useless <tt>copyable</tt> constraint in
+<sref ref="[range.split.outer.value]"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.split.outer.value]"/>, class <tt>split_view::<i>outer-iterator</i>::value_type</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; view&lt;Pattern&gt; &amp;&amp;
+             indirectly_comparable&lt;iterator_t&lt;V&gt;, iterator_t&lt;Pattern&gt;, ranges::equal_to&gt; &amp;&amp;
+             (forward_range&lt;V&gt; || <i>tiny-range</i>&lt;Pattern&gt;)
+  template&lt;bool Const&gt;
+  struct split_view&lt;V, Pattern&gt;::<i>outer-iterator</i>&lt;Const&gt;::value_type
+    : view_interface&lt;value_type&gt; {
+  private:
+    <i>outer-iterator i_</i> = <i>outer-iterator</i>(); <i>// exposition only</i>
+  public:
+    value_type() = default;
+    constexpr explicit value_type(<i>outer-iterator</i> i);
+    constexpr <i>inner-iterator</i>&lt;Const&gt; begin() const <del>requires copyable&lt;<i>outer-iterator</i>&gt;</del>;
+    <del>constexpr <i>inner-iterator</i>&lt;Const&gt; begin() requires (!copyable&lt;<i>outer-iterator</i>&gt;);</del>
+    constexpr default_sentinel_t end() const;
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr <i>inner-iterator</i>&lt;Const&gt; begin() const <del>requires copyable&lt;<i>outer-iterator</i>&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Equivalent to: <tt>return <i>inner-iterator</i>&lt;Const&gt;{<i>i_</i>};</tt>
+</p>
+</blockquote>
+<pre>
+<del>constexpr <i>inner-iterator</i>&lt;Const&gt; begin() requires (!copyable&lt;<i>outer-iterator</i>&gt;)</del>;
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Effects:</i> Equivalent to: <tt>return <i>inner-iterator</i>&lt;Const&gt;{std::move(<i>i_</i>)};</tt></del>
+</p>
+</blockquote>
+[&hellip;]
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
