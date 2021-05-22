@@ -126,9 +126,9 @@ refer to <tt>std::ranges::get</tt> instead of <tt>std::get</tt>. Additionally,
 <sref ref="[expos.only.func]"/> needs to clarify that the lookup there also takes
 place from within namespace <tt>std</tt>.
 </p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to <a href="https://wg21.link/n4868">N4868</a>.</p>
 
 <ol>
@@ -163,6 +163,118 @@ performing qualified name lookup (<sref ref="[basic.lookup.qual]"/>) in the cont
 <del>-1- Unless otherwise specified, references to entities described in subclause <sref ref="[filesystems]"/> 
 are assumed to be qualified with <tt>::std::filesystem::</tt>.</del>
 </p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2021-05-20; Jens Maurer provides an updated proposed resolution</note>
+<p>
+</p>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[contents]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <del>Whenever a name <tt>x</tt> defined in the standard library is mentioned, the name <tt>x</tt> 
+is assumed to be fully qualified as <tt>::std::x</tt>, unless explicitly described otherwise. For example, 
+if the <i>Effects:</i> element for library function <tt>F</tt> is described as calling library function 
+<tt>G</tt>, the function <tt>::std::G</tt> is meant.</del>
+<ins>Whenever an unqualified name <tt>x</tt> is used in the specification of a declaration <tt>D</tt>
+in clauses 16-32 or Annex D, its meaning is established as-if by performing unqualified name lookup
+(<sref ref="[basic.lookup.unqual]"/>) in the context of <tt>D</tt>. [<i>Note ?:</i> Argument-dependent lookup 
+is not performed. &mdash; <i>end note</i>] Similarly, the meaning of a <i>qualified-id</i> is established as-if by 
+performing qualified name lookup (<sref ref="[basic.lookup.qual]"/>) in the context of <tt>D</tt>.
+[<i>Example:</i> The reference to <tt>is_array_v</tt> in the specification of <tt>std::to_array</tt> 
+(<sref ref="[array.creation]"/>) refers to <tt>::std::is_array_v</tt>. &mdash; <i>end example</i>]
+[<i>Note ?:</i> Operators in expressions (<sref ref="[over.match.oper]"/>) are not so constrained; see 
+<sref ref="[global.functions]"/>. &mdash; <i>end note</i>]
+</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Remove <sref ref="[fs.req.namespace]"/> in its entirety:</p>
+
+<blockquote>
+<p>
+<del><b>29.11.3.2 Namespaces and headers [fs.req.namespace]</b></del>
+<p/>
+<del>-1- Unless otherwise specified, references to entities described in subclause <sref ref="[filesystems]"/> 
+are assumed to be qualified with <tt>::std::filesystem::</tt>.</del>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.subrange.general]"/> as indicated:</p>
+
+<blockquote><pre>
+template&lt;class T&gt;
+  concept <i>pair-like</i> =              <i>// exposition only</i>
+    !is_reference_v&lt;T&gt; &amp;&amp; requires(T t) {
+      typename tuple_size&lt;T&gt;::type; <i>// ensures tuple_size&lt;T&gt; is complete</i>
+      requires derived_from&lt;tuple_size&lt;T&gt;, integral_constant&lt;size_t, 2&gt;&gt;;
+      typename tuple_element_t&lt;0, remove_const_t&lt;T&gt;&gt;;
+      typename tuple_element_t&lt;1, remove_const_t&lt;T&gt;&gt;;
+      { <ins>std::</ins>get&lt;0&gt;(t) } -&gt; convertible_to&lt;const tuple_element_t&lt;0, T&gt;&amp;&gt;;
+      { <ins>std::</ins>get&lt;1&gt;(t) } -&gt; convertible_to&lt;const tuple_element_t&lt;1, T&gt;&amp;&gt;;
+    };
+</pre></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.elements.view]"/> as indicated:</p>
+
+<blockquote><pre>
+template&lt;class T, size_t N&gt;
+  concept <i>has-tuple-element</i> = <i>// exposition only</i>
+    requires(T t) {
+      typename tuple_size&lt;T&gt;::type;
+      requires N &lt;tuple_size_v&lt;T&gt;;
+      typename tuple_element_t&lt;N, T&gt;;
+      { <ins>std::</ins>get&lt;N&gt;(t) } -&gt; convertible_to&lt;const tuple_element_t&lt;N, T&gt;&amp;&gt;;
+    };
+</pre></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[expos.only.func]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The following are defined for exposition only to aid in the specification of the library:
+</p>
+<blockquote>
+<pre>
+<ins>namespace std {</ins>
+  template&lt;class T&gt; constexpr decay_t&lt;T&gt; <i>decay-copy</i>(T&amp;&amp; v)
+      noexcept(is_nothrow_convertible_v&lt;T, decay_t&lt;T&gt;&gt;) <i>// exposition only</i>
+    { return std::forward&lt;T&gt;(v); }
+    
+  constexpr auto <i>synth-three-way</i> =
+    []&lt;class T, class U&gt;(const T&amp; t, const U&amp; u)
+      requires requires {
+      { t &lt; u } -&gt; <i>boolean-testable</i>;
+      { u &lt; t } -&gt; <i>boolean-testable</i>;
+      }
+    {
+      if constexpr (three_way_comparable_with&lt;T, U&gt;) {
+        return t &lt;=&gt; u;
+      } else {
+        if (t &lt; u) return weak_ordering::less;
+        if (u &lt; t) return weak_ordering::greater;
+        return weak_ordering::equivalent;
+      }
+    };
+
+  template&lt;class T, class U=T&gt;
+  using <i>synth-three-way-result</i> = decltype(<i>synth-three-way</i>(declval&lt;T&amp;&gt;(), declval&lt;U&amp;&gt;()));
+<ins>}</ins>
+</pre>
+</blockquote>
 </blockquote>
 </li>
 </ol>
