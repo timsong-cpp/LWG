@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3557" status="New">
+<title>The <tt>static_cast</tt> expression in <tt>convertible_to</tt> has the wrong operand</title>
+<section><sref ref="[concept.convertible]"/></section>
+<submitter>Tim Song</submitter>
+<date>26 May 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of <tt>convertible_to</tt> implicitly requires <tt>static_cast&lt;To&gt;(f())</tt> 
+to be equality-preserving. Under <sref ref="[concepts.equality]"/> p1, the operand of this expression 
+is <tt>f</tt>, but what we really want is for <tt>f()</tt> to be treated as the operand. We should just
+use <tt>declval</tt> (which is treated specially by the definition of "operand" for this purpose) instead 
+of reinventing the wheel.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[concept.convertible]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class From, class To&gt;
+  concept convertible_to =
+    is_convertible_v&lt;From, To&gt; &amp;&amp;
+    requires<del>(add_rvalue_reference_t&lt;From&gt; (&amp;f)())</del> {
+      static_cast&lt;To&gt;(<del>f</del><ins>declval&lt;From&gt;</ins>());
+    };
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
