@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3558" status="New">
+<title><tt>elements_view::<i>sentinel</i></tt>'s first <tt>operator-</tt> has wrong return type</title>
+<section><sref ref="[range.elements.sentinel]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>28 May 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Because the iterator type of the first <tt>operator-</tt> is <tt>const <i>iterator</i>&lt;OtherConst&gt;&amp;</tt>, its 
+return type should be <tt>range_difference_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.elements.sentinel]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+    [&hellip;]
+    template&lt;bool OtherConst&gt;
+      requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;
+    friend constexpr range_difference_t&lt;<del><i>Base</i></del><ins><i>maybe-const</i>&lt;OtherConst, V&gt;</ins>&gt;
+      operator-(const <i>iterator</i>&lt;OtherConst&gt;&amp; x, const <i>sentinel</i>&amp; y);
+    
+    template&lt;bool OtherConst&gt;
+      requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;
+    friend constexpr range_difference_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;
+      operator-(const <i>sentinel</i>&amp; x, const <i>iterator</i>&lt;OtherConst&gt;&amp; y);
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;bool OtherConst&gt;
+  requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;
+friend constexpr range_difference_t&lt;<del><i>Base</i></del><ins><i>maybe-const</i>&lt;OtherConst, V&gt;</ins>&gt;
+  operator-(const <i>iterator</i>&lt;OtherConst&gt;&amp; x, const <i>sentinel</i>&amp; y);
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <tt>return x.<i>current_</i> - y.<i>end_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
