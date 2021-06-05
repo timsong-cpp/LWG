@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3560" status="New">
+<title><tt>ranges::equal</tt> and <tt>ranges::is_permutation</tt> should short-circuit for <tt>sized_ranges</tt></title>
+<section><sref ref="[alg.equal]"/><sref ref="[alg.is.permutation]"/></section>
+<submitter>Tim Song</submitter>
+<date>03 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>ranges::equal</tt> and <tt>ranges::is_permutation</tt> are currently only required
+to short-circuit on different sizes if the iterator and sentinel of the two ranges
+pairwise model <tt>sized_sentinel_for</tt>. They should also short-circuit if the ranges are sized.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[alg.equal]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator1, class InputIterator2&gt;
+  constexpr bool equal(InputIterator1 first1, InputIterator1 last1,
+                       InputIterator2 first2);
+[&hellip;]
+template&lt;class InputIterator1, class InputIterator2,
+         class BinaryPredicate&gt;
+  constexpr bool equal(InputIterator1 first1, InputIterator1 last1,
+                       InputIterator2 first2, InputIterator2 last2,
+                       BinaryPredicate pred);
+[&hellip;]
+template&lt;input_iterator I1, sentinel_for&lt;I1&gt; S1, input_iterator I2, sentinel_for&lt;I2&gt; S2,
+         class Pred = ranges::equal_to, class Proj1 = identity, class Proj2 = identity&gt;
+  requires indirectly_comparable&lt;I1, I2, Pred, Proj1, Proj2&gt;
+  constexpr bool ranges::equal(I1 first1, S1 last1, I2 first2, S2 last2,
+                               Pred pred = {},
+                               Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;input_range R1, input_range R2, class Pred = ranges::equal_to,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires indirectly_comparable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, Pred, Proj1, Proj2&gt;
+  constexpr bool ranges::equal(R1&amp;&amp; r1, R2&amp;&amp; r2, Pred pred = {},
+                               Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- <i>Complexity:</i> If <del>the types of <tt>first1</tt>, <tt>last1</tt>, <tt>first2</tt>, and <tt>last2</tt></del>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; <ins>the types of <tt>first1</tt>, <tt>last1</tt>, <tt>first2</tt>, and <tt>last2</tt></ins> 
+meet the <i>Cpp17RandomAccessIterator</i> requirements (<sref ref="[random.access.iterators]"/>) <ins>and 
+<tt>last1 - first1 != last2 - first2</tt></ins> for the overloads in namespace <tt>std</tt>;</p></li>
+<li><p>(3.2) &mdash; <ins>the types of <tt>first1</tt>, <tt>last1</tt>, <tt>first2</tt>, and <tt>last2</tt></ins> 
+pairwise model <tt>sized_sentinel_for</tt> (<sref ref="[iterator.concept.sizedsentinel]"/>) <ins>and 
+<tt>last1 - first1 != last2 - first2</tt></ins> for the <ins>first</ins> overload<del>s</del> in namespace 
+<tt>ranges</tt>,</p></li>
+<li><p><ins>(3.3) &mdash; <tt>R1</tt> and <tt>R2</tt> each model <tt>sized_range</tt> and <tt>ranges::distance(r1)
+!= ranges::distance(r2)</tt> for the second overload in namespace <tt>ranges</tt>,</ins></p></li>
+</ol>
+<p>
+<del>and <tt>last1 - first1 != last2 - first2</tt>,</del> then no applications of the corresponding predicate and
+each projection; otherwise, [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[alg.is.permutation]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;forward_iterator I1, sentinel_for&lt;I1&gt; S1, forward_iterator I2,
+         sentinel_for&lt;I2&gt; S2, class Proj1 = identity, class Proj2 = identity,
+         indirect_equivalence_relation&lt;projected&lt;I1, Proj1&gt;,
+                                       projected&lt;I2, Proj2&gt;&gt; Pred = ranges::equal_to&gt;
+  constexpr bool ranges::is_permutation(I1 first1, S1 last1, I2 first2, S2 last2,
+                                        Pred pred = {},
+                                        Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;forward_range R1, forward_range R2,
+         class Proj1 = identity, class Proj2 = identity,
+         indirect_equivalence_relation&lt;projected&lt;iterator_t&lt;R1&gt;, Proj1&gt;,
+                                       projected&lt;iterator_t&lt;R2&gt;, Proj2&gt;&gt; Pred = ranges::equal_to&gt;
+  constexpr bool ranges::is_permutation(R1&amp;&amp; r1, R2&amp;&amp; r2, Pred pred = {},
+                                        Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Complexity:</i> No applications of the corresponding predicate and projections if:
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(7.1) &mdash; for the first overload,</ins></p>
+<ol style="list-style-type: none">
+<li><p>(7.<ins>1.</ins>1) &mdash; <tt>S1</tt> and <tt>I1</tt> model <tt>sized_sentinel_for&lt;S1, I1&gt;</tt>,</p></li>
+<li><p>(7.<ins>1.</ins>2) &mdash; <tt>S2</tt> and <tt>I2</tt> model <tt>sized_sentinel_for&lt;S2, I2&gt;</tt>, and</p></li>
+<li><p>(7.<ins>1.</ins>3) &mdash; <tt>last1 - first1 != last2 - first2</tt><del>.</del><ins>;</ins></p></li>
+</ol>
+</li>
+<li><p><ins>(7.2) &mdash; for the second overload, <tt>R1</tt> and <tt>R2</tt> each model <tt>sized_range</tt>, 
+and <tt>ranges::distance(r1) != ranges::distance(r2)</tt>.</ins></p></li>
+</ol>
+<p>
+Otherwise, exactly <tt>last1 - first1</tt> applications of the corresponding predicate and projections if
+<tt>ranges::equal(first1, last1, first2, last2, pred, proj1, proj2)</tt> would return <tt>true</tt>; otherwise,
+at worst &#x1d4aa;(<tt><i>N</i><sup>2</sup></tt>), where <tt><i>N</i></tt> has the value <tt>last1 - first1</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+</issue>
