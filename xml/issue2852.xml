@@ -2,20 +2,20 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="2852" status="NAD">
-<title>Specifications of <tt>operator==</tt> for <tt>std::basic_string</tt>s and <tt>std::basic_string_view</tt>s are 
+<title>Specifications of <tt>operator==</tt> for <tt>std::basic_string</tt>s and <tt>std::basic_string_view</tt>s are
 difficult to conform to</title>
-<section><sref ref="[string.operator==]"/><sref ref="[string.compare]"/></section>
+<section><sref ref="[string.cmp]"/><sref ref="[string.compare]"/></section>
 <submitter>Ahti Lepp&auml;nen</submitter>
 <date>9 Jan 2017</date>
 <priority>2</priority>
 
 <discussion>
 <p>
-Currently (<a href="https://wg21.link/n4618">N4618</a>, 2016-11-28) the specification of <tt>operator==</tt> 
-for <tt>std::basic_string</tt> and <tt>std::basic_string_view</tt> objects is clearly defined, but when 
-interpreted as written, it may lead to comparison of strings of different sizes being a &#x1d4aa;(n) operation 
-instead of a simple size check. Actual implementations in standard libraries vary so that in practice the 
-programmers can't rely neither on having the literal version of the standard specification nor reasonable 
+Currently (<a href="https://wg21.link/n4618">N4618</a>, 2016-11-28) the specification of <tt>operator==</tt>
+for <tt>std::basic_string</tt> and <tt>std::basic_string_view</tt> objects is clearly defined, but when
+interpreted as written, it may lead to comparison of strings of different sizes being a &#x1d4aa;(n) operation
+instead of a simple size check. Actual implementations in standard libraries vary so that in practice the
+programmers can't rely neither on having the literal version of the standard specification nor reasonable
 performance characteristics.
 <p/>
 The definition for <tt>basic_string operator==</tt> in N4618 is as follows:
@@ -58,7 +58,7 @@ int compare(basic_string_view&lt;charT, traits&gt; sv) const noexcept;
 </pre>
 <blockquote>
 <p>
--1- <i>Effects:</i> Determines the effective length <tt>rlen</tt> of the strings to compare as the smaller of 
+-1- <i>Effects:</i> Determines the effective length <tt>rlen</tt> of the strings to compare as the smaller of
 <tt>size()</tt> and <tt>sv.size()</tt>. The function then compares the two strings by calling <tt>traits::compare(data(),
 sv.data(), rlen)</tt>.
 <p/>
@@ -93,17 +93,17 @@ indicated in Table 63.
 </blockquote>
 </blockquote>
 <p>
-From these it seems that <tt>compare()</tt> of strings of different sizes can't return zero and <tt>operator==</tt> 
-will return <tt>false</tt>. However some implementations do not seem to call <tt>traits::compare()</tt> for 
-<tt>basic_string</tt>s of different sizes even when the traits and it's <tt>compare()</tt> are user-defined. And those 
+From these it seems that <tt>compare()</tt> of strings of different sizes can't return zero and <tt>operator==</tt>
+will return <tt>false</tt>. However some implementations do not seem to call <tt>traits::compare()</tt> for
+<tt>basic_string</tt>s of different sizes even when the traits and it's <tt>compare()</tt> are user-defined. And those
 that call, make the <tt>operator==</tt> a worst case &#x1d4aa;(n) operation even for strings of different sizes.
 <p/>
-This defect report does not propose a wording, but on a general level the wording should allow standard library 
-implementers to write a standard conforming <tt>operator==</tt> for <tt>basic_string</tt> and <tt>basic_string_view</tt> 
-(others?) in such a way that it's performance characteristics are reasonable and the programmers can rely on having 
-a consistent behaviour across implementations. Perhaps the key issue here is that <tt>operator==</tt> is defined 
-through <tt>compare() == 0</tt>: while it returns the intended result, for some inputs it does computations that 
-are not needed by <tt>operator==</tt>. There are also related specifications that may need to be revised, for example 
+This defect report does not propose a wording, but on a general level the wording should allow standard library
+implementers to write a standard conforming <tt>operator==</tt> for <tt>basic_string</tt> and <tt>basic_string_view</tt>
+(others?) in such a way that it's performance characteristics are reasonable and the programmers can rely on having
+a consistent behaviour across implementations. Perhaps the key issue here is that <tt>operator==</tt> is defined
+through <tt>compare() == 0</tt>: while it returns the intended result, for some inputs it does computations that
+are not needed by <tt>operator==</tt>. There are also related specifications that may need to be revised, for example
 <tt>operator!=</tt> for <tt>basic_string_view</tt>s is defined in <sref ref="[string.view.comparison]"/> as
 </p>
 <blockquote>
@@ -114,16 +114,16 @@ are not needed by <tt>operator==</tt>. There are also related specifications tha
 
 <note>2017-01-26, Jonathan Wakely comments and provides proposed resolution</note>
 <p>
-As mentioned above, some implementations do not make a call to <tt>Traits::compare</tt> if the string lengths are not equal, 
-even though in general this is an observable side effect. Some implementations only perform that optimisation for 
-<tt>std::string</tt> and <tt>std::wstring</tt>, where we know that calls to <tt>std::char_traits&lt;char&gt;::compare</tt> 
+As mentioned above, some implementations do not make a call to <tt>Traits::compare</tt> if the string lengths are not equal,
+even though in general this is an observable side effect. Some implementations only perform that optimisation for
+<tt>std::string</tt> and <tt>std::wstring</tt>, where we know that calls to <tt>std::char_traits&lt;char&gt;::compare</tt>
 and <tt>std::char_traits&lt;wchar_t&gt;::compare</tt> are not observable.
 <p/>
-My reading is that the <i>Returns:</i> element describes the value that must be returned, not the precise steps that must be 
-taken to calculate that value. If we intended to specify the precise steps that must be taken then we could say that using 
+My reading is that the <i>Returns:</i> element describes the value that must be returned, not the precise steps that must be
+taken to calculate that value. If we intended to specify the precise steps that must be taken then we could say that using
 "<i>Effects:</i> Equivalent to [&hellip;]", but we don't do that.
 <p/>
-I would prefer this issue to be closed NAD with the rationale that my reading is correct and comparing the lengths to avoid 
+I would prefer this issue to be closed NAD with the rationale that my reading is correct and comparing the lengths to avoid
 calling <tt>Traits::compare</tt> is already permitted. But if my reading is wrong we need to permit this obvious optimisation.
 </p>
 
@@ -132,7 +132,7 @@ calling <tt>Traits::compare</tt> is already permitted. But if my reading is wron
 
 <note>2017-02-04, Ahti Lepp&auml;nen comments and recommends NAD</note>
 <p>
-While there seems to be varying interpretations of the standards wording, given the comments in this defect report and 
+While there seems to be varying interpretations of the standards wording, given the comments in this defect report and
 definitions in <sref ref="[structure.specification]"/> (N4618):
 </p>
 <blockquote><p>
@@ -142,7 +142,7 @@ definitions in <sref ref="[structure.specification]"/> (N4618):
 </p>
 </blockquote>
 <p>
-I fail to see that the specification of <tt>operator==</tt> "<i>Returns:</i> <tt>lhs.compare(rhs) == 0</tt>" would require call 
+I fail to see that the specification of <tt>operator==</tt> "<i>Returns:</i> <tt>lhs.compare(rhs) == 0</tt>" would require call
 to <tt>compare()</tt> and no longer consider the report valid.
 </p>
 
