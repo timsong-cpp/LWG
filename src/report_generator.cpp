@@ -97,6 +97,12 @@ struct order_by_status {
    auto operator()(lwg::issue const & x, lwg::issue const & y) const noexcept -> bool {
       return lwg::get_status_priority(x.stat) < lwg::get_status_priority(y.stat);
    }
+   auto operator()(lwg::issue const & x, std::string_view y) const noexcept -> bool {
+      return lwg::get_status_priority(x.stat) < lwg::get_status_priority(y);
+   }
+   auto operator()(std::string_view x, lwg::issue const & y) const noexcept -> bool {
+      return lwg::get_status_priority(x) < lwg::get_status_priority(y.stat);
+   }
 };
 
 
@@ -769,11 +775,7 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, fs::path
    auto b = issues.begin();
    auto e = issues.end();
    if(active_only) {
-      auto bReady = find_if(b, e, [](issue const & iss){ return "Ready" == iss.stat; });
-      if(bReady != e) {
-         b = bReady;
-      }
-      b = find_if(b, e, [](issue const & iss){ return "Ready" != iss.stat; });
+      b = std::upper_bound(b, e, "Ready", order_by_status{});
       e = find_if(b, e, [](issue const & iss){ return !is_active(iss.stat); });
    }
    stable_sort(b, e, order_by_section{section_db});
