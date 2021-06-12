@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3566" status="New">
+<title>Constraint recursion for <tt>operator&lt;=&gt;(optional&lt;T&gt;, U)</tt></title>
+<section><sref ref="[optional.comp.with.t]"/></section>
+<submitter>Casey Carter</submitter>
+<date>7 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The three-way-comparison operator for optionals and non-optionals is defined in [optional.comp.with.t] paragraph 25:
+</p>
+<blockquote><pre>
+template&lt;class T, three_way_comparable_with&lt;T&gt; U&gt;
+  constexpr compare_three_way_result_t&lt;T, U&gt;
+    operator&lt;=&gt;(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</pre>
+<blockquote><p>
+-25- <i>Effects:</i> Equivalent to: <tt>return bool(x) ? *x &lt;=&gt; v : strong_ordering::less;</tt>
+</p></blockquote>
+</blockquote>
+<p>
+Checking <tt>three_way_comparable_with</tt> in particular requires checking that <tt>x &lt; v</tt> is well-formed 
+for an lvalue <tt>const optional&lt;T&gt;</tt> and lvalue <tt>const U</tt>. <tt>x &lt; v</tt> can be rewritten as 
+<tt>(v &lt;=&gt; x) &gt; 0</tt>. If <tt>U</tt> is a specialization of <tt>optional</tt>, this overload could be used for 
+<tt>v &lt;=&gt; x</tt>, but first we must check the constraints&hellip;
+</p>
+<p>
+The straightforward fix for this recursion seems to be to refuse to check <tt>three_way_comparable_with&lt;T&gt;</tt> 
+when <tt>U</tt> is a specialization of <tt>optional</tt>. MSVC has been shipping such a fix; our initial tests for 
+this new operator triggered the recursion.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.syn]"/>, header <tt>&lt;optional&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[optional.comp.with.t]"/>, comparison with T</i>
+[&hellip;]
+template&lt;class T, class U&gt; constexpr bool operator>=(const optional&lt;T&gt;&amp;, const U&amp;);
+template&lt;class T, class U&gt; constexpr bool operator>=(const T&amp;, const optional&lt;U&gt;&amp;);
+template&lt;class T, <del>three_way_comparable_with&lt;T&gt;</del><ins>class</ins> U&gt;
+  <ins>requires <i>see below</i></ins>
+    constexpr compare_three_way_result_t&lt;T, U&gt;
+      operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;);
+
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[optional.comp.with.t]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, <del>three_way_comparable_with&lt;T&gt;</del><ins>class</ins> U&gt;
+  <ins>requires (!<i>is-specialization-of</i>&lt;U, optional&gt;) &amp;&amp; three_way_comparable_with&lt;T, U&gt;</ins>
+    constexpr compare_three_way_result_t&lt;T, U&gt;
+      operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;);
+</pre>
+<blockquote>
+<p>
+<ins>-?- The exposition-only trait template <tt><i>is-specialization-of</i>&lt;A, B&gt;</tt> is a constant expression 
+with value <tt>true</tt> when <tt>A</tt> denotes a specialization of the class template <tt>B</tt>, and <tt>false</tt> 
+otherwise.</ins>
+<p/>
+-25- <i>Effects:</i> Equivalent to: <tt>return bool(x) ? *x &lt;=&gt; v : strong_ordering::less;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
