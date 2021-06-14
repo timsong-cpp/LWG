@@ -32,9 +32,9 @@ The straightforward fix for this recursion seems to be to refuse to check <tt>th
 when <tt>U</tt> is a specialization of <tt>optional</tt>. MSVC has been shipping such a fix; our initial tests for 
 this new operator triggered the recursion.
 </p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
 </p>
@@ -74,6 +74,64 @@ template&lt;class T, <del>three_way_comparable_with&lt;T&gt;</del><ins>class</in
 with value <tt>true</tt> when <tt>A</tt> denotes a specialization of the class template <tt>B</tt>, and <tt>false</tt> 
 otherwise.</ins>
 <p/>
+-25- <i>Effects:</i> Equivalent to: <tt>return bool(x) ? *x &lt;=&gt; v : strong_ordering::less;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<note>2021-06-14; Improved proposed wording based on reflector discussion</note>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.syn]"/>, header <tt>&lt;optional&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[optional.optional]"/>, class template optional</i>
+template&lt;class T&gt;
+class optional;
+
+<ins>template&lt;class T&gt; 
+  inline constexpr bool <i>is-optional</i> = false;               <i>// exposition only</i></ins>
+<ins>template&lt;class T&gt; 
+  inline constexpr bool <i>is-optional</i>&lt;optional&lt;T&gt;&gt; = true;   <i>// exposition only</i></ins>
+
+[&hellip;]
+<i>// <sref ref="[optional.comp.with.t]"/>, comparison with T</i>
+[&hellip;]
+template&lt;class T, class U&gt; constexpr bool operator>=(const optional&lt;T&gt;&amp;, const U&amp;);
+template&lt;class T, class U&gt; constexpr bool operator>=(const T&amp;, const optional&lt;U&gt;&amp;);
+template&lt;class T, <del>three_way_comparable_with&lt;T&gt;</del><ins>class</ins> U&gt;
+  <ins>requires (!<i>is-optional</i>&lt;U&gt;) &amp;&amp; three_way_comparable_with&lt;T, U&gt;</ins>
+    constexpr compare_three_way_result_t&lt;T, U&gt;
+      operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;);
+
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[optional.comp.with.t]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, <del>three_way_comparable_with&lt;T&gt;</del><ins>class</ins> U&gt;
+  <ins>requires (!<i>is-optional</i>&lt;U&gt;) &amp;&amp; three_way_comparable_with&lt;T, U&gt;</ins>
+    constexpr compare_three_way_result_t&lt;T, U&gt;
+      operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;);
+</pre>
+<blockquote>
+<p>
 -25- <i>Effects:</i> Equivalent to: <tt>return bool(x) ? *x &lt;=&gt; v : strong_ordering::less;</tt>
 </p>
 </blockquote>
