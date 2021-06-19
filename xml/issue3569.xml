@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3569" status="New">
+<title><tt>join_view</tt> fails to support ranges of ranges with non-<tt>default_initializable</tt> iterators</title>
+<section><sref ref="[range.join.iterator]"/></section>
+<submitter>Casey Carter</submitter>
+<date>16 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>join_view::<i>iterator</i></tt> has exposition-only members <tt><i>outer_</i></tt> &mdash; which holds an 
+iterator into the adapted range &mdash; and <tt><i>inner_</i></tt> &mdash; which holds an iterator into the 
+range denoted by <tt><i>outer_</i></tt>. After application of <paper num="P2325R3"/> "Views should not be 
+required to be default constructible" to the working draft, single-pass iterators can be 
+<tt>non-default_initializable</tt>. P2325R3 constrains <tt>join_view::<i>iterator</i></tt>'s default constructor 
+to require that the types of both <tt><i>outer_</i></tt> and <tt><i>inner_</i></tt> are <tt>default_initializable</tt>, 
+indicating an intent to support such iterator types. However, the effect of the non-default constructor specified 
+in <sref ref="[range.join.iterator]"/> paragraph 6 is to default-initialize <tt><i>inner_</i></tt>, which is 
+ill-formed if its type is not <tt>default_initializable</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+Wording relative to the post 2021-06 virtual plenary working draft. This PR is currently being implemented in MSVC.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.join.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V&gt;
+    requires view&lt;V&gt; &amp;&amp; input_range&lt;range_reference_t&lt;V&gt;&gt; &amp;&amp;
+             (is_reference_v&lt;range_reference_t&lt;V&gt;&gt; ||
+              view&lt;range_value_t&lt;V&gt;&gt;)
+  template&lt;bool Const&gt;
+  struct join_view&lt;V&gt;::<i>iterator</i> {
+    [&hellip;]
+    <ins>optional&lt;</ins><i>InnerIter</i><ins>&gt;</ins> <i>inner_</i><del> = <i>InnerIter</i>()</del>;
+    [&hellip;]
+    constexpr decltype(auto) operator*() const { return <ins>*</ins>*<i>inner_</i>; }
+    [&hellip;]
+    friend constexpr decltype(auto) iter_move(const <i>iterator</i>&amp; i)
+    noexcept(noexcept(ranges::iter_move(<ins>*</ins>i.<i>inner_</i>))) {
+      return ranges::iter_move(<ins>*</ins>i.<i>inner_</i>);
+    }
+    
+    friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      noexcept(noexcept(ranges::iter_swap(<ins>*</ins>x.<i>inner_</i>, <ins>*</ins>y.<i>inner_</i>)));
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr void <i>satisfy();</i>       <i>// exposition only</i>
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+auto update_inner = [this](range_reference_t&lt;<i>Base</i>&gt; x) -> auto&amp; {
+[&hellip;] 
+for (; <i>outer_</i> != ranges::end(<i>parent_</i>-&gt;<i>base_</i>); ++<i>outer_</i>) {
+  auto&amp; inner = update_inner(*<i>outer_</i>);
+  <i>inner_</i> = ranges::begin(inner);
+  if (<ins>*</ins><i>inner_</i> != ranges::end(inner))
+    return;
+}
+if constexpr (<i>ref-is-glvalue</i>)
+  <i>inner_</i><ins>.reset()</ins><del> = <i>InnerIter</i>()</del>;
+</pre>
+</blockquote>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr <i>InnerIter</i> operator-&gt;() const
+  requires <i>has-arrow</i>&lt;<i>InnerIter</i>&gt; &amp;&amp; copyable&lt;<i>InnerIter</i>&gt;;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <tt>return <ins>*</ins><i>inner_</i>;</tt>
+</p>
+</blockquote>
+<pre>
+constexpr <i>iterator</i>&amp; operator++();
+</pre>
+<blockquote>
+<p>
+-9- Let <i>inner-range</i> be:
+<p/>
+[&hellip;]
+<p/>
+-10- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+auto&amp;&amp; inner_rng = <i>inner-range</i>;
+if (++<ins>*</ins><i>inner_</i> == ranges::end(inner_rng)) {
+  ++<i>outer_</i>;
+  <i>satisfy</i>();
+}
+return *this;
+</pre>
+</blockquote>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr <i>iterator</i>&amp; operator--()
+  requires <i>ref-is-glvalue</i> &amp;&amp; bidirectional_range&lt;<i>Base</i>&gt; &amp;&amp;
+           bidirectional_range&lt;range_reference_t&lt;Base&gt;&gt; &amp;&amp;
+           common_range&lt;range_reference_t&lt;Base&gt;&gt;;
+</pre>
+<blockquote>
+<p>
+-13- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+if (<i>outer_</i> == ranges::end(<i>parent_</i>-&gt;<i>base_</i>))
+  <i>inner_</i> = ranges::end(*--<i>outer_</i>);
+while (<ins>*</ins><i>inner_</i> == ranges::begin(*<i>outer_</i>))
+  <ins>*</ins><i>inner_</i> = ranges::end(*--<i>outer_</i>);
+--<ins>*</ins><i>inner_</i>;
+return *this;
+</pre>
+</blockquote>
+</blockquote>
+[&hellip;]
+<pre>
+friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  noexcept(noexcept(ranges::iter_swap(<ins>*</ins>x.<i>inner_</i>, <ins>*</ins>y.<i>inner_</i>)));
+</pre>
+<blockquote>
+<p>
+-16- <i>Effects:</i> Equivalent to: return <tt>ranges::iter_swap(<ins>*</ins>x.<i>inner_</i>, <ins>*</ins>y.<i>inner_</i>);</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
