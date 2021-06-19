@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3570" status="New">
+<title><tt>basic_osyncstream::emit</tt> should be an unformatted output function</title>
+<section><sref ref="[range.join.iterator]"/></section>
+<submitter>Tim Song</submitter>
+<date>19 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>basic_osyncstream::emit</tt> seems rather similar to <tt>basic_ostream::flush</tt> &mdash;
+both are "flushing" operations that forward to member functions of the
+<tt>streambuf</tt> and set <tt>badbit</tt> if those functions fail. But the former isn't
+currently specified as an unformatted output function, so it a) doesn't construct or check a 
+<tt>sentry</tt> and b) doesn't set <tt>badbit</tt> if <tt>emit</tt> exits via an exception. At 
+least the latter appears to be clearly desirable &mdash; a <tt>streambuf</tt> operation that throws 
+ordinarily results in <tt>badbit</tt> being set.
+<p/>
+The reference implementation in <paper num="P0053R7"/> constructs a <tt>sentry</tt> and only
+calls <tt>emit</tt> on the <tt>streambuf</tt> if the <tt>sentry</tt> converts to <tt>true</tt>, 
+so this seems to be an accidental omission in the wording.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[syncstream.osyncstream.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void emit();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> <ins>Behaves as an unformatted output function (<sref ref="[ostream.unformatted]"/>). 
+After constructing a <tt>sentry</tt> object, c</ins><del>C</del>alls <tt>sb.emit()</tt>. If that call 
+returns <tt>false</tt>, calls <tt>setstate(ios_base::badbit)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
