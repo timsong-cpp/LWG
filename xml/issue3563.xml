@@ -13,10 +13,10 @@
 In <sref ref="[range.elements.overview]"/> we have:
 </p>
 <blockquote><p>
-<tt>keys_view</tt> is an alias for <tt>elements_view&lt;views::all_t&lt;R&gt;, 0&gt;</tt>, and 
+<tt>keys_view</tt> is an alias for <tt>elements_view&lt;views::all_t&lt;R&gt;, 0&gt;</tt>, and
 is useful for extracting keys from associative containers.
 <p/>
-[<i>Example 2:</i> 
+[<i>Example 2:</i>
 </p>
 <blockquote><pre>
 auto names = keys_view{historical_figures};
@@ -38,10 +38,10 @@ template&lt;class R&gt;
 <p>
 There's a similar example for <tt>values_view</tt>.
 <p/>
-But class template argument deduction cannot work here, <tt>keys_view(r)</tt> cannot deduce <tt>R</tt> &mdash; 
-it's a non-deduced context. At the very least, the example is wrong and should be rewritten as 
-<tt>views::keys(historical_figures)</tt>. Or, I guess, as 
-<tt>keys_view&lt;decltype(historical_figures)&gt;(historical_figures)&gt;</tt> (but really, not). 
+But class template argument deduction cannot work here, <tt>keys_view(r)</tt> cannot deduce <tt>R</tt> &mdash;
+it's a non-deduced context. At the very least, the example is wrong and should be rewritten as
+<tt>views::keys(historical_figures)</tt>. Or, I guess, as
+<tt>keys_view&lt;decltype(historical_figures)&gt;(historical_figures)&gt;</tt> (but really, not).
 </p>
 
 <note>2021-05-29 Tim comments and provides wording</note>
@@ -51,17 +51,17 @@ I have some ideas about making CTAD work for <tt>keys_view</tt> and
 not yet in a shape to permit those ideas to be tested.
 What <em>is</em> clear, though, is that the current definitions of <tt>keys_view</tt>
 and <tt>values_view</tt> can't possibly ever work for CTAD, because <tt>R</tt> is only
-used in a non-deduced context and so they can never meet the "deducible" constraint in 
+used in a non-deduced context and so they can never meet the "deducible" constraint in
 <sref ref="[over.match.class.deduct]"/> p2.3.
 <p/>
 The proposed resolution below removes the <tt>views::all_t</tt> transformation
-in those alias templates. This makes these aliases transparent enough to support CTAD out 
-of the box when a view is used, and any questions about deduction guides on 
-<tt>elements_view</tt> can be addressed later once the implementations become more mature. 
-This also makes them consistent with all the other views: you can't write 
+in those alias templates. This makes these aliases transparent enough to support CTAD out
+of the box when a view is used, and any questions about deduction guides on
+<tt>elements_view</tt> can be addressed later once the implementations become more mature.
+This also makes them consistent with all the other views: you can't write
 <tt>elements_view&lt;map&lt;int, int&gt;&amp;, 0&gt;</tt> or
-<tt>reverse_view&lt;map&lt;int, int&gt;&amp;&gt;</tt>, so why do we allow 
-<tt>keys_view&lt;map&lt;int, int&gt;&amp;&gt;</tt>? It is, however, a breaking change, 
+<tt>reverse_view&lt;map&lt;int, int&gt;&amp;&gt;</tt>, so why do we allow
+<tt>keys_view&lt;map&lt;int, int&gt;&amp;&gt;</tt>? It is, however, a breaking change,
 so it is important that we get this in sooner rather than later.
 <p/>
 The proposed resolution has been implemented and tested.
@@ -74,9 +74,8 @@ Partially addressed by an
 <a href="https://github.com/cplusplus/draft/pull/4659">editorial change</a>.
 </p>
 
-</discussion>
-
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
 </p>
@@ -94,10 +93,10 @@ namespace std::ranges {
   template&lt;input_range V, size_t N&gt;
     requires <i>see below</i>
   class elements_view;
-  
+
   template&lt;class T, size_t N&gt;
     inline constexpr bool enable_borrowed_range&lt;elements_view&lt;T, N&gt;&gt; = enable_borrowed_range&lt;T&gt;;
-    
+
   template&lt;class R&gt;
     using keys_view = elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 0&gt;;
   template&lt;class R&gt;
@@ -113,7 +112,7 @@ namespace std::ranges {
 
 <blockquote>
 <p>
--3- <tt>keys_view</tt> is an alias for <tt>elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 0&gt;</tt>, 
+-3- <tt>keys_view</tt> is an alias for <tt>elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 0&gt;</tt>,
 and is useful for extracting keys from associative containers.
 <p/>
 [<i>Example 2</i>:
@@ -129,7 +128,7 @@ for (auto&amp;&amp; name : names) {
 <p>
 &mdash; <i>end example</i>]
 <p/>
--4- <tt>values_view</tt> is an alias for <tt>elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 1&gt;</tt>, 
+-4- <tt>values_view</tt> is an alias for <tt>elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 1&gt;</tt>,
 and is useful for extracting values from associative containers.
 <p/>
 [<i>Example 3</i>:
@@ -142,6 +141,65 @@ cout &lt;&lt; ranges::count_if(values_view{<ins>views::all(</ins>historical_figu
 </blockquote>
 <p>
 &mdash; <i>end example</i>]
+</p>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+<note>2021-06-18 Tim syncs wording to latest working draft</note>
+<p>
+The examples have been editorially corrected, so the new wording simply changes the
+definition of <tt>keys_view</tt> and <tt>values_view</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4892"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std::ranges {
+[&hellip;]
+
+  <i>// <sref ref="[range.elements]"/>, elements view</i>
+  template&lt;input_range V, size_t N&gt;
+    requires <i>see below</i>
+  class elements_view;
+
+  template&lt;class T, size_t N&gt;
+    inline constexpr bool enable_borrowed_range&lt;elements_view&lt;T, N&gt;&gt; = enable_borrowed_range&lt;T&gt;;
+
+  template&lt;class R&gt;
+    using keys_view = elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 0&gt;;
+  template&lt;class R&gt;
+    using values_view = elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 1&gt;;
+
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.elements.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <tt>keys_view</tt> is an alias for <tt>elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 0&gt;</tt>,
+and is useful for extracting keys from associative containers.
+<p/>
+[<i>Example 2</i>: &hellip; &mdash; <i>end example</i>]
+<p/>
+-4- <tt>values_view</tt> is an alias for <tt>elements_view&lt;<del>views::all_t&lt;</del>R<del>&gt;</del>, 1&gt;</tt>,
+and is useful for extracting values from associative containers.
+<p/>
+[<i>Example 3</i>: &hellip; &mdash; <i>end example</i>]
 </p>
 </blockquote>
 </li>
