@@ -10,7 +10,7 @@
 
 <discussion>
 <p>
-See LWG <iref ref="2337"/>. Since we aren't removing <tt>noexcept</tt> from <tt>shared_ptr</tt>'s 
+See LWG <iref ref="2337"/>. Since we aren't removing <tt>noexcept</tt> from <tt>shared_ptr</tt>'s
 <tt>operator*</tt>, we should consider adding <tt>noexcept</tt> to <tt>unique_ptr</tt>'s <tt>operator*</tt>.
 </p>
 
@@ -23,19 +23,19 @@ Ville provides an initial proposed wording.
 </p>
 
 <note>LEWG Kona 2017</note>
-<p>-&gt;Open: Believe these should be <tt>noexcept</tt> for consistency. We like these. We agree with the proposed resolution. 
+<p>-&gt;Open: Believe these should be <tt>noexcept</tt> for consistency. We like these. We agree with the proposed resolution.
 <tt>operator-&gt;()</tt> already has <tt>noexcept</tt>.</p>
 <p>Also adds <tt>optional::operator*</tt></p>
 <p>Alisdair points out that fancy pointers might intentionally throw from <tt>operator*</tt>, and we don't want to prohibit that.</p>
 <p>Go forward with conditional <tt>noexcept(noexcept(*decltype()))</tt>.</p>
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>This wording is relative to N4606.</p>
 
 <blockquote class="note">
 <p>
-[Drafting note: since this issue is all about consistency, <tt>optional</tt>'s pointer-like operators 
+[Drafting note: since this issue is all about consistency, <tt>optional</tt>'s pointer-like operators
 are additionally included.]
 </p>
 </blockquote>
@@ -100,6 +100,128 @@ constexpr T&amp; operator*() &amp; <ins>noexcept</ins>;
 constexpr T&amp;&amp; operator*() &amp;&amp; <ins>noexcept</ins>;
 constexpr const T&amp;&amp; operator*() const &amp;&amp; <ins>noexcept</ins>;
 </pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2021-06-19 Tim updates wording</note>
+</discussion>
+
+<resolution>
+<p>This wording is relative to <paper num="N4892"/>.</p>
+
+<blockquote class="note">
+<p>
+[Drafting note: since this issue is all about consistency, <tt>optional</tt>'s pointer-like operators
+are additionally included.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Edit <sref ref="[unique.ptr.single.general]"/>, class template <tt>unique_ptr</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T, class D = default_delete&lt;T&gt;&gt; class unique_ptr {
+  public:
+    [&hellip;]
+
+    // <sref ref="[unique.ptr.single.observers]"/>, observers
+    add_lvalue_reference_t&lt;T&gt; operator*() const <ins>noexcept(<i>see below</i>)</ins>;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[unique.ptr.single.observers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+add_lvalue_reference_t&lt;T&gt; operator*() const <ins>noexcept(noexcept(*declval&lt;pointer&gt;()))</ins>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: <tt>get() != nullptr</tt>.
+<p/>
+-2- <i>Returns</i>: <tt>*get()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[optional.optional.general]"/>, class template <tt>optional</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt;
+  class optional {
+  public:
+    [&hellip;]
+
+    // <sref ref="[optional.observe]"/>, observers
+    constexpr const T* operator-&gt;() const <ins>noexcept</ins>;
+    constexpr T* operator-&gt;() <ins>noexcept</ins>;
+    constexpr const T&amp; operator*() const &amp; <ins>noexcept</ins>;
+    constexpr T&amp; operator*() &amp; <ins>noexcept</ins>;
+    constexpr T&amp;&amp; operator*() &amp;&amp; <ins>noexcept</ins>;
+    constexpr const T&amp;&amp; operator*() const &amp;&amp; <ins>noexcept</ins>;
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit <sref ref="[optional.observe]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr const T* operator-&gt;() const <ins>noexcept</ins>;
+constexpr T* operator-&gt;() <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: <tt>*this</tt> contains a value.
+<p/>
+-2- <i>Returns</i>: <tt>val</tt>.
+<p/>
+<del>-3- <i>Throws</i>: Nothing.</del>
+<p/>
+-4- <i>Remarks:</i> These functions are constexpr functions.
+</p>
+</blockquote>
+<pre>
+constexpr const T&amp; operator*() const &amp; <ins>noexcept</ins>;
+constexpr T&amp; operator*() &amp; <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions</i>: <tt>*this</tt> contains a value.
+<p/>
+-6- <i>Returns</i>: <tt>*val</tt>.
+<p/>
+<del>-7- <i>Throws</i>: Nothing.</del>
+<p/>
+-8- <i>Remarks:</i> These functions are constexpr functions.
+</p>
+</blockquote>
+<pre>
+constexpr T&amp;&amp; operator*() &amp;&amp; <ins>noexcept</ins>;
+constexpr const T&amp;&amp; operator*() const &amp;&amp; <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-9- <i>Preconditions</i>: <tt>*this</tt> contains a value.
+<p/>
+-10- <i>Effects</i>: Equivalent to: <tt>return std::move(*val);</tt>
+</p>
+</blockquote>
 </blockquote>
 </li>
 
