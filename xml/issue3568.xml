@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3568" status="New">
+<title><tt>basic_istream_view</tt> needs to initialize <tt><i>value_</i></tt></title>
+<section><sref ref="[range.istream.view]"/></section>
+<submitter>Casey Carter</submitter>
+<date>15 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="P2325R3"/> removes the default member initializers for <tt>basic_istream_view</tt>'s exposition-only 
+<tt><i>stream_</i></tt> and <tt><i>value_</i></tt> members. Consequently, copying a <tt>basic_istream_view</tt> 
+before the first call to <tt>begin</tt> may produce undefined behavior since doing so necessarily copies the 
+uninitialized <tt><i>value_</i></tt>. We should restore <tt><i>value_</i></tt>'s default member initializer and 
+remove this particular footgun.
+</p>
+</discussion>
+
+<resolution>
+<p>
+Wording relative to the post-202106 working draft (as near as possible). This PR is currently being implemented in MSVC.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.istream.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;movable Val, class CharT, class Traits>
+    requires default_initializable&lt;Val&gt; &amp;&amp;
+             <i>stream-extractable</i>&lt;Val, CharT, Traits&gt;
+  class basic_istream_view : public view_interface&lt;basic_istream_view&lt;Val, CharT, Traits&gt;&gt; {
+    [&hellip;]
+    Val <i>value_</i> <ins>= Val()</ins>; <i>// exposition only</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
