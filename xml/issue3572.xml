@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3572" status="New">
+<title><tt><i>copyable-box</i></tt> should be fully <tt>constexpr</tt></title>
+<section><sref ref="[range.copy.wrap]"/></section>
+<submitter>Tim Song</submitter>
+<date>19 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="P2231R1"/> made <tt>optional</tt> fully <tt>constexpr</tt>, but missed its cousin
+<tt><i>semiregular-box</i></tt> (which was renamed to <tt><i>copyable-box</i></tt> by 
+<paper num="P2325R3"/>). Most operations of <tt><i>copyable-box</i></tt> are already 
+<tt>constexpr</tt> simply because <tt><i>copyable-box</i></tt> is specified in terms of <tt>optional</tt>;
+the only missing ones are the assignment operators layered on top when the wrapped type
+isn't assignable itself.
+</p>
+</discussion>
+
+<resolution>
+<p>
+Wording relative to the <a href="https://github.com/cplusplus/draft/releases/download/n4892/n4892.pdf">post 2021-06 
+virtual plenary working draft</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.copy.wrap]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Many types in this subclause are specified in terms of an exposition-only class template <tt><i>copyable-box</i></tt>.
+<tt><i>copyable-box</i>&lt;T&gt;</tt> behaves exactly like <tt>optional&lt;T&gt;</tt> with the following differences:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; [&hellip;]</p></li>
+<li><p>(1.2) &mdash; [&hellip;]</p></li>
+<li><p>(1.3) &mdash; If <tt>copyable&lt;T&gt;</tt> is not modeled, the copy assignment operator is equivalent to:</p>
+<blockquote>
+<pre>
+<ins>constexpr</ins> <i>copyable-box</i>&amp; operator=(const <i>copyable-box</i>&amp; that)
+  noexcept(is_nothrow_copy_constructible_v&lt;T&gt;) {
+  if (this != addressof(that)) {
+    if (that) emplace(*that);
+    else reset();
+  }
+  return *this;
+}
+</pre>
+</blockquote>
+</li>
+<li><p>(1.4) &mdash; If <tt>movable&lt;T&gt;</tt> is not modeled, the move assignment operator is equivalent to:</p>
+<blockquote>
+<pre>
+<ins>constexpr</ins> <i>copyable-box</i>&amp; operator=(<i>copyable-box</i>&amp;&amp; that)
+  noexcept(is_nothrow_move_constructible_v&lt;T&gt;) {
+  if (this != addressof(that)) {
+    if (that) emplace(std::move(*that));
+    else reset();
+  }
+  return *this;
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
