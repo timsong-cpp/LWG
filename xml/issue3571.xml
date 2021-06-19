@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3571" status="New">
+<title><tt>flush_emit</tt> should set <tt>badbit</tt> if the <tt>emit</tt> call fails</title>
+<section><sref ref="[ostream.manip]"/></section>
+<submitter>Tim Song</submitter>
+<date>19 Jun 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>basic_osyncstream::emit</tt> is specified to set <tt>badbit</tt> if it fails
+(<sref ref="[syncstream.osyncstream.members]"/> p1), but the <tt>emit</tt> part of the
+<tt>flush_emit</tt> manipulator isn't, even though the <tt>flush</tt> part does set
+<tt>badbit</tt> if it fails.
+<p/>
+More generally, given an <tt>osyncstream s</tt>, <tt>s &lt;&lt; flush_emit;</tt> should
+probably have the same behavior as <tt>s.flush(); s.emit()</tt>.
+<p/>
+The reference implementation linked in <paper num="P0753R2"/> does set <tt>badbit</tt> on
+failure, so at least this part appears to be an oversight. As
+discussed in LWG <iref ref="3570"/>, <tt>basic_osyncstream::emit</tt> should probably be an
+unformatted output function, so the <tt>emit</tt> part of <tt>flush_emit</tt> should do so too.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ostream.manip]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; flush_emit(basic_ostream&lt;charT, traits&gt;&amp; os);
+</pre>
+<blockquote>
+<p>
+-12- <i>Effects:</i> Calls <tt>os.flush()</tt>. Then, if <tt>os.rdbuf()</tt> is a 
+<tt>basic_syncbuf&lt;charT, traits, Allocator&gt;*</tt>, called <tt>buf</tt> for the purpose of exposition, 
+<ins>behaves as an unformatted output function (<sref ref="[ostream.unformatted]"/>) of <tt>os</tt>. After 
+constructing a <tt>sentry</tt> object,</ins> calls <tt>buf-&gt;emit()</tt>. <ins>If that call returns 
+<tt>false</tt>, calls <tt>os.setstate(ios_base::badbit)</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
