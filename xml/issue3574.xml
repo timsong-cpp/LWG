@@ -1,0 +1,226 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3574" status="New">
+<title><tt>common_iterator</tt> should be completely <tt>constexpr</tt>-able</title>
+<section><sref ref="[common.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>21 Jul 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+After <paper num="P2231R1"/>, <tt>variant</tt> becomes completely <tt>constexpr</tt>-able, which means that 
+<tt>common_iterator</tt> can also be completely <tt>constexpr</tt>-able.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[common.iterator]"/>, class template <tt>common_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+    requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
+  class common_iterator {
+  public:
+    constexpr common_iterator() requires default_initializable&lt;I&gt; = default;
+    constexpr common_iterator(I i);
+    constexpr common_iterator(S s);
+    template&lt;class I2, class S2&gt;
+      requires convertible_to&lt;const I2&amp;, I&gt; &amp;&amp; convertible_to&lt;const S2&amp;, S&gt;
+        constexpr common_iterator(const common_iterator&lt;I2, S2&gt;&amp; x);
+        
+    template&lt;class I2, class S2&gt;
+      requires convertible_to&lt;const I2&amp;, I&gt; &amp;&amp; convertible_to&lt;const S2&amp;, S&gt; &amp;&amp;
+               assignable_from&lt;I&amp;, const I2&amp;&gt; &amp;&amp; assignable_from&lt;S&amp;, const S2&amp;&gt;
+      <ins>constexpr</ins> common_iterator&amp; operator=(const common_iterator&lt;I2, S2&gt;&amp; x);
+
+    <ins>constexpr</ins> decltype(auto) operator*();
+    <ins>constexpr</ins> decltype(auto) operator*() const
+      requires <i>dereferenceable</i>&lt;const I&gt;;
+    <ins>constexpr</ins> decltype(auto) operator-&gt;() const
+      requires <i>see below</i>;
+ 
+    <ins>constexpr</ins> common_iterator&amp; operator++();
+    <ins>constexpr</ins> decltype(auto) operator++(int);
+
+    template&lt;class I2, sentinel_for&lt;I&gt; S2&gt;
+      requires sentinel_for&lt;S, I2&gt;
+    friend <ins>constexpr</ins> bool operator==(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+    template&lt;class I2, sentinel_for&lt;I&gt; S2&gt;
+      requires sentinel_for&lt;S, I2&gt; &amp;&amp; equality_comparable_with&lt;I, I2&gt;
+    friend <ins>constexpr</ins> bool operator==(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+
+    template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2&gt;
+      requires sized_sentinel_for&lt;S, I2&gt;
+    friend <ins>constexpr</ins> iter_difference_t&lt;I2&gt; operator-(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+
+    friend <ins>constexpr</ins> iter_rvalue_reference_t&lt;I&gt; iter_move(const common_iterator&amp; i)
+      noexcept(noexcept(ranges::iter_move(declval&lt;const I&amp;&gt;())))
+        requires input_iterator&lt;I&gt;;
+    template&lt;indirectly_swappable&lt;I&gt; I2, class S2&gt;
+      friend <ins>constexpr</ins> void iter_swap(const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y)
+        noexcept(noexcept(ranges::iter_swap(declval&lt;const I&amp;&gt;(), declval&lt;const I2&amp;&gt;())));
+
+  private:
+    variant&lt;I, S&gt; v_; <i>// exposition only</i>
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.const]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class I2, class S2&gt;
+  requires convertible_to&lt;const I2&amp;, I&gt; &amp;&amp; convertible_to&lt;const S2&amp;, S&gt; &amp;&amp;
+           assignable_from&lt;I&amp;, const I2&amp;&gt; &amp;&amp; assignable_from&lt;S&amp;, const S2&amp;&gt;
+    <ins>constexpr</ins> common_iterator&amp; operator=(const common_iterator&lt;I2, S2&gt;&amp; x);
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions:</i> <tt>x.v_.valueless_by_exception()</tt> is <tt>false</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.access]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>constexpr</ins> decltype(auto) operator*();
+<ins>constexpr</ins> decltype(auto) operator*() const
+  requires <i>dereferenceable</i>&lt;const I&gt;;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <tt>holds_alternative&lt;I&gt;(v_)</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>constexpr</ins> decltype(auto) operator-&gt;() const
+  requires <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-3- The expression in the <i>requires-clause</i> is equivalent to:
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.nav]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>constexpr</ins> common_iterator&amp; operator++();
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <tt>holds_alternative&lt;I&gt;(v_)</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>constexpr</ins> decltype(auto) operator++(int);
+</pre>
+<blockquote>
+<p>
+-4- <i>Preconditions:</i> <tt>holds_alternative&lt;I&gt;(v_)</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class I2, sentinel_for&lt;I&gt; S2&gt;
+  requires sentinel_for&lt;S, I2&gt;
+friend <ins>constexpr</ins> bool operator==(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> [&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class I2, sentinel_for&lt;I&gt; S2&gt;
+  requires sentinel_for&lt;S, I2&gt; &amp;&amp; equality_comparable_with&lt;I, I2&gt;
+friend <ins>constexpr</ins> bool operator==(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-3- <i>Preconditions:</i> [&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2&gt;
+  requires sized_sentinel_for&lt;S, I2&gt;
+friend <ins>constexpr</ins> iter_difference_t&lt;I2&gt; operator-(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.cust]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+friend <ins>constexpr</ins> iter_rvalue_reference_t&lt;I&gt; iter_move(const common_iterator&amp; i)
+  noexcept(noexcept(ranges::iter_move(declval&lt;const I&amp;&gt;())))
+    requires input_iterator&lt;I&gt;;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> [&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;indirectly_swappable&lt;I&gt; I2, class S2&gt;
+  friend <ins>constexpr</ins> void iter_swap(const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y)
+    noexcept(noexcept(ranges::iter_swap(declval&lt;const I&amp;&gt;(), declval&lt;const I2&amp;&gt;())));
+</pre>
+<blockquote>
+<p>
+-3- <i>Preconditions:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+</issue>
