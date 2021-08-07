@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3576" status="New">
+<title>Clarifying fill character in <tt>std::format</tt></title>
+<section><sref ref="[format.string.std]"/></section>
+<submitter>Mark de Wever</submitter>
+<date>01 Aug 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The paper <paper num="P1868"/> "width: clarifying units of width and precision in 
+<tt>std::format</tt>" added optional Unicode support to the <tt>format</tt> header.  
+This paper didn't update the definition of the fill character, which is defined as
+</p>
+<blockquote><p>
+"The fill character can be any character other than <tt>{</tt> or <tt>}</tt>."
+</p></blockquote>
+<p>
+This wording means the fill is a character and not a Unicode grapheme cluster. Based 
+on the current wording the range of available fill characters depends on the 
+<tt>char_type</tt> of the format string. After P1868 the determination of the required 
+padding size is Unicode aware, but it's not possible to use a Unicode grapheme clusters 
+as padding. This looks odd from a user's perspective and already lead to implementation 
+divergence between libc++ and MSVC STL:
+</p>
+<ul>
+<li><p>The WIP libc++ implementation stores one <tt>char_type</tt>, strictly adhering
+to the wording of the Standard.</p></li>
+<li><p>MSVC STL stores one code point, regardless of the <tt>char_type</tt> used. This 
+is already better from a user's perspective; all 1 code point grapheme clusters are 
+properly handled.</p></li>
+</ul>
+<p>
+For the width calculation the width of a Unicode grapheme cluster is estimated to be 1 or 2. 
+Since padding with a 2 column width can't properly pad an odd number of columns the grapheme 
+cluster used should always have a column width of 1.
+<p/>
+The responsibility for precondition can be either be validated in the library or by the user. 
+It would be possible to do the validation compile time and make the code ill-formed when the 
+precondition is violated. For the following reason I think it's better to not validate
+the width:
+</p>
+<ul>
+<li><p>P1868 14. Implementation</p>
+<blockquote><p>
+"More importantly, our approach permits refining the definition in the future if there is 
+interest in doing so. It will mostly require researching the status of Unicode support on 
+terminals and minimal or no changes to the implementation."
+</p></blockquote>
+<p>When an estimated width of 1 is required it means that improving the Standard may make 
+previously valid code ill-formed after the improvement.</p></li>
+<li><p>P1868 13. Examples</p>
+<p>The example of the family grapheme cluster is only rendered properly on the MacOS terminal. 
+So even when the library does a proper validation it's not certain the output will be 
+rendered properly.</p></li>
+</ul>
+<p>
+Changing the fill type changes the size of the <tt>std::formatter</tt> and thus will be an ABI break.
+<p/>
+The proposed resolution probably needs some additional changes since the Unicode and output 
+width are specified later in the standard, specifically <sref ref="[format.string.std]"/>/9 - 12.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.string.std]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- [<i>Note 2</i>: The <i>fill</i> character can be any character other than <tt>{</tt> or <tt>}</tt>. 
+<ins>For a string in a Unicode encoding, the <i>fill</i> character can be any Unicode grapheme cluster 
+other than <tt>{</tt> or <tt>}</tt>. For a string in a non-Unicode encoding, the <i>fill</i> character 
+can be any character other than <tt>{</tt> or <tt>}</tt>. The output width of the fill character is 
+always assumed to be one column.</ins> The presence of a fill character is signaled by the character 
+following it, which must be one of the alignment options. If the second character of <i>std-format-spec</i> 
+is not a valid alignment option, then it is assumed that both the fill character and the alignment 
+option are absent. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
