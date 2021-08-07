@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3577" status="New">
+<title>Merging an (unordered) associative container with itself</title>
+<section><sref ref="[associative.reqmts.general]"/><sref ref="[unord.req.general]"/></section>
+<submitter>Joaqu&iacute;n M L&oacute;pez Mu&ntilde;oz</submitter>
+<date>04 Aug 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+For the expression <tt>a.merge(a2)</tt>, it is not explicitly stated whether <tt>a2</tt> can be the 
+same object as <tt>a</tt>. libstdc++-v3 and libc++ seemingly assume this is not allowed, as the following code
+produces an infinite loop with both standard library implementations:
+</p>
+<blockquote><pre>
+#include &lt;set&gt;
+
+int main()
+{
+  std::multiset&lt;int&gt; c={0, 0};
+  c.merge(c);
+}
+</pre></blockquote>
+<p>
+A strict reading of postconditions seems to ban the case where <tt>a</tt> and <tt>a2</tt> are the same:
+</p>
+<ul>
+<li><p><sref ref="[associative.reqmts.general]"/>: "Iterators referring to the transferred elements [&hellip;] 
+now behave as iterators into <tt>a</tt>, not into <tt>a2</tt>": if <tt>a</tt> and <tt>a2</tt> are the same, 
+a transferred iterator can't be both an iterator to <tt>a</tt> and not an iterator to <tt>a2</tt>.</p></li>
+<li><p><sref ref="[unord.req.general]"/>: "Iterators referring to the transferred elements and all iterators 
+referring to <tt>a</tt> will be invalidated, but iterators to elements remaining in <tt>a2</tt> will remain valid": 
+if <tt>a</tt> and <tt>a2</tt> are the same, an iterator can't both be invalidated and remain valid.</p></li>
+</ul>
+<p>
+Even if a provision is made that, when <tt>a</tt> and <tt>a2</tt> are the same, no elements are transferred by 
+convention, <sref ref="[unord.req.general]"/> would still implicitly ban the case, as all iterators would be 
+invalidated but the iterators to the remaining elements (again, all iterators) would remain invalid, which is 
+contradictory.
+<p/>
+For context, analogous operations for <tt>std::list</tt> take inconsistent approaches:
+</p>
+<ul>
+<li><p><tt>splice(const_iterator position, list&amp; x)</tt> requires that source and destination are not the same.</p></li>
+<li><p><tt>splice(const_iterator position, list&amp; x, const_iterator i)</tt> implicitly allows <tt>addressof(x) == this</tt>, 
+as the case <tt>position == i</tt> is taken care of.</p></li>
+<li><p><tt>std::list::merge</tt> explicitly allows the case <tt>addressof(x) == this</tt> (resulting in a no-op).</p></li>
+</ul>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
