@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3585" status="New">
+<title>Variant converting assignment with immovable alternative</title>
+<section><sref ref="[variant.assign]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>01 Sep 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Example originally from <a href="https://stackoverflow.com/q/68998153/2069064">StackOverflow</a> but with a more reasonable example from Tim Song:
+</p>
+<blockquote><pre>
+#include &lt;variant&gt;
+#include &lt;string&gt;
+
+struct A {
+  A() = default;
+  A(A&amp;&amp;) = delete;
+};
+
+int main() {
+  std::variant&lt;A, std::string&gt; v;
+  v = "hello";
+}
+</pre></blockquote>
+<p>
+There is implementation divergence here: libstdc++ rejects, libc++ and msvc accept.
+<p/>
+<sref ref="[variant.assign]"/> bullet (13.3) says that if we're changing the alternative in assignment 
+and it is not the case that the converting construction won't throw (as in the above), then "Otherwise, 
+equivalent to <tt>operator=(variant(std::forward&lt;T&gt;(t)))</tt>." That is, we defer to move assignment.
+<p/>
+<tt>variant&lt;A, string&gt;</tt> isn't move-assignable (because <tt>A</tt> isn't move constructible). Per 
+the wording in the standard, we have to reject this. libstdc++ follows the wording of the standard.
+<p/>
+But we don't actually have to do a full move assignment here, since we know the situation we're in is 
+changing the alternative, so the fact that <tt>A</tt> isn't move-assignable shouldn't matter. libc++ and 
+msvc instead do something more direct, allowing the above program.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[variant.assign]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> This should cover the case that we want to cover: that if construction of <tt>T<sub><i>j</i></sub></tt> 
+from <tt>T</tt> throws, we haven't yet changed any state in the variant.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class T&gt; constexpr variant&amp; operator=(T&amp;&amp; t) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-11- Let <tt>T<sub><i>j</i></sub></tt> be a type that is determined as follows: build an imaginary function 
+<tt><i>FUN</i>(T<sub><i>i</i></sub>)</tt> for each alternative type <tt>T<sub><i>i</i></sub></tt> for which 
+<tt>T<sub><i>i</i></sub> x[] = {std::forward&lt;T&gt;(t)};</tt> is well-formed for some invented variable 
+<tt>x</tt>. The overload <tt><i>FUN</i>(T<sub><i>j</i></sub>)</tt> selected by overload resolution for the 
+expression <tt><i>FUN</i>(std::forward&lt;T&gt;(t))</tt> defines the alternative <tt>T<sub><i>j</i></sub></tt> 
+which is the type of the contained value after assignment.
+<p/>
+-12- <i>Constraints:</i> [&hellip;]
+<p/>
+-13- <i>Effects:</i>
+</p>
+<ol style="list-style-type: none">
+<li><p>(13.1) &mdash; If <tt>*this</tt> holds a <tt>T<sub><i>j</i></sub></tt>, assigns <tt>std::forward&lt;T&gt;(t)</tt> 
+to the value contained in <tt>*this</tt>.</p></li>
+<li><p>(13.2) &mdash; Otherwise, if <tt>is_nothrow_constructible_v&lt;T<sub><i>j</i></sub>, T&gt; || 
+!is_nothrow_move_constructible_v&lt;T<sub><i>j</i></sub>&gt;</tt> is <tt>true</tt>, equivalent to 
+<tt>emplace&lt;<i>j</i>&gt;(std::forward&lt;T&gt;(t))</tt>.</p></li>
+<li><p>(13.3) &mdash; Otherwise, equivalent to 
+<tt><del>operator=(variant(std::forward&lt;T&gt;(t)))</del><ins>emplace&lt;<i>j</i>&gt;(T<sub><i>j</i></sub>(std::forward&lt;T&gt;(t)))</ins></tt>.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
