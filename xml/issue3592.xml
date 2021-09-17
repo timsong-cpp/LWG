@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3592" status="New">
+<title><tt>lazy_split_view</tt> needs to check the simpleness of <tt>Pattern</tt></title>
+<section><sref ref="[range.lazy.split.view]"/></section>
+<submitter>Tim Song</submitter>
+<date>15 Sep 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+For forward ranges, the non-<tt>const</tt> versions of <tt>lazy_split_view::begin()</tt>
+and <tt>lazy_split_view::end()</tt> returns an <tt><i>outer-iterator</i>&lt;<i>simple-view</i>&lt;V&gt;&gt;</tt>,
+promoting to <tt>const</tt> if <tt>V</tt> models <tt><i>simple-view</i></tt>. However, this failed to
+take <tt>Pattern</tt> into account, even though that will also be accessed as <tt>const</tt> if 
+<tt>const</tt>-promotion takes place. There is no requirement that <tt>const Pattern</tt> is a range, 
+however.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.lazy.split.view]"/>, class template <tt>lazy_split_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+
+  [&hellip;]
+
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; view&lt;Pattern&gt; &amp;&amp;
+             indirectly_comparable&lt;iterator_t&lt;V&gt;, iterator_t&lt;Pattern&gt;, ranges::equal_to&gt; &amp;&amp;
+            (forward_range&lt;V&gt; || <i>tiny-range</i>&lt;Pattern&gt;)
+  class lazy_split_view : public view_interface&lt;lazy_split_view&lt;V, Pattern&gt;&gt; {
+  private:
+    [&hellip;]
+  public:
+    [&hellip;]
+
+    constexpr auto begin() {
+      if constexpr (forward_range&lt;V&gt;)
+        return <i>outer-iterator</i>&lt;<i>simple-view</i>&lt;V&gt;<ins> &amp;&amp;
+          <i>simple-view</i>&lt;Pattern&gt;</ins>&gt;{*this, ranges::begin(<i>base_</i>)};
+      else {
+        <i>current_</i> = ranges::begin(<i>base_</i>);
+        return <i>outer-iterator</i>&lt;false&gt;{*this};
+      }
+    }
+    
+    [&hellip;]
+    
+    constexpr auto end() requires forward_range&lt;V&gt; &amp;&amp; common_range&lt;V&gt; {
+      return <i>outer-iterator</i>&lt;<i>simple-view</i>&lt;V&gt;<ins> &amp;&amp;
+        <i>simple-view</i>&lt;Pattern&gt;</ins>&gt;{*this, ranges::end(<i>base_</i>)};
+    }
+
+    [&hellip;]
+  };
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr iterator_t&lt;<i>Base</i>&gt; base() &amp;&amp; <ins>requires forward_range&lt;V&gt;</ins>;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to: <tt>return std::move(<i>i_.current</i>);</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
