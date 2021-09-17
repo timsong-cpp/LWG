@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3590" status="New">
+<title><tt>split_view::base() const &amp;</tt> is overconstrained</title>
+<section><sref ref="[range.split.view]"/></section>
+<submitter>Tim Song</submitter>
+<date>13 Sep 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Unlike every other range adaptor, <tt>split_view::base() const &amp;</tt> is
+constrained on <tt>copyable&lt;V&gt;</tt> instead of <tt>copy_constructible&lt;V&gt;</tt>.
+<p/>
+Since this function just performs a copy construction, there is no
+reason to require all of <tt>copyable</tt> &mdash; <tt>copy_constructible</tt> is sufficient.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.split.view]"/>, class template <tt>split_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; view&lt;Pattern&gt; &amp;&amp;
+             indirectly_comparable&lt;iterator_t&lt;V&gt;, iterator_t&lt;Pattern&gt;, ranges::equal_to&gt;
+  class split_view : public view_interface&lt;split_view&lt;V, Pattern&gt;&gt; {
+  private:
+    [&hellip;]
+  public:
+    [&hellip;]
+
+    constexpr V base() const&amp; requires <del>copyable</del><ins>copy_constructible</ins>&lt;V&gt; { return <i>base_</i>; }
+    constexpr V base() &amp;&amp; { return std::move(<i>base_</i>); }
+
+    [&hellip;]
+  };
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
