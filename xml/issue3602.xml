@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3602" status="New">
+<title><tt>reverse_iterator</tt>'s converting assignment is overconstrained</title>
+<section><sref ref="[reverse.iter.cons]"/><sref ref="[move.iter.cons]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>26 Sep 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In order to remove the incorrect bi-convertibility of <tt>reverse_iterator&lt;int*&gt;</tt> and
+<tt>reverse_iterator&lt;const int*&gt;</tt>, LWG <iref ref="3435"/> adds two constraints to 
+<tt>reverse_iterator</tt>'s converting assignment, namely
+<tt>convertible_to&lt;const U&amp;, Iterator&gt;</tt> and 
+<tt>assignable_from&lt;Iterator&amp;, const U&amp;&gt;</tt>, but since this function only assigns 
+<tt>u.current</tt> to <tt>current</tt>, there is no need to require 
+<tt>convertible_to&lt;const U&amp;, Iterator&gt;</tt> &mdash; the latter is sufficient.
+<p/>
+We should remove this constraint and be consistent with the <tt>move_sentinel</tt> and 
+<tt>counted_iterator</tt>' converting assignment.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[reverse.iter.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class U&gt;
+  constexpr reverse_iterator&amp;
+    operator=(const reverse_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-5- <i>Constraints:</i> <tt>is_same_v&lt;U, Iterator&gt;</tt> is <tt>false</tt><del>, <tt>const U&amp;</tt> 
+models <tt>convertible_to&lt;Iterator&gt;</tt>,</del> and <tt>assignable_from&lt;Iterator&amp;, const U&amp;&gt;</tt> 
+is modeled.
+<p/>
+-6- <i>Effects:</i> Assigns <tt>u.current</tt> to <tt>current</tt>.
+<p/>
+-7- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[move.iter.cons]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As drive-by fix a missing "<i>Returns:</i> <tt>*this</tt>" has been added as well.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator&amp; operator=(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-5- <i>Constraints:</i> <tt>is_same_v&lt;U, Iterator&gt;</tt> is <tt>false</tt><del>, <tt>const U&amp;</tt> 
+models <tt>convertible_to&lt;Iterator&gt;</tt>,</del> and <tt>assignable_from&lt;Iterator&amp;, const U&amp;&gt;</tt> 
+is modeled.
+<p/>
+-6- <i>Effects:</i> Assigns <tt>u.current</tt> to <tt>current</tt>.
+<p/>
+<ins>-?- <i>Returns:</i> <tt>*this</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
