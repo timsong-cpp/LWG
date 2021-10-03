@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3612" status="New">
+<title>Inconsistent pointer alignment in <tt>std::format</tt></title>
+<section><sref ref="[format.string.std]"/></section>
+<submitter>Victor Zverovich</submitter>
+<date>02 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+According to [tab:format.type.ptr] pointers are formatted as hexadecimal integers (at least in the 
+common case when <tt>uintptr_t</tt> is available). However, it appears that they have left alignment 
+by default according to [tab:format.align]:
+</p>
+<blockquote><p>
+Forces the field to be aligned to the start of the available space. This is the default for non-arithmetic 
+types, <tt>charT</tt>, and <tt>bool</tt>, unless an integer presentation type is specified.
+</p></blockquote>
+<p>
+because pointers are not arithmetic types.
+<p/>
+For example:
+</p>
+<blockquote><pre>
+void* p = &hellip;
+std::format("{:#16x}", fmt::detail::bit_cast&lt;uintptr_t&gt;(p));
+std::format("{:16}", p);
+</pre></blockquote>
+<p>
+may produce <tt>"  0x7fff88716c84"</tt> and <tt>"0x7fff88716c84  "</tt> (the actual output depends 
+on the value of <tt>p</tt>).
+<p/>
+This is inconsistent and clearly a bug in specification that should have included pointers together 
+with arithmetic types in [tab:format.align].
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.string.std]"/>, Table [tab:format.align], as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 59 &mdash; Meaning of <i>align</i> options <sref ref="[tab:format.align]"/></caption>
+<tr style="text-align:center">
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+<tr>
+<td><tt>&lt;</tt></td>
+<td>Forces the field to be aligned to the start of the available space. This is the default for
+non-arithmetic <ins>non-pointer</ins> types, <tt>charT</tt>, and <tt>bool</tt>, unless an integer 
+presentation type is specified.</td>
+</tr>
+<tr>
+<td><tt>&gt;</tt></td>
+<td>Forces the field to be aligned to the end of the available space. This is the default for
+arithmetic types other than <tt>charT</tt> and <tt>bool</tt><ins>, pointer types</ins> or when an 
+integer presentation type is specified.</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+</table>
+</blockquote>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The wording above touches a similar area as LWG <iref ref="3586"/>. To help solving the
+merge conflict the following shows the delta of this proposed wording on top of the LWG <iref ref="3586"/>
+merge result]
+</p>
+</blockquote>
+
+<blockquote>
+<table border="1">
+<caption>Table 59 &mdash; Meaning of <i>align</i> options <sref ref="[tab:format.align]"/></caption>
+<tr style="text-align:center">
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+<tr>
+<td><tt>&lt;</tt></td>
+<td>Forces the field to be aligned to the start of the available space. This is the default when 
+the presentation type is a non-arithmetic <ins>non-pointer</ins> type.</td>
+</tr>
+<tr>
+<td><tt>&gt;</tt></td>
+<td>Forces the field to be aligned to the end of the available space. This is the default when 
+the presentation type is an arithmetic <ins>or pointer</ins> type.</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
