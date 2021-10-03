@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3615" status="New">
+<title>The last specialization of <tt>incrementable_traits</tt> has wrong operand types</title>
+<section><sref ref="[incrementable.traits]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>30 Sep 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The last specialization of <tt>incrementable_traits</tt> requires <tt>a - b</tt> to be well-formed,    
+where the types of both operands are <tt>const</tt> lvalue reference of type <tt>T</tt>. However inside 
+the <tt>struct</tt>, it uses <tt>decltype(declval&lt;T&gt;() - declval&lt;T&gt;())</tt> to define the 
+<tt>difference_type</tt>, that is, non-<tt>const</tt> rvalue reference of type <tt>T</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[incrementable.traits]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  template&lt;class T&gt;
+    requires (!requires { typename T::difference_type; } &amp;&amp;
+              requires(const T&amp; a, const T&amp; b) { { a - b } -&gt; integral; })
+  struct incrementable_traits&lt;T&gt; {
+    using difference_type = make_signed_t&lt;decltype(declval&lt;<ins>const</ins> T<ins>&amp;</ins>&gt;() - declval&lt;<ins>const</ins> T<ins>&amp;</ins>&gt;())&gt;;
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
