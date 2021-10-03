@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3610" status="New">
+<title><tt>iota_view::size</tt> sometimes rejects integer-class types</title>
+<section><sref ref="[range.iota.view]"/></section>
+<submitter>Jiang An</submitter>
+<date>29 Sep 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It seems that the <tt>iota_view</tt> tends to accept integer-class types as its value types, by using 
+<tt><i>is-integer-like</i></tt> or <tt><i>is-signed-integer-like</i></tt> through the specification, 
+although it's unspecified whether any of them satisfies <tt>weakly_incrementable</tt>. However, the 
+<i>requires-clause</i> of <tt>iota_view::size</tt> (<sref ref="[range.iota.view]"/> p16) uses 
+<tt>(integral&lt;W&gt; &amp;&amp; integral&lt;Bound&gt;)</tt>, which sometimes rejects integer-class types.
+<p/>
+Should we relax the restrictions by changing this part to <tt>(<i>is-integer-like</i>&lt;W&gt; &amp;&amp; 
+<i>is-integer-like</i>&lt;Bound&gt;)</tt>?
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.iota.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() const requires <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+if constexpr (<i>is-integer-like</i>&lt;W&gt; &amp;&amp; <i>is-integer-like</i>&lt;Bound&gt;)
+  return (<i>value_</i> &lt; 0)
+    ? ((<i>bound_</i> &lt; 0)
+      ? <i>to-unsigned-like</i>(-<i>value_</i>) - <i>to-unsigned-like</i>(-<i>bound_</i>)
+      : <i>to-unsigned-like</i>(<i>bound_</i>) + <i>to-unsigned-like</i>(-<i>value_</i>))
+    : <i>to-unsigned-like</i>(<i>bound_</i>) - <i>to-unsigned-like</i>(<i>value_</i>);
+else
+  return <i>to-unsigned-like</i>(<i>bound_</i> - <i>value_</i>);
+</pre></blockquote>
+<p>
+-16- <i>Remarks:</i> The expression in the <i>requires-clause</i> is equivalent to:
+</p>
+<blockquote><pre>
+(same_as&lt;W, Bound&gt; &amp;&amp; <i>advanceable</i>&lt;W&gt;) || (<del>integral</del><ins><i>is-integer-like</i></ins>&lt;W&gt; &amp;&amp; <del>integral</del><ins><i>is-integer-like</i></ins>&lt;Bound&gt;) ||
+  sized_sentinel_for&lt;Bound, W&gt;
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
