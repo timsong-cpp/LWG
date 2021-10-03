@@ -1,0 +1,114 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3614" status="New">
+<title><tt>iota_view::size</tt> and the most negative signed integer values</title>
+<section><sref ref="[range.iota.view]"/></section>
+<submitter>Jiang An</submitter>
+<date>01 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+According to <sref ref="[range.iota.view]"/>/15, when both <tt>W</tt> and <tt>Bound</tt> are 
+integer-like, the expression in the return statement uses <tt>-<i>value_</i></tt> and <tt>-<i>bound_</i></tt>. 
+These operations result in undefined behavior when <tt>-</tt> is applied to the most negative integer 
+value of a promoted type.
+<p/>
+I believe that we can simply convert <tt><i>value_</i></tt> and <tt><i>bound_</i></tt> to the return type 
+(<tt><i>make-unsigned-like-t</i>&lt;common_type_t&lt;W, Bound&gt;&gt;</tt>) and then perform the subtraction. 
+Such method should give the same results with UB eliminated.
+<p/>
+Additionally, if we decide that <tt>iota_view&lt;uint8_t, uint8_t&gt;(uint8_t(1)).size()</tt> is well-defined 
+(LWG <iref ref="3597"/>), it should give the correct result. We can truncate the result to fit the type <tt>W</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> Two mutually exclusive options are prepared, depicted below by <b>Option A</b> and 
+<b>Option B</b>, respectively.] 
+</p>
+</blockquote>
+
+<p>
+<b>Option A:</b> Just fixes the most negative values
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.iota.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() const requires <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+if constexpr (<i>is-integer-like</i>&lt;W&gt; &amp;&amp; <i>is-integer-like</i>&lt;Bound&gt;) <ins>{</ins>
+  <del>return (<i>value_</i> &lt; 0)
+    ? ((<i>bound_</i> &lt; 0)
+      ? <i>to-unsigned-like</i>(-<i>value_</i>) - <i>to-unsigned-like</i>(-<i>bound_</i>)
+      : <i>to-unsigned-like</i>(<i>bound_</i>) + <i>to-unsigned-like</i>(-<i>value_</i>))
+    : <i>to-unsigned-like</i>(<i>bound_</i>) - <i>to-unsigned-like</i>(<i>value_</i>);</del>
+  <ins>using UC = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;W, Bound&gt;&gt;;
+  return UC(<i>bound_</i>) - UC(<i>value_</i>);</ins>
+<ins>}</ins> else
+  return <i>to-unsigned-like</i>(<i>bound_</i> - <i>value_</i>);
+</pre></blockquote>
+<p>
+-16- <i>Remarks:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+<p>
+<b>Option B:</b> Also fixes pathological cases involving unsigned-integer-like types
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.iota.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() const requires <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+if constexpr (<i>is-integer-like</i>&lt;W&gt; &amp;&amp; <i>is-integer-like</i>&lt;Bound&gt;) <ins>{</ins>
+  <del>return (<i>value_</i> &lt; 0)
+    ? ((<i>bound_</i> &lt; 0)
+      ? <i>to-unsigned-like</i>(-<i>value_</i>) - <i>to-unsigned-like</i>(-<i>bound_</i>)
+      : <i>to-unsigned-like</i>(<i>bound_</i>) + <i>to-unsigned-like</i>(-<i>value_</i>))
+    : <i>to-unsigned-like</i>(<i>bound_</i>) - <i>to-unsigned-like</i>(<i>value_</i>);</del>
+  <ins>using UC = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;W, Bound&gt;&gt;;
+  if constexpr (<i>is-signed-integer-like</i>&lt;W&gt;)
+    return UC(<i>bound_</i>) - UC(<i>value_</i>);
+  else
+    return UC(W(UC(<i>bound_</i>) - UC(<i>value_</i>)));</ins>
+<ins>}</ins> else
+  return <i>to-unsigned-like</i>(<i>bound_</i> - <i>value_</i>);
+</pre></blockquote>
+<p>
+-16- <i>Remarks:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
