@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3613" status="New">
+<title>Specify that <tt>nullopt_t</tt> is copyable</title>
+<section><sref ref="[optional.nullopt]"/></section>
+<submitter>Frank Birbacher</submitter>
+<date>01 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The Standard defines a number of types that are used to create overload disambiguators for constructors, 
+like <tt>nullopt_t</tt> and <tt>allocator_tag_t</tt>. Values of such types are passed by value to such 
+constructors to give it particular meaning. For pass-by-value these types need to be copy-constructible 
+and for consistency should also be copy-assignable. Of those types the specification of <tt>nullopt_t</tt> 
+doesn't clearly state that the type is copyable, <sref ref="[optional.nullopt]"/>.
+<p/>
+The reason that <tt>nullopt_t</tt> is defined differently from other such types is to avoid ambiguity 
+in expressions that assign an empty brace initializer to an <tt>optional</tt>. The meaning of such 
+assignment should be to engage the <tt>optional</tt> instead of taking the braces to create a temporary 
+<tt>nullopt_t</tt> for assignment and thus reset the <tt>optional</tt>.
+<p/>
+Types that aren't affected: <tt>nullptr_t</tt> (fundamental type), <tt>allocator_tag_t</tt>, 
+<tt>piecewise_construct_t</tt>, <tt>in_place_t</tt>, <tt>in_place_type_t</tt>, <tt>in_place_index_t</tt> 
+(all basically defined as a <tt>class <i>T</i> { explicit <i>T</i>() = default; }</tt> which works fine for pass-by-value)
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.nullopt]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+struct nullopt_t{<i>see below</i>};
+inline constexpr nullopt_t nullopt(<i>unspecified</i>);
+</pre>
+<blockquote>
+<p>
+-1- The struct <tt>nullopt_t</tt> is an empty class type used as a unique type to indicate 
+the state of not containing a value for <tt>optional</tt> objects. In particular, 
+<tt>optional&lt;T&gt;</tt> has a constructor with <tt>nullopt_t</tt> as a single
+argument; this indicates that an optional object not containing a value shall be constructed.
+<p/>
+-2- Type <tt>nullopt_t</tt> shall not have a default constructor or an initializer-list 
+constructor, <del>and</del> shall not be an aggregate<ins>, and shall have a copy constructor 
+and a copy assignment operator, both shall be public and trivial</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
