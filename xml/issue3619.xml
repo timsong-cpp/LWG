@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3619" status="New">
+<title>Specification of <tt>vformat_to</tt> contains ill-formed <tt>formatted_size</tt> calls</title>
+<section><sref ref="[format.functions]"/></section>
+<submitter>Tim Song</submitter>
+<date>17 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of <tt>vformat_to</tt> says that it formats "into the range
+<tt>[out, out + N)</tt>, where <tt>N</tt> is <tt>formatted_size(fmt, args...)</tt> for the
+functions without a <tt>loc</tt> parameter and <tt>formatted_size(loc, fmt, args...)</tt> 
+for the functions with a <tt>loc</tt> parameter".
+<p/>
+This is wrong in at least two ways:
+</p>
+<ul>
+<li><p>First, <tt>args</tt> is a <tt>(w)format_args</tt>, not a pack, so it doesn't make
+sense to use <tt>...</tt> to expand it.</p></li>
+<li><p>Second, <tt>fmt</tt> is a <tt>(w)string_view</tt> parameter, and it is never a
+constant expression, and so the call is ill-formed after <paper num="P2216"/> added 
+compile-time format string checking.</p></li>
+</ul>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.functions]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Out&gt;
+  Out vformat_to(Out out, string_view fmt, format_args args);
+template&lt;class Out&gt;
+  Out vformat_to(Out out, wstring_view fmt, wformat_args args);
+template&lt;class Out&gt;
+  Out vformat_to(Out out, const locale&amp; loc, string_view fmt, format_args args);
+template&lt;class Out&gt;
+  Out vformat_to(Out out, const locale&amp; loc, wstring_view fmt, wformat_args args);
+</pre>
+<blockquote>
+<p>
+-12- Let <tt>charT</tt> be <tt>decltype(fmt)::value_type</tt>.
+<p/>
+-13- <i>Constraints:</i> <tt>Out</tt> satisfies <tt>output_iterator&lt;const charT&amp;&gt;</tt>.
+<p/>
+-14- <i>Preconditions:</i> <tt>Out</tt> models <tt>output_iterator&lt;const charT&amp;&gt;</tt>.
+<p/>
+-15- <i>Effects:</i> Places the character representation of formatting the arguments provided by 
+<tt>args</tt>, formatted according to the specifications given in <tt>fmt</tt>, into the range 
+<tt>[out, out + N)</tt>, where <tt>N</tt> is <del><tt>formatted_size(fmt, args...)</tt> for the 
+functions without a <tt>loc</tt> parameter and <tt>formatted_size(loc, fmt, args...)</tt> for 
+the functions with a <tt>loc</tt> parameter</del><ins>the number of characters in that
+character representation</ins>. If present, <tt>loc</tt> is used for locale-specific formatting.
+<p/>
+-16- <i>Returns:</i> <tt>out + N</tt>.
+<p/>
+-17- [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
