@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3618" status="New">
+<title>Unnecessary <tt>iter_move</tt> for <tt>transform_view::iterator</tt></title>
+<section><sref ref="[range.transform.iterator]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>12 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+ <tt>transform_view</tt>'s iterator currently specifies a customization point for <tt>iter_move</tt>. 
+ This customization point does the same thing that the default implementation would do &mdash; 
+ <tt>std::move(*E)</tt> if <tt>*E</tt> is an lvalue, else <tt>*E</tt> &mdash; except that it is only 
+ there to provide the correct conditional <tt>noexcept</tt> specification. But for <tt>iota_view</tt>, 
+ we instead provide a <tt>noexcept</tt>-specifier on the iterator's <tt>operator*</tt>. We should do 
+ the same thing for both, and the simplest thing would be:
+<p/>
+Change <sref ref="[range.transform.iterator]"/> to put the whole body into <tt>noexcept</tt>:
+</p>
+<blockquote><pre>
+constexpr decltype(auto) operator*() const <ins>noexcept(noexcept(invoke(*<i>parent_</i>-&gt;<i>fun_</i>, *<i>current_</i>)))</ins> {
+  return invoke(*<i>parent_</i>-&gt;<i>fun_</i>, *<i>current_</i>);
+} 
+</pre></blockquote>
+<p>
+And to remove this:
+</p>
+<blockquote><pre>
+friend constexpr decltype(auto) iter_move(const <i>iterator</i>&amp; i)
+  noexcept(noexcept(invoke(*i.<i>parent_</i>-&gt;<i>fun_</i>, *i.<i>current_</i>))) {
+  if constexpr (is_lvalue_reference_v&lt;decltype(*i)&gt;)
+    return std::move(*i);
+  else
+    return *i;
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.transform.iterator]"/>, class template <tt>transform_view::<i>iterator</i></tt>, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+constexpr decltype(auto) operator*() const <ins>noexcept(noexcept(invoke(*<i>parent_</i>-&gt;<i>fun_</i>, *<i>current_</i>)))</ins> {
+  return invoke(*<i>parent_</i>-&gt;<i>fun_</i>, *<i>current_</i>);
+}
+[&hellip;]
+<del>friend constexpr decltype(auto) iter_move(const <i>iterator</i>&amp; i)
+  noexcept(noexcept(invoke(*i.<i>parent_</i>-&gt;<i>fun_</i>, *i.<i>current_</i>))) {
+  if constexpr (is_lvalue_reference_v&lt;decltype(*i)&gt;)
+    return std::move(*i);
+  else
+    return *i;
+}</del>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
