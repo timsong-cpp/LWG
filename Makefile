@@ -77,7 +77,7 @@ filter-net-ts-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)
 meta-data/annex-f: $(wildcard $(DRAFT)/source/*.aux)
 	test -d "$(DRAFT)" && grep newlabel $^ | $(filter-annex-f) > $@
 
-meta-data/networking-annex-f: $(wildcard $(NET)/src/*.aux)
+meta-data/networking-annex-f: # $(wildcard $(NET)/src/*.aux)
 	grep newlabel $^ /dev/null | $(filter-net-ts-annex-f) > $@
 
 meta-data/networking-section.data: meta-data/networking-annex-f bin/section_data
