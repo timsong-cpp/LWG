@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3624" status="New">
+<title>Inconsistency of <tt>&lt;typeinfo&gt;</tt>, <tt>&lt;initializer_list&gt;</tt>, and 
+<tt>&lt;compare&gt;</tt> in the standard library</title>
+<section><sref ref="[support.rtti]"/><sref ref="[support.initlist]"/><sref ref="[cmp]"/></section>
+<submitter>Jiang An</submitter>
+<date>23 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+ Standard library headers <tt>&lt;typeinfo&gt;</tt>, <tt>&lt;initializer_list&gt;</tt>, and <tt>&lt;compare&gt;</tt> 
+ are required for some core language features, as specified in <sref ref="[expr.typeid]"/>/7, 
+ <sref ref="[dcl.init.list]"/>/2, and <sref ref="[expr.spaceship]"/>/8. In C++11 (via <a href="https://wg21.link/n2930">N2930</a>), 
+ every header that has dependency on <tt>std::initializer_list</tt> is required to include 
+ <tt>&lt;initializer_list&gt;</tt>. The similar requirements are added for <tt>operator&lt;=&gt;</tt> and 
+ <tt>&lt;compare&gt;</tt> in C++20 (via LWG <iref ref="3330"/>).
+<p/>
+As N2930 and LWG3330 have been adpoted, IMO there are some inconsistencies in the standard library now:
+</p>
+<ul>
+<li><p>No operation is done for <tt>&lt;typeinfo&gt;</tt>, although <tt>&lt;typeindex&gt;</tt> (<tt>std::type_index</tt>), 
+<tt>&lt;functional&gt;</tt> (<tt>std::function</tt>, since C++11), and <tt>&lt;any&gt;</tt> (<tt>std::any</tt>) 
+have dependency on <tt>std::type_info</tt>;</p></li>
+<li><p><tt>&lt;iterator&gt;</tt> has dependency on <tt>std::initializer_list</tt> since C++14/LWG <iref ref="2128"/> 
+(the <tt>std::rbegin</tt> overload and its friends), but it is not required to include <tt>&lt;initializer_list&gt;</tt>;</p></li>
+<li><p><tt>&lt;stacktrace&gt;</tt> is not required to include <tt>&lt;compare&gt;</tt> while it provides operator 
+<tt>&lt;=&gt;</tt> overloads.</p></li>
+</ul>
+<p>
+The situation may be quite serious for <tt>std::type_index</tt>. Perhaps no expected operation on <tt>std::type_index</tt> 
+is guaranteed to work when only <tt>&lt;typeindex&gt;</tt> but not <tt>&lt;typeinfo&gt;</tt> is included.
+<p/>
+libc++, libstdc++, and MSVC STL include <tt>&lt;typeinfo&gt;</tt> and <tt>&lt;initializer_list&gt;</tt> when 
+the required standard interface depends on them. I think we should standardize the existing practice (except 
+that <tt>&lt;stackstrace&gt;</tt> has not been implemented now) to reduce uncertainty for users.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4901">N4901</a>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The proposed wording below contains one conditional change, it is therefore depending upon
+a decision]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Add <tt>#include &lt;typeinfo&gt;</tt> to <sref ref="[any.synop]"/>, <sref ref="[functional.syn]"/>, and 
+<sref ref="[type.index.synopsis]"/>.</p></li>
+<li><p>Add <tt>#include &lt;initializer_list&gt;</tt> to <sref ref="[iterator.synopsis]"/>.</p></li>
+<li><p>Add <tt>#include &lt;compare&gt;</tt> to <sref ref="[stacktrace.syn]"/>.</p></li>
+<li><p>If we decide to add range access function templates (<sref ref="[iterator.range]"/>) to <tt>&lt;stacktrace&gt;</tt>, 
+we should also add <tt>#include &lt;initializer_list&gt;</tt> to <sref ref="[stacktrace.syn]"/>.</p></li>
+</ol>
+</resolution>
+
+</issue>
