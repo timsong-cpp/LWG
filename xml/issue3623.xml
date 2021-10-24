@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3623" status="New">
+<title>Uses of <tt>std::reverse_iterator</tt> with containers should not require manually including <tt>&lt;iterator&gt;</tt></title>
+<section><sref ref="[reverse.iterators.general]"/></section>
+<submitter>Jiang An</submitter>
+<date>23 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently it is unspecified whether the definitions of <tt>std::reverse_iterator</tt> and its related 
+operators are available in <tt>&lt;vector&gt;</tt>, <tt>&lt;array&gt;</tt>, etc. So, it's unspecified 
+now whether the following program is well-formed because it's unspecified whether the equality operator 
+is available:
+</p>
+<blockquote><pre>
+#include &lt;vector&gt;
+
+int main()
+{
+  auto v = std::vector&lt;int&gt;(42);
+  for (auto it = v.rbegin(); it != v.rend(); ++it);
+  for (auto it = std::rbegin(v); it != std::rend(v); ++it);
+}</pre></blockquote>
+<p>
+ Such underspecification also leaves the guarantee that <tt>std::rbegin</tt>, <tt>std::rend</tt>, 
+ <tt>std::crbegin</tt>, and <tt>std::crend</tt> are available in some other headers seems not so meaningful. 
+ In order to guarantee these function templates can be used meaningfully with containers, users are still 
+ required to include <tt>&lt;iterator&gt;</tt> manually.
+<p/>
+I think the standard should guarantee that wherever the member <tt>rbegin</tt> (that returns <tt>std::reverse_iterator</tt>) 
+or <tt>std::rbegin</tt> is provided, the definitions of <tt>std::reverse_iterator</tt> and its related operators 
+are also provided. This strategy is already implemented by libc++, libstdc++, and MSVC STL, and thus I believe we 
+should standardize it to reduce uncertainty for users.
+<p/>
+Note that the situation for <tt>std::reverse_iterator</tt> is different from LWG <iref ref="1361"/>, because every 
+operation on <tt>std::size_t</tt> is still valid when the typedef-name itself is absent, but <tt>==</tt> and 
+<tt>!=</tt> on <tt>std::reverse_iterator</tt> fail if the corresponding declarations are unavailable.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4901">N4901</a>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[reverse.iterators.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Class template <tt>reverse_iterator</tt> is an iterator adaptor that iterates from the end of the sequence defined
+by its underlying iterator to the beginning of that sequence.
+<p/>
+<ins>-?- In addition to being available via inclusion of the <tt>&lt;iterator&gt;</tt> header, class template 
+<tt>reverse_iterator</tt> and function templates in <sref ref="[reverse.iter.cmp]"/> and <sref ref="[reverse.iter.nonmember]"/> 
+are available when any of the following headers are included: <tt>&lt;array&gt;</tt>, <tt>&lt;deque&gt;</tt>, 
+<tt>&lt;forward_list&gt;</tt>, <tt>&lt;list&gt;</tt>, <tt>&lt;map&gt;</tt>, <tt>&lt;regex&gt;</tt>, <tt>&lt;set&gt;</tt>, 
+<tt>&lt;span&gt;</tt>, <tt>&lt;stacktrace&gt;</tt>, <tt>&lt;string&gt;</tt>, <tt>&lt;string_view&gt;</tt>, 
+<tt>&lt;unordered_map&gt;</tt>, <tt>&lt;unordered_set&gt;</tt>, and <tt>&lt;vector&gt;</tt>.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
