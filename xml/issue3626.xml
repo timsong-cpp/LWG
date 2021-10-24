@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3626" status="New">
+<title>Is <tt>std::basic_stacktrace</tt> required to use contiguous storage?</title>
+<section><sref ref="[stacktrace.basic.overview]"/></section>
+<submitter>Jiang An</submitter>
+<date>23 Oct 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently <tt>std::basic_stacktrace</tt> has an exposition-only <tt>std::vector</tt> member for 
+storing its elements. According to <sref ref="[objects.within.classes]"/>/3, it seems that it is 
+effectively required that elements of a <tt>std::basic_stacktrace</tt> are contiguously stored.
+However, the implication seems not used otherwhere. The iterator type of a <tt>std::basic_stacktrace</tt> 
+is only required to be random access iterator.
+<p/>
+IMO if it is required that <tt>std::basic_stacktrace</tt> uses contiguous storage, we should 
+explicitly strengthen some requirements, perhaps a the member function data should be added.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/n4901">N4901</a>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The proposed wording below contains also conditional changes, it is therefore depending upon
+a decision]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[stacktrace.basic.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The class template <tt>basic_stacktrace</tt> satisfies the requirements of an allocator-aware container 
+(Table 80 [tab:container.alloc.req]), a sequence container (<sref ref="[sequence.reqmts]"/>), 
+<ins>a contiguous container,</ins> and a reversible container (<sref ref="[container.requirements.general]"/>) 
+except that [&hellip;]
+</p>
+</blockquote>
+</li>
+<li><p>Modify <sref ref="[stacktrace.basic.obs]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+using const_iterator = <i>implementation-defined</i>;
+</pre>
+<blockquote>
+<p>
+-1- The type models <tt><del>random_access_iterator</del><ins>contiguous_iterator</ins></tt> 
+(<del><sref ref="[iterator.concept.random.access]"/></del><ins><sref ref="[iterator.concept.contiguous]"/></ins>) and meets 
+the <i>Cpp17RandomAccessIterator</i> requirements (<sref ref="[random.access.iterators]"/>).
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+<p><b>Optional additional changes</b> (the following parts are proposed only if <tt>data()</tt> is wanted)</p>
+
+<ol start="3">
+<li><p>Modify <sref ref="[stacktrace.basic.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The class template <tt>basic_stacktrace</tt> satisfies the requirements of an allocator-aware container 
+(Table 80 [tab:container.alloc.req]), a sequence container (<sref ref="[sequence.reqmts]"/>), 
+<ins>a contiguous container,</ins> and a reversible container (<sref ref="[container.requirements.general]"/>) 
+except that [&hellip;]
+</p>
+</blockquote>
+</li>
+<li><p>Modify <sref ref="[stacktrace.basic.overview]"/>, class template <tt>basic_stacktrace</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+const_reference operator[](size_type) const;
+const_reference at(size_type) const;
+
+<ins>const stacktrace_entry* data() const noexcept;</ins>
+
+// <sref ref="[stacktrace.basic.cmp]"/>, comparisons
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[stacktrace.basic.obs]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+const_reference at(size_type frame_no) const;
+</pre>
+<blockquote>
+<p>
+-13- [&hellip;]
+<p/>
+-14- [&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>const stacktrace_entry* data() const noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Returns:</i> <tt>frames_.data()</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
