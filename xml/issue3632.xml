@@ -1,0 +1,177 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3632" status="New">
+<title><tt>unique_ptr</tt> "<i>Mandates:</i> This constructor is not selected by class template argument deduction"</title>
+<section><sref ref="[unique.ptr.single.ctor]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>03 Nov 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="P1460R1"/> changed the wording for <tt>unique_ptr</tt>'s constructor <tt>unique_ptr(pointer)</tt>.
+In C++17, it said in [unique.ptr.single.ctor] p5:
+</p>
+<blockquote>
+<pre>
+explicit unique_ptr(pointer p) noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Preconditions:</i> [&hellip;]
+<p/>
+<i>Effects:</i> [&hellip;]
+<p/>
+<i>Postconditions:</i> [&hellip;]
+<p/>
+<b><i>Remarks:</i></b> If <tt>is_pointer_v&lt;deleter_type&gt;</tt> is <tt>true</tt> or 
+<tt>is_default_constructible_v&lt;deleter_type&gt;</tt> is <tt>false</tt>, this constructor shall not 
+participate in overload resolution. <b>If class template argument deduction would select the function 
+template corresponding to this constructor, then the program is ill-formed</b>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+In C++20, it says in [unique.ptr.single.ctor] p5:
+</p>
+<blockquote>
+<pre>
+explicit unique_ptr(pointer p) noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Constraints:</i> <tt>is_pointer_v&lt;deleter_type&gt;</tt> is <tt>false</tt> and 
+<tt>is_default_constructible_v&lt;deleter_type&gt;</tt> is <tt>true</tt>.
+<p/>
+<b><i>Mandates:</i> This constructor is not selected by class template argument deduction.</b>
+<p/>
+<i>Preconditions:</i> [&hellip;]
+<p/>
+<i>Effects:</i> [&hellip;]
+<p/>
+<i>Postconditions:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+<p>
+Normally, we use "<i>Mandates:</i>" for <tt>static_assert</tt>-like stuff, not just to indicate that 
+some constructor doesn't contribute to CTAD. Both libstdc++ and Microsoft (and soon libc++, see 
+<a href="https://reviews.llvm.org/D112904">LLVM issue</a>) seem to agree about the intent of this wording: 
+It's basically asking for the constructor to be implemented with a CTAD firewall, as
+</p>
+<blockquote>
+<pre>
+explicit unique_ptr(type_identity_t&lt;pointer&gt; p) noexcept;
+</pre>
+</blockquote>
+<p>
+and there is no actual <tt>static_assert</tt> corresponding to this "<i>Mandates:</i>" element. In particular, 
+the following program is well-formed on all vendors:
+</p>
+<blockquote>
+<pre>
+// <a href="https://godbolt.org/z/h5bb1WbTz">godbolt link</a>
+template&lt;class T&gt; auto f(T p) -&gt; decltype(std::unique_ptr(p));
+template&lt;class T&gt; constexpr bool f(T p) { return true; }  
+static_assert(f((int*)nullptr));
+</pre>
+</blockquote>
+<p>
+I claim that this is a confusing and/or wrong use of "<i>Mandates:</i>". My proposed resolution is 
+simply to respecify the constructor as
+</p>
+<blockquote>
+<pre>
+explicit unique_ptr(<b>type_identity_t&lt;pointer&gt;</b> p) noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Constraints:</i> <tt>is_pointer_v&lt;deleter_type&gt;</tt> is <tt>false</tt> and 
+<tt>is_default_constructible_v&lt;deleter_type&gt;</tt> is <tt>true</tt>.
+<p/>
+<i>Preconditions:</i> [&hellip;]
+<p/>
+<i>Effects:</i> [&hellip;]
+<p/>
+<i>Postconditions:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+<p>
+with no <i>Mandates:</i> or <i>Remarks:</i> elements at all.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[unique.ptr.single.general]"/>, class template <tt>unique_ptr</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[unique.ptr.single.ctor]"/>, constructors</i>
+constexpr unique_ptr() noexcept;
+explicit unique_ptr(<ins>type_identity_t&lt;</ins>pointer<ins>&gt;</ins> p) noexcept;
+unique_ptr(<ins>type_identity_t&lt;</ins>pointer<ins>&gt;</ins> p, <i>see below</i> d1) noexcept;
+unique_ptr(<ins>type_identity_t&lt;</ins>pointer<ins>&gt;</ins> p, <i>see below</i> d2) noexcept;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[unique.ptr.single.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+explicit unique_ptr(<ins>type_identity_t&lt;</ins>pointer<ins>&gt;</ins> p) noexcept;
+</pre>
+<blockquote>
+<p>
+-5- <i>Constraints:</i> <tt>is_pointer_v&lt;deleter_type&gt;</tt> is <tt>false</tt> and 
+<tt>is_default_constructible_v&lt;deleter_type&gt;</tt> is <tt>true</tt>.
+<p/>
+<del>-6- <i>Mandates:</i> This constructor is not selected by class template argument 
+deduction (<sref ref="[over.match.class.deduct]"/>).</del>
+<p/>
+-7- <i>Preconditions:</i> [&hellip;]
+<p/>
+-8- <i>Effects:</i> [&hellip;]
+<p/>
+-9- <i>Postconditions:</i> [&hellip;]
+</p>
+</blockquote>
+<pre>
+unique_ptr(<ins>type_identity_t&lt;</ins>pointer<ins>&gt;</ins> p, const D&amp; d) noexcept;
+unique_ptr(<ins>type_identity_t&lt;</ins>pointer<ins>&gt;</ins> p, remove_reference_t&lt;D&gt;&amp;&amp; d) noexcept;
+</pre>
+<blockquote>
+<p>
+-10- <i>Constraints:</i> <tt>is_constructible_v&lt;D, decltype(d)&gt;</tt> is <tt>true</tt>.
+<p/>
+<del>-11- <i>Mandates:</i> These constructors are not selected by class template argument 
+deduction (<sref ref="[over.match.class.deduct]"/>).</del>
+<p/>
+-12- <i>Preconditions:</i> [&hellip;]
+<p/>
+-13- <i>Effects:</i> [&hellip;]
+<p/>
+-14- <i>Postconditions:</i> [&hellip;]
+<p/>
+-15- <i>Remarks:</i> If <tt>D</tt> is a reference type, the second constructor is defined as deleted.
+<p/>
+-16- [<i>Example 1</i>: [&hellip;] &mdash; <i>end example</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
