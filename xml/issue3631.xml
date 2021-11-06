@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3631" status="New">
+<title><tt>basic_format_arg(T&amp;&amp;)</tt> should use <tt>remove_cvref_t&lt;T&gt;</tt> throughout</title>
+<section><sref ref="[format.arg]"/></section>
+<submitter>Tim Song</submitter>
+<date>03 Nov 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="P2418R2"/> changed <tt>basic_format_arg</tt>'s constructor to take a forwarding
+reference but didn't change <sref ref="[format.arg]"/>/5 which inspects various
+properties of <tt>T</tt>. Now that the deduced type can be <i>cvref</i>-qualified,
+they need to be removed before the checks.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.arg]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt; explicit basic_format_arg(T&amp;&amp; v) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <tt>TD</tt> be <tt>remove_cvref_t&lt;T&gt;</tt>.</ins>
+<p/>
+-4- <i>Constraints:</i> The template specialization
+</p>
+<blockquote><pre>
+typename Context::template formatter_type&lt;<del>remove_cvref_t&lt;T&gt;</del><ins>TD</ins>&gt;
+</pre></blockquote>
+<p>
+meets the <i>BasicFormatter</i> requirements (<sref ref="[formatter.requirements]"/>). The extent to 
+which an implementation determines that the specialization meets the <i>BasicFormatter</i> 
+requirements is unspecified, except that as a minimum the expression
+</p>
+<blockquote><pre>
+typename Context::template formatter_type&lt;<del>remove_cvref_t&lt;T&gt;</del><ins>TD</ins>&gt;()
+  .format(declval&lt;T&amp;&gt;(), declval&lt;Context&amp;&gt;())
+</pre></blockquote>
+<p>
+shall be well-formed when treated as an unevaluated operand (<sref ref="[expr.context]"/>).
+<p/>
+-5- <i>Effects:</i>
+</p>
+<ol style="list-style-type:none">
+<li><p>(5.1) &mdash; if <tt>T<ins>D</ins></tt> is <tt>bool</tt> or <tt>char_type</tt>, initializes <tt>value</tt> with <tt>v</tt>;</p></li>
+<li><p>(5.2) &mdash; otherwise, if <tt>T<ins>D</ins></tt> is <tt>char</tt> and <tt>char_type</tt> is <tt>wchar_t</tt>, 
+initializes <tt>value</tt> with <tt>static_cast&lt;wchar_t&gt;(v)</tt>;</p></li>
+<li><p>(5.3) &mdash; otherwise, if <tt>T<ins>D</ins></tt> is a signed integer type (<sref ref="[basic.fundamental]"/>) and 
+<tt>sizeof(T<ins>D</ins>) &lt;= sizeof(int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;int&gt;(v)</tt>;</p></li>
+<li><p>(5.4) &mdash; otherwise, if <tt>T<ins>D</ins></tt> is an unsigned integer type and <tt>sizeof(T<ins>D</ins>) &lt;= sizeof(unsigned int)</tt>, 
+initializes <tt>value</tt> with <tt>static_cast&lt;unsigned int&gt;(v)</tt>;</p></li>
+<li><p>(5.5) &mdash; otherwise, if <tt>T<ins>D</ins></tt> is a signed integer type and <tt>sizeof(T<ins>D</ins>) &lt;= sizeof(long long int)</tt>, 
+initializes <tt>value</tt> with <tt>static_cast&lt;long long int&gt;(v)</tt>;</p></li>
+<li><p>(5.6) &mdash; otherwise, if <tt>T<ins>D</ins></tt> is an unsigned integer type and <tt>sizeof(T<ins>D</ins>) &lt;= sizeof(unsigned long long int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;unsigned long long int&gt;(v)</tt>;</p></li>
+<li><p>(5.7) &mdash; otherwise, initializes <tt>value</tt> with <tt>handle(v)</tt>.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
