@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3633" status="New">
+<title>Atomics are copy constructible and copy assignable from <tt>volatile</tt> atomics</title>
+<section><sref ref="[atomics]"/></section>
+<submitter>Wesley Maxey</submitter>
+<date>05 Nov 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification of <tt>atomic</tt> and <tt>atomic&lt;T*&gt;</tt> (in <sref ref="[atomics.types.generic.general]"/> 
+and <sref ref="[atomics.types.pointer]"/>) explicitly deletes the following functions:
+</p>
+<blockquote>
+<pre>
+atomic(const atomic&amp;) = delete;
+atomic&amp; operator=(const atomic&amp;) = delete;
+atomic&amp; operator=(const atomic&amp;) volatile = delete;
+</pre>
+</blockquote>
+<p>
+The intent is to make atomic objects not copyable, so that initializing an atomic object 
+from another atomic, or assigning an atomic object with a value from another atomic, 
+must be an explicit operation.
+<p/>
+We also explicitly support <tt>volatile</tt> objects of types that are specializations of <tt>std::atomic</tt>; 
+some of the functions that are vital for the support of volatile atomics are the following conversion operators:
+</p>
+<blockquote>
+<pre>
+operator T() const volatile noexcept; // for non-pointers
+operator T*() const volatile noexcept; // for pointers
+</pre>
+</blockquote>
+<p>
+The presence of this conversion operator means that all the statements in the following piece of code 
+compile successfully today, despite the deleted functions mentioned earlier:
+</p>
+<blockquote>
+<pre>
+volatile std::atomic&lt;int&gt; a;
+volatile std::atomic&lt;int&gt; b(a);
+std::atomic&lt;int&gt; c(a);
+b = a;
+c = a;
+</pre>
+</blockquote>
+<p>
+However, if <tt>a</tt> is not a volatile object, none of the last four lines compile.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[atomics.types.generic.general]"/>, class template <tt>atomic</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+atomic(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) volatile = delete;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.types.int]"/>, class template <tt>atomic&lt;<i>integral</i>&gt;</tt> specialization 
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+atomic(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) volatile = delete;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.types.float]"/>, class template <tt>atomic&lt;<i>floating-point</i>&gt;</tt> specialization 
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+atomic(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) volatile = delete;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[atomics.types.pointer]"/>, class template <tt>atomic&lt;T*&gt;</tt> partial specialization 
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+atomic(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) = delete;
+atomic&amp; operator=(const <ins>volatile</ins> atomic&amp;) volatile = delete;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
