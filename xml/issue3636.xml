@@ -1,0 +1,264 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3636" status="New">
+<title><tt>formatter&lt;T&gt;::format</tt> should be <tt>const</tt>-qualified</title>
+<section><sref ref="[formatter.requirements]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>11 Nov 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <a href="https://reviews.llvm.org/D112017">libc++ review</a>, we've noticed that we don't understand 
+the implications of <sref ref="[formatter.requirements]"/> bullet 3.1 and Table to [tab:formatter.basic]: 
+(emphasize mine):
+</p>
+<blockquote>
+<p>
+(3.1) &mdash; <tt>f</tt> is a <b>value</b> of type <tt>F</tt>,
+<p/>
+[&hellip;]
+<p/>
+Table 70: BasicFormatter requirements [tab:formatter.basic]
+<p/>
+[&hellip;]
+<p/>
+<tt>f.parse(pc)</tt> [<em>must compile</em>] [&hellip;]
+<p/>
+<tt>f.format(u, fc)</tt> [<em>must compile</em>] [&hellip;]
+</p>
+</blockquote>
+<p>
+According to Victor Zverovich, his intent was that <tt>f.parse(pc)</tt> should modify the 
+state of <tt>f</tt>, but <tt>f.format(u, fc)</tt> should merely read <tt>f</tt>'s state. That is, 
+a typical formatter should look something like this (modulo errors introduced by me):
+</p>
+<blockquote>
+<pre>
+struct WidgetFormatter {
+  auto parse(std::parse_context&amp;) -&gt; std::parse_context::iterator;
+  auto format(const Widget&amp;, std::format_context&amp;) const -&gt; std::format_context::iterator;
+};
+</pre>
+</blockquote>
+<p>
+However, this is not reflected in the wording, which treats <tt>parse</tt> and <tt>format</tt> symmetrically.
+Also, there is at least one example that shows a non-const <tt>format</tt> method:
+</p>
+<blockquote>
+<pre>
+template&lt;&gt; struct std::formatter&lt;color&gt; : std::formatter&lt;const char*&gt; {
+  auto format(color c, format_context&amp; ctx) {
+    return formatter&lt;const char*&gt;::format(color_names[c], ctx);
+  }
+};
+</pre>
+</blockquote>
+<p>
+Victor writes:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Maybe we should [&hellip;] open an LWG issue clarifying that all standard formatters have a 
+<tt>const</tt> format function.
+</p>
+</blockquote>
+<p>
+I'd like to be even more assertive: Let's open an LWG issue clarifying that all formatters must have a 
+<tt>const</tt> format function!
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[formatter.requirements]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> It might also be reasonable to do a drive-by clarification that when the Table 70 says 
+"Stores the parsed format specifiers in <tt>*this</tt>," what it actually means is "Stores the parsed format 
+specifiers in <tt>g</tt>." (But I don't think anyone's seriously confused by that wording.)
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-3- Given character type <tt>charT</tt>, output iterator type <tt>Out</tt>, and formatting argument type <tt>T</tt>, 
+in Table 70 and Table 71:
+</p>
+<ol style="list-style-type:none">
+<li><p>(3.1) &mdash; <tt>f</tt> is a value of type <ins>(possibly <tt>const</tt>)</ins> <tt>F</tt>,</p></li>
+<li><p><ins>(3.?) &mdash; <tt>g</tt> is an lvalue of type <tt>F</tt>,</ins></p></li>
+<li><p>(3.2) &mdash; <tt>u</tt> is an lvalue of type <tt>T</tt>,</p></li>
+<li><p>(3.3) &mdash; <tt>t</tt> is a value of a type convertible to (possibly <tt>const</tt>) <tt>T</tt>,</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 70: <i>Formatter</i> requirements [tab:formatter]</caption>
+<tr>
+<th align="center">Expression</th>
+<th align="center">Return type</th>
+<th align="center">Requirement</th>
+</tr>
+
+<tr>
+<td>
+<tt><del>f</del><ins>g</ins>.parse(pc)</tt>
+</td>
+<td>
+<tt>PC::iterator</tt>
+</td>
+<td>
+[&hellip;]<br/>
+Stores the parsed format specifiers in <tt>*this</tt> and
+returns an iterator past the end of the parsed range.
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+</table>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[format.formatter.spec]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-6- An enabled specialization <tt>formatter&lt;T, charT&gt;</tt> meets the <i>BasicFormatter</i> requirements 
+(<sref ref="[formatter.requirements]"/>).
+<p/>
+[<i>Example 1</i>:
+</p>
+<blockquote>
+<pre>
+#include &lt;format&gt;
+
+enum color { red, green, blue };
+const char* color_names[] = { "red", "green", "blue" };
+
+template&lt;&gt; struct std::formatter&lt;color&gt; : std::formatter&lt;const char*&gt; {
+  auto format(color c, format_context&amp; ctx) <ins>const</ins> {
+    return formatter&lt;const char*&gt;::format(color_names[c], ctx);
+  }
+};
+
+[&hellip;]
+</pre>
+</blockquote>
+<p>
+&mdash; <i>end example</i>]
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[format.context]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void advance_to(iterator it);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <tt>out_ = std::move(it);</tt>
+<p/>
+[<i>Example 1</i>:
+</p>
+<blockquote>
+<pre>
+struct S { int value; };
+
+template&lt;&gt; struct std::formatter&lt;S&gt; {
+  size_t width_arg_id = 0;
+  
+  <i>// Parses a width argument id in the format { digit }.</i>
+  constexpr auto parse(format_parse_context&amp; ctx) {
+    [&hellip;]
+  }
+  
+  <i>// Formats an S with width given by the argument width_arg_id.</i>
+  auto format(S s, format_context&amp; ctx) <ins>const</ins> {
+    int width = visit_format_arg([](auto value) -&gt; int {
+      if constexpr (!is_integral_v&lt;decltype(value)&gt;)
+        throw format_error("width is not integral");
+      else if (value &lt; 0 || value &gt; numeric_limits&lt;int&gt;::max())
+        throw format_error("invalid width");
+      else
+        return value;
+      }, ctx.arg(width_arg_id));
+    return format_to(ctx.out(), "{0:x&lt;{1}}", s.value, width);
+  }
+};
+
+[&hellip;]
+</pre>
+</blockquote>
+<p>
+&mdash; <i>end example</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[time.format]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration, class charT&gt;
+struct formatter&lt;chrono::<i>local-time-format-t</i>&lt;Duration&gt;, charT&gt;;
+</pre>
+<blockquote>
+<p>
+-15- Let <tt>f</tt> be [&hellip;]
+<p/>
+-16- <i>Remarks:</i> [&hellip;]
+</p>
+</blockquote>
+<blockquote>
+<pre>
+template&lt;class Duration, class TimeZonePtr, class charT&gt;
+struct formatter&lt;chrono::zoned_time&lt;Duration, TimeZonePtr&gt;, charT&gt;
+  : formatter&lt;chrono::<i>local-time-format-t</i>&lt;Duration&gt;, charT&gt; {
+  template&lt;class FormatContext&gt;
+    typename FormatContext::iterator
+      format(const chrono::zoned_time&lt;Duration, TimeZonePtr&gt;&amp; tp, FormatContext&amp; ctx) <ins>const</ins>;
+};
+</pre>
+</blockquote>
+<pre>
+template&lt;class FormatContext&gt;
+  typename FormatContext::iterator
+    format(const chrono::zoned_time&lt;Duration, TimeZonePtr&gt;&amp; tp, FormatContext&amp; ctx) <ins>const</ins>;
+</pre>
+<blockquote>
+<p>
+-17- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+sys_info info = tp.get_info();
+return formatter&lt;chrono::<i>local-time-format-t</i>&lt;Duration&gt;, charT&gt;::
+         format({tp.get_local_time(), &amp;info.abbrev, &amp;info.offset}, ctx);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
