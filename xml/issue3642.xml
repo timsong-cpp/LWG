@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3642" status="New">
+<title><tt>move_only_function</tt> assignment operators seem to be defined suboptimal</title>
+<section><sref ref="[func.wrap.move.ctor]"/></section>
+<submitter>Alexander Gutenev</submitter>
+<date>20 Nov 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[func.wrap.move.ctor]"/>/22 and <sref ref="[func.wrap.move.ctor]"/>/25 define the effects 
+of assignment as following:
+</p>
+<blockquote>
+<pre>
+move_only_function&amp; operator=(move_only_function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+<i>Effects:</i> Equivalent to: <tt>move_only_function(std::move(f)).swap(*this);</tt>
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class F&gt; move_only_function&amp; operator=(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+<i>Effects:</i> Equivalent to: <tt>move_only_function(std::forward&lt;F&gt;(f)).swap(*this);</tt>
+</p>
+</blockquote>
+</blockquote>
+<p>
+The assignment via <tt>swap</tt> with temporary makes the implementation to do the following:
+</p>
+<ul>
+<li><p>move out the previous target to a temporary location</p></li>
+<li><p>move in the new target</p></li>
+<li><p>finally destroy the previous target.</p></li>
+</ul>
+<p>
+As everything is <tt>noexcept</tt> here, I think it can be short cut to just:
+</p>
+<ul>
+<li><p>destroy the previous target.</p></li>
+<li><p>move in the new target</p></li>
+</ul>
+<p>
+Looks like the implementation cannot do such optimization in a generic case with small functor 
+optimization enabled and non-trivial move constructor for the new target and with non-trivial 
+destruction of the previous target, since the difference is observable.
+<p/>
+Apparently the optimization is precluded for no reason.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[func.wrap.move.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+move_only_function&amp; operator=(move_only_function&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-22- <i>Effects:</i> <ins>Sets the target object of <tt>this</tt> to the target object of <tt>f</tt> 
+before the assignment and leaves <tt>f</tt> in a valid state with an unspecified value.</ins><del>Equivalent to: <tt>move_only_function(std::move(f)).swap(*this);</tt></del>
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class F&gt; move_only_function&amp; operator=(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-25- <i>Effects:</i> Equivalent to: <tt><ins>*this = </ins>move_only_function(std::forward&lt;F&gt;(f))<del>.swap(*this)</del>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
