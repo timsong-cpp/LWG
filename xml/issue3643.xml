@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3643" status="New">
+<title>Missing <tt>constexpr</tt> in <tt>std::counted_iterator</tt></title>
+<section><sref ref="[counted.iter.nav]"/></section>
+<submitter>Jiang An</submitter>
+<date>21 Nov 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+One overload of <tt>std::counted_operator::operator++</tt> is not <tt>constexpr</tt> currently, 
+which is seemly because of that a try-block (specified in <sref ref="[counted.iter.nav]"/>/4) 
+is not allowed in a constexpr function until C++20. Given a try-block is allowed in a constexpr 
+function in C++20, IMO this overload should also be <tt>constexpr</tt>.
+<p/>
+MSVC STL has already added <tt>constexpr</tt> <a href="https://github.com/microsoft/STL/blob/1e42166b78f814c9150afff98cc399773eda8ddf/stl/inc/iterator#L590">at first</a>. 
+The situation of this overload is originally found by Casey Carter, but no LWG issue has been submitted.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[counted.iterator]"/>, class template synopsis <tt>counted_iterator</tt>, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+constexpr counted_iterator&amp; operator++();
+<ins>constexpr</ins> decltype(auto) operator++(int);
+constexpr counted_iterator operator++(int)
+  requires forward_iterator&lt;I&gt;;
+constexpr counted_iterator&amp; operator--()
+  requires bidirectional_iterator&lt;I&gt;;
+constexpr counted_iterator operator--(int)
+  requires bidirectional_iterator&lt;I&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[counted.iter.nav]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>constexpr</ins> decltype(auto) operator++(int);
+</pre>
+<blockquote>
+<p>
+-3- <i>Preconditions:</i> <tt>length &gt; 0</tt>.
+<p/>
+-4- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+--length;
+try { return current++; }
+catch(...) { ++length; throw; }
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
