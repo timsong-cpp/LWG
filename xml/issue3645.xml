@@ -82,9 +82,61 @@ No matter which specification approach we adopt, we can also simplify the Precon
 because once the user is receiving prvalue copies, it will no longer be physically possible for the 
 user to modify the library's original variables <tt>p</tt> and <tt>n</tt>.
 </p>
+
+<note>2021-11-29; Arthur O'Dwyer provides wording</note>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[string.capacity]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Operation&gt; constexpr void resize_and_overwrite(size_type n, Operation op);
+</pre>
+<blockquote>
+<p>
+-7- Let
+</p>
+<ol style="list-style-type:none">
+<li><p>(7.1) &mdash; <tt>o = size()</tt> before the call to <tt>resize_and_overwrite</tt>.</p></li>
+<li><p>(7.2) &mdash; <tt>k</tt> be <tt>min(o, n)</tt>.</p></li>
+<li><p>(7.3) &mdash; <tt>p</tt> be a <tt>charT*</tt>, such that the range <tt>[p, p + n]</tt> is valid 
+and <tt>this-&gt;compare(0, k, p, k) == 0</tt> is <tt>true</tt> before the call. The values in the range 
+<tt>[p + k, p + n]</tt> may be indeterminate (<sref ref="[basic.indet]"/>).</p></li>
+<li><p>(7.4) &mdash; <tt><i>OP</i></tt> be the expression <tt>std::move(op)(<ins>auto(</ins>p<ins>)</ins>, <ins>auto(</ins>n<ins>)</ins>)</tt>.</p></li>
+<li><p>(7.5) &mdash; <tt>r = <i>OP</i></tt>.</p></li>
+</ol>
+<p>
+-8- <i>Mandates:</i> <tt><i>OP</i></tt> has an integer-like type (<sref ref="[iterator.concept.winc]"/>).
+<p/>
+-9- <i>Preconditions:</i>
+</p>
+<ol style="list-style-type:none">
+<li><p>(9.1) &mdash; <tt><i>OP</i></tt> does not throw an exception <del>or modify <tt>p</tt> or <tt>n</tt></del>.</p></li>
+<li><p>(9.2) &mdash; <tt>r &ge; 0</tt>.</p></li>
+<li><p>(9.3) &mdash; <tt>r &le; n</tt>.</p></li>
+<li><p>(9.4) &mdash; After evaluating <tt><i>OP</i></tt> there are no indeterminate values in the range 
+<tt>[p, p + r)</tt>.</p></li>
+</ol>
+<p>
+-10- <i>Effects:</i> Evaluates <tt><i>OP</i></tt>, replaces the contents of <tt>*this</tt> with <tt>[p, p + r)</tt>, 
+and invalidates all pointers and references to the range <tt>[p, p + n]</tt>.
+<p/>
+-11- <i>Recommended practice:</i> Implementations should avoid unnecessary copies and allocations by, for example,
+making <tt>p</tt> a pointer into internal storage and by restoring <tt>*(p + r)</tt> to <tt>charT()</tt> 
+after evaluating <tt><i>OP</i></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
 </resolution>
 
 </issue>
