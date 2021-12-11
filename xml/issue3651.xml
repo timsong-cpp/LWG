@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3651" status="New">
+<title>Unspecified lifetime guarantees for the format string</title>
+<section><sref ref="[format]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>08 Dec 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Is this program guaranteed to be valid:
+</p>
+<blockquote><pre>
+#include &lt;format&gt;
+#include &lt;algorithm&gt;
+
+struct Thing { };
+
+template &lt;>
+struct std::formatter&lt;Thing> {
+  std::string_view spec;
+
+  constexpr auto parse(std::format_parse_context&amp; ctx) {
+    auto end = std::find(ctx.begin(), ctx.end(), '}');
+    spec = std::string_view(ctx.begin(), end);
+    return end;
+  }
+
+  auto format(Thing, std::format_context&amp; ctx) {
+    return std::ranges::copy(spec, ctx.out()).out;
+  }
+};
+
+int main() {
+  std::print("{:lwg issue}\n",  Thing{});
+}
+</pre></blockquote>
+<p>
+In <tt>parse()</tt>, the formatter for <tt>Thing</tt> holds onto a string view of its specifiers. 
+And then in <tt>ranges::copy()</tt>, it just prints them. I don't think we say anywhere that this works. 
+Does this code print <tt>"lwg issue"</tt> because there's no issue or does it print some garbage 
+memory somewhere because there is one?
+<p/>
+libfmt's implementation internally stores <tt>string_view</tt>'s into the format string (for named 
+argument support), which implies that it should work. But it'd be nice to come out and say that.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
