@@ -33,11 +33,13 @@ Set priority to 2 after reflector discussions.
 </p>
 
 <note>2021-01-16; Zhihao Yuan provides wording</note>
-</discussion>
 
-<resolution>
 <p>
-This wording is relative to <a href="https://wg21.link/n4878">N4878</a>. 
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>
+This wording is relative to <paper num="N4878"/>. 
 </p>
 
 <ol>
@@ -57,6 +59,58 @@ namespace ranges {
 <p>
 -1- <i>Constraints:</i> The expression <tt>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</tt> is well-formed
 when treated as an unevaluated operand.
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<del>return</del><ins>auto ptr =</ins> ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+<ins>if constexpr (is_array_v&lt;T&gt;)
+  return launder(location);
+else
+  return ptr;</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2021-12-11; Zhihao Yuan comments and provides improved wording</note>
+<p>
+The previous PR allows constructing arbitrary number of elements when
+<tt>T</tt> is an array of unknown bound:</p>
+<blockquote><pre>
+extern int a[];
+std::construct_at(&amp;a, 0, 1, 2);
+</pre></blockquote>
+<p>
+and leads to a UB.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[specialized.construct]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> The expression <tt>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</tt> is well-formed
+when treated as an unevaluated operand (<sref ref="[expr.context]"/>) <ins>and <tt>is_unbounded_array_v&lt;T&gt;</tt> is 
+<tt>false</tt></ins>.
 <p/>
 -2- <i>Effects:</i> Equivalent to:
 </p>
