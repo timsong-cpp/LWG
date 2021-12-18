@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3652" status="New">
+<title>Can we relax the preconditions of <tt>longjmp</tt>?</title>
+<section><sref ref="[csetjmp.syn]"/></section>
+<submitter>Jiang An</submitter>
+<date>15 Dec 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+IMO the UB in <sref ref="[csetjmp.syn]"/>/2 is because of the design that "every destructor call 
+for an object shall be in effect when the lifetime of that object ends". A similar requirement is 
+in <sref ref="[basic.life]"/>/5, but it's more relaxed than the requirement for <tt>setjmp</tt>/<tt>longjmp</tt>.
+It seems better to harmonize the requirements in <sref ref="[basic.life]"/>/5 and 
+<sref ref="[csetjmp.syn]"/>/2, which allows <tt>longjmp</tt> to skip non-trivial but no-op destructor calls. 
+Given that Microsoft UCRT's <tt>longjmp</tt> can sometimes (but not always) call destructors, 
+IMO we should say that it's unspecified whether <tt>longjmp</tt> calls destructor for any object 
+whose lifetime ends.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[csetjmp.syn]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The function signature <tt>longjmp(jmp_buf jbuf, int val)</tt> has more restricted behavior 
+in this document. <del>A <tt>setjmp</tt>/<tt>longjmp</tt> call pair has undefined behavior 
+i</del><ins>I</ins>f replacing the <tt>setjmp</tt> and <tt>longjmp</tt> <ins>in a 
+<tt>setjmp</tt>/<tt>longjmp</tt> call pair</ins> by <tt>catch</tt> and <tt>throw</tt> would invoke any 
+<del>non-trivial</del> destructors for any objects with automatic storage duration<ins>, it is 
+unspecified whether the destructor is invoked for each such object. The behavior is undefined if the 
+program depends on the side effects produced by any such unspecified destructor calls</ins>. A 
+call to <tt>setjmp</tt> or <tt>longjmp</tt> has undefined behavior if invoked in a suspension 
+context of a coroutine (<sref ref="[expr.await]"/>).
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
