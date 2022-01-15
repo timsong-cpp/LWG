@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3656" status="New">
+<title>Inconsistent bit operations returning a count</title>
+<section><sref ref="[bit.pow.two]"/></section>
+<submitter>Nicolai Josuttis</submitter>
+<date>30 Dec 2021</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Among the bit operations returning a count, <tt>bit_width()</tt> is the only one not returning an <tt>int</tt>.
+<p/>
+This has the following consequences:
+</p>
+<blockquote><pre>
+std::uint64_t b64 = 1;
+b64 = std::rotr(b64, 1);
+int count1 = std::popcount(b64);     // OK
+int count2 = std::countl_zero(b64);  // OK
+int count3 = std::bit_width(b64);    // OOPS
+</pre></blockquote>
+<p>
+The last line may result in a warning such as:
+</p>
+<blockquote><p>
+Warning: conversion from <tt>long long unsigned</tt> to <tt>int</tt> may change value
+</p></blockquote>
+<p>
+You have to use a <tt>static_cast</tt> to avoid the warning.
+<p/>
+Note that <paper num="P0553R4"/> explicitly states the following design considerations,
+which I would also assume to apply to the later added functions from <paper num="P0556R3"/>:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+The counting operations return "<tt>int</tt>" quantities, consistent with the rule "use an <tt>int</tt> unless you 
+need something else". This choice does not reflect, in the type, the fact that counts are always non-negative. 
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[bit.syn]"/>, header <tt>&lt;bit&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class T&gt;
+  constexpr <del>T</del><ins>int</ins> bit_width(T x) noexcept;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[bit.pow.two]"/>, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class T&gt;
+  constexpr <del>T</del><ins>int</ins> bit_width(T x) noexcept;
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+-11- <i>Constraints:</i> <tt>T</tt> is an unsigned integer type (<sref ref="[basic.fundamental]"/>).
+<p/>
+-12- <i>Returns:</i> If <tt>x == 0</tt>, <tt>0</tt>; otherwise one plus the base-2 logarithm of <tt>x</tt>, 
+with any fractional part discarded.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
