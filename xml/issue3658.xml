@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3658" status="New">
+<title><tt>basic_streambuf::sputn</tt> is both overspecified and underspecified</title>
+<section><sref ref="[streambuf.pub.put]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>17 Jan 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification for <tt>basic_streambuf::sputn</tt> is:
+</p>
+<blockquote><p>
+<i>Returns:</i> <tt>xsputn(s, n)</tt>.
+</p></blockquote>
+<p>
+One interpretation of this implies that <tt>sputn</tt> can't insert characters directly into the 
+put area if there is space for them, it has to make a virtual call. That has significant overhead 
+for repeated calls, such as inserting many small strings/string_views in a loop.
+<p/>
+But another interpretation is that it doesn't use "<i>Effects:</i> Equivalent to" or anything like 
+that, so doesn't say an actual call to <tt>xsputn</tt> happens. Strictly speaking, it only says it 
+returns the value that <tt>xsputn</tt> would return, and doesn't even have to produce any of its effects!
+<p/>
+We should describe the effects, not the return value, and we should do so in a way that does not 
+overconstrain the implementation. It should not be necessary to make a virtual call to <tt>xsputn</tt> 
+if the put area has capacity for the characters. On the other hand, if it doesn't have capacity, then 
+calling <tt>xsputn</tt> is the best option; it allows the derived <tt>streambuf</tt> to decide how 
+best to handle large writes.
+<p/>
+The proposed resolution replaces the <i>Returns:</i> element with an <i>Effects:</i> element, so that 
+we specify that those effects actually occur. A normative remark is added to give the implementation 
+leeway to avoid the virtual call when it isn't needed.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[streambuf.pub.put]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+streamsize sputn(const char_type* s, streamsize n);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions:</i> <tt>[s, s+n)</tt> is a valid range.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> <tt>return xsputn(s, n)</tt>.</ins>
+<p/>
+<ins>-?- <i>Remarks:</i> When <tt>(epptr() - pptr()) &gt; n</tt>, it is unspecified whether the characters 
+are written directly to the output sequence without calling <tt>xsputn</tt>.</ins>
+<p/>
+-2- <i>Returns:</i> <tt>xsputn(s, n)</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
