@@ -1,0 +1,122 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3664" status="New">
+<title>LWG 3392 broke <tt>std::ranges::distance(a, a+3)</tt></title>
+<section><sref ref="[range.iter.op.distance]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>23 Jan 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the use of <tt>std::ranges::distance(first, last)</tt> on a simple C array.
+This works fine with <tt>std::distance</tt>, but currently does not work with
+<tt>std::ranges::distance</tt>.
+</p>
+<blockquote>
+<pre>
+// <a href="https://godbolt.org/z/vsxbcfEv6">godbolt link</a>
+#include &lt;ranges&gt;
+#include &lt;cassert&gt;
+
+int main() {
+  int a[] = {1, 2, 3};
+  assert(std::ranges::distance(a, a+3) == 3);
+  assert(std::ranges::distance(a, a) == 0);
+  assert(std::ranges::distance(a+3, a) == -3);
+}
+</pre>
+</blockquote>
+<p>
+Before LWG <iref ref="3392"/>, we had a single iterator-pair overload:
+</p>
+<blockquote><pre>
+template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+  constexpr iter_difference_t&lt;I&gt; distance(I first, S last);
+</pre></blockquote>
+<p>
+which works fine for C pointers. After LWG <iref ref="3392"/>, we have two
+iterator-pair overloads:
+</p>
+<blockquote><pre>
+template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+  requires (!sized_sentinel_for&lt;S, I&gt;)
+    constexpr iter_difference_t&lt;I&gt; distance(I first, S last);
+
+template&lt;input_or_output_iterator I, sized_sentinel_for&lt;I&gt; S&gt;
+  constexpr iter_difference_t&lt;I&gt; distance(const I&amp; first, const S&amp; last);
+</pre></blockquote>
+<p>
+and unfortunately the one we want &mdash; <tt>distance(I first, S last)</tt> &mdash; 
+is no longer viable because [with <tt>I=int*</tt>, <tt>S=int*</tt>], we have
+<tt>sized_sentinel_for&lt;S, I&gt;</tt> and so its constraints aren't satisfied.
+So we look at the other overload [with <tt>I=int[3]</tt>, <tt>S=int[3]</tt>], but
+unfortunately its constraints aren't satisfied either, because <tt>int[3]</tt>
+is not an <tt>input_or_output_iterator</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>. 
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> Thanks to Casey Carter. Notice that <tt>(sized_)sentinel_for&lt;S, I&gt;</tt> 
+already implies and subsumes <tt>input_or_output_iterator&lt;I&gt;</tt>, so that constraint 
+wasn't doing anything; personally I'd prefer to remove it for symmetry (and to save the 
+environment). Otherwise you'll have people asking why one of the <tt>I</tt>'s is constrained 
+and the other isn't.] 
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.synopsis]"/>, header <tt>&lt;iterator&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[range.iter.op.distance]"/>, ranges::distance</i>
+template&lt;<ins>class</ins><del>input_or_output_iterator</del> I, sentinel_for&lt;I&gt; S&gt;
+  requires (!sized_sentinel_for&lt;S, I&gt;)
+  constexpr iter_difference_t&lt;I&gt; distance(I first, S last);
+template&lt;<ins>class</ins><del>input_or_output_iterator</del> I, sized_sentinel_for&lt;<ins>decay_t&lt;</ins>I<ins>&gt;</ins>&gt; S&gt;
+  constexpr iter_difference_t&lt;I&gt; distance(const I&amp; first, const S&amp; last);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.iter.op.distance]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<ins>class</ins><del>input_or_output_iterator</del> I, sentinel_for&lt;I&gt; S&gt;
+  requires (!sized_sentinel_for&lt;S, I&gt;)
+  constexpr iter_difference_t&lt;I&gt; ranges::distance(I first, S last);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <tt>[first, last)</tt> denotes a range.
+<p/>
+-2- <i>Effects:</i> Increments <tt>first</tt> until <tt>last</tt> is reached and returns the number of increments.
+</p>
+</blockquote>
+<pre>
+template&lt;<ins>class</ins><del>input_or_output_iterator</del> I, sized_sentinel_for&lt;<ins>decay_t&lt;</ins>I<ins>&gt;</ins>&gt; S&gt;
+  constexpr iter_difference_t&lt;I&gt; ranges::distance(const I&amp; first, const S&amp; last);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to: <tt>return last - first;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
