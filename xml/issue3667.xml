@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3667" status="New">
+<title><tt>std::cout &lt;&lt; &amp;X::f</tt> prints <tt>1</tt></title>
+<section><sref ref="[ostream.formatted]"/></section>
+<submitter>Peter Dimov</submitter>
+<date>31 Jan 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+At present, the program
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+
+struct X
+{
+  void f() {}
+};
+
+int main()
+{
+  std::cout &lt;&lt; &amp;X::f;
+}
+</pre></blockquote>
+<p>
+prints <tt>1</tt>. That's because member pointers implicitly convert
+to <tt>bool</tt>, and there's <tt>operator&lt;&lt;</tt> overload for <tt>bool</tt> in
+<sref ref="[ostream.inserters.arithmetic]"/>.
+<p/>
+This behavior is rarely useful. In C++20, we added deleted
+overloads to prevent a similar counter-intuitive output for
+the case in which e.g. <tt>L"str"</tt> is output to <tt>std::cout</tt>,
+which used to print the pointer value using the <tt>operator&lt;&lt;</tt>
+overload for <tt>const void*</tt>.
+<p/>
+We should similarly consider adding a deleted overload for member pointers.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ostream.general]"/>, class template <tt>basic_ostream</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  
+  template&lt;class traits&gt;
+    basic_ostream&lt;wchar_t, traits&gt;&amp;
+      operator&lt;&lt;(basic_ostream&lt;wchar_t, traits&gt;&amp;, const char16_t*) = delete;
+  template&lt;class traits&gt;
+    basic_ostream&lt;wchar_t, traits&gt;&amp;
+      operator&lt;&lt;(basic_ostream&lt;wchar_t, traits&gt;&amp;, const char32_t*) = delete;
+      
+  <ins>template&lt;class charT, class traits, class T, class C&gt;
+    basic_ostream&lt;charT, traits&gt;&amp; 
+      operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp;, T C::*) = delete;</ins>
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
