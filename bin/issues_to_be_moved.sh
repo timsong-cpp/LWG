@@ -99,11 +99,14 @@ dump_issues()
     fi
     echo "${issues[$st]}" | while read i
     do
-      xml="xml/issue$i.xml"
-      if [[ $ts = no ]] && grep -q '^<title>\[[^]]\+\.ts\.[^]]\+]' "$xml"
+      if [[ $ts = no ]]
       then
-        echo "Skipping $i ("$(grep -o '\[[^]]\+\.ts\.[^]]\+]' "$xml")")" >&2
-        continue
+        match=$(grep -o '^<title>\[[^]]\+\.ts\.[^]]\+]' "xml/issue$i.xml")
+        if [[ $match ]]
+        then
+          echo "Skipping $i (${match:7})" >&2
+          continue
+        fi
       fi
       echo "$i" >&2
       # extract relevant parts of the per-issue HTML page
