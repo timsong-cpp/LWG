@@ -20,6 +20,7 @@ usage()
   echo "--intros  Read a block of HTML text from standard input"
   echo "          as an introductory paragraph for each status."
   echo "--nad     Include Tentatively NAD issues in the report."
+  echo "--ts      Include TS issues in the report."
   echo
   echo "Example: $0 'Virtual Plenary, Nov. 2020' 'P2236R0'"
 }
@@ -35,12 +36,14 @@ die()
 
 intros=no
 nad=no
+ts=no
 while [[ "$1" == --* ]]
 do
   case "$1" in
     --help) usage ; exit ;;
     --intros) intros=yes ;;
     --nad) nad=yes ;;
+    --ts) ts=yes ;;
     *) die "Unknown option: $1" ;;
   esac
   shift
@@ -96,6 +99,12 @@ dump_issues()
     fi
     echo "${issues[$st]}" | while read i
     do
+      xml="xml/issue$i.xml"
+      if [[ $ts = no ]] && grep -q '^<title>\[[^]]\+\.ts\.[^]]\+]' "$xml"
+      then
+        echo "Skipping $i ("$(grep -o '\[[^]]\+\.ts\.[^]]\+]' "$xml")")" >&2
+        continue
+      fi
       echo "$i" >&2
       # extract relevant parts of the per-issue HTML page
       html=mailing/issue$i.html
