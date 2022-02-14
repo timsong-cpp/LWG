@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3674" status="New">
+<title>Removal of requirement for locale names for construction of locales not explained</title>
+<section><sref ref="[locale.members]"/></section>
+<submitter>Hubert Tong</submitter>
+<date>12 Feb 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="2394"/> removed the only text in the wording that requires that the name of a locale 
+is usable for constructing further locales.
+<p/>
+The relevant <a href="https://wiki.edg.com/bin/view/LWGChicago2016/ThursdayAfternoon">notes from the wiki</a> 
+appear to make it seem like LWG thought the change was editorial.
+<p/>
+Perhaps the resolution was motivated by a different defect than the one that led to the change?
+<p/>
+Namely,
+</p>
+<blockquote><pre>
+explicit locale(const char* std_name);
+</pre></blockquote>
+<p>
+is said to use "standard C locale names".
+<p/>
+There is no <tt>LC_MESSAGES</tt> in standard C.
+<p/>
+Thus, it is a question whether the aforementioned constructor should be able to consume names produced by the 
+C++ implementation.
+<p/>
+See also the use of the name of the C++ locale in <tt>locale::global()</tt> for use with <tt>setlocale</tt>.
+<p/>
+The following would restore the equivalence of locales that have the same name. It also addresses the 
+suitability of the name for use with <tt>setlocale</tt> and the <tt>locale(const char*)</tt> constructor 
+as a matter of QoI.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[locale.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+string name() const;
+</pre>
+<blockquote>
+<p>
+-5- <i>Returns:</i> The name of <tt>*this</tt>, if it has one; otherwise, the string <tt>"*"</tt>.
+<p/>
+<ins>-?- <i>Remarks:</i> Two locales have identical names if and only if their facets have identical 
+virtual function semantics.</ins>
+<p/>
+<ins>-?- <i>Recommended practice:</i> The name of a locale that has a name should be such that 
+<tt>setlocale(LC_ALL, name().c_str())</tt> returns a non-null pointer. [<i>Note 1:</i> With such a name 
+<tt>locale(name().c_str())</tt> succeeds and does not throw <tt>runtime_error</tt>. &mdash; <i>end note</i>]
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
