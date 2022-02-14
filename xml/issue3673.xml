@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3673" status="New">
+<title>&sect;[locale.cons] Ambiguous argument in <i>Throws</i> for locale+name+category constructor</title>
+<section><sref ref="[locale.cons]"/></section>
+<submitter>Hubert Tong</submitter>
+<date>12 Feb 2022</date>
+<priority>99</priority>
+
+<discussion>
+<blockquote><pre>
+locale(const locale&amp; other, const char* std_name, category);
+</pre></blockquote>
+<p>
+has
+</p>
+<blockquote>
+<p>
+<i>Throws:</i> <tt>runtime_error</tt> if the argument is not valid, or is null.
+</p>
+</blockquote>
+<p>
+There being three arguments, the statement is rather problematic. It looks like a copy/paste from
+</p>
+<blockquote><pre>
+explicit locale(const char* std_name);
+</pre></blockquote>
+<p>
+The conclusion, assuming that "the argument" is also <tt>std_name</tt> in the problem case, seems to be 
+that the statement should be changed to read:
+</p>
+<blockquote>
+<p>
+<i>Throws:</i> <tt>runtime_error</tt> if <tt>std_name</tt> is not valid, or is null.
+</p>
+</blockquote>
+<p>
+However there is implementation divergence over whether or not values for the category argument not 
+explicitly described as valid by <sref ref="[locale.category]"/> result in <tt>runtime_error</tt>.
+<p/>
+libc++ does not throw. libstdc++ does.
+<p/>
+Code:
+</p>
+<blockquote><pre>
+#include &lt;locale&gt;
+#include &lt;stdio.h&gt;
+#include &lt;exception&gt;
+int main(void) {
+  std::locale Generic("C");
+  try {
+    std::locale Abomination(Generic, Generic, 0x7fff'ffff);
+  } catch (std::runtime_error&amp;) {
+    fprintf(stderr, "Threw\n");
+  }
+}
+</pre></blockquote>
+<p>
+<a href="https://godbolt.org/z/3dossoqo6">Compiler Explorer link</a>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
