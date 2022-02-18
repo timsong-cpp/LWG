@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3677" status="New">
+<title>Is a <i>cv</i>-qualified <tt>pair</tt> specially handled in uses-allocator construction?</title>
+<section><sref ref="[allocator.uses.construction]"/></section>
+<submitter>Jiang An</submitter>
+<date>16 Feb 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It seems unclear whether <i>cv</i>-qualified <tt>pair</tt> specializations are considered as 
+specializations of <tt>pair</tt> in <sref ref="[allocator.uses.construction]"/>.
+<p/>
+Currently MSVC STL only considered <i>cv</i>-unqualified pair types as such specializations, 
+while libstdc++ accept both <i>cv</i>-unqualified and <tt>const</tt>-qualified pair types as 
+such specializations. The resolution of LWG <iref ref="3525"/> uses <tt>remove_cv_t</tt>,
+which possibly imply that the specialization of pair may be <i>cv</i>-qualified.
+<p/>
+The difference can be observed via the following program:
+</p>
+<blockquote><pre>
+#include &lt;utility&gt;
+#include &lt;memory&gt;
+#include &lt;vector&gt;
+#include &lt;cassert&gt; 
+
+template&lt;class T&gt;
+class payload_ator {
+
+  int payload{};
+    
+public:
+  payload_ator() = default;
+
+  constexpr explicit payload_ator(int n) noexcept : payload{n} {}
+
+  template&lt;class U&gt;
+  constexpr explicit payload_ator(payload_ator&lt;U&gt; a) noexcept : payload{a.payload} {}   
+
+  friend bool operator==(payload_ator, payload_ator) = default;
+
+  template&lt;class U&gt;
+  friend constexpr bool operator==(payload_ator x, payload_ator&lt;U&gt; y) noexcept
+  {
+    return x.payload == y.payload;
+  }   
+
+  using value_type = T;
+
+  constexpr T* allocate(std::size_t n) { return std::allocator&lt;T&gt;{}.allocate(n); }
+
+  constexpr void deallocate(T* p, std::size_t n) { return std::allocator&lt;T&gt;{}.deallocate(p, n); }   
+
+  constexpr int get_payload() const noexcept { return payload; }
+};
+
+bool test()
+{
+  constexpr int in_v = 42;
+  using my_pair_t = std::pair&lt;int, std::vector&lt;int, payload_ator&lt;int&gt;&gt;&gt;;
+  auto out_v = std::make_obj_using_allocator&lt;const my_pair_t&gt;(payload_ator&lt;int&gt;{in_v}).second.get_allocator().get_payload();
+  return in_v == out_v;
+}
+
+int main()
+{
+  assert(test()); // <span style="color:red;font-weight:bolder">passes only if a const-qualified pair specialization is considered as a pair specialization</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
