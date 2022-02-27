@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3680" status="New">
+<title>Constructor of <tt>move_only_function</tt> with empty <tt><i>ref</i></tt>-qualifier is over-constrained</title>
+<section><sref ref="[func.wrap.move.ctor]"/></section>
+<submitter>Zhihao Yuan</submitter>
+<date>27 Feb 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The following test compiles and holds:
+</p>
+<blockquote><pre>
+struct X
+{
+  int operator()() &amp; { return 1; }  // #1
+  int operator()() &amp;&amp; { return 2; } // #2
+};
+
+using T = move_only_function&lt;int()&gt;;
+assert(T(X{})() == 1);
+</pre></blockquote>
+<p>
+In other words, <tt>#2</tt> is never used. But if you really remove <tt>#2</tt>, the code doesn't compile.
+<p/>
+The change was introduced between <paper num="P0288R5"/> and <paper num="P0288R6"/>, with 
+an intention (assumed) to require <tt>move_only_function&lt;R(Args...) <i>cv</i>&gt;</tt>
+erasing callable objects with <tt>operator()</tt> without <tt><i>ref</i></tt>-qualifiers. 
+But the actual outcome outlawed programs that were valid when using <tt>std::function</tt>.
+<p/>
+It also outlaws future programs such as
+</p>
+<blockquote><pre>
+T x = [captures](this auto&amp;) { return ...; }
+</pre></blockquote>
+<p>
+where declaring <tt>this auto&amp;&amp;</tt> without forwarding only to satisfy
+<tt>move_only_function</tt>'s constraints would be strange.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[func.wrap.move.ctor]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class VT&gt;
+  static constexpr bool <i>is-callable-from</i> = <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-1- If <tt><i>noex</i></tt> is <tt>true</tt>, <tt><i>is-callable-from</i>&lt;VT&gt;</tt> is equal to:
+</p>
+<blockquote><pre>
+<del>is_nothrow_invocable_r_v&lt;R, VT <i>cv ref</i>, ArgTypes...&gt; &amp;&amp;</del>
+is_nothrow_invocable_r_v&lt;R, VT <i>inv-quals</i>, ArgTypes...&gt;
+</pre></blockquote>
+<p>
+Otherwise, <tt><i>is-callable-from</i>&lt;VT&gt;</tt> is equal to:
+</p>
+<blockquote><pre>
+<del>is_invocable_r_v&lt;R, VT <i>cv ref</i>, ArgTypes...&gt; &amp;&amp;</del>
+is_invocable_r_v&lt;R, VT <i>inv-quals</i>, ArgTypes...&gt;
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
