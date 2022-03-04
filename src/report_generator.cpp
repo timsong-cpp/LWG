@@ -472,9 +472,9 @@ void report_generator::make_active(std::vector<issue> const & issues, fs::path c
    print_file_header(out, "C++ Standard Library Active Issues List");
    print_paper_heading(out, "active", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("active") << '\n';
-   out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
+   out << "<h2 id='History'>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
    out << "<h2><a name=\"Status\"></a>Issue Status</h2>\n" << lwg_issues_xml.get_statuses() << '\n';
-   out << "<h2>Active Issues</h2>\n";
+   out << "<h2 id='Issues'>Active Issues</h2>\n";
    print_issues(out, issues, section_db, [](issue const & i) {return is_active(i.stat);} );
    print_file_trailer(out);
 }
@@ -490,8 +490,8 @@ void report_generator::make_defect(std::vector<issue> const & issues, fs::path c
    print_file_header(out, "C++ Standard Library Defect Reports and Accepted Issues");
    print_paper_heading(out, "defect", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("defect") << '\n';
-   out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
-   out << "<h2>Accepted Issues</h2>\n";
+   out << "<h2 id='History'>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
+   out << "<h2 id='Issues'>Accepted Issues</h2>\n";
    print_issues(out, issues, section_db, [](issue const & i) {return is_defect(i.stat);} );
    print_file_trailer(out);
 }
@@ -507,8 +507,8 @@ void report_generator::make_closed(std::vector<issue> const & issues, fs::path c
    print_file_header(out, "C++ Standard Library Closed Issues List");
    print_paper_heading(out, "closed", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("closed") << '\n';
-   out << "<h2>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
-   out << "<h2>Closed Issues</h2>\n";
+   out << "<h2 id='History'>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
+   out << "<h2 id='Issues'>Closed Issues</h2>\n";
    print_issues(out, issues, section_db, [](issue const & i) {return is_closed(i.stat);} );
    print_file_trailer(out);
 }
