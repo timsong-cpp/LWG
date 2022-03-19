@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3683" status="New">
+<title><tt>operator=</tt> for <tt>polymorphic_allocator</tt> cannot deduce template argument in common cases</title>
+<section><sref ref="[mem.poly.allocator.class]"/></section>
+<submitter>Pablo Halpern</submitter>
+<date>18 Mar 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <tt>&lt;memory_resource&gt;</tt>, the equality comparison operator for <tt>pmr::polymorphic_allocator</tt> 
+is declared in namespace scope as:
+</p>
+<blockquote><pre>
+template&lt;class T1, class T2&gt;
+  bool operator==(const polymorphic_allocator&lt;T1&gt;&amp; a,
+                  const polymorphic_allocator&lt;T2&gt;&amp; b) noexcept;
+</pre></blockquote>
+<p>
+Since <tt>polymorphic_allocator</tt> is implicitly convertible from <tt>memory_resource*</tt>, 
+one would naively expect &mdash; and the author of <tt>polymorphic_allocator</tt> intended 
+&mdash; the following code to work:
+</p>
+<blockquote><pre>
+std::pmr::unsynchronized_pool_resource pool_rsrc;
+std::pmr::vector&lt;int&gt; vec(&amp;pool_rsrc); // Converts to std::pmr::polymorphic_allocator&lt;int&gt;
+[&hellip;]
+assert(vec.get_allocator() == &amp;pool_rsrc);  // (1) Compare polymorphic_allocator to memory_resource*
+</pre></blockquote>
+<p>
+Unfortunately, the line labeled (1) is ill-formed because the type <tt>T2</tt> in <tt>operator==</tt> cannot be deduced.
+<p/>
+Possible resolution 1 (PR1) is to supply a second <tt>operator==</tt>, overloaded for comparison to 
+<tt>memory_resource*</tt>:
+</p>
+<blockquote><pre>
+template&lt;class T1, class T2&gt;
+  bool operator==(const polymorphic_allocator&lt;T1&gt;&amp; a,
+                  const polymorphic_allocator&lt;T2&gt;&amp; b) noexcept;
+<ins>template&lt;class T&gt;
+  bool operator==(const polymorphic_allocator&lt;T&gt;&amp; a,
+                  memory_resource* b) noexcept;</ins>
+</pre></blockquote>
+<p>
+The rules for implicitly defined spaceship and comparison operators obviates defining <tt>operator!=</tt> 
+or <tt>operator==(b, a)</tt>. This PR would allow <tt>polymorphic_allocator</tt> to be compared for equality 
+with <tt>memory_resource*</tt>, but not with any other type that is convertible to <tt>polymorphic_allocator</tt>.
+<p/>
+Possible resolution 2 (PR2) is to replace <tt>operator==</tt> with a homogeneous version where type deduction 
+occurs only for one template parameter:
+</p>
+<blockquote><pre>
+<del>template&lt;class T1, class T2&gt;
+  bool operator==(const polymorphic_allocator&lt;T1&gt;&amp; a,
+                  const polymorphic_allocator&lt;T2&gt;&amp; b) noexcept;</del>
+<ins>template&lt;class T&gt;
+  bool operator==(const polymorphic_allocator&lt;T&gt;&amp; a,
+                  const type_identity_t&lt;polymorphic_allocator&lt;T&gt;&gt;&amp; b) noexcept;</ins>
+</pre></blockquote>
+<p>
+This version will work with any type that is convertible to <tt>polymorphic_allocator</tt>.
+<p/>
+Possible resolution 3 (PR3), the proposed resolution, below, is to add a homogeneous equality operator 
+as a "hidden friend", such that it is found by ADL only if one argument is a <tt>polymorphic_allocator</tt> 
+and the other argument is convertible to <tt>polymorphic_allocator</tt>. As with PR2, this PR will work 
+with any type that is convertible to <tt>polymorphic_allocator</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4901"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[mem.poly.allocator.class]"/>, class template <tt>polymorphic_allocator</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::pmr {
+  template&lt;class Tp = byte&gt; class polymorphic_allocator {
+    memory_resource* memory_rsrc; <i>// exposition only</i>
+
+  public:
+    using value_type = Tp;
+
+    [&hellip;]
+    memory_resource* resource() const;
+    
+    <ins><i>// friends</i>
+    friend bool operator==(const polymorphic_allocator&amp; a,
+                           const polymorphic_allocator&amp; b) noexcept {
+      return *a.resource() == *b.resource();
+    }</ins>
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
