@@ -2,15 +2,36 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="3688" status="New">
-<title>Can <tt>std::expected&lt;T, E&gt;::value</tt> be well-formed when <tt>E</tt> is move-only?</title>
-<section><sref ref="[expected.object.obs]"/><sref ref="[expected.void.obs]"/></section>
+<title>Exception specifications of copy/move member functions of <tt>std::bad_excepted_access</tt></title>
+<section><sref ref="[expected.bad]"/><sref ref="[expected.bad.void]"/>
+<sref ref="[expected.object.obs]"/><sref ref="[expected.void.obs]"/></section>
 <submitter>Jiang An</submitter>
 <date>24 Mar 2022</date>
 <priority>99</priority>
 
 <discussion>
 <p>
-<tt>std::expected&lt;T, E&gt;::value</tt> overloads are specified to throw 
+The move constructor and the move assignment operator of standard exception types are not covered by 
+<sref ref="[exception]"/>/2, and thus it is currently effectively unspecified whether these move 
+functions of <tt>std::bad_expected_access&lt;void&gt;</tt> are <tt>noexcept</tt>. Furthermore, 
+<tt>std::bad_expected_access&lt;void&gt;</tt> has protected special member functions, which overrides 
+(or conflicts with?) the general rule in <sref ref="[exception]"/>/2.
+<p/>
+The primary template <tt>std::bad_expected_access&lt;E&gt;</tt> stores an <tt>E</tt> object, and copying 
+the stored object may throw an exception. Is it intended that the copy functions of 
+<tt>std::bad_expected_access&lt;E&gt;</tt> are <tt>noexcept</tt> while those of <tt>E</tt> are not? 
+When the copy happens because a <tt>std::bad_expected_access&lt;E&gt;</tt> is caught by value, if the 
+copy constructor of <tt>E</tt> throws, <tt>std::terminate</tt> is called no matter whether that of 
+<tt>std::bad_expected_access&lt;E&gt;</tt> is <tt>noexcept</tt>. But 
+<tt>std::bad_expected_access&lt;E&gt;</tt> may be copied/moved in other circumstances.
+<p/>
+I think the move constructor and the move assignment operator of a standard exception type should be 
+specified to be public and <tt>noexcept</tt> when they exist, although sometimes whether they exist may be 
+unspecified. And the move functions should also propagate the result of <tt>what()</tt> when the source 
+and target have the same dynamic type, except that they can leave the result of <tt>what()</tt> from 
+the source valid but unspecified.
+<p/>
+Related to this, <tt>std::expected&lt;T, E&gt;::value</tt> overloads are specified to throw 
 <tt>std::bad_expected_access&lt;std::decay_t&lt;E&gt;&gt;</tt> when an <tt>E</tt> is contained. 
 However, it seems that the copy constructor of <tt>std::bad_expected_access</tt> is implicitly 
 deleted if <tt>E</tt> is move-only, so the <i>throw-expression</i> is ill-formed.
