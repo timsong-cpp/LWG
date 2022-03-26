@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3684" status="New">
+<title><tt>std::allocator&lt;T&gt;::allocate_at_least</tt> in constant evaluation</title>
+<section><sref ref="[allocator.members]"/></section>
+<submitter>Jiang An</submitter>
+<date>22 Mar 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::allocator&lt;T&gt;::allocate_at_least</tt> is a constexpr function that allocates memory during 
+constant evaluation, but its restrictions is not clear. Presumably the restrictions are same as those of 
+<tt>std::allocator&lt;T&gt;::allocate</tt>, and we should specify <tt>allocate_at_least</tt> in term of <tt>allocate</tt>.
+<p/>
+The MSVC STL implementation returns <tt>allocation_result&lt;T*&gt;{allocate(n), n}</tt> now. Perhaps we 
+should adopt this strategy for constant evaluation to avoid additional mechanism in the compiler.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[allocator.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[[nodiscard]] constexpr allocation_result&lt;T*&gt; allocate_at_least(size_t n);
+</pre>
+<blockquote>
+<p>
+-6- <i>Mandates:</i> <tt>T</tt> is not an incomplete type (<sref ref="[basic.types.general]"/>).
+<p/>
+-7- <i>Returns:</i> <tt>allocation_result&lt;T*&gt;{ptr, count}</tt>, where <tt>ptr</tt> is a pointer 
+to the initial element of an array of <tt>count T</tt> and <tt>count = n</tt>.
+<p/>
+-8- <i>Throws:</i> <tt>bad_array_new_length</tt> if <tt>numeric_limits&lt;size_t&gt;::max() / sizeof(T) &lt; n</tt>, 
+or <tt>bad_alloc</tt> if the storage cannot be obtained.
+<p/>
+-9- <i>Remarks:</i> The storage for the array is obtained by calling <tt>::operator new</tt>, 
+but it is unspecified when or how often this function is called. This function starts the 
+lifetime of the array object, but not that of any of the array elements. <ins>This function returns 
+<tt>allocation_result&lt;T*&gt;{allocate(n), n}</tt> within the evaluation of a core constant expression.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
