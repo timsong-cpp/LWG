@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3692" status="New">
+<title><tt>zip_view::<i>iterator</i></tt>'s <tt>operator&lt;=&gt;</tt> is overconstrained</title>
+<section><sref ref="[range.zip.iterator]"/></section>
+<submitter>S. B. Tam</submitter>
+<date>21 Apr 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>zip_view::<i>iterator</i></tt>'s <tt>operator&lt;=&gt;</tt> is constrained with 
+<tt>(three_way_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views>>> &amp;&amp; ...)</tt>. 
+This is unnecessary, because the comparison is performed on the stored <tt><i>tuple-or-pair</i></tt>, 
+and both <tt>std::tuple</tt> and <tt>std::pair</tt> provide <tt>operator&lt;=&gt;</tt> regardless of 
+whether the elements are three-way comparable.
+<p/>
+Note that, because neither <tt>std::tuple</tt> nor <tt>std::pair</tt> provides <tt>operator&lt;</tt> 
+since C++20, comparing two <tt>zip::<i>iterator</i></tt>s with <tt>operator&lt;</tt> (which is specified 
+to return <tt>x.<i>current_</i> &lt; y.<i>current_</i></tt>, where <tt><i>current_</i></tt> is a 
+<tt><i>tuple-or-pair</i></tt>) eventually uses <tt>tuple</tt> or <tt>pair</tt>'s <tt>operator&lt;=&gt;</tt> 
+anyway.
+<p/>
+Thus, I think it's possible to make <tt>operator&lt;=&gt;</tt> not require <tt>three_way_comparable</tt>. 
+This also makes it possible to remove the operator functions for <tt>&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, 
+<tt>&gt;=</tt> and rely on the operators synthesized from <tt>operator&lt;=&gt;</tt>.
+</p>
+
+<note>2022-04-24; Daniel comments and provides wording</note>
+<p>
+It should be pointed out that by still constraining <tt>operator&lt;=&gt;</tt> with 
+<tt><i>all-random-access</i>&lt;Const, Views...&gt;</tt> we also constrain by 
+<tt>random_access_iterator&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;</tt>
+which again means that we constrain by 
+<tt>totally_ordered&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;</tt>, so
+this operator will only be satisfied with iterators <tt>I</tt> that satisfy 
+<tt><i>partially-ordered-with</i>&lt;I, I&gt;</tt>. Based on this argument the delegation to
+<tt><i>tuple-or-pair</i></tt>'s <tt>operator&lt;=&gt;</tt> that solely depends on 
+<tt><i>synth-three-way</i></tt> should be appropriate.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.zip.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0)
+  template&lt;bool Const&gt;
+  class zip_view&lt;Views...&gt;::<i>iterator</i> {
+    <i>tuple-or-pair</i>&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt; <i>current_</i>; <i>// exposition only</i>
+    constexpr explicit <i>iterator</i>(<i>tuple-or-pair</i>&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt;); <i>// exposition only</i>
+  public:
+    [&hellip;]
+    friend constexpr bool operator==(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires (equality_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...);
+    
+    <del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;
+    friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;
+    friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;
+    friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+    friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt; <del>&amp;&amp;
+               three_way_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...)</del>;    
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+<del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-16- <i>Returns:</i> <tt>x.<i>current_</i> &lt; y.<i>current_</i></tt>.</del>
+</p>
+</blockquote>
+<pre>
+<del>friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-17- <i>Effects:</i> Equivalent to: <tt>return y &lt; x;</tt></del>
+</p>
+</blockquote>
+<pre>
+<del>friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-18- <i>Effects:</i> Equivalent to: <tt>return !(y &lt; x);</tt></del>
+</p>
+</blockquote>
+<pre>
+<del>friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-19- <i>Effects:</i> Equivalent to: <tt>return !(x &lt; y);</tt></del>
+</p>
+</blockquote>
+<pre>
+friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt; <del>&amp;&amp;
+          (three_way_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...)</del>;
+</pre>
+<blockquote>
+<p>
+-20- <i>Returns:</i> <tt>x.<i>current_</i> &lt;=&gt; y.<i>current_</i></tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
