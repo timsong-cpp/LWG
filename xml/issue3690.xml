@@ -25,9 +25,182 @@ overloads for <tt>std::variant</tt> should be excluded (or at least leave whethe
 unspecified), and all other overloads should be found; and the opposite rule should be used 
 when referred in <sref ref="[variant]"/>.
 </p>
+
+<note>2022-04-25; Jiang An comments and provides wording</note>
+<p>
+ Currently this program is accepted when using MSVC STL and libstdc++, although the acception seems unintended and problematic.
+</p>
+<blockquote><pre>
+#include &lt;variant&gt;
+#include &lt;span&gt;
+#include &lt;ranges&gt;
+
+struct Foo : std::variant&lt;int, long&gt; {};
+
+template&lt;&gt;
+struct std::tuple_element&lt;0, Foo&gt; { using type = int; };
+
+template&lt;&gt;
+struct std::tuple_element&lt;1, Foo&gt; { using type = long; };
+
+template&lt;&gt;
+struct std::tuple_size&lt;Foo&gt; : std::integral_constant&lt;std::size_t, 2&gt; {};
+
+constexpr auto bad_keys = std::span&lt;Foo&gt;{} | std::views::values;
+
+int main() {} <i>// COMPILE-ONLY</i>
+</pre></blockquote>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[contents]"/> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- Whenever an unqualified name other than <tt>swap</tt> is used in the specification of a declaration <tt>D</tt> 
+in Clause <sref ref="[support]"/> through Clause <sref ref="[thread]"/> or Annex <sref ref="[depr]"/>, 
+its meaning is established as-if by performing unqualified name lookup (<sref ref="[basic.lookup.unqual]"/>)
+in the context of <tt>D</tt>.
+<p/>
+[<i>Note 1</i>: Argument-dependent lookup is not performed. &mdash; <i>end note</i>]
+<p/>
+Similarly, the meaning of a <i>qualified-id</i> is established as-if by performing qualified name lookup 
+(<sref ref="[basic.lookup.qual]"/>) in the context of <tt>D</tt>.
+<p/>
+[<i>Example 1</i>: The reference to <tt>is_array_v</tt> in the specification of <tt>std::to_array</tt> 
+(<sref ref="[array.creation]"/>) refers to <tt>::std::is_array_v</tt>. &mdash; <i>end example</i>]
+<p/>
+[<i>Note 2</i>: Operators in expressions (<sref ref="[over.match.oper]"/>) are not so constrained; see 
+<sref ref="[global.functions]"/>. &mdash; <i>end note</i>]
+The meaning of the unqualified name <tt>swap</tt> is established in an overload resolution context for 
+swappable values (<sref ref="[swappable.requirements]"/>).
+<p/>
+<ins>Certain entities in the standard library are specified to select <i>tuple-like <tt>get</tt> function templates</i>. 
+An implementation shall behave as if every tuple-like <tt>get</tt> function template is found in the 
+definition of such an entity. Furthermore, an implementation shall ensure that no <tt>get</tt> function 
+template that is not tuple-like is found in the definition of such an entity.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Add to the end of <sref ref="[pair.astuple]"/>, <sref ref="[tuple.elem]"/>, 
+<sref ref="[array.tuple]"/>, and <sref ref="[range.subrange.access]"/> as indicated:</p>
+
+<blockquote>
+<p>
+<ins>The <tt>get</tt> function templates specified in this section are tuple-like (<sref ref="[contents]"/>).</ins>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[tuple.apply]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F, class Tuple&gt;
+  constexpr decltype(auto) apply(F&amp;&amp; f, Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Given the exposition-only function:
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class F, class Tuple, size_t... I&gt;
+  constexpr decltype(auto) <i>apply-impl</i>(F&amp;&amp; f, Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) { <i>// exposition only</i>
+    return <i>INVOKE</i>(std::forward&lt;F&gt;(f), get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...); <i>// see <sref ref="[func.require]"/></i>
+  }
+}
+</pre></blockquote>
+<p>
+Equivalent to:
+</p>
+<blockquote><pre>
+return <i>apply-impl</i>(std::forward&lt;F&gt;(f), std::forward&lt;Tuple&gt;(t),
+                  make_index_sequence&lt;tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;&gt;{});
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks:</i> <tt><i>apply-impl</i></tt> selects tuple-like <tt>get</tt> function templates.</ins>
+</p>
+</blockquote>
+<pre>
+template&lt;class T, class Tuple&gt;
+  constexpr T make_from_tuple(Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-2- <i>Mandates:</i> If <tt>tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;</tt> is <tt>1</tt>, then 
+<tt>reference_constructs_from_temporary_v&lt;T, decltype(get&lt;0&gt;(declval&lt;Tuple&gt;()))&gt;</tt> is 
+<tt>false</tt>.
+<p/>
+-3- <i>Effects:</i> Given the exposition-only function:
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class T, class Tuple, size_t... I&gt;
+    requires is_constructible_v&lt;T, decltype(get&lt;I&gt;(declval&lt;Tuple&gt;()))...&gt;
+  constexpr T <i>make-from-tuple-impl</i>(Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) { <i>// exposition only</i>
+    return T(get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);
+  }
+}
+</pre></blockquote>
+<p>
+Equivalent to:
+</p>
+<blockquote><pre>
+return <i>make-from-tuple-impl</i>&lt;T&gt;(
+          std::forward&lt;Tuple&gt;(t),
+          make_index_sequence&lt;tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;&gt;{});
+</pre></blockquote>
+<p>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> <tt><i>make-from-tuple-impl</i></tt> selects tuple-like <tt>get</tt> function templates.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Add at the end of <sref ref="[range.subrange.general]"/> (after the synopsis) as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Although IIUC <tt><i>pair-like</i></tt> is not needed to handle <tt>array</tt> and 
+<tt>subrange</tt>.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> <tt><i>pair-like</i></tt> selects tuple-like <tt>get</tt> function templates.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Add after the synopsis of <sref ref="[range.elements.view]"/> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> <tt><i>has-tuple-element</i></tt> selects tuple-like <tt>get</tt> function templates.</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+
+</ol>
 </resolution>
 
 </issue>
