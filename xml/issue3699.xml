@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3699" status="New">
+<title><tt>lexically_relative</tt> on UNC drive paths (<tt>\\?\C:\...</tt>) results in a default-constructed value</title>
+<section><sref ref="[fs.path.gen]"/></section>
+<submitter>Nicole Mazzuca</submitter>
+<date>12 May 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+As a resolution to LWG <iref ref="3070"/>, in <tt>path lexically_relative(const path&amp; base) const</tt>, 
+bullet 3.4 was added:
+</p>
+<blockquote><p>
+If: [&hellip;] any <i>filename</i> in <tt>relative_path()</tt> or <tt>base.relative_path()</tt> can be interpreted as 
+a <i>root-name</i>, [&hellip;] returns <tt>path()</tt>.
+</p></blockquote>
+<p>
+This resolution was correct when we have really weird paths like <tt>abc\X:\c</tt>, but the MSVC standard library 
+implementation treats UNC drive-relative paths as:
+</p>
+<blockquote><pre>
+\\?\C:\foo\bar = { <i>root-name</i> = \\?, <i>root-directory</i> = \, <i>relative-path</i> = C:\foo\bar }
+</pre></blockquote>
+<p>
+If we were able to go back in time, we might have <tt><i>root-name</i> = \\?\C:</tt>, but we can't make that 
+change at that point without silently breaking users; therefore, we believe it would be best to instead change 
+<tt>lexically_relative()</tt> to work around this issue.
+<p/>
+There exists a <a href="https://github.com/microsoft/STL/issues/2256">related github issue</a>.
+<p/>
+I don't yet have standard wording, but I think it would be reasonable to do something like:
+</p>
+<blockquote><p>
+If <tt>relative_path().has_root_path() &amp;&amp; base.relative_path().has_root_path()</tt>, and 
+<tt>relative_path().root_path() == base.relative_path().root_path()</tt>, then 
+<tt>return relative_path().lexically_relative(base.relative_path())</tt>.
+</p></blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
