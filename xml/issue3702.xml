@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3702" status="New">
+<title>Should <tt>zip_transform_view::<i>iterator</i></tt> remove <tt>operator&lt;</tt>?</title>
+<section><sref ref="[range.zip.transform.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>21 May 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+After LWG <iref ref="3692"/>, <tt>zip_view::<i>iterator</i></tt> only provides <tt>operator&lt;=&gt;</tt>. 
+Since the comparison of <tt>zip_transform_view::<i>iterator</i></tt> uses <tt>zip_view::<i>iterator</i></tt>'s 
+<tt>operator&lt;=&gt;</tt>, it is possible to remove <tt>zip_transform_view::<i>iterator</i></tt>'s 
+<tt>operator&lt;</tt>, <tt>&gt;</tt>, <tt>&lt;=</tt>, <tt>&gt;=</tt> and just detect if <tt><i>ziperator</i></tt>'s 
+<tt>operator&lt;=&gt;</tt> is available.
+<p/>
+Since the <tt><i>ziperator</i></tt>'s <tt>operator&lt;=&gt;</tt> is valid only when <tt>zip_view</tt> is a 
+<tt>random_access_range</tt>, we don't need to additionally constrain the <tt><i>ziperator</i></tt> to be 
+<tt>three_way_comparable</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.zip.transform.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+[&hellip;]
+template&lt;copy_constructible F, input_range... Views&gt;
+requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+         regular_invocable&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt; &amp;&amp;
+         <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt;&gt;
+template&lt;bool Const&gt;
+class zip_transform_view&lt;F, Views...&gt;::<i>iterator</i> {
+  using <i>Parent</i> = <i>maybe-const&lt;</i>Const, zip_transform_view&gt;;        // exposition only
+  using <i>Base</i> = <i>maybe-const</i>&lt;Const, <i>InnerView</i>&gt;;                   // exposition only
+  <i>Parent</i>* <i>parent_</i> = nullptr;                                    // exposition only
+  <i>ziperator</i>&lt;Const&gt; <i>inner_</i>;                                      // exposition only
+
+  constexpr <i>iterator</i>(<i>Parent</i>&amp; parent, <i>ziperator</i>&lt;Const&gt; inner);   // exposition only
+public:
+  [&hellip;]
+  friend constexpr bool operator==(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires equality_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;;
+  
+  <del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;
+  friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;
+  friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;
+  friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;</del>
+  friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;<del>&amp;&amp; three_way_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;</del>;
+  [&hellip;]
+};
+[&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+friend constexpr bool operator==(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires equality_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;;
+<del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;</del>
+friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;<del>&amp;&amp; three_way_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-14- Let <tt><i>op</i></tt> be the operator.
+</p>
+<p>
+-15- <i>Effects</i>: Equivalent to: <tt>return x.<i>inner_</i> <i>op</i> y.<i>inner_</i>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
