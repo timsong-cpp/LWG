@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3705" status="New">
+<title>Hashability shouldn't depend on <tt>basic_string</tt>'s allocator</title>
+<section><sref ref="[basic.string.hash]"/></section>
+<submitter>Casey Carter</submitter>
+<date>26 May 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[basic.string.hash]"/> says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<pre>
+template&lt;&gt; struct hash&lt;string&gt;;
+template&lt;&gt; struct hash&lt;u8string&gt;;
+template&lt;&gt; struct hash&lt;u16string&gt;;
+template&lt;&gt; struct hash&lt;u32string&gt;;
+template&lt;&gt; struct hash&lt;wstring&gt;;
+template&lt;&gt; struct hash&lt;pmr::string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u8string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u16string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u32string&gt;;
+template&lt;&gt; struct hash&lt;pmr::wstring&gt;;
+</pre>
+<blockquote>
+<p>
+-1- If <tt>S</tt> is one of these string types, <tt>SV</tt> is the corresponding string view type, and 
+<tt>s</tt> is an object of type <tt>S</tt>, then <tt>hash&lt;S&gt;()(s) == hash&lt;SV&gt;()(SV(s))</tt>
+</p>
+</blockquote>
+</blockquote>
+<p>
+Despite that the hash value of a <tt>basic_string</tt> object is equivalent to the hash value of a 
+corresponding <tt>basic_string_view</tt> object, which has no allocator, the capability to hash a 
+<tt>basic_string</tt> depends on its allocator. All of the enabled specializations have specific 
+allocators, which fact becomes more clear if we expand the type aliases:
+</p>
+<blockquote><pre>
+template&lt;&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, allocator&lt;char&gt;&gt;;
+template&lt;&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, allocator&lt;char8_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, allocator&lt;char16_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, allocator&lt;char32_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, allocator&lt;wchar_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, pmr::polymorphic_allocator&lt;char&gt;&gt;;
+template&lt;&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, pmr::polymorphic_allocator&lt;char8_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, pmr::polymorphic_allocator&lt;char16_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, pmr::polymorphic_allocator&lt;char32_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, pmr::polymorphic_allocator&lt;wchar_t&gt;&gt;;
+</pre></blockquote>
+<p>
+If the hash value doesn't depend on the allocator type, why should we care about the allocator type? 
+I posit that we should not, and that these ten explicit specializations should be replaced by 5 partial 
+specializations that enable hashing <tt>basic_string</tt> specializations using these combinations of 
+character type and traits type with any allocator type.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[string.syn]"/>, header <tt>&lt;string&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+
+<i>// <sref ref="[basic.string.hash]"/>, hash support</i>
+template&lt;class T&gt; struct hash;
+<del>template&lt;&gt; struct hash&lt;string&gt;;
+template&lt;&gt; struct hash&lt;u8string&gt;;
+template&lt;&gt; struct hash&lt;u16string&gt;;
+template&lt;&gt; struct hash&lt;u32string&gt;;
+template&lt;&gt; struct hash&lt;wstring&gt;;
+template&lt;&gt; struct hash&lt;pmr::string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u8string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u16string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u32string&gt;;
+template&lt;&gt; struct hash&lt;pmr::wstring&gt;;</del>
+<ins>template&lt;class A&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, A&gt;;</ins>
+
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[basic.string.hash]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<del>template&lt;&gt; struct hash&lt;string&gt;;
+template&lt;&gt; struct hash&lt;u8string&gt;;
+template&lt;&gt; struct hash&lt;u16string&gt;;
+template&lt;&gt; struct hash&lt;u32string&gt;;
+template&lt;&gt; struct hash&lt;wstring&gt;;
+template&lt;&gt; struct hash&lt;pmr::string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u8string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u16string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u32string&gt;;
+template&lt;&gt; struct hash&lt;pmr::wstring&gt;;</del>
+<ins>template&lt;class A&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, A&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, A&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+-1- If <tt>S</tt> is one of these string types, <tt>SV</tt> is the corresponding string view type, and 
+<tt>s</tt> is an object of type <tt>S</tt>, then <tt>hash&lt;S&gt;()(s) == hash&lt;SV&gt;()(SV(s))</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
