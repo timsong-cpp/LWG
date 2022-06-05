@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3707" status="New">
+<title><tt>chunk_view::<i>outer-iterator</i>::value_type::size</tt> should return unsigned type</title>
+<section><sref ref="[range.chunk.outer.value]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>01 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, the <tt>size</tt> function of <tt>chunk_view::<i>outer-iterator</i>::value_type</tt> returns 
+the result of <tt>ranges::min</tt>, since the operands are of type <tt>range_difference_t&lt;V&gt;</tt>, 
+this will return a signed type, which is inconsistent with the return type of <tt>size</tt> of the 
+<tt>forward</tt>-version of <tt>chunk_view::<i>iterator</i>::value_type</tt> (<sref ref="[range.chunk.fwd.iter]"/>), 
+which always returns an unsigned type.
+</p>
+<p>
+I think it's more reasonable to return an unsigned type, since this is intentional behavior and 
+doesn't fall back to using the default <tt>view_interface::size</tt>.
+And if LWG <iref ref="3646"/> is eventually adopted, there's no reason why it shouldn't be made 
+unsigned.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.chunk.outer.value]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() const
+  requires sized_sentinel_for&lt;sentinel_t&lt;V&gt;, iterator_t&lt;V&gt;&gt;;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return <ins><i>to-unsigned-like</i>(</ins>ranges::min(<i>parent_</i>-&gt;<i>remainder_</i>, ranges::end(<i>parent_</i>-&gt;<i>base_</i>) - *<i>parent_</i>-&gt;<i>current_</i>)<ins>)</ins>;
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
