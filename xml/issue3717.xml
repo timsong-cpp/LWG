@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3717" status="New">
+<title><tt>common_view::end</tt> should improve <tt>random_access_range</tt> case</title>
+<section><sref ref="[range.common.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>15 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In view of the fact that random access iterators are only required to work with its difference type, 
+<paper num="P2393R1"/> improves the wording of <tt>take_view</tt>, which first convert the integer type 
+to difference type and then operate with the iterator. However, the paper omits the handling of random 
+access iterators in <tt>common_view::end</tt>, which directly operates on the return types of 
+<tt>ranges::begin</tt> and <tt>ranges::size</tt>. We should improve this, too.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.common.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+    requires (!common_range&lt;V&gt; &amp;&amp; copyable&lt;iterator_t&lt;V&gt;&gt;)
+  class common_view : public view_interface&lt;common_view&lt;V&gt;&gt; {
+  private:
+    V <i>base_</i> = V();  <i>// exposition only</i>
+  public:
+    [&hellip;]
+    constexpr auto begin() {
+      if constexpr (random_access_range&lt;V&gt; &amp;&amp; sized_range&lt;V&gt;)
+        return ranges::begin(<i>base_</i>);
+      else
+        return common_iterator&lt;iterator_t&lt;V&gt;, sentinel_t&lt;V&gt;&gt;(ranges::begin(<i>base_</i>));
+    }
+
+    constexpr auto begin() const requires range&lt;const V&gt; {
+      if constexpr (random_access_range&lt;const V&gt; &amp;&amp; sized_range&lt;const V&gt;)
+        return ranges::begin(<i>base_</i>);
+      else
+        return common_iterator&lt;iterator_t&lt;const V&gt;, sentinel_t&lt;const V&gt;&gt;(ranges::begin(<i>base_</i>));
+    }
+    
+    constexpr auto end() {
+      if constexpr (random_access_range&lt;V&gt; &amp;&amp; sized_range&lt;V&gt;)
+        return ranges::begin(<i>base_</i>) + <ins>range_difference_t&lt;V&gt;(size())</ins><del>ranges::size(<i>base_</i>)</del>;
+      else
+        return common_iterator&lt;iterator_t&lt;V&gt;, sentinel_t&lt;V&gt;&gt;(ranges::end(<i>base_</i>));
+    }
+
+    constexpr auto end() const requires range&lt;const V&gt; {
+      if constexpr (random_access_range&lt;const V&gt; &amp;&amp; sized_range&lt;const V&gt;)
+        return ranges::begin(<i>base_</i>) + <ins>range_difference_t&lt;const V&gt;(size())</ins><del>ranges::size(<i>base_</i>)</del>;
+      else
+        return common_iterator&lt;iterator_t&lt;const V&gt;, sentinel_t&lt;const V&gt;&gt;(ranges::end(<i>base_</i>));
+    }
+
+    constexpr auto size() requires sized_range&lt;V&gt; {
+      return ranges::size(<i>base_</i>);
+    }
+    constexpr auto size() const requires sized_range&lt;const V&gt; {
+      return ranges::size(<i>base_</i>);
+    }
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
