@@ -1,0 +1,154 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3718" status="New">
+<title>P2418R2 broke the overload resolution for <tt>std::basic_format_arg</tt></title>
+<section><sref ref="[format.arg]"/></section>
+<submitter>Jiang An</submitter>
+<date>17 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+While correcting some bugs in MSVC STL, 
+<a href="https://github.com/microsoft/STL/pull/2768#discussion_r892950656">it is found that</a> 
+<paper num="P2418R2"/> broke the overload resolution involving non-const lvalue: constructing 
+<tt>basic_format_arg</tt> from a non-<tt>const basic_string</tt> lvalue incorrectly selects the 
+<tt>T&amp;&amp;</tt> overload and uses <tt>handle</tt>, while the separated <tt>basic_string</tt> 
+overload should be selected (i.e. the old behavior before P2418R2 did the right thing). Currently 
+MSVC STL is using a workaround that treats <tt>basic_string</tt> to be as if passed by value 
+during overload resolution.
+<p/>
+I think the <tt>T&amp;&amp;</tt> overload should not interfere the old result of overload resolution, 
+which means that when a type is <tt>const</tt>-formattable, the newly added non-<tt>const</tt> 
+mechanism shouldn't be considered.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The below presented wording adds back the <tt>const T&amp;</tt> constructor and its specification 
+that were present before <paper num="P2418R2"/>. Furthermore it adds an additional constraint to the <tt>T&amp;&amp;</tt>
+constructor and simplifies the <i>Effects</i> of this constructors to the <tt>handle</tt> construction case.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[format.arg]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Context&gt;
+  class basic_format_arg {
+  public:
+    class handle;
+    
+  private:
+    [&hellip;]
+    template&lt;class T&gt; explicit basic_format_arg(T&amp;&amp; v) noexcept; <i>// exposition only</i>
+    <ins>template&lt;class T&gt; explicit basic_format_arg(const T&amp; v) noexcept; <i>// exposition only</i></ins>
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class T&gt; explicit basic_format_arg(T&amp;&amp; v) noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Constraints</i>: The template specialization
+</p>
+<blockquote><pre>
+typename Context::template formatter_type&lt;remove_cvref_t&lt;T&gt;&gt;
+</pre></blockquote>
+<p>
+meets the <i>BasicFormatter</i> requirements (<sref ref="[formatter.requirements]"/>). The extent 
+to which an implementation determines that the specialization meets the <i>BasicFormatter</i> 
+requirements is unspecified, except that as a minimum the expression
+</p>
+<blockquote><pre>
+typename Context::template formatter_type&lt;remove_cvref_t&lt;T&gt;&gt;()
+  .format(declval&lt;T&amp;&gt;(), declval&lt;Context&amp;&gt;())
+</pre></blockquote>
+<p>
+shall be well-formed when treated as an unevaluated operand (<sref ref="[expr.context]"/>)<ins>, and 
+if this overload were not declared, the overload resolution  would find no usable candidate or be 
+ambiguous. [<i>Note ?</i>: This overload has no effect if the overload resolution among other 
+overloads successes. &mdash; <i> end note</i>]</ins>.
+<p/>
+-5- <i>Effects</i>:
+</p>
+<ol style="list-style-type:none">
+<li><p><del>(5.1) &mdash; if <tt>T</tt> is <tt>bool</tt> or <tt>char_type</tt>, initializes <tt>value</tt> 
+with <tt>v</tt>;</del></p></li>
+<li><p><del>(5.2) &mdash; otherwise, if <tt>T</tt> is <tt>char</tt> and <tt>char_type</tt> is <tt>wchar_t</tt>, 
+initializes <tt>value</tt> with <tt>static_cast&lt;wchar_t&gt;(v)</tt>;</del></p></li>
+<li><p><del>(5.3) &mdash; otherwise, if <tt>T</tt> is a signed integer type (<sref ref="[basic.fundamental]"/>) 
+and <tt>sizeof(T) &lt;= sizeof(int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;int&gt;(v)</tt>;</del></p></li>
+<li><p><del>(5.4) &mdash; otherwise, if <tt>T</tt> is an unsigned integer type and <tt>sizeof(T) &lt;= 
+sizeof(unsigned int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;unsigned int&gt;(v)</tt>;</del></p></li>
+<li><p><del>(5.5) &mdash; otherwise, if <tt>T</tt> is a signed integer type and <tt>sizeof(T) &lt;= 
+sizeof(long long int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;long long int&gt;(v)</tt>;</del></p></li>
+<li><p><del>(5.6) &mdash; otherwise, if <tt>T</tt> is an unsigned integer type and <tt>sizeof(T) &lt;= 
+sizeof(unsigned long long int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;unsigned long long int&gt;(v)</tt>;</del></p></li>
+<li><p><del>(5.7) &mdash; otherwise, i</del><ins>I</ins>nitializes <tt>value</tt> with <tt>handle(v)</tt>.</p></li>
+</ol>
+</blockquote>
+<pre>
+<ins>template&lt;class T&gt; explicit basic_format_arg(const T&amp; v) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints</i>: The template specialization</ins>
+</p>
+<blockquote><pre>
+<ins>typename Context::template formatter_type&lt;T&gt;</ins>
+</pre></blockquote>
+<p>
+<ins>meets the <i>Formatter</i> requirements (<sref ref="[formatter.requirements]"/>). The extent 
+to which an implementation determines that the specialization meets the <i>Formatter</i> 
+requirements is unspecified, except that as a minimum the expression</ins>
+</p>
+<blockquote><pre>
+<ins>typename Context::template formatter_type&lt;T&gt;()
+  .format(declval&lt;const T&amp;&gt;(), declval&lt;Context&amp;&gt;())</ins>
+</pre></blockquote>
+<p>
+<ins>shall be well-formed when treated as an unevaluated operand (<sref ref="[expr.context]"/>).</ins>
+<p/>
+<ins>-?- <i>Effects</i>:</ins>
+</p>
+<ol style="list-style-type:none">
+<li><p><ins>(?.1) &mdash; if <tt>T</tt> is <tt>bool</tt> or <tt>char_type</tt>, initializes <tt>value</tt> 
+with <tt>v</tt>;</ins></p></li>
+<li><p><ins>(?.2) &mdash; otherwise, if <tt>T</tt> is <tt>char</tt> and <tt>char_type</tt> is <tt>wchar_t</tt>, 
+initializes <tt>value</tt> with <tt>static_cast&lt;wchar_t&gt;(v)</tt>;</ins></p></li>
+<li><p><ins>(?.3) &mdash; otherwise, if <tt>T</tt> is a signed integer type (<sref ref="[basic.fundamental]"/>) 
+and <tt>sizeof(T) &lt;= sizeof(int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;int&gt;(v)</tt>;</ins></p></li>
+<li><p><ins>(?.4) &mdash; otherwise, if <tt>T</tt> is an unsigned integer type and <tt>sizeof(T) &lt;= 
+sizeof(unsigned int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;unsigned int&gt;(v)</tt>;</ins></p></li>
+<li><p><ins>(?.5) &mdash; otherwise, if <tt>T</tt> is a signed integer type and <tt>sizeof(T) &lt;= 
+sizeof(long long int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;long long int&gt;(v)</tt>;</ins></p></li>
+<li><p><ins>(?.6) &mdash; otherwise, if <tt>T</tt> is an unsigned integer type and <tt>sizeof(T) &lt;= 
+sizeof(unsigned long long int)</tt>, initializes <tt>value</tt> with <tt>static_cast&lt;unsigned long long int&gt;(v)</tt>;</ins></p></li>
+<li><p><ins>(?.7) &mdash; otherwise, initializes <tt>value</tt> with <tt>handle(v)</tt>.</ins></p></li>
+</ol>
+</blockquote>
+
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
