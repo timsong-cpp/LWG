@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3719" status="New">
+<title>Directory iterators should be usable with default sentinel</title>
+<section><sref ref="[fs.class.directory.iterator.general]"/><sref ref="[fs.class.rec.dir.itr.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>17 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+We added comparisons with <tt>default_sentinel_t</tt> to the stream and streambuf iterators, because their 
+past-the-end iterator is just a default-constructed iterator. We didn't do the same for filesystem directory 
+iterators, but they also use a default-constructed value as the sentinel.
+<p/>
+The proposed resolution addresses this oversight.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[fs.class.directory.iterator.general]"/>, class <tt>directory_iterator</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class directory_iterator {
+    [&hellip;]
+
+    const directory_entry&amp; operator*() const;
+    const directory_entry* operator-&gt;() const;
+    directory_iterator&amp; operator++();
+    directory_iterator&amp; increment(error_code&amp; ec);
+    
+    <ins>friend bool operator==(const directory_iterator&amp; lhs, default_sentinel_t) noexcept
+    { return lhs == end(lhs); }</ins>
+
+    <i>// other members as required by <sref ref="[input.iterators]"/>, input iterators</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[fs.class.rec.dir.itr.general]"/>, class <tt>recursive_directory_iterator</tt> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class recursive_directory_iterator {
+    [&hellip;]
+
+    void pop();
+    void pop(error_code&amp; ec);
+    void disable_recursion_pending();
+    
+    <ins>friend bool operator==(const recursive_directory_iterator&amp; lhs, default_sentinel_t) noexcept
+    { return lhs == end(lhs); }</ins>
+
+    <i>// other members as required by <sref ref="[input.iterators]"/>, input iterators</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
