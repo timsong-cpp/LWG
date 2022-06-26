@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3724" status="New">
+<title><tt><i>decay-copy</i></tt> should be constrained</title>
+<section><sref ref="[expos.only.func]"/></section>
+<submitter>Hui Xie</submitter>
+<date>23 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The spec of <tt>views::all</tt> <sref ref="[range.all.general]"/> p2 says:
+</p>
+<blockquote><p>
+Given a subexpression <tt>E</tt>, the expression <tt>views::all(E)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; <tt><i>decay-copy</i>(E)</tt> if the decayed type of E models <tt>view</tt>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+<p>
+If <tt>E</tt> is an lvalue move-only <tt>view</tt>, according to the spec, <tt>views::all(E)</tt> 
+would be expression-equivalent to <tt><i>decay-copy</i>(E)</tt>.
+<p/>
+However, <sref ref="[expos.only.func]"/> p2 defines <tt><i>decay-copy</i></tt> as follows
+</p>
+<blockquote><pre>
+template&lt;class T&gt; constexpr decay_t&lt;T&gt; <i>decay-copy</i>(T&amp;&amp; v)
+    noexcept(is_nothrow_convertible_v&lt;T, decay_t&lt;T&gt;&gt;)         <i>// exposition only</i>
+  { return std::forward&lt;T&gt;(v); }
+</pre></blockquote>
+<p>
+It is unconstrained.  As a result, for the above example, <tt>views::all(E)</tt> is a well-formed 
+expression and it would only error on the template instantiation of the function body of 
+<tt><i>decay-copy</i></tt>, because <tt>E</tt> is an lvalue of move-only type and not copyable.
+<p/>
+I think this behaviour is wrong, instead, we should make <tt><i>decay-copy(E)</i></tt> ill-formed 
+if it is not copyable, so that <tt>views::all(E)</tt> can be SFINAE friendly.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[expos.only.func]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The following are defined for exposition only to aid in the specification of the library:
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; 
+    <ins>requires convertible_to&lt;T, decay_t&lt;T&gt;&gt;</ins>
+      constexpr decay_t&lt;T&gt; decay-copy(T&amp;&amp; v)
+        noexcept(is_nothrow_convertible_v&lt;T, decay_t&lt;T&gt;&gt;) <i>// exposition only</i>
+      { return std::forward&lt;T&gt;(v); }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
