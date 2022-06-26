@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3723" status="New">
+<title><tt>priority_queue::push_range</tt> needs to <tt>append_range</tt></title>
+<section><sref ref="[priqueue.members]"/></section>
+<submitter>Casey Carter</submitter>
+<date>20 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>push_range</tt> members of the <tt>queue</tt> (<sref ref="[queue.mod]"/>) and 
+<tt>stack</tt> (<sref ref="[stack.mod]"/>) container adaptors are both specified as 
+"<i>Effects</i>: Equivalent to <tt>c.append_range(std::forward&lt;R&gt;(rg))</tt> if that 
+is a valid expression, otherwise <tt>ranges::copy(rg, back_inserter(c))</tt>.". For 
+<tt>priority_queue</tt>, however, we have instead (<sref ref="[priqueue.members]"/>):
+</p>
+<blockquote><p>
+-3- <i>Effects</i>: Insert all elements of <tt>rg</tt> in <tt>c</tt>.
+<p/>
+-4- <i>Postconditions</i>: <tt>is_heap(c.begin(), c.end(), comp)</tt> is <tt>true</tt>.
+</p></blockquote>
+<p>
+Since <tt>append_range</tt> isn't one of the operations required of the underlying container, 
+"Insert all elements of <tt>rg</tt>" must be implemented via potentially less efficient means. 
+It would be nice if this <tt>push_back</tt> could take advantage of <tt>append_range</tt> 
+when it's available just as do the other two overloads.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[priqueue.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<i>container-compatible-range</i>&lt;T&gt; R&gt;
+  void push_range(R&amp;&amp; rg);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Insert<ins>s</ins> all elements of <tt>rg</tt> in <tt>c</tt> <ins>via 
+<tt>c.append_range(std::forward&lt;R&gt;(rg))</tt> if that is a valid expression, or 
+<tt>ranges::copy(rg, back_inserter(c))</tt> otherwise. Then restores the heap property as if 
+by <tt>make_heap(c.begin(), c.end(), comp)</tt></ins>.
+<p/>
+-4- <i>Postconditions</i>: <tt>is_heap(c.begin(), c.end(), comp)</tt> is <tt>true</tt>. 
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
