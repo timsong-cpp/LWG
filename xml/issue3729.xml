@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3729" status="New">
+<title><tt>std::tuple_element_t&lt;std::ranges::subrange&lt;I, S, K&gt;&gt;</tt> should remove top-level <i>cv</i>-qualifiers</title>
+<section><sref ref="[ranges.syn]"/></section>
+<submitter>Jiang An</submitter>
+<date>30 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::ranges::subrange&lt;int * volatile&gt;&gt;</tt> is weird but valid. The return type (deduced type for 
+<tt>auto</tt>) of <tt>std::ranges::get</tt> for this type is <tt>int*</tt>, because the replacing of that 
+(<i>cv</i>-unqualified) <tt>auto</tt> drops top-level <i>cv</i>-qualifiers. I think <tt>get</tt> is doing the 
+right thing, and <tt>std::tuple_element_t</tt> should be consistent with the return types.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std {
+  [&hellip;]
+  
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;0, ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = <ins>remove_cv_t&lt;</ins>I<ins>&gt;</ins>;
+  };
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;1, ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = <ins>remove_cv_t&lt;</ins>S<ins>&gt;</ins>;
+  };
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;0, const ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = <ins>remove_cv_t&lt;</ins>I<ins>&gt;</ins>;
+  };
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;1, const ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = <ins>remove_cv_t&lt;</ins>S<ins>&gt;</ins>;
+  };
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
