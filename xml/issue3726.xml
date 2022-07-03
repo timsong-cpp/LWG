@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3726" status="New">
+<title><tt>reverse_iterator::operator-&gt;</tt> is underconstrained for non-pointer iterators</title>
+<section><sref ref="[reverse.iter.elem]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>27 Jun 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+For non-pointer types, <tt>reverse_iterator::operator-&gt;</tt> only requires the expression 
+<tt>i.operator-&gt;()</tt> to be well-formed.
+<p/>
+Since the return type of this function is explicitly specified as <tt>pointer</tt>, 
+this will cause a hard error in the function body when the return type of <tt>i.operator-&gt;()</tt> 
+cannot be converted to <tt>pointer</tt>.
+<p/>
+We should add a return type constraint for this.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[reverse.iter.elem]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr pointer operator-&gt;() const
+  requires (is_pointer_v&lt;Iterator&gt; ||
+            requires(const Iterator i) { <ins>{</ins> i.operator-&gt;(); <ins>} -&gt; convertible_to&lt;pointer&gt;</ins> });
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; If <tt>Iterator</tt> is a pointer type, equivalent to: <tt>return prev(current);</tt></p></li>
+<li><p>(2.2) &mdash; Otherwise, equivalent to: <tt>return prev(current).operator-&gt;();</tt></p>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
