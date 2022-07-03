@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3730" status="New">
+<title><tt>std::ranges::drop_view</tt> may have different size type from its underlying view</title>
+<section><sref ref="[range.drop.view]"/></section>
+<submitter>Jiang An</submitter>
+<date>03 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The bodies of both overloads of <tt>drop_view&lt;V&gt;::size</tt> are specified as:
+</p>
+<blockquote><pre>
+const auto s = ranges::size(<i>base_</i>);
+const auto c = static_cast&lt;decltype(s)&gt;(<i>count_</i>);
+return s &lt; c ? 0 : s - c;
+</pre></blockquote>
+<p>
+Given the return type is specified with <tt>auto</tt>, the actual return type 
+is the <em>promoted type</em> of the size type of the underlying view, which may be 
+different from the underlying size type (e.g. if the underlying size is <tt>unsigned short</tt>).
+<p/>
+Note that <tt>take_view</tt> always has the same size type as its underlying view. 
+So I think the difference on the size types is an oversight. On the other hand, the 
+<tt>const</tt> used here seems redundant and inconsistent with other parts of the 
+standard wording, although implementations may tend to use it.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.drop.view]"/>, class template <tt>drop_view</tt> synopsis, as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <tt>s</tt> and <tt><i>count_</i></tt> usually have different types, but I think 
+it's safe to perform comparison and subtraction, as <tt><i>count_</i></tt> is non-negative as long as 
+the behavior is well-defined.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+[&hellip;]
+constexpr auto size() requires sized_range&lt;V&gt; {
+  <del>const</del> auto s = ranges::size(<i>base_</i>);
+  <del>const auto c = static_cast&lt;decltype(s)&gt;(<i>count_</i>);</del>
+  return <ins>static_cast&lt;decltype(s)&gt;(</ins>s &lt; <del>c</del><ins><i>count_</i></ins> ? 0 : s - <del>c</del><ins><i>count_</i>)</ins>;
+}
+
+constexpr auto size() const requires sized_range&lt;const V&gt; {
+  <del>const</del> auto s = ranges::size(<i>base_</i>);
+  <del>const auto c = static_cast&lt;decltype(s)&gt;(<i>count_</i>);</del>
+  return <ins>static_cast&lt;decltype(s)&gt;(</ins>s &lt; <del>c</del><ins><i>count_</i></ins> ? 0 : s - <del>c</del><ins><i>count_</i>)</ins>;
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
