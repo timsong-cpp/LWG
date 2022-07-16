@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3739" status="New">
+<title><tt>chunk_view::size const</tt> is not implemented correctly</title>
+<section><sref ref="[range.chunk.view.input]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>15 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The implementation of <tt>chunk_view::size const</tt> simply returns 
+<tt><i>to-unsigned-like</i>(<i>div-ceil</i>(ranges::distance(<i>base_</i>), <i>n_</i>))</tt>, 
+where <tt><i>div-ceil</i></tt> is defined in <sref ref="[range.chunk.view.input]"/> as:
+</p>
+<pre>
+template&lt;class I&gt;
+constexpr I <i>div-ceil</i>(I num, I denom) { // <i>exposition only</i>
+  I r = num / denom;
+  if (num % denom)
+    ++r;
+  return r;
+}
+</pre>
+<p>
+Since the types of <tt>ranges::distance(<i>base_</i>)</tt> and <tt><i>n_</i></tt> are 
+<tt>range_difference_t&lt;const V&gt;</tt> and <tt>range_difference_t&lt;V&gt;</tt> respectively, 
+this makes the <tt><i>div-ceil</i></tt>'s template deduction fail when the two are not the same.
+<p/>
+Although we can perform type casting before invoking <tt><i>div-ceil</i></tt>, I think the 
+simplest solution is to add <tt>type_identity_t</tt> to the second template parameter of 
+<tt><i>div-ceil</i></tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.chunk.view.input]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class I&gt;
+  constexpr I <i>div-ceil</i>(I num, <ins>type_identity_t&lt;</ins>I<ins>&gt;</ins> denom) { // <i>exposition only</i>
+    I r = num / denom;
+    if (num % denom)
+      ++r;
+    return r;
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
