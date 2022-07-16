@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3735" status="New">
+<title><tt>views::adjacent&lt;0&gt;</tt> should be prohibited</title>
+<section><sref ref="[range.adjacent.overview]"/><sref ref="[range.adjacent.transform.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>13 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>views::adjacent</tt> is very similar to <tt>views::slide</tt>, except that the window size 
+<tt>N</tt> is given at compile time.
+<p/>
+Since the case where <tt>N</tt> is <tt>0</tt> does not make sense for <tt>slide_view</tt>, 
+LWG <iref ref="3711"/> and LWG <iref ref="3712"/> added preconditions to the constructor and 
+removed the default constructor, respectively.
+<p/>
+But for <tt>views::adjacent</tt>, we can still specify <tt>N</tt> to be <tt>0</tt>. According to 
+the description of <sref ref="[range.adjacent.overview]"/>, 
+it will return <tt>views::empty&lt;tuple&lt;&gt;&gt;</tt> as in the case of <tt>views::zip</tt> 
+applied to an empty pack. And for <tt>views::adjacent_transform&lt;0&gt;(E, F)</tt>, it will return 
+<tt>views::zip_transform(F)</tt> and eventually return <tt>empty_view</tt> for some type.
+<p/>
+This doesn't seem reasonable to me. The reason why <tt>views::zip</tt> can return 
+<tt>views::empty&lt;tuple&lt;&gt;&gt;</tt> is that the parameter pack can indeed be empty, so 
+this still makes some sense. However, there is no meaningful sense for the word "adjacent" when 
+<tt>N</tt> is <tt>0</tt>.
+<p/>
+I don't see any observable value in allowing <tt>views::adjacent&lt;0&gt;</tt>, we should disable 
+it for consistency with <tt>views::slide</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.adjacent.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <tt>views::adjacent&lt;N&gt;</tt> denotes a range adaptor object 
+(<sref ref="[range.adaptor.object]"/>). Given a subexpression <tt>E</tt> and a constant expression 
+<tt>N</tt>, the expression <tt>views::adjacent&lt;N&gt;(E)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type:none">
+<li><p>(2.1) &mdash; <del><tt>((void)E, auto(views::empty&lt;tuple&lt;&gt;&gt;))</tt></del><ins>I</ins><del>i</del>f 
+<tt>N</tt> is equal to <tt>0</tt>, <ins><tt>views::adjacent&lt;N&gt;(E)</tt> is ill-formed.</ins></p></li>
+<li><p>(2.2) &mdash; <ins>O</ins><del>o</del>therwise, <tt>adjacent_view&lt;views::all_t&lt;decltype((E))&gt;, N&gt;(E)</tt>.</p></li>
+</ol></blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.adjacent.transform.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <tt>views::adjacent_transform&lt;N&gt;</tt> denotes a range adaptor object 
+(<sref ref="[range.adaptor.object]"/>). Given subexpressions <tt>E</tt> and <tt>F</tt> and a constant
+expression <tt>N</tt>:
+</p>
+<ol style="list-style-type:none">
+<li><p>(2.1) &mdash; If <tt>N</tt> is equal to <tt>0</tt>, <tt>views::adjacent_transform&lt;N&gt;(E, F)</tt> 
+is <ins>ill-formed</ins><del>expression-equivalent to <tt>((void)E, views::zip_transform(F))</tt>, except that 
+the evaluations of <tt>E</tt> and <tt>F</tt> are indeterminately sequenced</del>.</p></li>
+<li><p>(2.2) &mdash; Otherwise, the expression <tt>views::adjacent_transform&lt;N&gt;(E, F)</tt> is 
+expression-equivalent to <tt>adjacent_transform_view&lt;views::all_t&lt;decltype((E))&gt;, 
+decay_t&lt;decltype((F))&gt;, N&gt;(E, F)</tt>.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
