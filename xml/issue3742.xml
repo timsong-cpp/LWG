@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3742" status="New">
+<title><tt>deque::prepend_range</tt> needs to permute</title>
+<section><sref ref="[sequence.reqmts]"/></section>
+<submitter>Casey Carter</submitter>
+<date>16 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When the range to be inserted is neither bidirectional nor sized, it's simpler to prepend 
+elements one at a time, and then reverse the prepended elements. When the range to be 
+inserted is neither forward nor sized, I believe this approach is necessary to implement 
+<tt>prepend_range</tt> at all &mdash; there is no way to determine the length of the range 
+modulo the block size of the <tt>deque</tt> ahead of time so as to insert the new elements 
+in the proper position.
+<p/>
+The container requirements do not allow <tt>prepend_range</tt> to permute elements in a 
+<tt>deque</tt>. I believe we <em>must</em> allow permutation when the range is neither 
+forward nor sized, and we <em>should</em> allow permutation when the range is not bidirectional 
+to allow implementations the freedom to make a single pass through the range.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[sequence.reqmts]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+a.prepend_range(rg)
+</pre>
+<blockquote>
+<p>
+-94- <i>Result:</i> <tt>void</tt>
+<p/>
+-95- <i>Preconditions:</i> <tt>T</tt> is <i>Cpp17EmplaceConstructible</i> into <tt>X</tt> 
+from <tt>*ranges::begin(rg)</tt>. <ins>For <tt>deque</tt>, lvalues of type <tt>T</tt> are 
+swappable (<sref ref="[swappable.requirements]"/>), <tt>T</tt> meets the 
+<i>Cpp17MoveConstructible</i> and <i>Cpp17MoveAssignable</i> requirements, and
+<tt>T</tt> is <i>Cpp17MoveInsertable</i> into <tt>X</tt>.</ins>
+<p/>
+-96- <i>Effects:</i> Inserts copies of elements in <tt>rg</tt> before <tt>begin()</tt>. 
+Each iterator in the range <tt>rg</tt> is dereferenced exactly once.
+<p/>
+[<i>Note 3</i>: The order of elements in <tt>rg</tt> is not reversed. &mdash; <i>end note</i>]
+<p/>
+-97- <i>Remarks:</i> Required for <tt>deque</tt>, <tt>forward_list</tt>, and <tt>list</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
