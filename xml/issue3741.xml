@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3741" status="New">
+<title><tt>std::abs(duration)</tt> is ill-formed with non-reduced periods</title>
+<section><sref ref="[time.duration.alg]"/></section>
+<submitter>Charlie Barto</submitter>
+<date>16 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently <sref ref="[time.duration.alg]"/> specifies <tt>abs(duration)</tt> as:
+</p>
+<blockquote><p>
+<i>Returns:</i> if <tt>d &gt;= d.zero()</tt>, return <tt>d</tt>, otherwise return <tt>-d</tt>.
+</p></blockquote>
+<p>
+Because unary minus on durations is defined to return <tt>common_type_t&lt;duration>(-rep_)</tt>, 
+and <tt>common_type_t</tt> for durations is specified to reduce the period, this is ill-formed 
+with durations such as <tt>duration&lt;int, ratio&lt;1000, 1000&gt;&gt;</tt>, or any other 
+type where the numerator and denominator of the period are not coprime.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.syn]"/> header <tt>&lt;chrono&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[time.duration.alg]"/>, specialized algorithms</i>
+template&lt;class Rep, class Period&gt;
+  constexpr <ins>common_type_t&lt;</ins>duration&lt;Rep, Period&gt;<ins>&gt;</ins> abs(duration&lt;Rep, Period&gt; d);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[time.duration.alg]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> This will cause <tt>abs</tt> to reduce the period before returning it, 
+much like the other arithmetic operators. 
+<p/>
+This is not a breaking change, because code that was using <tt>abs</tt> with a non-reduced 
+period before did not compile.
+]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class Rep, class Period&gt;
+  constexpr <ins>common_type_t&lt;</ins>duration&lt;Rep, Period&gt;<ins>&gt;</ins> abs(duration&lt;Rep, Period&gt; d);
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> <tt>numeric_limits&lt;Rep&gt;::is_signed</tt> is <tt>true</tt>.
+<p/>
+-2- <i>Returns:</i> If <tt>d &gt;= d.zero()</tt>, return <tt><ins>+</ins>d</tt>, otherwise return <tt>-d</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
