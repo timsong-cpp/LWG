@@ -2,7 +2,7 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="3739" status="New">
-<title><tt>chunk_view::size const</tt> is not implemented correctly</title>
+<title><tt>chunk_view::size</tt> should preserve the signedness of the size of the underlying range</title>
 <section><sref ref="[range.chunk.view.input]"/><sref ref="[range.chunk.view.fwd]"/></section>
 <submitter>Hewill Kang</submitter>
 <date>15 Jul 2022</date>
@@ -10,7 +10,7 @@
 
 <discussion>
 <p>
-The implementation of <tt>chunk_view::size const</tt> simply returns 
+Currently, the <i>Effects</i> of <tt>chunk_view::size</tt> simply returns 
 <tt><i>to-unsigned-like</i>(<i>div-ceil</i>(ranges::distance(<i>base_</i>), <i>n_</i>))</tt>, 
 where <tt><i>div-ceil</i></tt> is defined in <sref ref="[range.chunk.view.input]"/> as:
 </p>
@@ -24,9 +24,22 @@ constexpr I <i>div-ceil</i>(I num, I denom) { // <i>exposition only</i>
 }
 </pre>
 <p>
-Since the types of <tt>ranges::distance(<i>base_</i>)</tt> and <tt><i>n_</i></tt> are 
-<tt>range_difference_t&lt;const V&gt;</tt> and <tt>range_difference_t&lt;V&gt;</tt> respectively, 
-this makes the <tt><i>div-ceil</i></tt>'s template deduction fail when the two are not the same.
+There are two problems here. First, the types of <tt>ranges::distance(<i>base_</i>)</tt> 
+and <tt><i>n_</i></tt> are <tt>range_difference_t&lt;const V&gt;</tt> and 
+<tt>range_difference_t&lt;V&gt;</tt> respectively,   and the two parameters of 
+<tt><i>div-ceil</i></tt> have the same type <tt>I</tt>.
+Given that the standard does not guarantee that <tt>V</tt> and <tt>const V</tt> must have 
+the same <tt>difference_type</tt>,   this makes the <tt><i>div-ceil</i></tt>'s template 
+deduction fail when the two are different.
+<p/>
+Second, the standard does not guarantee that <tt>ranges::size</tt> must return an 
+unsigned type, but here we use <tt><i>to-unsigned-like</i></tt> to unconditionally 
+convert the return type of <tt>chunk_view::size</tt> to an unsigned type,
+which is inconsistent with the behavior of other range adaptors such as 
+<tt>take_view</tt> and <tt>drop_view</tt>.
+<p/>
+We should try to preserve the characteristics of the <tt>range_size_t</tt> of the underlying 
+range as much as possible.
 </p>
 </discussion>
 
