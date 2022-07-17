@@ -2,7 +2,7 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="3740" status="New">
-<title><tt>slide_view::size const</tt> should always return unsigned <tt>range_difference_t&lt;const V&gt;</tt></title>
+<title><tt>slide_view::size</tt> should preserve the signedness of underlying range's size</title>
 <section><sref ref="[range.slide.view]"/></section>
 <submitter>Hewill Kang</submitter>
 <date>15 Jul 2022</date>
@@ -18,12 +18,18 @@ if (sz &gt; 0) sz = 0;
 return <i>to-unsigned-like</i>(sz);
 </pre>
 <p>
-Since the types of <tt>ranges::distance(<i>base_</i>)</tt> and <tt><i>n_</i></tt> are 
-<tt>range_difference_t&lt;const V&gt;</tt> and <tt>range_difference_t&lt;V&gt;</tt> respectively,
-the type of <tt>sz</tt> will enter superposition states when the two are not the same, 
-and even if they are the same type, there may still be integer promotion issues mentioned 
-by LWG <iref ref="3730"/>. We should make sure that <tt>slide_view::size const</tt> 
-always returns unsigned <tt>range_difference_t&lt;const V&gt;</tt>.
+There are two problems worth noting here. First, as described in LWG <iref ref="3739"/>, 
+<tt>ranges::distance(<i>base_</i>)</tt> and <tt><i>n_</i></tt> may have 
+different types, which makes the actual type of <tt>sz</tt> not deterministic.
+Also, the return type is unconditionally converted to an unsigned type, even though 
+the underlying range may have a signed size type.
+</p>
+Second, even if <tt>V</tt> has the same <tt>difference_type</tt> as <tt>const V</tt>, 
+there may still be integer promotion issues mentioned by LWG <iref ref="3730"/>
+since we add an integer <tt>1</tt> at the end here.
+<p>
+I think converting <tt>sz</tt> to the size type of the underlying range before 
+returning is the appropriate thing to do.
 </p>
 </discussion>
 
