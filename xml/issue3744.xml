@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3744" status="New">
+<title><tt>copy_symlink(junction, new_symlink)</tt>'s behavior is unclear</title>
+<section><sref ref="[fs.op.copy.symlink]"/></section>
+<submitter>Nicole Mazzuca</submitter>
+<date>25 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification for <tt>copy_symlink</tt> is (<sref ref="[fs.op.copy.symlink]"/>):
+</p>
+<blockquote><p>
+<i>Effects</i>: Equivalent to <tt><i>function</i>(read_symlink(existing_symlink), new_symlink)</tt> 
+or <tt><i>function</i>(read_symlink(existing_symlink, ec), new_symlink, ec)</tt>, respectively,
+where in each case <tt><i>function</i></tt> is <tt>create_symlink</tt> or 
+<tt>create_directory_symlink</tt> as appropriate.
+</p></blockquote>
+<p>
+The specification for <tt>read_symlink</tt> is (<sref ref="[fs.op.read.symlink]"/>):
+</p>
+<blockquote><p>
+<i>Returns</i>: If <tt>p</tt> resolves to a symbolic link, a path object containing the contents of 
+that symbolic link.
+</p></blockquote>
+<p>
+And finally, the definition of a "symbolic link" is (<sref ref="[fs.general]"/>):
+</p>
+<blockquote><p>
+A <i>symbolic link</i> is a type of file with the property that when the file is encountered during pathname
+resolution (<sref ref="[fs.class.path]"/>), a string stored by the file is used to modify the pathname resolution.
+</p></blockquote>
+<p>
+On Unix, <tt>symlink</tt> is the only kind of symbolic link. However, on Windows, there are symbolic 
+link files which are <em>not</em> <tt>symlink</tt>s (app execution aliases and junctions) &mdash; this 
+means that <tt>read_symlink</tt> should almost certainly get the target of these files if possible. 
+However, <tt>copy_symlink</tt> specifically requires creating a <em><tt>symlink</tt></em>, not whatever 
+type of file was there originally. IMO, <tt>copy_symlink</tt> should require its target to be a symlink. 
+I think the original assumption was that <tt>read_symlink</tt> would take care of that for 
+<tt>copy_symlink</tt>; this is clearly not the case on Windows, though.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
