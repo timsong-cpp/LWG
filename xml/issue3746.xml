@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3746" status="New">
+<title><tt>optional</tt>'s spaceship with <tt>U</tt> with a type derived from <tt>optional</tt> 
+causes infinite constraint meta-recursion</title>
+<section><sref ref="[optional.comp.with.t]"/></section>
+<submitter>Ville Voutilainen</submitter>
+<date>25 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+What ends up happening is that the constraints of 
+<tt>operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;)</tt> end up 
+in <tt>three_way_comparable_with</tt>, and then in <tt><i>partially-ordered-with</i></tt>, 
+and the expressions there end up performing a conversion from <tt>U</tt> to an 
+<tt>optional</tt>, and we end up instantiating the same <tt>operator&lt;=&gt;</tt>
+again, evaluating its constraints again, until the compiler bails out.
+<p/>
+See an <a href="https://godbolt.org/z/T7f4sr8jv">online example here</a>.
+<p/>
+All implementations end up with infinite meta-recursion.
+<p/>
+The solution to the problem is to stop the meta-recursion by constraining
+the spaceship with <tt>U</tt> so that <tt>U</tt> is not publicly and unambiguously derived
+from a specialization of optional, SFINAEing that candidate out, and letting 
+<sref ref="[optional.relops]"/>/20 perform the comparison instead.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> This proposed wording removes the only use of <tt><i>is-optional</i></tt>. ]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[optional.syn]"/>, header <tt>&lt;optional&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std {
+  <i>// <sref ref="[optional.optional]"/>, class template optional</i>
+  template&lt;class T&gt;
+    class optional;
+
+  <del>template&lt;class T&gt;
+    constexpr bool <i>is-optional</i> = false; <i>// exposition only</i>
+  template&lt;class T&gt;
+    constexpr bool <i>is-optional</i>&lt;optional&lt;T&gt;&gt; = true; <i>// exposition only</i></del>
+  <ins>template&lt;class T&gt;
+   concept <i>is-convertible-to-optional</i> = requires(const T&amp; t) { <i>// exposition only</i>
+      []&lt;typename U&gt;(const optional&lt;U&gt;&amp;){}(t);
+  };</ins>
+  [&hellip;]
+  <i>// <sref ref="[optional.comp.with.t]"/>, comparison with T</i>
+  [&hellip;]
+  template&lt;class T, class U&gt; constexpr bool operator&gt;=(const T&amp;, const optional&lt;U&gt;&amp;);
+  template&lt;class T, class U&gt; requires (!<i>is-<ins>convertible-to-</ins>optional</i>&lt;U&gt;) &amp;&amp; three_way_comparable_with&lt;T, U&gt;
+    constexpr compare_three_way_result_t&lt;T, U&gt;
+      operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;);
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[optional.comp.with.t]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class U&gt; requires (!<i>is-<ins>convertible-to-</ins>optional</i>&lt;U&gt;) &amp;&amp; three_way_comparable_with&lt;T, U&gt;
+  constexpr compare_three_way_result_t&lt;T, U&gt;
+    operator&lt;=&gt;(const optional&lt;T&gt;&amp;, const U&amp;);
+</pre>
+<blockquote>
+<p>
+-25- <i>Effects:</i> Equivalent to: <tt>return x.has_value() ? *x &lt;=&gt; v : strong_ordering::less;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
