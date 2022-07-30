@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3747" status="New">
+<title><tt>ranges::uninitialized_copy_n</tt>, <tt>ranges::uninitialized_move_n</tt>, and 
+<tt>ranges::destroy_n</tt> should use <tt>std::move</tt></title>
+<section><sref ref="[uninitialized.copy]"/><sref ref="[uninitialized.move]"/>
+<sref ref="[specialized.destroy]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>28 Jul 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>ranges::uninitialized_copy_n</tt> has the following equivalent <i>Effects</i>:
+</p>
+<blockquote><pre>
+auto t = uninitialized_copy(counted_iterator(ifirst, n),
+                            default_sentinel, ofirst, olast);
+return {std::move(t.in).base(), t.out};
+</pre></blockquote>
+<p>
+Given that <tt>ifirst</tt> is just an <tt>input_iterator</tt> which is not guaranteed to be <tt>copyable</tt>, 
+we should move it into <tt>counted_iterator</tt>. The same goes for <tt>ranges::uninitialized_move_n</tt> 
+and <tt>ranges::destroy_n</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[uninitialized.copy]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace ranges {
+  template&lt;input_iterator I, <i>nothrow-forward-iterator</i> O, <i>nothrow-sentinel-for</i>&lt;O&gt; S&gt;
+    requires constructible_from&lt;iter_value_t&lt;O&gt;, iter_reference_t&lt;I&gt;&gt;
+    uninitialized_copy_n_result&lt;I, O&gt;
+      uninitialized_copy_n(I ifirst, iter_difference_t&lt;I&gt; n, O ofirst, S olast);
+}
+</pre>
+<blockquote>
+<p>
+-9- <i>Preconditions</i>: [<tt>ofirst, olast</tt>) does not overlap with <tt>ifirst +</tt> [<tt>0, n</tt>) .
+</p>
+<p>
+-10- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto t = uninitialized_copy(counted_iterator(<ins>std::move(</ins>ifirst<ins>)</ins>, n),
+                            default_sentinel, ofirst, olast);
+return {std::move(t.in).base(), t.out};
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[uninitialized.move]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace ranges {
+  template&lt;input_iterator I, <i>nothrow-forward-iterator</i> O, <i>nothrow-sentinel-for</i>&lt;O&gt; S&gt;
+    requires constructible_from&lt;iter_value_t&lt;O&gt;, iter_rvalue_reference_t&lt;I&gt;&gt;
+    uninitialized_move_n_result&lt;I, O&gt;
+      uninitialized_move_n(I ifirst, iter_difference_t&lt;I&gt; n, O ofirst, S olast);
+}
+</pre>
+<blockquote>
+<p>
+-8- <i>Preconditions</i>: [<tt>ofirst, olast</tt>) does not overlap with <tt>ifirst +</tt> [<tt>0, n</tt>) .
+</p>
+<p>
+-9- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto t = uninitialized_move(counted_iterator(<ins>std::move(</ins>ifirst<ins>)</ins>, n),
+                            default_sentinel, ofirst, olast);
+return {std::move(t.in).base(), t.out};
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[specialized.destroy]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace ranges {
+  template&lt;<i>nothrow-input-iterator</i> I&gt;
+    requires destructible&lt;iter_value_t&lt;I&gt;&gt;
+    constexpr I destroy_n(I first, iter_difference_t&lt;I&gt; n) noexcept;
+}
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+return destroy(counted_iterator(<ins>std::move(</ins>first<ins>)</ins>, n), default_sentinel).base();
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
