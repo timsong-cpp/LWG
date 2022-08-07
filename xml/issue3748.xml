@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3748" status="New">
+<title><tt>common_iterator</tt> and <tt>counted_iterator</tt>' <tt>operator-</tt> are missing cast to return type</title>
+<section><sref ref="[common.iter.cmp]"/><sref ref="[counted.iter.nav]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>01 Aug 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Both <tt>common_iterator</tt> and <tt>counted_iterator</tt> explicitly specify that the 
+return type of their <tt>operator-</tt> is <tt>iter_difference_t&lt;I2&gt;</tt>, however, 
+given that the calculated type may be <tt>iter_difference_t&lt;I&gt;</tt>, we should do 
+an explicit conversion here since the latter is not necessarily implicitly convertible to the former:
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+struct Y;
+
+struct X {
+  X(Y);
+  using difference_type =
+#ifdef __GNUC__
+  std::ranges::__detail::__max_diff_type;
+#elif defined(_MSC_VER)
+  std::_Signed128;
+#endif
+  int&amp; operator*() const;
+  X&amp; operator++();
+  void operator++(int);
+};
+
+struct Y {
+  using difference_type = std::ptrdiff_t;
+  int&amp; operator*() const;
+  Y&amp; operator++();
+  void operator++(int);
+};
+
+int main() {
+  std::counted_iterator&lt;Y&gt; y;
+  return std::counted_iterator&lt;X&gt;(y) - y; // <span style="color:red;font-weight:bolder">hard error in stdlibc++ and MSVC-STL</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2>
+  requires sized_sentinel_for&lt;S, I2&gt;
+friend constexpr iter_difference_t&lt;I2&gt; operator-(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
+are each <tt>false</tt>.
+<p/>
+-6- <i>Returns</i>: <tt>0</tt> if <tt><i>i</i></tt> and <tt><i>j</i></tt> are each <tt>1</tt>, and otherwise 
+<ins><tt>static_cast&lt;iter_difference_t&lt;I2&gt;&gt;(</tt></ins><tt>get&lt;<i>i</i>&gt;(x.v_) - 
+get&lt;<i>j</i>&gt;(y.v_)</tt><ins><tt>)</tt></ins>, where <tt><i>i</i></tt> is <tt>x.v_.index()</tt> 
+and <tt><i>j</i></tt> is <tt>y.v_.index()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[counted.iter.nav]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;common_with&lt;I&gt; I2&gt;
+  friend constexpr iter_difference_t&lt;I2&gt; operator-(
+    const counted_iterator&amp; x, const counted_iterator&lt;I2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-13- <i>Preconditions</i>: <tt>x</tt> and <tt>y</tt> refer to elements of the same sequence (<sref ref="[counted.iterator]"/>).
+<p/>
+-14- <i>Effects</i>: Equivalent to: <tt>return <ins>static_cast&lt;iter_difference_t&lt;I2&gt;&gt;(</ins>y.length - 
+  x.length<ins>)</ins>;</tt>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
