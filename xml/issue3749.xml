@@ -1,0 +1,144 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3749" status="New">
+<title><tt>common_iterator</tt> should handle integer-class difference types</title>
+<section><sref ref="[iterators.common]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>01 Aug 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The partial specialization of <tt>iterator_traits</tt> for <tt>common_iterator</tt> is defined in 
+<sref ref="[common.iterator]"/> as
+</p>
+<pre>
+template&lt;input_iterator I, class S&gt;
+struct iterator_traits&lt;common_iterator&lt;I, S&gt;&gt; {
+  using iterator_concept = <i>see below</i>;
+  using iterator_category = <i>see below</i>;
+  using value_type = iter_value_t&lt;I&gt;;
+  using difference_type = iter_difference_t&lt;I&gt;;
+  using pointer = <i>see below</i>;
+  using reference = iter_reference_t&lt;I&gt;;
+};
+</pre>
+<p>
+where <tt>difference_type</tt> is defined as <tt>iter_difference_t&lt;I&gt;</tt> and <tt>iterator_category</tt> 
+is defined as at least <tt>input_iterator_tag</tt>. However, when <tt>difference_type</tt> is an 
+integer-class type, <tt>common_iterator</tt> does not satisfy <i>Cpp17InputIterator</i>, which makes 
+<tt>iterator_category</tt> incorrectly defined as <tt>input_iterator_tag</tt>.
+</p>
+<p>
+Since the main purpose of <tt>common_iterator</tt> is to be compatible with the legacy iterator system, 
+which is reflected in its efforts to try to provide the operations required by C++17 iterators even if 
+the underlying iterator does not support it. We should handle this case of difference type incompatibility 
+as well.
+<p/>
+The proposed solution is to provide a C++17 conforming difference type by clamping the integer-class type 
+to <tt>ptrdiff_t</tt>.
+<p/>
+<b>Daniel:</b>
+</p>
+<blockquote class="note">
+<p>
+The second part of this issue provides an <em>alternative</em> resolution for the first part of 
+LWG <iref ref="3748"/> and solves the casting problem mentioned in LWG <iref ref="3748"/> as well.
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[common.iterator]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <tt>common_iterator</tt> requires iterator type <tt>I</tt> must model 
+<tt><i>input_or_output_iterator</i></tt> which ensures that <tt>iter_difference_t&lt;I&gt;</tt> 
+is a signed-integer-like type. The modification of <tt>common_iterator::operator-</tt> is to ensure 
+that the pair of <tt>common_iterator&lt;I, S&gt;</tt> models <tt>sized_sentinel_for</tt> when 
+<tt>sized_sentinel_for&lt;I, S&gt;</tt> is modeled for iterator type <tt>I</tt> with an 
+integer-class difference type and its sentinel type <tt>S</tt>.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+namespace std {
+  <ins>template&lt;class D&gt;
+    requires <i>is-signed-integer-like</i>&lt;D&gt;
+  using <i>make-cpp17-diff-t</i> = conditional_t&lt;signed_integral&lt;D&gt;, D, ptrdiff_t&gt;;  <i>// exposition only</i></ins>
+
+  template&lt;<i>input_or_output_iterator</i> I, sentinel_for&lt;I&gt; S>
+    requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
+  class common_iterator {
+  public:
+    [&hellip;]
+    template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2>
+      requires sized_sentinel_for&lt;S, I2&gt;
+    friend constexpr <ins><i>make-cpp17-diff-t</i>&lt;</ins>iter_difference_t&lt;I2&gt;<ins>&gt;</ins> operator-(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+    [&hellip;]
+  };
+  
+  template&lt;class I, class S&gt;
+  struct incrementable_traits&lt;common_iterator&lt;I, S&gt;&gt; {
+    using difference_type = <ins><i>make-cpp17-diff-t</i>&lt;</ins>iter_difference_t&lt;I&gt;<ins>&gt;</ins>;
+  };
+
+  template&lt;input_iterator I, class S&gt;
+  struct iterator_traits&lt;common_iterator&lt;I, S&gt;&gt; {
+    using iterator_concept = <i>see below</i>;
+    using iterator_category = <i>see below</i>;
+    using value_type = iter_value_t&lt;I&gt;;
+    using difference_type = <ins><i>make-cpp17-diff-t</i>&lt;</ins>iter_difference_t&lt;I&gt;<ins>&gt;</ins>;
+    using pointer = <i>see below</i>;
+    using reference = iter_reference_t&lt;I&gt;;
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> If this issue is voted in at the same time as LWG <iref ref="3748"/>, the editor
+is kindly informed that the changes indicated below supersede those of the before mentioned issues first 
+part.]
+</p>
+</blockquote>
+
+
+<blockquote>
+<pre>
+template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2>
+  requires sized_sentinel_for&lt;S, I2&gt;
+friend constexpr <ins><i>make-cpp17-diff-t</i>&lt;</ins>iter_difference_t&lt;I2&gt;<ins>&gt;</ins> operator-(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> are 
+each <tt>false</tt>.
+<p/>
+-6- <i>Returns</i>: <tt>0</tt> if <tt><i>i</i></tt> and <tt><i>j</i></tt> are each <tt>1</tt>, and 
+otherwise <ins><tt>static_cast&lt;<i>make-cpp17-diff-t</i>&lt;iter_difference_t&lt;I2&gt;&gt;&gt;(</tt></ins><tt>get&lt;<i>i</i>&gt;(x.v_) 
+- get&lt;<i>j</i>&gt;(y.v_)</tt><ins><tt>)</tt></ins>, where <tt><i>i</i></tt> is <tt>x.v_.index()</tt> 
+and <tt><i>j</i></tt> is <tt>y.v_.index()</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
