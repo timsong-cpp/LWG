@@ -30,9 +30,8 @@ This is what all known implementations (including Boost.System) do.
 Set priority to 2 after reflector poll.
 </p>
 
-</discussion>
-
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <a href="https://wg21.link/n4901">N4901</a>.
 </p>
@@ -79,6 +78,255 @@ found by ADL. <em>&mdash;end note]</em>
 </blockquote>
 </li>
 </ol>
+</blockquote>
+
+<note>2022-18-25; Jonathan Wakely provides improved wording</note>
+<p>
+Discussed in LWG telecon and decided on new direction:
+<ul>
+<li>Add <code>make_error_code</code> and <code>make_error_condition</code>
+to <sref ref="[contents]"/> as done for <code>swap</code>.
+Describe form of lookup used for them.</li>
+<li>Respecify <code>error_code</code> and <code>error_condition</code>
+constructors in terms of "<i>Effects</i>: Equivalent to" so that the
+requirements on program-defined overloads found by ADL are implied by those
+effects.</li>
+</ul>
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ul>
+<li><p>Modify <sref ref="[contents]"/> as indicated:</p>
+
+<blockquote>
+<p>-3-
+Whenever an unqualified name other than <code>swap</code><ins>,
+<code>make_error_code</code>, or <code>make_error_condition</code></ins>
+is used in the specification of a declaration <code>D</code> in
+<sref ref="[support]"/> through <sref ref="[thread]"/> or <sref ref="[depr]"/>,
+its meaning is established as-if by performing unqualified name lookup
+(<sref ref="[basic.lookup.unqual]"/>) in the context of <code>D</code>.
+</p>
+
+<p>
+[<i>Note 1</i>:
+Argument-dependent lookup is not performed.
+&mdash; <i>end note</i>]
+</p>
+
+<p>
+Similarly, the meaning of a <i>qualified-id</i> is established as-if by
+performing qualified name lookup (<sref ref="[basic.lookup.qual]"/>)
+in the context of <code>D</code>.
+</p>
+
+<p>
+[<i>Example 1</i>:
+The reference to <code>is_array_v</code> in the specification of
+<code>std::to_array</code> (<sref ref="[array.creation]"/>)
+refers to <code>::std::is_array_v</code>.
+&mdash; <i>end example</i>]
+</p>
+
+<p>
+[<i>Note 2</i>:
+Operators in expressions (<sref ref="[over.match.oper]"/>)
+are not so constrained; see <sref ref="[global.functions]"/>.
+&mdash; <i>end note</i>]
+</p>
+
+<p>
+The meaning of the unqualified name <code>swap</code> is established
+in an overload resolution context for swappable values
+(<sref ref="[swappable.requirements]"/>).
+<ins>
+The meanings of the unqualified names
+<code>make_error_code</code> and <code>make_error_condition</code>
+are established as-if by performing unqualified name lookup
+and argument-dependent lookup (<sref ref="[basic.lookup.argdep]"/>).
+</ins>
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>:
+The intention here is "normal" lookup of an unqualified name,
+matching what implementations actually do. No poison pills or other heroics
+to do ADL without "<i>unqualified name lookup</i>" or vice versa.]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[syserr.errcode.constructors]"/> as indicated:</p>
+
+<blockquote>
+<pre>error_code() noexcept;</pre>
+<p>
+<del>
+-1- <i>Postconditions</i>:
+<code>val_ == 0</code> and <code>cat_ == &amp;system_category()</code>.
+</del>
+<br/>
+<ins>
+-1- <i>Effects</i>:
+Initializes <code>val_</code> with <code>0</code>
+and <code>cat_</code> with <code>&amp;system_category()</code>.
+</ins>
+</p>
+
+<pre>error_code(int val, const error_category&amp; cat) noexcept;</pre>
+<p>
+<del>
+-2- <i>Postconditions</i>:
+<code>val_ == val</code> and <code>cat_ == &amp;cat</code>.
+</del>
+<br/>
+<ins>
+-2- <i>Effects</i>:
+Initializes <code>val_</code> with <code>val</code>
+and <code>cat_</code> with <code>&amp;cat</code>.
+</ins>
+</p>
+
+<pre>template&lt;class ErrorCodeEnum&gt;
+  error_code(ErrorCodeEnum e) noexcept;</pre>
+<p>-3- <i>Constraints</i>:
+<code>is_error_code_enum_v&lt;ErrorCodeEnum&gt;</code> is <code>true</code>.
+</p>
+<p>
+<del>
+-4- <i>Postconditions</i>:
+<code>*this == make_error_code(e)</code>.
+</del>
+<br/>
+<ins>
+-4- <i>Effects</i>: Equivalent to:
+</ins>
+<blockquote><pre><ins>error_code ec = make_error_code(e);
+assign(ec.value(), ec.category());
+</ins></pre></blockquote>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[syserr.errcode.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>template&lt;class ErrorCodeEnum&gt;
+  error_code&amp; operator=(ErrorCodeEnum e) noexcept;</pre>
+<p>-2- <i>Constraints</i>:
+<code>is_error_code_enum_v&lt;ErrorCodeEnum&gt;</code> is <code>true</code>.
+</p>
+<p>
+<del>
+-3- <i>Postconditions</i>:
+<code>*this == make_error_code(e)</code>.
+</del>
+<br/>
+<ins>
+-3- <i>Effects</i>: Equivalent to:
+</ins>
+<blockquote><pre><ins>error_code ec = make_error_code(e);
+assign(ec.value(), ec.category());
+</ins></pre></blockquote>
+</p>
+<p>
+-4- <i>Returns</i>: <code>*this</code>.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[syserr.errcondition.constructors]"/> as indicated:</p>
+
+<blockquote>
+<pre>error_condition() noexcept;</pre>
+<p>
+<del>
+-1- <i>Postconditions</i>:
+<code>val_ == 0</code> and <code>cat_ == &amp;generic_category()</code>.
+</del>
+<br/>
+<ins>
+-1- <i>Effects</i>:
+Initializes <code>val_</code> with <code>0</code>
+and <code>cat_</code> with <code>&amp;generic_category()</code>.
+</ins>
+</p>
+
+<pre>error_condition(int val, const error_category&amp; cat) noexcept;</pre>
+<p>
+<del>
+-2- <i>Postconditions</i>:
+<code>val_ == val</code> and <code>cat_ == &amp;cat</code>.
+</del>
+<br/>
+<ins>
+-2- <i>Effects</i>:
+Initializes <code>val_</code> with <code>val</code>
+and <code>cat_</code> with <code>&amp;cat</code>.
+</ins>
+</p>
+
+<pre>template&lt;class ErrorConditionEnum&gt;
+  error_condition(ErrorConditionEnum e) noexcept;</pre>
+<p>-3- <i>Constraints</i>:
+<code>is_error_condition_enum_v&lt;ErrorConditionEnum&gt;</code> is <code>true</code>.
+</p>
+<p>
+<del>
+-4- <i>Postconditions</i>:
+<code>*this == make_error_condition(e)</code>.
+</del>
+<br/>
+<ins>
+-4- <i>Effects</i>: Equivalent to:
+</ins>
+<blockquote><pre><ins>error_condition ec = make_error_condition(e);
+assign(ec.value(), ec.category());
+</ins></pre></blockquote>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[syserr.errcondition.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>template&lt;class ErrorConditionEnum&gt;
+  error_condition&amp; operator=(ErrorConditionEnum e) noexcept;</pre>
+<p>-2- <i>Constraints</i>:
+<code>is_error_condition_enum_v&lt;ErrorConditionEnum&gt;</code> is <code>true</code>.
+</p>
+<p>
+<del>
+-3- <i>Postconditions</i>:
+<code>*this == make_error_condition(e)</code>.
+</del>
+<br/>
+<ins>
+-3- <i>Effects</i>: Equivalent to:
+</ins>
+<blockquote><pre><ins>error_condition ec = make_error_condition(e);
+assign(ec.value(), ec.category());
+</ins></pre></blockquote>
+</p>
+<p>
+-4- <i>Returns</i>: <code>*this</code>.
+</p>
+</blockquote>
+
+</li>
+
+</ul>
+
 </resolution>
 
 </issue>
