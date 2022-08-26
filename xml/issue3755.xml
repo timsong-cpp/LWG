@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3755" status="New">
+<title><tt><i>tuple-for-each</i></tt> can call user-defined <tt>operator,</tt></title>
+<section><sref ref="[range.zip.view]"/></section>
+<submitter>Nicole Mazzuca </submitter>
+<date>26 Aug 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The specification for <tt><i>tuple-for-each</i></tt> is:
+</p>
+
+<blockquote><pre>
+template&lt;class F, class Tuple&gt;
+constexpr auto <i>tuple-for-each</i>(F&amp;&amp; f, Tuple&amp;&amp; t) { <i>// exposition only</i>
+  apply([&amp;]&lt;class... Ts&gt;(Ts&amp;&amp;... elements) {
+    (invoke(f, std::forward&lt;Ts&gt;(elements)), ...);
+  }, std::forward&lt;Tuple&gt;(t));
+}
+</pre></blockquote>
+
+<p>Given</p>
+
+<blockquote><pre>
+struct Evil {
+  void operator,(Evil) {
+        abort();
+    }
+};
+</pre></blockquote>
+
+<p>
+and <tt>tuple&lt;int, int&gt; t</tt>, then
+<tt><i>tuple-for-each</i>([](int) { return Evil{}; }, t)</tt>,
+the program will (unintentionally) abort.
+</p>
+
+<p>
+It seems likely that our <tt>Evil</tt>'s <tt>operator,</tt>
+should not be called.
+</p>
+
+</discussion>
+
+<resolution>
+
+<p> This wording is relative to the forthcoming C++23 CD. </p>
+
+<ul>
+<li>
+<p>
+Modify <sref ref="[range.adaptor.tuple]"/> as indicated:
+</p>
+
+<blockquote><pre>
+template&lt;class F, class Tuple&gt;
+constexpr auto <i>tuple-for-each</i>(F&amp;&amp; f, Tuple&amp;&amp; tuple) { <i>// exposition only</i>
+  apply([&amp;]&lt;class... Ts&gt;(Ts&amp;&amp;... elements) {
+    (<ins>static_cast&lt;void&gt;(</ins>invoke(f, std::forward&lt;Ts&gt;(elements))<ins>)</ins>, ...);
+  }, std::forward&lt;Tuple&gt;(t));
+}
+</pre></blockquote>
+
+</li>
+</ul>
+
+</resolution>
+
+</issue>
