@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3762" status="New">
+<title><tt>generator::<i>iterator</i>::operator==</tt> should pass by reference</title>
+<section><sref ref="[coro.generator.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>27 Aug 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>generator::<i>iterator</i>::operator==</tt> pass <tt><i>iterator</i></tt> by value.
+Given that <tt><i>iterator</i></tt> is a move-only type, this makes it impossible for 
+<tt>generator</tt> to model <tt>range</tt>, since <tt>default_sentinel</tt> cannot be compared 
+to the <tt><i>iterator</i></tt> of <tt>const</tt> lvalue and is not eligible to be its sentinel.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to the <a href="https://github.com/cplusplus/draft/suites/8116854514/artifacts/351119387">working 
+draft snapshot from 2022-09-03</a>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[coro.generator.iterator]"/> as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Ref, class V, class Allocator&gt;
+  class generator&lt;Ref, V, Allocator&gt;::<i>iterator</i> {
+  public:
+    using value_type = <i>value</i>;
+    using difference_type = ptrdiff_t;
+
+    <i>iterator</i>(<i>iterator</i>&amp;&amp; other) noexcept;
+    <i>iterator</i>&amp; operator=(<i>iterator</i>&amp;&amp; other) noexcept;
+    
+    <i>reference</i> operator*() const noexcept(is_nothrow_copy_constructible_v&lt;<i>reference</i>&gt;);
+    <i>iterator</i>&amp; operator++();
+    void operator++(int);
+
+    friend bool operator==(<ins>const</ins> <i>iterator</i><ins>&amp;</ins> i, default_sentinel_t);
+
+  private:
+    coroutine_handle&lt;promise_type&gt; <i>coroutine_</i>; <i>// exposition only</i>
+  };
+}
+</pre>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+friend bool operator==(<ins>const</ins> <i>iterator</i><ins>&amp;</ins> i, default_sentinel_t);
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects</i>: Equivalent to: <tt>return i.<i>coroutine_</i>.done();</tt>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
