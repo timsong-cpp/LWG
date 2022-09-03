@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3759" status="New">
+<title><tt>ranges::rotate_copy</tt> should use <tt>std::move</tt></title>
+<section><sref ref="[alg.rotate]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>25 Aug 2022</date>
+<priority>2</priority>
+
+<discussion>
+<p>
+The range version of <tt>ranges::rotate_copy</tt> directly passes the <tt>result</tt> to the 
+iterator-pair version. Since the type of <tt>result</tt> only models <tt>weakly_incrementable</tt> 
+and may not be copied, we should use <tt>std::move</tt> here.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[alg.rotate]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;forward_range R, weakly_incrementable O&gt;
+  requires indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt;
+  constexpr ranges::rotate_copy_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+    ranges::rotate_copy(R&amp;&amp; r, iterator_t&lt;R&gt; middle, O result);
+</pre>
+<blockquote>
+<p>
+-11- <i>Effects</i>: Equivalent to:
+<blockquote><pre>
+return ranges::rotate_copy(ranges::begin(r), middle, ranges::end(r), <ins>std::move(</ins>result<ins>)</ins>);
+</pre></blockquote>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
