@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3756" status="New">
+<title>Is the <tt>std::atomic_flag</tt> class signal-safe?</title>
+<section><sref ref="[support.signal]"/><sref ref="[atomics.flag]"/></section>
+<submitter>Ruslan Baratov</submitter>
+<date>18 Aug 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Following document number <paper num="N4910"/> about signal-safe instructions
+<sref ref="[support.signal]"/> Signal handlers, and it's unclear whether
+<tt>std::atomic_flag</tt> is signal-safe.
+<p/>
+Formally it doesn't fit any of the mentioned conditions:
+</p>
+<ul>
+<li><p><tt>f</tt> is a non-static member function invoked on an object <tt>A</tt>, such that
+<tt>A.is_lock_free()</tt> yields <tt>true</tt>, or</p>
+<blockquote class="note"><p>
+(there is no <tt>is_lock_free</tt> method in <tt>std::atomic_flag</tt> class)
+</p></blockquote>
+</li>
+<li><p><tt>f</tt> is a non-member function, and for every pointer-to-atomic argument <tt>A</tt>
+passed to <tt>f</tt>, <tt>atomic_is_lock_free(A)</tt> yields <tt>true</tt></p>
+<blockquote class="note"><p>
+(<tt>std::atomic_flag</tt> object can't be passed to <tt>atomic_is_lock_free</tt> as argument)
+</p></blockquote></li>
+</ul>
+<p>
+However, <tt>std::atomic_flag</tt> seem to fit well here, it's atomic, and it's
+always lock-free.
+<p/>
+The suggestion is as follows: If <tt>std::atomic_flag</tt> is signal-safe, then it
+should be explicitly mentioned in <sref ref="[support.signal]"/>, e.g., the following lines
+should be added:
+</p>
+<blockquote>
+<ul>
+<li><p><ins><tt>f</tt> is a non-static member function invoked on an <tt>atomic_flag</tt> object, or</ins></p></li>
+<li><p><ins><tt>f</tt> is a non-member function, and every pointer-to-atomic argument
+passed to <tt>f</tt> is <tt>atomic_flag</tt>, or</ins></p></li>
+</ul>
+</blockquote>
+<p>
+If the <tt>std::atomic_flag</tt> is not signal-safe, the following note could be added:
+</p>
+<blockquote>
+<p>
+<ins>[<i>Note:</i> Even though <tt>atomic_flag</tt> is atomic and lock-free, it's not signal-safe. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
