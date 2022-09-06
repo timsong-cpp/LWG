@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3766" status="New">
+<title><tt>view_interface::cbegin</tt> is underconstrained</title>
+<section><sref ref="[view.interface.general]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>04 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>view_interface::cbegin</tt> simply returns <tt>ranges::cbegin(<i>derived</i>())</tt>, 
+which returns the type alias <tt>const_iterator</tt> for its iterator, which requires that the template 
+parameter <tt>I</tt> must model the <tt>input_iterator</tt>.
+<p/>
+Given that <tt>view_interface::cbegin</tt> does not have any constraints, when <tt>D</tt> models only 
+<tt>output_range</tt>, calling its <tt>cbegin()</tt> will result in a hard error inside the function body:
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+int main() {
+  std::vector&lt;int&gt; v;
+  auto r = std::views::counted(std::back_inserter(v), 3);
+  auto b = r.cbegin(); // <span style="color:red;font-weight:bolder">hard error</span>
+}
+</pre></blockquote>
+<p>
+We should add a constraint for <tt>view_interface::cbegin</tt> that <tt>D</tt> must model <tt>input_range</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to the <a href="https://github.com/cplusplus/draft/suites/8116854514/artifacts/351119387">working 
+draft snapshot from 2022-09-03</a>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[view.interface.general]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class D&gt;
+    requires is_class_v&lt;D&gt; &amp;&amp; same_as&lt;D, remove_cv_t&lt;D&gt;&gt;
+  class view_interface {
+    [&hellip;]
+  public:
+    [&hellip;]
+    constexpr auto cbegin() <ins>requires input_range&lt;D&gt;</ins> {
+      return ranges::cbegin(<i>derived</i>());
+    }
+    constexpr auto cbegin() const requires <ins>input_</ins>range&lt;const D&gt; {
+      return ranges::cbegin(<i>derived</i>());
+    }
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
