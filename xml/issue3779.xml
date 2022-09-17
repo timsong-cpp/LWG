@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3779" status="New">
+<title><tt>ranges::fold_*</tt> can unintentionally <tt>const_cast</tt> and <tt>reinterpret_cast</tt></title>
+<section><sref ref="[alg.fold]"/></section>
+<submitter>Nicole Mazzuca</submitter>
+<date>15 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the <i>Effects</i> element of <tt>ranges::fold_right</tt>, we get the following code:
+</p>
+<blockquote><pre>
+using U = decay_t&lt;invoke_result_t&lt;F&amp;, iter_reference_t&lt;I&gt;, T&gt;&gt;;
+if (first == last)
+  return U(std::move(init)); // <span style="color:red;font-weight:bolder">functional-style C cast</span>
+[&hellip;]
+</pre></blockquote>
+<p>
+Given the following function object:
+</p>
+<blockquote><pre>
+struct Second {
+  static char* operator()(const char*, char* rhs) {
+    return rhs;
+  }
+};
+</pre></blockquote>
+<p>
+calling <tt>fold_right</tt> as:
+</p>
+<blockquote><pre>
+char* p = fold_right(views::empty&lt;char*&gt;, "Hello", Second{});
+</pre></blockquote>
+<p>
+initializes <tt>p</tt> with <tt>const_cast&lt;char*&gt;("Hello")</tt>.
+<p/>
+The same problem exists in <tt>fold_left_with_iter</tt>, and thus in <tt>fold_left</tt>.
+<p/>
+One can get the <tt>reinterpret_cast</tt> behavior by replacing <tt>const char*</tt> with 
+<tt>unsigned long long</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4910"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[alg.fold]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;bidirectional_iterator I, sentinel_for&lt;I&gt; S, class T,
+         <i>indirectly-binary-right-foldable</i>&lt;T, I&gt; F&gt;
+  constexpr auto ranges::fold_right(I first, S last, T init, F f);
+template&lt;bidirectional_range R, class T,
+         <i>indirectly-binary-right-foldable</i>&lt;T, iterator_t&lt;R&gt;&gt; F&gt;
+  constexpr auto ranges::fold_right(R&amp;&amp; r, T init, F f);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+using U = decay_t&lt;invoke_result_t&lt;F&amp;, iter_reference_t&lt;I&gt;, T&gt;&gt;;
+if (first == last)
+  return <ins>static_cast&lt;</ins>U<ins>&gt;</ins>(std::move(init));
+I tail = ranges::next(first, last);
+U accum = invoke(f, *--tail, std::move(init));
+while (first != tail)
+  accum = invoke(f, *--tail, std::move(accum));
+return accum;
+</pre></blockquote>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S, class T,
+         <i>indirectly-binary-left-foldable</i>&lt;T, I&gt; F&gt;
+  constexpr <i>see below</i> ranges::fold_left_with_iter(I first, S last, T init, F f);
+template&lt;input_range R, class T, <i>indirectly-binary-left-foldable</i>&lt;T, iterator_t&lt;R&gt;&gt; F&gt;
+  constexpr <i>see below</i> ranges::fold_left_with_iter(R&amp;&amp; r, T init, F f);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>U</tt> be <tt>decay_t&lt;invoke_result_t&lt;F&amp;, T, iter_reference_t&lt;I&gt;&gt;&gt;</tt>.
+<p/>
+-7- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+if (first == last)
+  return {std::move(first), <ins>static_cast&lt;</ins>U<ins>&gt;</ins>(std::move(init))};
+U accum = invoke(f, std::move(init), *first);
+for (++first; first != last; ++first)
+  accum = invoke(f, std::move(accum), *first);
+return {std::move(first), std::move(accum)};
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
