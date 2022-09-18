@@ -3,7 +3,7 @@
 
 <issue num="3783" status="New">
 <title><tt>views::common</tt> may not be a range adaptor object</title>
-<section><sref ref="[common.iterator]"/><sref ref="[range.common.view]"/></section>
+<section><sref ref="[common.iterator]"/><sref ref="[common.iter.cmp]"/></section>
 <submitter>Hewill Kang</submitter>
 <date>18 Sep 2022</date>
 <priority>99</priority>
@@ -33,8 +33,11 @@ int main() {
 which causes <tt>views::common</tt> to be unable to convert a <tt>range</tt> into a <tt>view</tt>, 
 making it not a valid range adaptor.
 <p/>
-I think requiring <tt>common_iterator</tt> to be <tt>default_initializable</tt> should be mandatory, 
+I think <tt>common_iterator</tt> should always be <tt>default_initializable</tt>, 
 which makes it eligible to be a legitimate sentinel.
+<p/>
+The proposed resolution changes the template order of the <tt>common_iterator</tt>'s member 
+<tt>variant&lt;I, S&gt;</tt> to achieve this.
 </p>
 </discussion>
 
@@ -45,80 +48,62 @@ This wording is relative to <paper num="N4910"/>.
 
 <ol>
 
-<li><p>Modify <sref ref="[iterator.synopsis]"/>, header <tt>&lt;iterator&gt;</tt> synopsis, as indicated:</p>
-
-<blockquote>
-<pre>
-#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
-#include &lt;concepts&gt;             // <i>see <sref ref="[concepts.syn]"/></i>
-
-namespace std {
-  [&hellip;]
-  // <i><sref ref="[iterators.common]"/>, common iterators</i>
-  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
-    requires (!same_as&lt;I, S&gt; &amp;&amp; <ins>semiregular</ins><del>copyable</del>&lt;I&gt;)
-      class common_iterator;                                                        // <i>freestanding</i>
-  [&hellip;]
-}
-</pre>
-</blockquote>
-</li>
-
 <li><p>Modify <sref ref="[common.iterator]"/>, class template <tt>common_iterator</tt> synopsis, as indicated:</p>
 
 <blockquote>
 <pre>
 namespace std {
   template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
-    requires (!same_as&lt;I, S&gt; &amp;&amp; <ins>semiregular</ins><del>copyable</del>&lt;I&gt;)
+    requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
   class common_iterator {
   public:
     constexpr common_iterator() <del>requires default_initializable&lt;I&gt;</del> = default;
     [&hellip;]
-  };
-  [&hellip;]
-}
-</pre>
-</blockquote>
-</li>
-
-<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
-<blockquote>
-<pre>
-#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
-#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
-#include &lt;iterator&gt;             // <i>see <sref ref="[iterator.synopsis]"/></i>
-
-namespace std::ranges {
-  [&hellip;]
-  // <i><sref ref="[range.common]"/>, common view</i>
-  template&lt;view V&gt;
-    requires (!common_range&lt;V&gt; &amp;&amp; <ins>semiregular</ins><del>copyable</del>&lt;iterator_t&lt;V&gt;&gt;)
-  class common_view;                                                                // <i>freestanding</i>
-  [&hellip;]
-}
-</pre>
-</blockquote>
-</li>
-
-<li><p>Modify <sref ref="[range.common.view]"/>, class template <tt>common_view</tt> synopsis, as indicated:</p>
-
-<blockquote>
-<pre>
-namespace std::ranges {
-  template&lt;view V&gt;
-    requires (!common_range&lt;V&gt; &amp;&amp; <ins>semiregular</ins><del>copyable</del>&lt;iterator_t&lt;V&gt;&gt;)
-  class common_view : public view_interface&lt;common_view&lt;V&gt;&gt; {
   private:
-    V <i>base_</i> = V(); // <i>exposition only</i>
-  public:
-    common_view() requires default_initializable&lt;V&gt; = default;
-
-    [&hellip;]
+    variant&lt;<ins>S, </ins>I<del>, S</del>&gt; v_;   // <i>exposition only</i>
   };
   [&hellip;]
 }
 </pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+
+<blockquote>
+[&hellip;]
+<pre>
+template&lt;class I2, sentinel_for&lt;I&gt; S2>
+  requires sentinel_for&lt;S, I2&gt; &amp;&amp; equality_comparable_with&lt;I, I2&gt;
+friend constexpr bool operator==(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-3- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
+are each <tt>false</tt>.
+<p/>
+-4- <i>Returns</i>: <tt>true</tt> if <tt><i>i</i></tt> and <tt><i>j</i></tt> are each <ins><tt>0</tt></ins><del><tt>1</tt></del>, 
+and otherwise <tt>get&lt;<i>i</i>&gt;(x.v_) == get&lt;<i>j</i>&gt;(y.v_)</tt>, where <tt><i>i</i></tt> is <tt>x.v_.index()</tt> 
+and <tt><i>j</i></tt> is <tt>y.v_.index()</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2>
+  requires sized_sentinel_for&lt;S, I2&gt;
+friend constexpr iter_difference_t&lt;I2&gt; operator-(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
+are each <tt>false</tt>.
+<p/>
+-6- <i>Returns</i>: <tt>0</tt> if <tt><i>i</i></tt> and <tt><i>j</i></tt> are each <ins><tt>0</tt></ins><del><tt>1</tt></del>, 
+and otherwise <tt>get&lt;<i>i</i>&gt;(x.v_) - get&lt;<i>j</i>&gt;(y.v_)</tt>, where <tt><i>i</i></tt> is <tt>x.v_.index()</tt> 
+and <tt><i>j</i></tt> is <tt>y.v_.index()</tt>.
+</p>
+</blockquote>
 </blockquote>
 </li>
 
