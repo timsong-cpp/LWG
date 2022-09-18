@@ -36,8 +36,9 @@ making it not a valid range adaptor.
 I think <tt>common_iterator</tt> should always be <tt>default_initializable</tt>, 
 which makes it eligible to be a legitimate sentinel.
 <p/>
-The proposed resolution changes the template order of the <tt>common_iterator</tt>'s member 
-<tt>variant&lt;I, S&gt;</tt> to achieve this.
+The proposed resolution provides a default constructor for <tt>common_iterator</tt> when <tt>I</tt> is 
+not <tt>default_initializable</tt>, in which case constructs the <tt>variant</tt> with an alternative type 
+of <tt>S</tt>.
 </p>
 </discussion>
 
@@ -57,10 +58,9 @@ namespace std {
     requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
   class common_iterator {
   public:
-    constexpr common_iterator() <del>requires default_initializable&lt;I&gt;</del> = default;
+    constexpr common_iterator() requires default_initializable&lt;I&gt; = default;
+    <ins>constexpr common_iterator();</ins>
     [&hellip;]
-  private:
-    variant&lt;<ins>S, </ins>I<del>, S</del>&gt; v_;   // <i>exposition only</i>
   };
   [&hellip;]
 }
@@ -68,40 +68,23 @@ namespace std {
 </blockquote>
 </li>
 
-<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+<li><p>Modify <sref ref="[common.iter.const]"/> as indicated:</p>
 
 <blockquote>
-[&hellip;]
 <pre>
-template&lt;class I2, sentinel_for&lt;I&gt; S2>
-  requires sentinel_for&lt;S, I2&gt; &amp;&amp; equality_comparable_with&lt;I, I2&gt;
-friend constexpr bool operator==(
-  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+<ins>constexpr common_iterator();</ins>
 </pre>
 <blockquote>
 <p>
--3- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
-are each <tt>false</tt>.
-<p/>
--4- <i>Returns</i>: <tt>true</tt> if <tt><i>i</i></tt> and <tt><i>j</i></tt> are each <ins><tt>0</tt></ins><del><tt>1</tt></del>, 
-and otherwise <tt>get&lt;<i>i</i>&gt;(x.v_) == get&lt;<i>j</i>&gt;(y.v_)</tt>, where <tt><i>i</i></tt> is <tt>x.v_.index()</tt> 
-and <tt><i>j</i></tt> is <tt>y.v_.index()</tt>.
+<ins>-?- <i>Effects</i>: Initializes <tt>v_</tt> as if by <tt>v_{in_place_type&lt;S&gt;}</tt>.</ins>
 </p>
 </blockquote>
 <pre>
-template&lt;sized_sentinel_for&lt;I&gt; I2, sized_sentinel_for&lt;I&gt; S2>
-  requires sized_sentinel_for&lt;S, I2&gt;
-friend constexpr iter_difference_t&lt;I2&gt; operator-(
-  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+constexpr common_iterator(I i);
 </pre>
 <blockquote>
 <p>
--5- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
-are each <tt>false</tt>.
-<p/>
--6- <i>Returns</i>: <tt>0</tt> if <tt><i>i</i></tt> and <tt><i>j</i></tt> are each <ins><tt>0</tt></ins><del><tt>1</tt></del>, 
-and otherwise <tt>get&lt;<i>i</i>&gt;(x.v_) - get&lt;<i>j</i>&gt;(y.v_)</tt>, where <tt><i>i</i></tt> is <tt>x.v_.index()</tt> 
-and <tt><i>j</i></tt> is <tt>y.v_.index()</tt>.
+-1- <i>Effects</i>: Initializes <tt>v_</tt> as if by <tt>v_{in_place_type&lt;I&gt;, std::move(i)}</tt>.
 </p>
 </blockquote>
 </blockquote>
