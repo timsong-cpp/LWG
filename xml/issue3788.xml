@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3788" status="New">
+<title><tt>jthread::operator=(jthread&amp;&amp;)</tt> postconditions are unimplementable under self-assignment</title>
+<section><sref ref="[thread.jthread.cons]"/></section>
+<submitter>Nicole Mazzuca</submitter>
+<date>22 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the <i>Postconditions</i> element of <tt>jthread&amp; jthread::operator=(jthread&amp;&amp;)</tt> 
+(<sref ref="[thread.jthread.cons]"/> p13), we have the following:
+</p>
+<blockquote><p>
+<i>Postconditions</i>: <tt>x.get_id() == id()</tt>, and <tt>get_id()</tt> returns the value of
+<tt>x.get_id()</tt> prior to the assignment. <tt>ssource</tt> has the value of <tt>x.ssource</tt> 
+prior to the assignment and <tt>x.ssource.stop_possible()</tt> is <tt>false</tt>.
+</p></blockquote>
+<p>
+Assume <tt>j</tt> is a joinable <tt>jthread</tt>. Then, <tt>j = std::move(j);</tt> results in the following post-conditions:
+</p>
+<ul>
+<li><p>Let <tt>old_id = j.get_id()</tt> (and since <tt>j</tt> is joinable, <tt>old_id != id()</tt>)</p></li>
+<li><p>Since <tt>x.get_id() == id()</tt>, <tt>j.get_id() == id()</tt></p></li>
+<li><p>Since <tt>get_id() == old_id</tt>, <tt>j.get_id() == old_id</tt></p></li>
+<li><p>Thus, <tt>id() == j.get_id() == old_id</tt>, and <tt>old_id != id()</tt>, which is a contradiction.</p></li>
+</ul>
+<p>
+One can see that these postconditions are therefore unimplementable.
+<p/>
+Two standard libraries &ndash; the MSVC STL and libstdc++ &ndash; currently implement <tt>jthread</tt>.
+<p/>
+The MSVC STL chooses to follow the letter of the <i>Effects</i> element, which results in unfortunate behavior.
+It first <tt>request_stop()</tt>s, then <tt>join()</tt>s; then, it assigns the values over. This results in
+<tt>j.get_id() == id()</tt> &ndash; this means that <tt>std::swap(j, j)</tt> stops and joins <tt>j</tt>.
+<p/>
+libstdc++ chooses instead to implement this move assignment operator via the move-swap idiom.
+This results in <tt>j.get_id() == old_id</tt>, and <tt>std::swap(j, j)</tt> is a no-op.
+<p/>
+It is the opinion of the issue writer that libstdc++'s choice is the correct one, and should be
+taken into the standard.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
