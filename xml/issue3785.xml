@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3785" status="New">
+<title><tt>ranges::to</tt> is over-constrained on the destination type being a range</title>
+<section><sref ref="[range.utility.conv.to]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>19 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current wording in <sref ref="[range.utility.conv.to]"/> starts:
+</p>
+<blockquote><p>
+If <tt>convertible_to&lt;range_reference_t&lt;R&gt;, range_value_t&lt;C&gt;&gt;</tt> is <tt>true</tt>
+</p></blockquote>
+<p>
+and then tries to do <tt>C(r, args...)</tt> and then <tt>C(from_range, r, args...)</tt>. The problem 
+is that <tt>C</tt> might not be a range &mdash; indeed we explicitly removed that requirement from an 
+earlier revision of the paper &mdash; which makes this check ill-formed. One example use-case is using 
+<tt>ranges::to</tt> to convert a range of <tt>expected&lt;T, E&gt;</tt> into a 
+<tt>expected&lt;vector&lt;T&gt;, E&gt;</tt> &mdash; <tt>expected</tt> isn't any kind of range, but it 
+could support this operation, which is quite useful. Unfortunately, the wording explicitly rejects that. 
+This change happened between R6 and R7 of the paper and seems to have unintentionally rejected this use-case.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> We need to be careful that this short-circuits, since if <tt>C</tt> does 
+not satisfy <tt>input_range</tt>, then <tt>range_value_t&lt;C&gt;</tt> will be ill-formed.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;C&gt;)
+  constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: An object of type <tt>C</tt> constructed from the elements of <tt>r</tt> in the following manner:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; If <ins><tt>C</tt> does not satisfy <tt>input_range</tt> or</ins> 
+<tt>convertible_to&lt;range_reference_t&lt;R&gt;, range_value_t&lt;C&gt;&gt;</tt> is <tt>true</tt>:</p></li>
+<ol style="list-style-type: none">
+<li><p>(1.1.1) &mdash; If <tt>constructible_from&lt;C, R, Args...&gt;</tt> is <tt>true</tt>:</p></li>
+<blockquote><tt>C(std::forward&lt;R&gt;(r), std::forward&lt;Args&gt;(args)...)</tt></blockquote>
+<li><p>(1.1.2) &mdash; Otherwise, if <tt>constructible_from&lt;C, from_range_t, R, Args...&gt;</tt> is <tt>true</tt>:</p></li>
+<blockquote><tt>C(from_range, std::forward&lt;R&gt;(r), std::forward&lt;Args&gt;(args)...)</tt></blockquote>
+<li><p>(1.1.3) &mdash; Otherwise, if</p></li>
+<ol style="list-style-type: none">
+<li><p>(1.1.3.1) &mdash; <tt>common_range&lt;R&gt;</tt> is <tt>true</tt>,</p></li>
+<li><p>(1.1.3.2) &mdash; <tt><i>cpp17-input-iterator</i>&lt;iterator_t&lt;R&gt;&gt;</tt> is <tt>true</tt>, and</p></li>
+<li><p>(1.1.3.3) &mdash; <tt>constructible_from&lt;C, iterator_t&lt;R&gt;, sentinel_t&lt;R&gt;, Args...&gt;</tt> is <tt>true</tt>:</p></li>
+<blockquote><tt>C(ranges::begin(r), ranges::end(r), std::forward&lt;Args&gt;(args)...)</tt></blockquote>
+</ol>
+<li><p>(1.1.4) &mdash; Otherwise, if</p></li>
+<ol style="list-style-type: none">
+<li><p>(1.1.4.1) &mdash; <tt>constructible_from&lt;C, Args...&gt;</tt> is <tt>true</tt>, and</p></li>
+<li><p>(1.1.4.2) &mdash; <tt><i>container-insertable</i>&lt;C, range_reference_t&lt;R&gt;&gt;</tt> is <tt>true</tt>:</p>
+<blockquote><pre>
+C c(std::forward&lt;Args&gt;(args)...);
+if constexpr (sized_range&lt;R&gt; &amp;&amp; <i>reservable-container</i>&lt;C&gt;)
+  c.reserve(ranges::size(r));
+ranges::copy(r, <i>container-inserter</i>&lt;range_reference_t&lt;R&gt;&gt;(c));
+</pre></blockquote></li>
+</ol>
+</ol>
+<li><p>(1.2) &mdash; Otherwise, if <tt>input_range&lt;range_reference_t&lt;R&gt;&gt;</tt> is <tt>true</tt>:</p>
+<blockquote><pre>
+to&lt;C&gt;(r | views::transform([](auto&amp;&amp; elem) {
+  return to&lt;range_value_t&lt;C&gt;&gt;(std::forward&lt;decltype(elem)&gt;(elem));
+}), std::forward&lt;Args&gt;(args)...);
+</pre></blockquote></li>
+<li><p>(1.3) &mdash; Otherwise, the program is ill-formed.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
