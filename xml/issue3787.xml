@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3787" status="New">
+<title><tt>ranges::to</tt>'s template parameter <tt>C</tt> should not be a reference type</title>
+<section><sref ref="[range.utility.conv.to]"/><sref ref="[range.utility.conv.adaptors]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>25 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It doesn't make sense for the template parameter <tt>C</tt> of <tt>ranges::to</tt> be a reference, 
+which allows us to write something like <tt>ranges::to&lt;vector&lt;int&gt;&amp;&amp;&gt;(std::move(v))</tt> or
+<tt>ranges::to&lt;const vector&lt;int&gt;&amp;&amp;&gt;(v)</tt>, we should forbid this.
+<p/>
+The proposed resolution constrains the template parameter <tt>C</tt> to be object type to conform to 
+its description: "The range conversion functions construct an object (usually a container) from a range".
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+#include &lt;iterator&gt;             // <i>see <sref ref="[iterator.synopsis]"/></i>
+
+namespace std::ranges {
+  [&hellip;]
+  // <i><sref ref="[range.utility.conv]"/>, range conversions</i>
+  template&lt;class C, input_range R, class... Args&gt; requires <ins>is_object_v&lt;C&gt; &amp;&amp;</ins> (!view&lt;C&gt;)
+    constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);                                          // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, input_range R, class... Args&gt;
+    constexpr auto to(R&amp;&amp; r, Args&amp;&amp;... args);                                       // <i>freestanding</i>
+  template&lt;class C, class... Args&gt; requires <ins>is_object_v&lt;C&gt; &amp;&amp;</ins> (!view&lt;C&gt;)
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, class... Args&gt;
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C, input_range R, class... Args&gt; requires <ins>is_object_v&lt;C&gt; &amp;&amp;</ins> (!view&lt;C&gt;)
+constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: An object of type <tt>C</tt> constructed from the elements of <tt>r</tt> in the following manner:
+</p>
+[&hellip;]
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.utility.conv.adaptors]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C, class... Args&gt; requires <ins>is_object_v&lt;C&gt; &amp;&amp;</ins> (!view&lt;C&gt;)
+  constexpr auto to(Args&amp;&amp;... args);
+template&lt;template&lt;class...&gt; class C, class... Args>
+  constexpr auto to(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: A range adaptor closure object (<sref ref="[range.adaptor.object]"/>) <tt>f</tt> 
+that is a perfect forwarding call wrapper (<sref ref="[func.require]"/>) with the following properties:
+</p>
+[&hellip;]
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
