@@ -3,7 +3,8 @@
 
 <issue num="3731" status="New">
 <title><tt>zip_view</tt> and <tt>adjacent_view</tt> are underconstrained</title>
-<section><sref ref="[range.zip.view]"/><sref ref="[range.adjacent.view]"/></section>
+<section><sref ref="[range.zip.view]"/><sref ref="[range.adjacent.view]"/>
+<sref ref="[range.cartesian.view]"/></section>
 <submitter>Hewill Kang</submitter>
 <date>04 Jul 2022</date>
 <priority>3</priority>
@@ -64,9 +65,9 @@ Set priority to 3 after reflector poll.
 "The constraint should just be <code>move_constructible</code>."
 </p>
 
-</discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <paper num="N4910"/>.
 </p>
@@ -135,6 +136,190 @@ namespace std::ranges {
     [&hellip;]
   };
   [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<note>2022-09-25; Hewill provides improved wording</note>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+
+  <ins>template&lt;class R&gt;
+    concept <i>has-tuplable-ref</i> =            // <i>exposition only</i>
+      move_constructible&lt;range_reference_t&lt;R&gt;&gt;;</ins>
+
+  // <i><sref ref="[range.zip]"/>, zip view</i>
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;Views&gt; &amp;&amp; ...)</ins>
+  class zip_view;
+
+  [&hellip;]
+
+  // <i><sref ref="[range.adjacent]"/>, adjacent view</i>
+  template&lt;forward_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; (N &gt; 0) <ins>&amp;&amp; <i>has-tuplable-ref</i>&lt;V&gt;</ins>
+  class adjacent_view;
+
+  [&hellip;]
+
+  // <i><sref ref="[range.cartesian]"/>, cartesian product view</i>
+  template&lt;input_range First, forward_range... Vs&gt;
+    requires (view&lt;First&gt; &amp;&amp; ... &amp;&amp; view&lt;Vs&gt;) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;First&gt; &amp;&amp; ... &amp;&amp; <i>has-tuplable-ref</i>&lt;Vs&gt;)</ins>
+  class cartesian_product_view;
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.zip.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;Views&gt; &amp;&amp; ...)</ins>
+  class zip_view : public view_interface&lt;zip_view&lt;Views...&gt;&gt; {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.zip.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;Views&gt; &amp;&amp; ...)</ins>
+  template&lt;bool Const&gt;
+  class zip_view&lt;Views...&gt;::<i>iterator</i> {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.zip.sentinel]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;Views&gt; &amp;&amp; ...)</ins>
+  template&lt;bool Const&gt;
+  class zip_view&lt;Views...&gt;::<i>sentinel</i> {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.adjacent.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; (N &gt; 0) <ins>&amp;&amp; <i>has-tuplable-ref</i>&lt;V&gt;</ins>
+  class adjacent_view : public view_interface&lt;adjacent_view&lt;V, N&gt;&gt; {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.adjacent.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; (N &gt; 0) <ins>&amp;&amp; <i>has-tuplable-ref</i>&lt;V&gt;</ins>
+  template&lt;bool Const&gt;
+  class adjacent_view&lt;V, N&gt;::<i>iterator</i> {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.adjacent.sentinel]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; (N &gt; 0) <ins>&amp;&amp; <i>has-tuplable-ref</i>&lt;V&gt;</ins>
+  template&lt;bool Const&gt;
+  class adjacent_view&lt;V, N&gt;::<i>sentinel</i> {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.cartesian.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range First, forward_range... Vs&gt;
+    requires (view&lt;First&gt; &amp;&amp; ... &amp;&amp; view&lt;Vs&gt;) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;First&gt; &amp;&amp; ... &amp;&amp; <i>has-tuplable-ref</i>&lt;Vs&gt;)</ins>
+  class cartesian_product_view : public view_interface&lt;cartesian_product_view&lt;First, Vs...&gt;&gt; {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[ranges.cartesian.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range First, forward_range... Vs&gt;
+    requires (view&lt;First&gt; &amp;&amp; ... &amp;&amp; view&lt;Vs&gt;) <ins>&amp;&amp;
+             (<i>has-tuplable-ref</i>&lt;First&gt; &amp;&amp; ... &amp;&amp; <i>has-tuplable-ref</i>&lt;Vs&gt;)</ins>
+  template&lt;bool Const&gt;
+  class cartesian_product_view&lt;First, Vs...&gt;::<i>iterator</i> {
+    [&hellip;]
+  };
 }
 </pre>
 </blockquote>
