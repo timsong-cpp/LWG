@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3789" status="New">
+<title>Precondition of (not replaced) <tt>operator delete[]</tt></title>
+<section><sref ref="[new.delete.array]"/></section>
+<submitter>blacktea hamburger</submitter>
+<date>25 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider (<tt>operator delete[](std::size_t)</tt> and <tt>operator new(std::size_t)</tt> is not replaced):
+</p>
+<blockquote><pre>
+operator delete[](operator new(1));
+</pre></blockquote>
+<p>
+(even not replaced) <tt>void* operator new(std::size_t)</tt> does not return 
+<tt>void* operator new[](std::size_t)</tt>. So the behavior is undefined according 
+to <sref ref="[new.delete.array]"/> paragraph 9:
+</p>
+<blockquote><p>
+<i>Preconditions</i>: <tt>ptr</tt> is a null pointer or its value represents the address of a block of 
+memory allocated by an earlier call to a (possibly replaced) <tt>operator new[](std::size_t)</tt> or 
+<tt>operator new[](std::size_t, std::align_val_t)</tt> which has not been invalidated by an intervening 
+call to <tt>operator delete[]</tt>.
+</p></blockquote>
+<p>
+However, consider (<tt>operator delete(std::size_t)</tt> and <tt>operator new[](std::size_t)</tt> is not replaced):
+</p>
+<blockquote><pre>
+operator delete(operator new[](1));
+</pre></blockquote>
+<p>
+(not replaced) <tt>operator new[](std::size_t)</tt> simply returns <tt>operator new(std::size_t)</tt> 
+according to <sref ref="[new.delete.array]"/> paragraph 4:
+</p>
+<blockquote><p>
+<i>Default behavior</i>: Returns <tt>operator new(size)</tt>, or <tt>operator new(size, alignment)</tt>, respectively.
+</p></blockquote>
+<p>
+So it is well-formed according to <sref ref="[new.delete.single]"/> paragraph 10:
+</p>
+<blockquote><p>
+<i>Preconditions</i>: <tt>ptr</tt> is a null pointer or its value represents the address of a block of memory 
+allocated by an earlier call to a (possibly replaced) <tt>operator new(std::size_t)</tt> or 
+<tt>operator new(std::size_t, std::align_val_t)</tt> which has not been invalidated by an intervening call to 
+<tt>operator delete</tt>.
+</p></blockquote>
+<p>
+The behavior should be consistent.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[new.delete.array]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void operator delete[](void* ptr) noexcept;
+void operator delete[](void* ptr, std::size_t size) noexcept;
+void operator delete[](void* ptr, std::align_val_t alignment) noexcept;
+void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- <i>Preconditions</i>: <tt>ptr</tt> is a null pointer or its value represents the address 
+of a block of memory allocated by an earlier call to a (possibly replaced) 
+<tt>operator new[](std::size_t)</tt><ins>,</ins> <del>or</del> 
+<tt>operator new[](std::size_t, std::align_val_t)</tt><ins>, (not replaced) 
+<tt>operator new(std::size_t)</tt>, or <tt>operator new(std::size_t, std::align_val_ t)</tt></ins>
+which has not been invalidated by an intervening call to <tt>operator delete[]</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
