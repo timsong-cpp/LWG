@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3788" status="New">
+<issue num="3788" status="Open">
 <title><tt>jthread::operator=(jthread&amp;&amp;)</tt> postconditions are unimplementable under self-assignment</title>
 <section><sref ref="[thread.jthread.cons]"/></section>
 <submitter>Nicole Mazzuca</submitter>
 <date>22 Sep 2022</date>
-<priority>99</priority>
+<priority>3</priority>
 
 <discussion>
 <p>
@@ -42,9 +42,51 @@ This results in <tt>j.get_id() == old_id</tt>, and <tt>std::swap(j, j)</tt> is a
 It is the opinion of the issue writer that libstdc++'s choice is the correct one, and should be
 taken into the standard.
 </p>
+
+<note>2022-09-28; Reflector poll</note>
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<note>2022-09-28; Jonathan provides wording</note>
+
 </discussion>
 
 <resolution>
+
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[thread.jthread.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>jthread&amp; operator=(jthread&amp;&amp; x) noexcept;</pre>
+<blockquote>
+<p>-12- <i>Effects</i>:
+If
+<ins><tt>&amp;x == this</tt> is <tt>true</tt>, there are no effects.
+Otherwise, if</ins>
+<tt>joinable()</tt> is <tt>true</tt>, calls <tt>request_stop()</tt>
+and then <tt>join()</tt><del>.
+Assigns</del><ins>, then assigns</ins>
+the state of <tt>x</tt> to <tt>*this</tt>
+and sets <tt>x</tt> to a default constructed state.
+</p>
+<p> -13- <i>Postconditions</i>:
+<del><tt>x.get_id() == id()</tt> and</del>
+<tt>get_id()</tt> returns the value of <tt>x.get_id()</tt> prior to the assignment.
+<tt>ssource</tt> has the value of <tt>x.ssource</tt> prior to the assignment
+<del>and <tt>x.ssource.stop_possible()</tt> is <tt>false</tt></del>.
+</p>
+<p>-14- <i>Returns</i>: <tt>*this</tt>.</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
