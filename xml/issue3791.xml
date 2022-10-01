@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3791" status="New">
+<title><tt>join_view::<i>iterator</i>::operator--</tt> may be ill-formed</title>
+<section><sref ref="[range.join.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>30 Sep 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>join_view::<i>iterator</i>::operator--</tt> has the following <i>Effects</i>:
+</p>
+<blockquote><pre>
+if (<i>outer_</i> == ranges::end(<i>parent_</i>-><i>base_</i>))
+  <i>inner_</i> = ranges::end(*--<i>outer_</i>);
+while (<i>inner_</i> == ranges::begin(*<i>outer_</i>))
+  <i>inner_</i> = ranges::end(*--<i>outer_</i>);
+--<i>inner_</i>;
+return *this;
+</pre></blockquote>
+<p>
+which uses <tt>ranges::end(*--<i>outer_</i>)</tt> to get the sentinel of the inner range.
+However, <tt>*--<i>outer_</i></tt> may return an rvalue reference to a non-borrowed range, 
+in which case calling <tt>ranges::end</tt> will be ill-formed,
+<a href="https://godbolt.org/z/s4bxTWfqv">for example</a>:
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+int main() {
+  std::vector&lt;std::vector&lt;int&gt;&gt; v;
+  auto r = v | std::views::transform([](auto&amp; x) -&gt; auto&amp;&amp; { return std::move(x); })
+             | std::views::join;
+  auto e = --r.end(); // <span style="color:red;font-weight:bolder">hard error</span>
+}
+</pre></blockquote>
+<p>
+The proposed resolution uses a temporary reference to bind <tt>*--<i>outer_</i></tt>, so that 
+<tt>ranges::end</tt> is always invoked on an lvalue range, which is consistent with the behavior of 
+<tt>join_with_view::<i>iterator</i>::operator--</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.join.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <i>iterator</i>&amp; operator--()
+  requires <i>ref-is-glvalue</i> &amp;&amp; bidirectional_range&lt;<i>Base</i>&gt; &amp;&amp;
+           bidirectional_range&lt;range_reference_t&lt;<i>Base</i>&gt;&gt; &amp;&amp;
+           common_range&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;;
+</pre>
+</blockquote>
+<p>
+-13- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+if (<i>outer_</i> == ranges::end(<i>parent_</i>-><i>base_</i>)) <ins>{
+  auto&amp;&amp; inner = *--<i>outer_</i>;</ins>
+  <i>inner_</i> = ranges::end(<ins>inner</ins><del>*--<i>outer_</i></del>);
+<ins>}</ins>
+while (<ins>true</ins><del><i>inner_</i> == ranges::begin(*<i>outer_</i>)</del>) <ins>{
+  if (auto&amp;&amp; tmp = *<i>outer_</i>; <i>inner_</i> == ranges::begin(tmp)) {
+    auto&amp;&amp; inner = *--<i>outer_</i>;</ins>
+    <i>inner_</i> = ranges::end(<ins>inner</ins><del>*--<i>outer_</i></del>);
+  <ins>} else {
+    break;
+  }
+}</ins>
+--<i>inner_</i>;
+return *this;
+</pre></blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
