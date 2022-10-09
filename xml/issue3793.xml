@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3793" status="New">
+<title>Requirements for some algorithms' <tt>Size</tt> template parameters are unclear</title>
+<section><sref ref="[alg.foreach]"/><sref ref="[alg.search]"/>
+<sref ref="[alg.copy]"/><sref ref="[alg.fill]"/>
+<sref ref="[alg.generate]"/></section>
+<submitter>Jiang An</submitter>
+<date>05 Oct 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Algorithms <tt>std::for_each_n</tt>, <tt>std::search_n</tt>, <tt>std::copy_n</tt>, 
+<tt>std::fill_n</tt>, and <tt>std::generate_n</tt> have similar requirements for the 
+<tt>Size</tt> template parameter in <i>Mandates</i>, requiring <tt>Size</tt> to be 
+convertible to an integral type.
+<p/>
+However, it is currently underspecified to which integral type <tt>Size</tt> is 
+converted before further operations. There is implementation divergence:
+</p>
+<blockquote>
+<ul>
+<li><p><a href="https://github.com/gcc-mirror/gcc/blob/df4c584c567263fdcd57d8376f24f29477a892b2/libstdc%2B%2B-v3/include/bits/stl_algobase.h#L1005-L1052">libstdc++</a> 
+and <a href="https://github.com/llvm/llvm-project/blob/3e97e9423742b8ad07358d01b63ffbedde23b2a4/libcxx/include/__utility/convert_to_integral.h#L24-L68">libc++</a> 
+use an overload set to determine the target type, and</p></li>
+<li><p><a href="https://github.com/microsoft/STL/blob/65aab97a8e75e7ba409002e518ed799006dfb285/stl/inc/xutility#L352-L353">MSVC STL</a> 
+simply chooses <tt>std::ptrdiff_t</tt> when <tt>Size</tt> is not an integral 
+type.</p></li>
+</ul>
+</blockquote>
+<p>
+It is also notable that when the conversion from the source type to integral types 
+is sufficiently ambiguous, none of these implementations accepts such a source type.
+<p/>
+For example, currently the following program <a href="https://godbolt.org/z/KdK9dqWco">is rejected by all 
+mainstream implementations</a>.
+</p>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;cstdio&gt;
+
+struct BadFrom {
+  operator short() const { return 1; }
+  operator unsigned short() const { return 1; }
+};
+
+int main()
+{
+  int arr[42]{};
+  std::for_each_n(arr, BadFrom{}, [&amp;arr](int i)
+  {
+    std::printf("%d\n", i);
+  });
+}
+</pre></blockquote>
+<p>
+I think libc++'s strategy make the most sense. But is it really intended to support using a 
+floating-point type or a class type as <tt>Size</tt>?
+<p/>
+<b>Daniel:</b>
+<p/>
+The conversion from class type was indeed intended, see the original wording for LWG
+<iref ref="3213"/>, which was transferred to <paper num="P1718R2"/>.
+<p/>
+See also LWG <iref ref="3439"/> for a similar underspecified situation for template parameter 
+<tt>Distance</tt> and for the underspecified <tt>Size</tt> template parameter in
+various <tt>uninitialized_*_n</tt> and <tt>destroy_n</tt> algorithms in 
+<sref ref="[special.mem.concepts]"/>.
+<p/>
+<tt>ranges::destroy_n</tt> has the luxury to simply require <tt>iter_difference_t&lt;I&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
