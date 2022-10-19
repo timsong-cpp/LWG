@@ -23,9 +23,8 @@ We should not just ignore the allocator, it should be rebound and used for
 the two container types.
 </p>
 
-</discussion>
-
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <paper num="N4917"/>.
 </p>
@@ -59,6 +58,125 @@ template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>
 </pre>
 </blockquote>
 </li>
+</ol>
+
+</blockquote>
+
+<note>2022-10-19; Jonathan provides improved wording</note>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[container.adaptors.general]"/> as indicated:</p>
+
+<blockquote>
+<p>-8- The following exposition-only alias templates may appear in
+deduction guides for container adaptors:
+</p>
+<blockquote><pre>
+template&lt;class Container&gt;
+  using <i>cont-key-type</i> =                                <i>// exposition only</i>
+    remove_const_t&lt;typename Container::value_type::first_type&gt;;
+template&lt;class Container&gt;
+  using <i>cont-mapped-type</i> =                             <i>// exposition only</i>
+    typename Container::value_type::second_type;
+<ins>template&lt;class Allocator, class T&gt;
+  using <i>alloc-rebind</i> =                             <i>// exposition only</i>
+    typename allocator_traits&lt;Allocator&gt;::template rebind_alloc&lt;T&gt;;
+</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[flat.map.defn]"/>, class template <tt>flat_map</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;void&gt;</ins>&gt;
+  flat_map(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_map(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;<ins>, less&lt;Key&gt;,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[flat.multimap.defn]"/>, class template <tt>flat_multimap</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;void&gt;</ins>&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;<ins>, less&lt;Key&gt;,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[flat.set.defn]"/>, class template <tt>flat_set</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;ranges::range_value_t&lt;R&gt;&gt;,
+         class Allocator = allocator&lt;ranges::range_value_t&lt;R&gt;&gt;&gt;
+  flat_set(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_set&lt;ranges::range_value_t&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>rebind-alloc</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_set(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_set&lt;ranges::range_value_t&lt;R&gt;, less&lt;ranges::range_value_t&lt;R&gt;&gt;<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>rebind-alloc</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[flat.multiset.defn]"/>, class template <tt>flat_multiset</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;ranges::range_value_t&lt;R&gt;&gt;,
+         class Allocator = allocator&lt;ranges::range_value_t&lt;R&gt;&gt;&gt;
+  flat_multiset(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multiset&lt;ranges::range_value_t&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>rebind-alloc</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_multiset(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_multiset&lt;ranges::range_value_t&lt;R&gt;, less&lt;ranges::range_value_t&lt;R&gt;&gt;<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>rebind-alloc</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
 </ol>
 
 </resolution>
