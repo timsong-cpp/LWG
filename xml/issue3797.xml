@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3797" status="New">
+<title><tt>elements_view</tt> insufficiently constrained</title>
+<section><sref ref="[range.elements.view]"/></section>
+<submitter>Hui Xie</submitter>
+<date>21 Oct 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+This issue came up when I tried to integrate the C++23 changes to tuple-like into <tt>ranges::elements_view</tt> 
+in libc++. Given the following test:
+</p>
+<blockquote><pre>
+Using SubRange = ranges::subrange&lt;MoveOnlyIter, Sent&gt;;
+std::vector&lt;SubRange&gt; srs = ...;  // a vector of subranges
+for(auto&amp;&amp; iter : srs | views::elements&lt;0&gt;){
+}
+</pre></blockquote>
+<p>
+The above code results in a hard error in deciding the <tt>iterator_category</tt> (The base is a random access range 
+so it should exist). The immediate hard error complains that the following expression is invalid. 
+</p>
+<blockquote><pre>
+std::get&lt;N&gt;(*current_);
+</pre></blockquote>
+<p>
+Note that even if <tt>iterator_category</tt> does not complain, it will complain later when we dereference the iterator.
+<p/>
+Here are the declarations of the "get" overloads for <tt>subrange</tt>:
+</p>
+<blockquote><pre>
+template&lt;size_t N, class I, class S, subrange_kind K&gt;
+  requires ((N == 0 &amp;&amp; copyable&lt;I&gt;) || N == 1)
+  constexpr auto get(const subrange&lt;I, S, K&gt;&amp; r);
+
+template&lt;size_t N, class I, class S, subrange_kind K&gt;
+  requires (N &lt; 2)
+  constexpr auto get(subrange&lt;I, S, K&gt;&amp;&amp; r);
+</pre></blockquote>
+<p>
+Note that the first overload requires <tt>copyable&lt;I&gt;</tt> which is <tt>false</tt> and 
+the second overload requires an rvalue, which is also not the case. So we don't have a valid "get" in this case.
+<p/>
+But why does <tt>elements_view</tt> allow the instantiation in the first place? Let's look at its requirements:
+</p>
+<blockquote><pre>
+template&lt;class T, size_t N&gt;
+  concept <i>returnable-element</i> =                  <i>// exposition only</i>
+    is_reference_v&lt;T&gt; || move_constructible&lt;tuple_element_t&lt;N, T&gt;&gt;;
+
+template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; has-tuple-element&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+             <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt; &amp;&amp;
+             <i>returnable-element</i>&lt;range_reference_t&lt;V&gt;, N&gt;
+  class elements_view;
+</pre></blockquote>
+<p>
+It passed the "<tt>is_reference_v&lt;range_reference_t&lt;V&gt;&gt;</tt>" requirement, because it is 
+"<tt>subrange&amp;</tt>". Here the logic has an assumption: if the tuple-like is a reference, 
+then we can always "<tt>get</tt>" and return a reference. This is not the case for <tt>subrange</tt>. 
+<tt>subrange</tt>'s <tt>get</tt> always return by value.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> Three mutually exclusive options are prepared, depicted below by <b>Option A</b>, 
+<b>Option B</b>, and <b>Option C</b>, respectively.] 
+</p>
+</blockquote>
+
+<p>
+<b>Option A:</b> Properly disallow this case (preferred solution)
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.elements.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;class T, size_t N&gt;
+  concept <i>returnable-element</i> =              <i>// exposition only</i>
+    <ins>requires { std::get&lt;N&gt;(declval&lt;T&gt;()); } &amp;&amp;</ins>
+    is_reference_v&lt;T&gt; || move_constructible&lt;tuple_element_t&lt;N, T&gt;&gt;;  
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+<p>
+<b>Option B:</b> Relax <tt>subrange</tt>'s <tt>get</tt> to have more overloads. Since <tt>subrange</tt>'s 
+non-<tt>const begin</tt> unconditionally moves the iterator (even for lvalue-reference), 
+</p>
+<blockquote><pre>
+[[nodiscard]] constexpr I begin() requires (!copyable&lt;I&gt;);
+Effects: Equivalent to: return std::move(<i>begin_</i>);
+</pre></blockquote>
+<p>
+if we add more <tt>get</tt> overloads, it would work. The non-const lvalue-ref overload would work 
+(and it also moves because non-<tt>const</tt> lvalue begin moves). This solution would make another way
+to let <tt>subrange</tt>'s iterator in moved-from state, which is not good.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std::ranges {
+  [&hellip;]
+
+  template&lt;size_t N, class I, class S, subrange_kind K&gt;
+    requires ((N == 0 &amp;&amp; copyable&lt;I&gt;) || N == 1)
+    constexpr auto get(const subrange&lt;I, S, K&gt;&amp; r);
+
+  template&lt;size_t N, class I, class S, subrange_kind K&gt;
+    requires (N &lt; 2)
+    constexpr auto get(subrange&lt;I, S, K&gt;&amp;&amp; r);
+    
+  <ins>template&lt;size_t N, class I, class S, subrange_kind K&gt;
+    requires ((N == 0 &amp;&amp; constructible_from&lt;I, const I&amp;&amp;&gt;) || N == 1)
+    constexpr auto get(const subrange&lt;I, S, K&gt;&amp;&amp; r);
+  
+  template&lt;size_t N, class I, class S, subrange_kind K&gt;
+    requires (N &lt; 2)
+    constexpr auto get(subrange&lt;I, S, K&gt;&amp; r);</ins>
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+<p>
+<b>Option C:</b> Make <tt>subrange</tt>'s get to return by reference. This seems to significantly 
+change the <tt>subrange</tt>'s tuple protocol, which is not ideal.
+</p>
+
+</resolution>
+
+</issue>
