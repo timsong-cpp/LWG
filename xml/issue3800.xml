@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3800" status="New">
+<title>No deduction guide for <tt>std::match_results</tt></title>
+<section><sref ref="[re.results.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>25 Oct 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::match_results</tt> meets some of the requirements for an allocator-aware container, which means 
+that its <tt>allocator_type</tt> must have the same <tt>value_type</tt> as the container. This means that 
+class template argument deduction should work for:
+</p>
+<blockquote><pre>
+std::match_results mr(alloc);
+</pre></blockquote>
+<p>
+The allocator's <tt>value_type</tt> will be the <tt>sub_match&lt;Iter&gt;</tt> type stored in the 
+<tt>match_results</tt> object, and so the first template argument for the <tt>match_results</tt> type will 
+be <tt>value_type::iterator</tt>.
+<p/>
+<paper num="P0433R2"/> added a deduction guide for <tt>std::basic_regex</tt>, but I see no rationale for 
+not adding one for <tt>std::match_results</tt>. This seems like a defect, because all other allocator-aware 
+containers support deduction from an allocator argument.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[re.results.general]"/>, class template <tt>match_results</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class BidirectionalIterator,
+           class Allocator = allocator&lt;sub_match&lt;BidirectionalIterator&gt;&gt;&gt;
+    class match_results {
+      [&hellip;]
+      void swap(match_results&amp; that);
+    };
+    
+  <ins>template&lt;class Allocator&gt;
+    match_results(Allocator) -&gt; match_results&lt;typename Allocator::value_type::iterator, Allocator&gt;;</ins>
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
