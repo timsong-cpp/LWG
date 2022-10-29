@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3806" status="New">
+<title>Should concept <tt>formattable&lt;T, charT&gt;</tt> default to <tt>char</tt>?</title>
+<section><sref ref="[format.formattable]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>28 Oct 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+For many uses of <tt>&lt;format&gt;</tt> there's no need to explicitly mention the output type as 
+<tt>char</tt>. There are either typedefs for <tt>char</tt> specializations (<tt>format_context</tt>, 
+<tt>format_parse_context</tt>, <tt>format_args</tt>, etc.) or a default template argument 
+(<tt>formatter</tt>, <tt>range_formatter</tt>). But for the new <tt>formattable</tt> concept you 
+always need to specify the character type:
+</p>
+<blockquote><pre>
+static_assert( std::formattable&lt;int&gt; ); // <span style="color:red;font-weight:bolder">ill-formed</span>
+static_assert( std::formattable&lt;int, char&gt; ); // OK
+</pre></blockquote>
+<p>
+Should the concept have a default template argument for the second parameter, to make it easier to 
+check whether something is <tt>formattable</tt> as <tt>char</tt>?
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[format.formatter]"/>, formatter</i>
+template&lt;class T, class charT = char&gt; struct formatter;
+
+<i>// <sref ref="[format.formattable]"/>, concept formattable</i>
+template&lt;class T, class charT <ins>= char</ins>&gt;
+  concept formattable = <i>see below</i>;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[format.formattable]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> This repeats the default template argument already shown in the synopsis, 
+which would not be valid in C++ code. That is consistent with our presentation style though, 
+as this is not C++ code, it's a specification. See e.g. <tt>indirect_strict_weak_order</tt> and 
+<tt>subrange</tt>.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-1- Let <tt><i>fmt-iter-for</i>&lt;charT&gt;</tt> be an unspecified type that models 
+<tt>output_iterator&lt;const charT&amp;&gt;</tt> (<sref ref="[iterator.concept.output]"/>).
+</p>
+<blockquote>
+<pre>
+template&lt;class T, class charT <ins>= char</ins>&gt;
+  concept formattable =
+    semiregular&lt;formatter&lt;remove_cvref_t&lt;T&gt;, charT&gt;&gt; &amp;&amp;
+    requires(formatter&lt;remove_cvref_t&lt;T&gt;, charT&gt; f,
+             const formatter&lt;remove_cvref_t&lt;T&gt;, charT&gt; cf,
+             T t,
+             basic_format_context&lt;<i>fmt-iter-for</i>&lt;charT&gt;, charT&gt; fc,
+             basic_format_parse_context&lt;charT&gt; pc) {
+      { f.parse(pc) } -&gt; same_as&lt;basic_format_parse_context&lt;charT&gt;::iterator&gt;;
+      { cf.format(t, fc) } -&gt; same_as&lt;<i>fmt-iter-for</i>&lt;charT&gt;&gt;;
+    };
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
