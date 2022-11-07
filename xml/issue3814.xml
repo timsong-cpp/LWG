@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3814" status="New">
+<title>Add freestanding items requested by NB comments</title>
+<section><sref ref="[memory.syn]"/><sref ref="[ranges.syn]"/><sref ref="[atomics.syn]"/></section>
+<submitter>Ben Craig</submitter>
+<date>06 Nov 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+This addresses the following NB comments:
+</p>
+<ul>
+<li><p><b><a href="https://github.com/cplusplus/nbballot/issues/440">GB-085</a></b> (<sref ref="[memory.syn]"/> <tt>start_lifetime_as</tt> and <tt>start_lifetime_as_array</tt> should be freestanding)</p></li>
+<li><p><b><a href="https://github.com/cplusplus/nbballot/issues/439">GB-110</a></b> (<sref ref="[ranges.syn]"/> New views should be freestanding (<tt>repeat</tt>, <tt>stride</tt>, <tt>cartesian_product</tt>))</p></li>
+<li><p>(partial) <b><a href="https://github.com/cplusplus/nbballot/issues/442">GB-130</a></b> (<sref ref="[atomics.syn]"/> <tt>memory_order_acquire</tt> etc should be freestanding)</p></li>
+</ul>
+<p>
+The explicit lifetime management functions requested by GB-085 have not been reviewed by LEWG in the context of freestanding, 
+but they seem non-controversial in that context. None of the requested lifetime management functions run any code.  
+I believe these were missed in post-merge conflict searches because the papers weren't targeted to LEWG or LWG at the time
+of those searches.
+<p/>
+The ranges facilities requested by GB-110 <em>have</em> been reviewed on the LEWG mailing list in the context of freestanding.  
+<paper num="P1642R11"/> mentions the <tt>repeat</tt>, <tt>stride</tt>, and <tt>cartesian_product</tt> papers in "Potential Post-LEWG 
+merge conflicts". All were discussed in an April 2022 reflector discussion and received six votes in favor of allowing these papers 
+into freestanding, with no opposition.
+<p/>
+The atomics facilities requested by GB-130 are essentially new names for existing facilities. Marking these as freestanding isn't 
+concerning. There are concerns in GB-130 dealing with the specification details of freestanding enums, but those concerns won't be 
+addressed in this issue.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[memory.syn]"/>, header <tt>&lt;memory&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[obj.lifetime]"/>, explicit lifetime management</i>
+template&lt;class T&gt;
+  T* start_lifetime_as(void* p) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  const T* start_lifetime_as(const void* p) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  volatile T* start_lifetime_as(volatile void* p) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  const volatile T* start_lifetime_as(const volatile void* p) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  T* start_lifetime_as_array(void* p, size_t n) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  const T* start_lifetime_as_array(const void* p, size_t n) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  volatile T* start_lifetime_as_array(volatile void* p, size_t n) noexcept; <ins>// <i>freestanding</i></ins>
+template&lt;class T&gt;
+  const volatile T* start_lifetime_as_array(const volatile void* p, size_t n) noexcept; <ins>// <i>freestanding</i></ins>
+[&hellip;]
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+// <i><sref ref="[range.repeat]"/>, repeat view</i>
+template&lt;move_constructible W, semiregular Bound = unreachable_sentinel_t&gt;
+  requires (is_object_v&lt;W&gt; &amp;&amp; same_as&lt;W, remove_cv_t&lt;W&gt;&gt;
+    &amp;&amp; (<i>is-integer-like</i>&lt;Bound&gt; || same_as&lt;Bound, unreachable_sentinel_t&gt;))
+class repeat_view; <ins>// <i>freestanding</i></ins>
+
+namespace views { inline constexpr <i>unspecified</i> repeat = <i>unspecified</i>; } <ins>// <i>freestanding</i></ins>
+[&hellip;]
+// <i><sref ref="[range.stride]"/>, stride view</i>
+template&lt;input_range V&gt;
+  requires view&lt;V&gt;
+class stride_view; <ins>// <i>freestanding</i></ins>
+
+template&lt;class V&gt;
+  inline constexpr bool enable_borrowed_range&lt;stride_view&lt;V&gt;&gt; = enable_borrowed_range&lt;V&gt;; <ins>// <i>freestanding</i></ins>
+
+namespace views { inline constexpr <i>unspecified</i> stride = <i>unspecified</i>; } <ins>// <i>freestanding</i></ins>
+
+// <i><sref ref="[range.cartesian]"/>, cartesian product view</i>
+template&lt;input_range First, forward_range... Vs&gt;
+  requires (view&lt;First&gt; &amp;&amp; ... &amp;&amp; view&lt;Vs&gt;)
+class cartesian_product_view; <ins>// <i>freestanding</i></ins>
+
+namespace views { inline constexpr <i>unspecified</i> cartesian_product = <i>unspecified</i>; } <ins>// <i>freestanding</i></ins>
+[&hellip;]
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[atomics.syn]"/>, header <tt>&lt;atomic&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  // <i><sref ref="[atomics.order]"/>, order and consistency</i>
+  enum class memory_order : <i>unspecified</i>; // <i>freestanding</i>
+  inline constexpr memory_order memory_order_relaxed = memory_order::relaxed; <ins>// <i>freestanding</i></ins>
+  inline constexpr memory_order memory_order_consume = memory_order::consume; <ins>// <i>freestanding</i></ins>
+  inline constexpr memory_order memory_order_acquire = memory_order::acquire; <ins>// <i>freestanding</i></ins>
+  inline constexpr memory_order memory_order_release = memory_order::release; <ins>// <i>freestanding</i></ins>
+  inline constexpr memory_order memory_order_acq_rel = memory_order::acq_rel; <ins>// <i>freestanding</i></ins>
+  inline constexpr memory_order memory_order_seq_cst = memory_order::seq_cst; <ins>// <i>freestanding</i></ins>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
