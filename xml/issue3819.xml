@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3819" status="New">
+<title><tt>reference_<i>meow</i>s_from_temporary</tt> should not use <tt>is_<i>meow</i>ible</tt></title>
+<section><sref ref="[meta.unary.prop]"/></section>
+<submitter>Tim Song</submitter>
+<date>8 Nov 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The intent of <paper num="P2255R2"/> is for the <tt>reference_<i>meow</i>s_from_temporary</tt> traits 
+to fully support cases where a prvalue is used as the source. Unfortunately the wording fails 
+to do so because it tries to use the <tt>is_<i>meow</i>ible</tt> traits to say 
+"the initialization is well-formed", but those traits only consider initialization from xvalues, 
+not prvalues. For example, given:
+</p>
+<blockquote>
+<pre>
+struct U {
+    U();
+    U(U&amp;&amp;) = delete;
+};
+
+struct T {
+    T(U);
+};
+</pre>
+</blockquote>
+<p>
+<tt>reference_constructs_from_temporary_v&lt;const T&amp;, U&gt;</tt> should be true, but is currently defined as <tt>false</tt>. 
+We need to spell out the "is well-formed" condition directly.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The note is already repeated every time we talk about "immediate context".]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[meta.type.synop]"/>, Table 46 ([tab:meta.unary.prop]) &mdash; 
+"Type property predicates" &mdash; as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 46: Type property predicates [tab:meta.unary.prop]</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Preconditions</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<tt>&hellip;</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template&lt;class T, class U&gt;<br/>
+struct reference_constructs_from_temporary;</tt>
+</td>
+
+<td>
+<del><tt>conjunction_v&lt;is_reference&lt;T&gt;, is_constructible&lt;T, U&gt;&gt;</tt> is
+<tt>true</tt></del><ins><tt>T</tt> is a reference type</ins>,
+and the initialization <tt>T t(<i>VAL</i>&lt;U&gt;);</tt> <ins>is well-formed and</ins> binds <tt>t</tt> to a
+temporary object whose lifetime is extended (<sref ref="[class.temporary]"/>).
+<ins>Access checking is performed as if in a context unrelated to <tt>T</tt> and <tt>U</tt>. 
+Only the validity of the immediate context of the variable initialization is considered. 
+[<i>Note ?:</i> The initialization can result in effects such as the instantiation of class template 
+specializations and function template specializations, the generation of implicitly-defined functions, 
+and so on. Such effects are not in the "immediate context" and can result in the program being ill-formed.
+<i>&mdash; end note]</i></ins>
+</td>
+
+<td>
+<tt>T</tt> and <tt>U</tt> shall be complete types, <i>cv</i> <tt>void</tt>, or arrays of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>template&lt;class T, class U&gt;<br/>
+struct reference_converts_from_temporary;</tt>
+</td>
+
+<td>
+<del><tt>conjunction_v&lt;is_reference&lt;T&gt;, is_convertible&lt;U, T&gt;&gt;</tt> is
+<tt>true</tt></del><ins><tt>T</tt> is a reference type</ins>, and the initialization
+<tt>T t = <i>VAL</i>&lt;U&gt;;</tt> <ins>is well-formed and</ins> binds <tt>t</tt> to a
+temporary object whose lifetime is extended (<sref ref="[class.temporary]"/>).
+<ins>Access checking is performed as if in a context unrelated to <tt>T</tt> and <tt>U</tt>. 
+Only the validity of the immediate context of the variable initialization is considered. 
+[<i>Note ?:</i> The initialization can result in effects such as the instantiation of class template 
+specializations and function template specializations, the generation of implicitly-defined functions, 
+and so on. Such effects are not in the "immediate context" and can result in the program being ill-formed.
+<i>&mdash; end note]</i></ins>
+</td>
+
+<td>
+<tt>T</tt> and <tt>U</tt> shall be complete types, <i>cv</i> <tt>void</tt>, or arrays of unknown bound.
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
