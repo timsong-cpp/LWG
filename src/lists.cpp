@@ -432,8 +432,11 @@ void format_issue_as_html(lwg::issue & is,
              i += 24;
          }
          else if (tag == "resolution") {
-             s.replace(i, j-i + 1, "<p><b>Proposed resolution:</b></p>");
-             i += 33;
+             std::ostringstream os;
+             os << "<p id=\"res-" << is.num << "\"><b>Proposed resolution:</b></p>";
+             auto r = os.str();
+             s.replace(i, j-i + 1, r);
+             i += r.length() - 1;
          }
          else if (tag == "rationale") {
              s.replace(i, j-i + 1, "<p><b>Rationale:</b></p>");
