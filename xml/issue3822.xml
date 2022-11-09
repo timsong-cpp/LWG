@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3822" status="New">
+<title>Avoiding normalization in <tt>filesystem::weakly_canonical</tt></title>
+<section><sref ref="[fs.op.weakly.canonical]"/></section>
+<submitter>US</submitter>
+<date>08 Nov 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+This addresses NB comment
+<b><a href="https://github.com/cplusplus/nbballot/issues/448">US-60-125</a></b>
+(<sref ref="[fs.op.weakly.canonical]"/> Avoiding normalization)
+</p>
+
+<p>
+NB comment: "Implementations cannot avoid normalization because arbitrary file system changes may have occurred since any previous call. Proposed change:
+Remove the paragraph."
+</p>
+
+<note>Kona 2022-11-07; LWG review</note>
+<p>
+Discussion revolved around two different interpretations of the <i>Remarks</i>:
+<ul>
+<li>
+It's normative recommendation for <tt>path</tt> objects to cache some kind of
+flag that indicates they are in a normalized form, which would be checked in
+<tt>weakly_canonical</tt> to avoid normalizing again. This is the interpretation
+assumed by the NB comment, which correctly notes that such caching would be
+unreliable.
+</li>
+<li>
+It's an optimization hint to implementors that they should not normalize the
+result if each component has been canonicalized one-by-one. That is, when
+canonicalizing <tt>"/a/b/c"</tt> by incrementally building up canonicalized 
+components, if the entire path exists then the result will already have been
+normalized and should not be normalized again explicitly.
+</li>
+</ul>
+</p>
+<p>
+For the first interpretation, the recommendation is a bad recommendation and
+should be removed as suggested by the comment. For the second interpretation,
+we don't need to give hints to implementors about not doing unnecessary work;
+they already know they shouldn't do that. Either way, it should go.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[fs.op.weakly.canonical]"/> as indicated:</p>
+
+<blockquote><pre>
+path filesystem::weakly_canonical(const path&amp; p);
+path filesystem::weakly_canonical(const path&amp; p, error_code&amp; ec);
+</pre>
+<blockquote>
+<p>-1- <i>Effects</i>: Using <tt>status(p)</tt> or <tt>status(p, ec)</tt>,
+respectively, to determine existence, return a path composed by
+<tt>operator/=</tt> from the result of calling <tt>canonical()</tt> with
+a path argument composed of the leading elements of <tt>p</tt> that exist,
+if any, followed by the elements of <tt>p</tt> that do not exist, if any.
+For the first form, <tt>canonical()</tt> is called without an <tt>error_code</tt> argument.
+For the second form, <tt>canonical()</tt> is called with <tt>ec</tt> as an
+<tt>error_code</tt> argument, and <tt>path()</tt> is returned at the first
+error occurrence, if any.
+</p>
+<p>-2- <i>Postconditions</i>: The returned path is in normal form
+(<sref ref="[fs.path.generic]"/>).</p>
+<p> -3- <i>Returns</i>: <tt>p</tt> with symlinks resolved and the result
+normalized (<sref ref="[fs.path.generic]"/>).</p>
+<p>-4- <i>Throws</i>: As specified in <sref ref="[fs.err.report]"/>.</p>
+<p><del>-5- <i>Remarks</i>: Implementations should avoid unnecessary
+normalization such as when <tt>canonical</tt> has already been called
+on the entirety of <tt>p</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
