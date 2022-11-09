@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3825" status="New">
+<title>Missing compile-time argument <tt>id</tt> check in <tt>basic_format_parse_context::next_arg_id</tt></title>
+<section><sref ref="[format.parse.ctx]"/></section>
+<submitter>Victor Zverovich</submitter>
+<date>09 Nov 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The definition of <tt>check_arg_id</tt> in <sref ref="[format.parse.ctx]"/> includes a (compile-time) 
+argument <tt>id</tt> check in the <i>Remarks</i> element:
+</p>
+<blockquote>
+<pre>
+constexpr void check_arg_id(size_t id);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+<i>Remarks</i>: Call expressions where <tt>id &gt;= num_args_</tt> are not core constant expressions (<sref ref="[expr.const]"/>).
+</p>
+</blockquote>
+</blockquote>
+<p>
+However, a similar check is missing from <tt>next_arg_id</tt> which means that there is no argument id validation 
+in user-defined format specification parsing code that invokes this function (e.g. when parsing automatically 
+indexed dynamic width).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[format.parse.ctx]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr size_t next_arg_id();
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <tt>indexing_ != manual</tt>, equivalent to:
+</p>
+<blockquote><pre>
+if (indexing_ == unknown)
+  indexing_ = automatic;
+return next_arg_id_++;
+</pre></blockquote>
+<p>
+-8- <i>Throws</i>: <tt>format_error</tt> if <tt>indexing_ == manual</tt> which indicates mixing of automatic and manual
+argument indexing.
+<p/>
+<ins>-?- <i>Remarks</i>: Call expressions where <tt>next_arg_id_ &gt;= num_args_</tt> are not core constant expressions 
+(<sref ref="[expr.const]"/>).</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
