@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3825" status="New">
+<issue num="3825" status="Open">
 <title>Missing compile-time argument <tt>id</tt> check in <tt>basic_format_parse_context::next_arg_id</tt></title>
 <section><sref ref="[format.parse.ctx]"/></section>
 <submitter>Victor Zverovich</submitter>
@@ -32,7 +32,8 @@ indexed dynamic width).
 </p>
 </discussion>
 
-<resolution>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 <p>
 This wording is relative to <paper num="N4917"/>.
 </p>
@@ -66,6 +67,76 @@ argument indexing.
 
 </li>
 </ol>
+</blockquote>
+
+<note>2022-11-11; Tomasz provide improved wording</note>
+
+<p>
+Clarify that the value of <tt>next_arg_id_</tt> is used, and add missing "is <tt>true</tt>."
+</p>
+
+
+<note>2022-11-11; Kona - move to open</note>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[format.parse.ctx]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr size_t next_arg_id();
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <tt>indexing_ != manual</tt> <ins>is <tt>true</tt></ins>, equivalent to:
+</p>
+<blockquote><pre>
+if (indexing_ == unknown)
+  indexing_ = automatic;
+return next_arg_id_++;
+</pre></blockquote>
+<p>
+-8- <i>Throws</i>: <tt>format_error</tt> if <tt>indexing_ == manual</tt> <ins>is <tt>true</tt></ins> which indicates mixing
+of automatic and manual argument indexing.
+<p/>
+<ins>-?- <i>Remarks</i>: Let <i>cur-arg-id</i> be the value of <tt>next_arg_id_</tt> prior to this call.
+Call expressions where <tt><i>cur-arg-id</i> &gt;= num_args_</tt> is <tt>true</tt> are not core constant expressions 
+(<sref ref="[expr.const]"/>).</ins>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote>
+<pre>
+constexpr size_t check_arg_id(size_t id);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <tt>indexing_ != automatic</tt> <ins>is <tt>true</tt></ins>, equivalent to:
+</p>
+<blockquote><pre>
+if (indexing_ == unknown)
+  indexing_ = manual;
+</pre></blockquote>
+<p>
+-8- <i>Throws</i>: <tt>format_error</tt> if <tt>indexing_ == automatic</tt> <ins>is <tt>true</tt></ins> which indicates mixing 
+of automatic and manual argument indexing.
+<p/>
+-?- <i>Remarks</i>: Call expressions where <tt>id &gt;= num_args_</tt> <ins>is <tt>true</tt></ins> are not core constant
+expressions (<sref ref="[expr.const]"/>).
+</p>
+</blockquote>
+</blockquote>
+
+
+</li>
+</ol>
 </resolution>
+
 
 </issue>
