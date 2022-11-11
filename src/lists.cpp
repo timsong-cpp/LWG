@@ -272,6 +272,7 @@ void format_issue_as_html(lwg::issue & is,
    //   resolution      <p><b>Proposed resolution:</b></p>CONTENTS
    //   rationale       <p><b>Rationale:</b></p>CONTENTS
    //   duplicate       tags are erased, leaving just CONTENTS
+   //   superseded       <p><strong>Previous resolution [SUPERSEDED]:</strong></p> and enclose in a note.
    //   note            <p><i>[NOTE CONTENTS]</i></p>
    //   !--             comments are simply erased
    //
@@ -328,9 +329,15 @@ void format_issue_as_html(lwg::issue & is,
                  s.erase(i, j-i + 1);
                  --i;
              }
+             else if (tag == "superseded") {
+                 std::string_view r = "</blockquote>\n";
+                 s.replace(i, j-i + 1, r);
+                 i += r.size() - 1;
+             }
              else if (tag == "note") {
-                 s.replace(i, j-i + 1, "]</i></p>\n");
-                 i += 9;
+                 std::string_view r = "]</i></p>\n";
+                 s.replace(i, j-i + 1, r);
+                 i += r.size() - 1;
              }
              else {
                  i = j;
@@ -428,8 +435,9 @@ void format_issue_as_html(lwg::issue & is,
 
          tag_stack.push_back(tag);
          if (tag == "discussion") {
-             s.replace(i, j-i + 1, "<p><b>Discussion:</b></p>");
-             i += 24;
+             std::string_view r = "<p><b>Discussion:</b></p>";
+             s.replace(i, j-i + 1, r);
+             i += r.size() - 1;
          }
          else if (tag == "resolution") {
              std::ostringstream os;
@@ -439,16 +447,25 @@ void format_issue_as_html(lwg::issue & is,
              i += r.length() - 1;
          }
          else if (tag == "rationale") {
-             s.replace(i, j-i + 1, "<p><b>Rationale:</b></p>");
-             i += 23;
+             std::string_view r = "<p><b>Rationale:</b></p>";
+             s.replace(i, j-i + 1, r);
+             i += r.size() - 1;
          }
          else if (tag == "duplicate") {
              s.erase(i, j-i + 1);
              --i;
          }
          else if (tag == "note") {
-             s.replace(i, j-i + 1, "<p><i>[");
-             i += 6;
+             std::string_view r = "<p><i>[";
+             s.replace(i, j-i + 1, r);
+             i += r.size() - 1;
+         }
+         else if (tag == "superseded") {
+             std::string_view r =
+                 "<p><strong>Previous resolution [SUPERSEDED]:</strong></p>\n"
+                 "<blockquote class=\"note\">\n";
+             s.replace(i, j-i + 1, r);
+             i += r.size() - 1;
          }
          else if (tag == "!--") {
              tag_stack.pop_back();
