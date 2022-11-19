@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3830" status="New">
+<title><tt>reverse_view</tt> should not cache when <tt>ranges::next</tt> has constant time complexity</title>
+<section><sref ref="[range.reverse.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>14 Nov 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In order to ensure that <tt>begin</tt> has an amortized constant time, when the underlying range is not a 
+common range, <tt>reverse_view</tt> always caches the result of <tt>ranges::next</tt>.
+<p/>
+However, for some non-common ranges, incrementing its <tt>begin</tt> to <tt>end</tt> still guarantees constant time, 
+for example:
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+#include &lt;list&gt;
+
+int main() {
+  std::vector v{42};
+  auto x = std::ranges::subrange(std::counted_iterator(v.begin(), 1), std::default_sentinel)
+         | std::views::reverse;
+  (void) x.begin(); // <span style="color:red;font-weight:bolder">still caches end iterator in MSVC-STL</span>
+
+  std::list l{42};
+  auto y = std::ranges::subrange(l.cbegin(), l.end())
+         | std::views::reverse;
+  (void) y.begin(); // <span style="color:red;font-weight:bolder">still caches end iterator in both libstdc++ and MSVC-STL</span>
+}
+</pre></blockquote>
+<p>
+In the above example, although neither <tt>subrange</tt> is a common range, applying <tt>ranges::next</tt> 
+to their iterator-sentinel pairs is still constant time, in this case, there's no need to introduce a cache for 
+<tt>reverse_view</tt> to store the results. We shouldn't pay for things we don't need to use.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.reverse.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin();
+</pre>
+<blockquote>
+<p>
+-2- <i>Returns</i>:
+</p>
+<blockquote><pre>
+make_reverse_iterator(ranges::next(ranges::begin(<i>base_</i>), ranges::end(<i>base_</i>)))
+</pre></blockquote>
+<p>
+-3- <i>Remarks</i>: In order to provide the amortized constant time complexity required by the <tt>range</tt> concept, 
+this function caches the result within the <tt>reverse_view</tt> for use on subsequent calls <ins>when both 
+<tt>assignable_from&lt;I&amp;, S&gt;</tt> and <tt>random_access_iterator&lt;I&gt; &amp;&amp; 
+sized_sentinel_for&lt;S, I&gt;</tt> are <tt>false</tt>, where <tt>I</tt> is <tt>iterator_t&lt;V&gt;</tt> and 
+<tt>S</tt> is <tt>sentinel_t&lt;V&gt;</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
