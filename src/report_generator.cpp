@@ -650,7 +650,7 @@ void report_generator::make_sort_by_num(std::vector<issue>& issues, fs::path con
    out <<
 R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revision() << R"()</h1>
 <h1>Table of Contents</h1>
-<p>Reference ISO/IEC IS 14882:2011(E)</p>
+<p>Reference ISO/IEC IS 14882:2020(E)</p>
 <p>This document is the Table of Contents for the <a href="lwg-active.html">Library Active Issues List</a>,
 <a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.</p>
 )";
@@ -672,7 +672,7 @@ void report_generator::make_sort_by_priority(std::vector<issue>& issues, fs::pat
    out <<
 R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revision() << R"()</h1>
 <h1>Table of Contents</h1>
-<p>Reference ISO/IEC IS 14882:2011(E)</p>
+<p>Reference ISO/IEC IS 14882:2020(E)</p>
 <p>This document is the Table of Contents for the <a href="lwg-active.html">Library Active Issues List</a>,
 <a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.</p>
 )";
@@ -713,7 +713,7 @@ void report_generator::make_sort_by_status(std::vector<issue>& issues, fs::path 
    out <<
 R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revision() << R"()</h1>
 <h1>Index by Status and Section</h1>
-<p>Reference ISO/IEC IS 14882:2011(E)</p>
+<p>Reference ISO/IEC IS 14882:2020(E)</p>
 <p>
 This document is the Index by Status and Section for the <a href="lwg-active.html">Library Active Issues List</a>,
 <a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.
@@ -748,7 +748,7 @@ void report_generator::make_sort_by_status_mod_date(std::vector<issue> & issues,
    out <<
 R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revision() << R"()</h1>
 <h1>Index by Status and Date</h1>
-<p>Reference ISO/IEC IS 14882:2011(E)</p>
+<p>Reference ISO/IEC IS 14882:2020(E)</p>
 <p>
 This document is the Index by Status and Date for the <a href="lwg-active.html">Library Active Issues List</a>,
 <a href="lwg-defects.html">Library Defect Reports and Accepted Issues</a>, and <a href="lwg-closed.html">Library Closed Issues List</a>.
@@ -793,7 +793,7 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, fs::path
 
    out << "<h1>C++ Standard Library Issues List (Revision " << lwg_issues_xml.get_revision() << ")</h1>\n";
    out << "<h1>Index by Section</h1>\n";
-   out << "<p>Reference ISO/IEC IS 14882:2011(E)</p>\n";
+   out << "<p>Reference ISO/IEC IS 14882:2020(E)</p>\n";
    out << "<p>This document is the Index by Section for the <a href=\"lwg-active.html\">Library Active Issues List</a>";
    if(!active_only) {
       out << ", <a href=\"lwg-defects.html\">Library Defect Reports and Accepted Issues</a>, and <a href=\"lwg-closed.html\">Library Closed Issues List</a>";
