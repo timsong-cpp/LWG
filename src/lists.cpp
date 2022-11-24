@@ -799,7 +799,7 @@ int main(int argc, char* argv[]) {
 
       if (revhist) {
          std::cout << "\n<revision tag=\"" << lwg_issues_xml.get_revision() << "\">\n"
-            << lwg_issues_xml.get_title() << '\n';
+            << lwg_issues_xml.get_date()  << ' ' << lwg_issues_xml.get_title() << '\n';
          print_current_revisions(std::cout, old_issues, new_issues);
          std::cout << "</revision>\n";
          return 0;
