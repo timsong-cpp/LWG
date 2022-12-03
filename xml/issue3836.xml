@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3836" status="New">
+<title><tt>std::expected&lt;bool, E1&gt;</tt> conversion constructor <tt>expected(const expected&lt;U, G&gt;&amp;)</tt> 
+should take precedence over <tt>expected(U&amp;&amp;)</tt> with operator <tt>bool</tt></title>
+<section><sref ref="[expected.object.ctor]"/></section>
+<submitter>Xie He</submitter>
+<date>30 Nov 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The issue came up when implementing <tt>std::expected</tt> in libc++. Given the following example:
+</p>
+<blockquote><pre>
+struct BaseError{};
+struct DerivedError : BaseError{};
+
+std::expected&lt;int, DerivedError&gt; e1(5);  
+std::expected&lt;int, BaseError&gt; e2(e1);  // <span style="color:green;font-weight:bold">e2 holds 5</span>
+</pre></blockquote>
+<p>
+In the above example, <tt>e2</tt> is constructed with the conversion constructor
+</p>
+<blockquote><pre>
+expected::expected(const expected&lt;U, G&gt;&amp;)
+</pre></blockquote>
+<p>
+and the value <tt>5</tt> is correctly copied into <tt>e2</tt> as expected.
+<p/>
+However, if we change the type from <tt>int</tt> to <tt>bool</tt>, the behaviour is very surprising.
+</p>
+<blockquote><pre>
+std::expected&lt;bool, DerivedError&gt; e1(false);
+std::expected&lt;bool, BaseError&gt; e2(e1);  // <span style="color:red;font-weight:bolder">e2 holds true</span>
+</pre></blockquote>
+<p>
+In this example <tt>e2</tt> is constructed with
+</p>
+<blockquote><pre>
+expected::expected(U&amp;&amp;)
+</pre></blockquote>
+<p>
+together with
+</p>
+<blockquote><pre>
+expected::operator bool() const
+</pre></blockquote>
+<p>
+Instead of copying <tt>e1</tt>'s "<tt>false</tt>" into <tt>e2</tt>, it uses <tt>operator bool</tt>, which returns 
+<tt>true</tt> in this case and <tt>e2</tt> would hold "<tt>true</tt>" instead.
+<p/>
+This is surprising behaviour given how inconsistent between <tt>int</tt> and <tt>bool</tt>.
+<p/>
+The reason why the second example uses a different overload is that the constructor 
+<tt>expected(const expected&lt;U, G&gt;&amp; rhs);</tt> has the following constraint
+(<sref ref="[expected.object.ctor]"/> p17):
+</p>
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(17.3) &mdash; <tt>is_constructible_v&lt;T, expected&lt;U, G&gt;&amp;&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.4) &mdash; <tt>is_constructible_v&lt;T, expected&lt;U, G&gt;&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.5) &mdash; <tt>is_constructible_v&lt;T, const expected&lt;U, G&gt;&amp;&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.6) &mdash; <tt>is_constructible_v&lt;T, const expected&lt;U, G&gt;&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.7) &mdash; <tt>is_convertible_v&lt;expected&lt;U, G&gt;&amp;, T&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.8) &mdash; <tt>is_convertible_v&lt;expected&lt;U, G&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.9) &mdash; <tt>is_convertible_v&lt;const expected&lt;U, G&gt;&amp;, T&gt;</tt> is <tt>false</tt>; and</p></li>
+<li><p>(17.10) &mdash; <tt>is_convertible_v&lt;const expected&lt;U, G&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>; and</p></li>
+</ol>
+</blockquote>
+<p>
+Since <tt>T</tt> is <tt>bool</tt> in the second example, and <tt>bool</tt> can be constructed <tt>from</tt> 
+<tt>std::expected</tt>, this overload will be removed. and the overload that takes <tt>U&amp;&amp;</tt> will be selected.
+<p/>
+I would suggest to special case <tt>bool</tt>, i.e.
+</p>
+<ul>
+<li><p>(The above 8 constraints); or</p></li>
+<li><p><tt>is_same_v&lt;remove_cv_t&lt;T&gt;, bool&gt;</tt> is <tt>true</tt></p></li>
+</ul>
+<p>
+And we need to make sure this overload and the overload that takes <tt>expected(U&amp;&amp;)</tt> be mutually exclusive.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
