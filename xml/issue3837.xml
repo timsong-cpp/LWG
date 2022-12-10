@@ -1,0 +1,154 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3837" status="New">
+<title><tt>std::erase_if</tt> overloads for non-associative containers should move (and
+not copy) their predicate object</title>
+<section><sref ref="[string.erasure]"/><sref ref="[deque.erasure]"/>
+<sref ref="[forward.list.erasure]"/><sref ref="[list.erasure]"/><sref ref="[vector.erasure]"/>
+</section>
+<submitter>Giuseppe D'Angelo</submitter>
+<date>04 Dec 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consistent uniform erasure added several overloads of <tt>std::erase_if</tt>. 
+All these overloads have fully specified effects, and are either implemented
+through the <tt>erase</tt>/<tt>remove_if</tt> idiom (for <tt>string</tt>, <tt>vector</tt> and <tt>deque</tt>),
+through calls to the container's own <tt>remove_if</tt> non-static member function 
+(for <tt>list</tt> and <tt>forward_list</tt>), or through a hand-rolled loop (for
+the associative containers &mdash; <tt>map</tt>, <tt>set</tt>, 
+and their unordered and multi variants).
+<p/>
+For the overloads that deal with non-associative containers the predicate passed to 
+<tt>std::erase_if</tt> is always <em>copied</em> into the inner call
+to <tt>std::remove_if</tt> or the container's <tt>remove_if</tt> (see 
+<sref ref="[string.erasure]"/>, <sref ref="[vector.erasure]"/>, 
+<sref ref="[list.erasure]"/>, <sref ref="[forward.list.erasure]"/>, and
+<sref ref="[deque.erasure]"/>).
+<p/>
+Now, algorithms are generally allowed to take as many copies of
+predicates as they want &mdash; this is <sref ref="[algorithms.requirements]"/>/9, 
+but cf. LWG <iref ref="3049"/>. 
+However it still feels strange/sloppy that a copy here is <em>mandated</em> by the Standard.
+An implementation that would otherwise make no copies of a predicate in an algorithm 
+<em>must</em> make a copy in the <tt>erase_if</tt> overloads.
+<p/>
+The copy of the predicate could be instead replaced by a move without
+any change in functionality; after being passed to the underlying
+algorithm, the predicate object is never used again by <tt>erase_if</tt>. 
+I am therefore proposing to add a <tt>std::move</tt> call for the predicate object.
+<p/>
+One could argue that <tt>erase_if</tt> should be re-specified so that it is not
+necessarily implemented in terms of underlying calls to other
+facilities, and could therefore even remove the need of a move on a
+high-quality implementation. 
+This is a design change, and so I consider it out of scope for a library issue.
+<p/>
+Of course, moving instead of copying is a detectable change, and
+"pathological" predicate types that are copyable but have disabled moves
+will get broken, but I don't think those deserve to be supported.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[string.erasure]"/> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class charT, class traits, class Allocator, class Predicate&gt;
+  constexpr typename basic_string&lt;charT, traits, Allocator&gt;::size_type
+    erase_if(basic_string&lt;charT, traits, Allocator&gt;&amp; c, Predicate pred);
+</pre></blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto it = remove_if(c.begin(), c.end(), <ins>std::move(</ins>pred<ins>)</ins>);
+auto r = distance(it, c.end());
+c.erase(it, c.end());
+return r;
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[deque.erasure]"/> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class T, class Allocator, class Predicate&gt;
+  typename deque&lt;T, Allocator&gt;::size_type
+    erase_if(deque&lt;T, Allocator&gt;&amp; c, Predicate pred);
+</pre></blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto it = remove_if(c.begin(), c.end(), <ins>std::move(</ins>pred<ins>)</ins>);
+auto r = distance(it, c.end());
+c.erase(it, c.end());
+return r;
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[forward.list.erasure]"/> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class T, class Allocator, class Predicate&gt;
+  typename forward_list&lt;T, Allocator&gt;::size_type
+    erase_if(forward_list&lt;T, Allocator&gt;&amp; c, Predicate pred);
+</pre></blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to: <tt>return c.remove_if(<ins>std::move(</ins>pred<ins>)</ins>);</tt>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[list.erasure]"/> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class T, class Allocator, class Predicate&gt;
+  typename list&lt;T, Allocator&gt;::size_type
+    erase_if(list&lt;T, Allocator&gt;&amp; c, Predicate pred);
+</pre></blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to: <tt>return c.remove_if(<ins>std::move(</ins>pred<ins>)</ins>);</tt>
+</p>
+<blockquote><pre>
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[vector.erasure]"/> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class T, class Allocator, class Predicate&gt;
+  constexpr typename vector&lt;T, Allocator&gt;::size_type
+    erase_if(vector&lt;T, Allocator&gt;&amp; c, Predicate pred);
+</pre></blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto it = remove_if(c.begin(), c.end(), <ins>std::move(</ins>pred<ins>)</ins>);
+auto r = distance(it, c.end());
+c.erase(it, c.end());
+return r;
+</pre></blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
