@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3838" status="New">
+<title>The last specialization of  <tt>incrementable_traits</tt> is under-constrained</title>
+<section><sref ref="[incrementable.traits]"/>
+</section>
+<submitter>Hewill Kang</submitter>
+<date>07 Dec 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The last specialization of <tt>incremental_traits</tt> requires that the result obtained 
+by subtracting two objects of type <tt>const T</tt> must model <tt>integral</tt>, 
+then apply <tt>make_signed_t</tt> to it as the difference type of type <tt>T</tt>.
+<p/>
+However, since <tt>bool</tt> also models <tt>integral</tt>, but is not a valid template argument 
+for <tt>make_signed_t</tt>, we should ban such cases to avoid unnecessary hard errors 
+(<a href="https://godbolt.org/z/bbTz1xh89">online example</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+struct Bool { 
+  bool operator-(Bool) const; 
+};
+
+template&lt;class T&gt;
+concept can_iota_view = requires(T t) { std::ranges::iota_view(t); };
+
+static_assert(!can_iota_view&lt;Bool&gt;); // <span style="color:red;font-weight:bolder">hard error</span>
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[incrementable.traits]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  <ins>template&lt;class T&gt;
+    concept <i>nonbool-integral</i> = integral&lt;T&gt; &amp;&amp; !same_as&lt;remove_cv_t&lt;T&gt;, bool&gt;;         // <i>exposition only</i></ins>
+  
+  template&lt;class T&gt; struct incrementable_traits { };
+  
+  [&hellip;]
+
+  template&lt;class T&gt;
+    requires (!requires { typename T::difference_type; } &amp;&amp;
+              requires(const T&amp; a, const T&amp; b) { { a - b } -&gt; <ins><i>nonbool-integral</i></ins><del>integral</del>; })
+  struct incrementable_traits&lt;T&gt; {
+    using difference_type = make_signed_t&lt;decltype(declval&lt;T&gt;() - declval&lt;T&gt;())&gt;;
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
