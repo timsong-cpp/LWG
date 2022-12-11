@@ -1,0 +1,173 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3839" status="New">
+<title><tt>range_formatter</tt>'s <tt>set_separator</tt>, <tt>set_brackets</tt>, and <tt>underlying</tt> functions should be <tt>noexcept</tt></title>
+<section><sref ref="[format.range.formatter]"/><sref ref="[format.range.fmtdef]"/><sref ref="[format.tuple]"/>
+</section>
+<submitter>Hewill Kang</submitter>
+<date>11 Dec 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>set_separator</tt> and <tt>set_brackets</tt> of <tt>range_formatter</tt> only invoke 
+<tt>basic_string_view</tt>'s assignment operator, which is <tt>noexcept</tt>, we should add <tt>noexcept</tt> 
+specifications for them.
+<p/>
+In addition, its <tt>underlying</tt> function returns a reference to the underlying <tt>formatter</tt>, 
+which never throws, they should also be <tt>noexcept</tt>.
+<p/>
+Similar rules apply to <tt><i>range-default-formatter</i></tt> and <tt>formatter</tt>'s <tt>tuple</tt> specialization.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.range.formatter]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T, class charT = char&gt;
+    requires same_as&lt;remove_cvref_t&lt;T&gt;, T&gt; &amp;&amp; formattable&lt;T, charT&gt;
+  class range_formatter {
+    formatter&lt;T, charT&gt; <i>underlying_</i>;                                          // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>separator_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;(", ");      // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>opening-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;("["); // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>closing-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;("]"); // <i>exposition only</i>
+
+  public:
+    constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+    constexpr void set_brackets(basic_string_view&lt;charT&gt; opening,
+                                basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+    constexpr formatter&lt;T, charT&gt;&amp; underlying() <ins>noexcept</ins> { return <i>underlying_</i>; }
+    constexpr const formatter&lt;T, charT&gt;&amp; underlying() const <ins>noexcept</ins> { return <i>underlying_</i>; }
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Equivalent to: <tt><i>separator_</i> = sep;</tt>
+</p>
+</blockquote>
+<pre>
+constexpr void set_brackets(basic_string_view&lt;charT&gt; opening, basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to:
+<pre>
+<i>opening-bracket_</i> = opening;
+<i>closing-bracket_</i> = closing;
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[format.range.fmtdef]"/> as indicated:</p>
+  
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;ranges::input_range R, class charT&gt;
+  struct <i>range-default-formatter</i>&lt;range_format::sequence, R, charT&gt; {    // <i>exposition only</i>
+  private:
+    using <i>maybe-const-r</i> = <i>fmt-maybe-const</i>&lt;R, charT&gt;;                    // <i>exposition only</i>
+    range_formatter&lt;remove_cvref_t&lt;ranges::range_reference_t&lt;<i>maybe-const-r</i>&gt;&gt;,
+                    charT&gt; <i>underlying_</i>;                                 // <i>exposition only</i>
+
+  public:
+    constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+    constexpr void set_brackets(basic_string_view&lt;charT&gt; opening,
+                                basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+  
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+<pre>
+constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to: <tt><i>underlying_</i>.set_separator(sep);</tt>.
+</p>
+</blockquote>
+<pre>
+constexpr void set_brackets(basic_string_view&lt;charT&gt; opening, basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Equivalent to: <tt><i>underlying_</i>.set_brackets(opening, closing);</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[format.tuple]"/> as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class charT, formattable&lt;charT&gt;... Ts&gt;
+  struct formatter&lt;<i>pair-or-tuple</i>&lt;Ts...&gt;, charT&gt; {
+  private:
+    tuple&lt;formatter&lt;remove_cvref_t&lt;Ts&gt;, charT&gt;...&gt; <i>underlying_</i>;               // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>separator_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;(", ");      // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>opening-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;("("); // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>closing-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;(")"); // <i>exposition only</i>
+
+  public:
+    constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+    constexpr void set_brackets(basic_string_view&lt;charT&gt; opening,
+                                basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <tt><i>separator_</i> = sep;</tt>
+</p>
+</blockquote>
+<pre>
+constexpr void set_brackets(basic_string_view&lt;charT&gt; opening, basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to:
+<pre>
+<i>opening-bracket_</i> = opening;
+<i>closing-bracket_</i> = closing;
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
