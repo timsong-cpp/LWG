@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3842" status="New">
+<title>Unclear wording for <i>precision</i> in <i>chrono-format-spec</i></title>
+<section><sref ref="[time.format]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>14 Dec 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[time.format]"/> says:
+</p>
+<blockquote><p>
+[&hellip;] Giving a <i>precision</i> specification in the <i>chrono-format-spec</i> is valid only for 
+<tt>std::chrono::duration</tt> types where the representation type
+<tt>Rep</tt> is a floating-point type. 
+For all other <tt>Rep</tt> types, an exception of type <tt>format_error</tt> is thrown if the 
+<i>chrono-format-spec</i> contains a <i>precision</i> specification. [&hellip;]
+</p></blockquote>
+<p>
+It's unclear whether the restriction in the first sentence applies to all types, or only duration types. 
+The second sentence seems to restrict the exceptional case to only types with a non-floating-point <tt>Rep</tt>, 
+but what about types with no <tt>Rep</tt> type at all?
+<p/>
+Can you use a precision with <tt>sys_time&lt;duration&lt;float&gt;&gt;</tt>? That is not a <tt>duration</tt> type at all, 
+so does the restriction apply? What about <tt>hh_mm_ss&lt;duration&lt;int&gt;&gt;</tt>? That's not a 
+<tt>duration</tt> type, but it uses one, and its <tt>Rep</tt> is not a floating-point type. 
+What about <tt>sys_info</tt>? That's not a <tt>duration</tt> and doesn't have any associated <tt>duration</tt>, 
+or <tt>Rep</tt> type.
+<p/>
+What is the intention here?
+<p/>
+Less importantly, I don't like the use of <tt>Rep</tt> here. That's the template parameter of the 
+<tt>duration</tt> class template, but that name isn't in scope here. Why aren't we talking about the 
+<tt>duration</tt> type's <tt>rep</tt> type, which is the public name for it? Or about a concrete 
+specialization <tt>duration&lt;Rep, Period&gt;</tt>, instead of the class template?
+<p/>
+The suggested change below would preserve the intended meaning, but with more &hellip; <i>precision</i>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref sref="[time.format]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- [&hellip;]
+<p/>
+The productions <i>fill-and-align</i>, <i>width</i>, and <i>precision</i> are described in <sref ref="[format.string]"/>. 
+Giving a <i>precision</i> specification in the <i>chrono-format-spec</i> is valid only for 
+<ins>types that are specializations of</ins> <tt>std::chrono::duration</tt> <del>types where the representation type
+<tt>Rep</tt> is</del><ins>for which the nested <i>typedef-name</i> <tt>rep</tt> denotes</ins> a floating-point type. 
+For all other <del><tt>Rep</tt></del> types, an exception of type <tt>format_error</tt> is thrown if the 
+<i>chrono-format-spec</i> contains a <i>precision</i> specification. [&hellip;]
+
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
