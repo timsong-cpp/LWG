@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3843" status="New">
+<title><tt>std::expected&lt;T,E&gt;::value() &amp;</tt> assumes <tt>E</tt> is copy constructible</title>
+<section><sref ref="[expected.object.obs]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>20 Dec 2022</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[expected.object.obs]"/> p9 says:
+</p>
+<blockquote>
+<i>Throws</i>:
+<tt>bad_expected_access(error())</tt> if <tt>has_value()</tt> is <tt>false</tt>.
+</blockquote>
+<p>
+But if <tt>error()</tt> returns a reference to a move-only type
+then it can't be copied and the function body is ill-formed.
+Should it be constrained with <tt>is_copy_constructible_v&lt;E&gt;</tt>?
+Or just mandate it?
+</p>
+<p>
+Similarly, the <tt>value()&amp;&amp;</tt> and <tt>value() const&amp;&amp;</tt>
+overloads require <tt>is_move_constructible_v&lt;E&gt;</tt> to be true
+for <tt>bad_expected_access(std::move(error()))</tt> to be valid.
+</p>
+</discussion>
+
+<resolution>
+<ol>
+<li>
+<p> Modify <sref ref="[expected.object.obs]"/> as indicated: </p>
+<blockquote>
+<blockquote><pre>
+constexpr const T&amp; value() const &amp;;
+constexpr T&amp; value() &amp;;
+</pre></blockquote>
+<p><ins>-?-
+<i>Mandates</i>: <tt>is_copy_constructible_v&lt;E&gt;</tt> is <tt>true</tt>.
+</ins>
+</p>
+<p>-8-
+<i>Returns</i>:
+<tt>val</tt>, if <tt>has_value()</tt> is <tt>true</tt>.
+</p>
+<p>-9-
+<i>Throws</i>:
+<tt>bad_expected_access(error())</tt>
+if <tt>has_value()</tt> is <tt>false</tt>.
+</p>
+<blockquote><pre>
+constexpr T&amp;&amp; value() &amp;&amp;;
+constexpr const T&amp;&amp; value() const &amp;&amp;;
+</pre></blockquote>
+<p><ins>-?-
+<i>Mandates</i>: <tt>is_move_constructible_v&lt;E&gt;</tt> is <tt>true</tt>.
+</ins>
+</p>
+<p>-10-
+<i>Returns</i>:
+<tt>std::move(val)</tt>, if <tt>has_value()</tt> is <tt>true</tt>.
+</p>
+<p>-11-
+<i>Throws</i>:
+<tt>bad_expected_access(std::move(error()))</tt>
+if <tt>has_value()</tt> is <tt>false</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
