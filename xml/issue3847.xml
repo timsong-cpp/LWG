@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3847" status="New">
+<title><tt>ranges::to</tt> can still return views</title>
+<section>
+  <sref ref="[range.utility.conv.to]"/>
+  <sref ref="[range.utility.conv.adaptors]"/>
+</section>
+<submitter>Hewill Kang</submitter>
+<date>06 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The intention of <tt>ranges::to</tt> is to construct a non-view object,
+which is reflected in its constraint that object type <tt>C</tt> should not
+model a <tt>view</tt>.
+</p>
+<p>
+The specification allows <tt>C</tt> to be a <tt>const</tt>-qualified type
+which does not satisfy <tt>view</tt> such as <tt>const string_view</tt>,
+making <tt>ranges::to</tt> return a dangling view. We should ban such cases.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+#include &lt;iterator&gt;             // <i>see <sref ref="[iterator.synopsis]"/></i>
+
+namespace std::ranges {
+  […]
+  // <i><sref ref="[range.utility.conv]"/>, range conversions</i>
+  template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;<ins>remove_cv_t&lt;</ins>C<ins>&gt;</ins>&gt;)
+    constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);                                          // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, input_range R, class... Args&gt;
+    constexpr auto to(R&amp;&amp; r, Args&amp;&amp;... args);                                       // <i>freestanding</i>
+  template&lt;class C, class... Args&gt; requires (!view&lt;<ins>remove_cv_t&lt;</ins>C<ins>&gt;</ins>&gt;)
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, class... Args&gt;
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  […]
+}
+</pre>
+</blockquote>
+</li><li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+<blockquote>
+<pre>template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;<ins>remove_cv_t&lt;</ins>C<ins>&gt;</ins>&gt;)
+constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: An object of type <tt>C</tt> constructed from the elements of <tt>r</tt> in the following manner:
+</p>
+[…]
+</blockquote>
+</blockquote>
+</li>
+<li><p>Modify <sref ref="[range.utility.conv.adaptors]"/> as indicated:</p>
+<blockquote>
+<pre>template&lt;class C, class... Args&gt; requires (!view&lt;<ins>remove_cv_t&lt;</ins>C<ins>&gt;</ins>&gt;)
+  constexpr auto to(Args&amp;&amp;... args);
+template&lt;template&lt;class...&gt; class C, class... Args&gt;
+  constexpr auto to(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: A range adaptor closure object (<sref ref="[range.adaptor.object]"/>) <tt>f</tt> that is a perfect forwarding call wrapper (<sref ref="[func.require]"/>) with the following properties:
+</p>
+[…]
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
