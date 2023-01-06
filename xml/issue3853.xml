@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3853" status="New">
+<title><tt>basic_const_iterator&lt;volatile int*&gt;::operator-&gt;</tt> is ill-formed</title>
+<section><sref ref="[const.iterators]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>06 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>basic_const_iterator::opertator-></tt> constrains the value type
+of the underlying iterator to be only the <i>cv</i>-unqualified type of
+its reference type, which is true for raw pointers.
+</p>
+<p>
+However, since it also explicitly specifies returning a pointer to
+a <tt>const</tt> value type,
+this will cause a hard error when the value type is actually
+<tt>volatile</tt>-qualified:
+</p>
+<pre>
+  std::basic_const_iterator&lt;volatile int*&gt; it;
+  auto* p = it.operator-&gt;(); // <span style="color:red;font-weight:bolder">invalid conversion from 'volatile int*' to 'const int*'</span>
+</pre>    
+<p>
+The proposed resolution changes the return type from <tt>const value_type*</tt>
+to <tt>const auto*</tt>,
+which makes it deduce the correct type in the above example,
+i.e. <tt>const volatile int*</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[const.iterators]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class I&gt;
+    concept <i>not-a-const-iterator</i> = <i>see below</i>;
+
+  template&lt;input_iterator Iterator&gt;
+  class basic_const_iterator {
+    Iterator <i>current_</i> = Iterator();                             // <i>exposition only</i>
+    using <i>reference</i> = iter_const_reference_t&lt;Iterator&gt;;         // <i>exposition only</i>
+  
+  public:
+    [&hellip;]
+    constexpr <i>reference</i> operator*() const;
+    constexpr const <ins>auto</ins><del>value_type</del>* operator-&gt;() const
+       requires is_lvalue_reference_v&lt;iter_reference_t&lt;Iterator&gt;&gt; &amp;&amp;
+                same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;Iterator&gt;&gt;, value_type&gt;;
+    [&hellip;]
+  };
+}
+</pre>
+[&hellip;]
+<pre>
+constexpr const <ins>auto</ins><del>value_type</del>* operator-&gt;() const
+  requires is_lvalue_reference_v&lt;iter_reference_t&lt;Iterator&gt;&gt; &amp;&amp;
+           same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;Iterator&gt;&gt;, value_type&gt;;
+</pre>
+<p>
+-7- <i>Returns</i>: If <tt>Iterator</tt> models <tt>contiguous_iterator</tt>, <tt>to_address(<i>current_</i>)</tt>; otherwise, <tt>addressof(*<i>current_</i>)</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
