@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3856" status="New">
+<title>Unclear which conversion specifiers are valid for each chrono type</title>
+<section><sref ref="[time.format]"/></section>
+<submitter>Tam S. B.</submitter>
+<date>14 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[time.format]"/>/3:
+<blockquote>
+If the formatted object does not contain the information the conversion
+specifier refers to, an exception of type <tt>format_error</tt> is thrown.
+</blockquote>
+
+<sref ref="[time.format]"/>/6:
+<blockquote>
+If the type being formatted does not contain the information that the format
+flag needs, an exception of type <tt>format_error</tt> is thrown.
+</blockquote>
+</p>
+
+<p>
+It's unclear how to determine if a type contain the needed information,
+and implementations diverge.
+</p>
+
+<p>
+For example, consider
+</p>
+<blockquote><pre>
+    #include &lt;chrono&gt;
+    #include &lt;format&gt;
+
+    auto f(std::chrono::month_day_last mdl) {
+        return std::format("{:%j}", mdl);
+    }
+</pre></blockquote>
+<p>
+Both libstdc++ and libc++ produce a compile-time error, claiming that the
+argument does not contain the information, while MSVC STL throws
+<tt>format_error</tt> at run time unless <tt>mdl</tt> is `January/last`,
+in which case the function returns "031".
+</p>
+<p>
+Another interesting case is <code>format("{:%d}", mdl)</code> where the value
+can be printed for all months <i>except</i> February, which requires a year
+to know how many days it has.
+</p>
+
+<p>
+A related example from Jonathan Wakely:
+</p>
+<blockquote><pre>
+std::chrono::weekday_indexed wdi(Monday, 7);  // 7th Monday in the month
+assert( ! wdi.ok() );
+assert( wdi.weekday().ok() );
+std::format("{:%a}", wdi);
+</pre></blockquote>
+<p>
+For %a the required information is "a valid weekday",
+and arguably this does contain a valid weekday.
+On the other hand, there's no 7th Monday, so this isn't valid.
+Should this throw or not?
+</p>
+<p>
+This was discussed by LWG and Howard Hinnant summarized the intended behaviour as:
+<blockquote>
+"The intention of <sref ref="[time.format]"/>/6 is to address things like
+formatting a <tt>duration</tt> with %F.  A <tt>duration</tt> doesn’t contain
+the calendrical information that %F requires (year, month, day).
+Ditto for using %a (weekday name) with a <tt>year</tt>.
+It is meant to address mismatching <i>types</i> and flags,
+and not meant to address <i>values</i>."
+</blockquote>
+</p>
+<p>
+The type <tt>chrono::weekday</tt> does contain the information needed to print
+a weekday. A specific invalid value doesn't change that.
+The type <tt>chrono::month_day_last</tt> does not contain the information
+needed to print the day of the year.
+A specific value where the day can be known doesn't change that.
+The day of month is more interesting, and might need more discussion.
+</p>
+<p>
+Jonathan proposed adding more examples to clarify the intention that only the
+type matters, and not the value. There is some redundancy between p3 and p6.
+Referring to "the formatted object" in p3 seems unclear.
+Saying "type" as in p6 is better.
+But p6 refers to "format flag" which is not defined,
+whereas p3 uses "conversion specifier" (defined at the start of that paragraph).
+The two uses of "flag" in p6 look like remnants from the earlier chrono::format feature that was replaced by integration with std::format.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+</p>
+</resolution>
+
+</issue>
