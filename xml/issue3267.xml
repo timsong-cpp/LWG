@@ -207,9 +207,11 @@ below.
 </blockquote>
 
 <note>2022-04-24; Daniel rebases wording on <paper num="N4910"/></note>
-</discussion>
 
-<resolution>
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
 <p>
 This wording is relative to <paper num="N4910"/>.
 </p>
@@ -234,6 +236,59 @@ typename X::template rebind&lt;U&gt;::other
 <p/>
 -17- <i>Postconditions:</i> For all <tt>U</tt> (including <tt>T</tt>), <tt>Y::template rebind&lt;T&gt;::other</tt> 
 is <tt>X</tt>. <ins><tt>XX::is_always_equal::value == YY::is_always_equal::value</tt> is <tt>true</tt>.</ins>
+<p/>
+-18- <i>Remarks:</i> If <tt>Allocator</tt> is a class template instantiation of the form 
+<tt>SomeAllocator&lt;T, Args&gt;</tt>, where <tt>Args</tt> is zero or more type arguments, and 
+<tt>Allocator</tt> does not supply a <tt>rebind</tt> member template, the standard <tt>allocator_traits</tt> 
+template uses <tt>SomeAllocator&lt;U, Args&gt;</tt> in place of <tt>Allocator::rebind&lt;U&gt;::other</tt> 
+by default. For allocator types that are not template instantiations of the above form, no default is provided.
+<p/>
+-19- [<i>Note 1</i>: The member class template <tt>rebind</tt> of <tt>X</tt> is effectively a typedef template. 
+In general, if the name <tt>Allocator</tt> is bound to <tt>SomeAllocator&lt;T&gt;</tt>, then 
+<tt>Allocator::rebind&lt;U&gt;::other</tt> is the same type as <tt>SomeAllocator&lt;U&gt;</tt>, where 
+<tt>SomeAllocator&lt;T&gt;::value_type</tt> is <tt>T</tt> and <tt>SomeAllocator&lt;U&gt;::value_type</tt> 
+is <tt>U</tt>. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<note>2023-01-08; Jiang An comments and provides improved wording</note>
+<p>
+Exception specifications of some container operations (added by <paper num="N4258"/> and LWG <iref ref="3778"/>) 
+are specified with the propagation properties of template parameter <tt>Allocator</tt>. However, for node-based 
+containers and <tt>std::deque</tt> (and common implementations of <tt>std::vector&lt;bool, A&gt;</tt>), 
+rebound allocators are needed to be propagated, and common implementations are currently detecting the propagation 
+properties of rebound allocators.
+<p/>
+I think if the allocator provided as template argument and the rebound have different propagation properties and 
+behaves differently on propagation, then it is difficult or impossible for implementations to follow the current 
+exception specifications.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4917"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[allocator.requirements]"/> as indicated:</p>
+<blockquote>
+<pre>
+typename X::template rebind&lt;U&gt;::other
+</pre>
+<blockquote>
+<p>
+-16- <i>Result:</i> <tt>Y</tt>
+<p/>
+-17- <i>Postconditions:</i> For all <tt>U</tt> (including <tt>T</tt>), <tt>Y::template rebind&lt;T&gt;::other</tt> 
+is <tt>X</tt>. <ins>All of <tt>XX::is_always_equal::value == YY::is_always_equal::value</tt>, 
+<tt>XX::propagate_on_container_copy_assignment::value == YY::propagate_on_container_copy_assignment::value</tt>,  
+<tt>XX::propagate_on_container_move_assignment::value == YY::propagate_on_container_move_assignment::value</tt>, and  
+<tt>XX::propagate_on_container_swap::value == YY::propagate_on_container_swap::value</tt> are <tt>true</tt>.</ins>
 <p/>
 -18- <i>Remarks:</i> If <tt>Allocator</tt> is a class template instantiation of the form 
 <tt>SomeAllocator&lt;T, Args&gt;</tt>, where <tt>Args</tt> is zero or more type arguments, and 
