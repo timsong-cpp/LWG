@@ -267,7 +267,7 @@ void format_issue_as_html(lwg::issue & is,
    //   ---             -----------
    //   iref            internal reference to another issue, replace with an anchor tag to that issue
    //   sref            section-tag reference, replace with formatted tag and section-number
-   //   paper           paper reference (PXXXX, PXXXXRX, NXXXX); replace with a wg21.link to the paper
+   //   paper           paper reference (PXXXX, PXXXXRX, DXXXX, DXXXXRX, NXXXX); replace with a wg21.link to the paper
    //   discussion      <p><b>Discussion:</b></p>CONTENTS
    //   resolution      <p><b>Proposed resolution:</b></p>CONTENTS
    //   rationale       <p><b>Rationale:</b></p>CONTENTS
@@ -413,7 +413,7 @@ void format_issue_as_html(lwg::issue & is,
             }
             else if (tag == "paper") {
                std::string paper_number{get_attribute_value("paper", attrs, context)};
-               static const std::regex acceptable_numbers(R"(N\d+|P\d+R\d+|P\d+)", std::regex::icase);
+               static const std::regex acceptable_numbers(R"(N\d+|[DP]\d+R\d+|[DP]\d+)", std::regex::icase);
 
                if (!std::regex_match(paper_number, acceptable_numbers)) {
                   fail("Invalid paper number '" + paper_number + "'", context);
