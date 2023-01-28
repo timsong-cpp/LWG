@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3862" status="New">
+<title><tt>basic_const_iterator</tt>'s <tt>common_type</tt> specialization is underconstrained</title>
+<section><sref ref="[iterator.synopsis]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>25 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+To make <tt>basic_const_iterator</tt> compatible with its unwrapped iterators, the standard defines the following 
+<tt>common_type</tt> specialization:
+</p>
+<blockquote><pre>
+template&lt;class T, common_with&lt;T&gt; U&gt;
+struct common_type&lt;basic_const_iterator&lt;T&gt;, U&gt; {
+  using type = basic_const_iterator&lt;common_type_t&lt;T, U&gt;&gt;;
+};
+</pre></blockquote>
+<p>
+For type <tt>U</tt>, when it shares a common type with the unwrapped type <tt>T</tt> of <tt>basic_const_iterator</tt>, 
+the common type of both is <tt>basic_const_iterator</tt> of the common type of <tt>T</tt> and <tt>U</tt>.
+<p/>
+However, since this specialization only constrains <tt>U</tt> and <tt>T</tt> to have a common type, 
+this allows <tt>U</tt> to be any type that satisfies such requirement, such as <tt>optional&lt;T&gt;</tt>, 
+in which case computing the common type of both would produce a hard error inside the specialization, 
+because <tt>basic_const_iterator</tt> requires the template parameter to be <tt>input_iterator</tt>, 
+while <tt>optional</tt> clearly isn't.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.synopsis]"/>, header <tt>&lt;iterator&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
+#include &lt;concepts&gt;             // <i>see <sref ref="[concepts.syn]"/></i>
+
+namespace std {
+  [&hellip;]
+  template&lt;class T, common_with&lt;T&gt; U&gt;
+    <ins>requires input_iterator&lt;U&gt;</ins>
+  struct common_type&lt;basic_const_iterator&lt;T&gt;, U&gt; {                                  // <i>freestanding</i>
+    using type = basic_const_iterator&lt;common_type_t&lt;T, U&gt;&gt;;
+  };
+  template&lt;class T, common_with&lt;T&gt; U&gt;
+    <ins>requires input_iterator&lt;U&gt;</ins>
+  struct common_type&lt;U, basic_const_iterator&lt;T&gt;&gt; {                                  // <i>freestanding</i>
+    using type = basic_const_iterator&lt;common_type_t&lt;T, U&gt;&gt;;
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
