@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3863" status="New">
+<title>Is <tt>input_iterator</tt> guaranteed to have <tt>iter_const_reference_t</tt>?</title>
+<section><sref ref="[const.iterators.alias]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>26 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the C++20 iterator system, <tt>input_iterator</tt> is guaranteed to have a common reference, which 
+reflects the <tt>indirectly_readable</tt> requires 
+<tt>common_reference_t&lt;iter_reference_t&lt;I&gt;&amp;&amp;, iter_value_t&lt;I&gt;&amp;&gt;</tt> to be a valid type.
+<p/>
+However, for <tt>iter_const_reference_t</tt> which with a similar form:
+</p>
+<blockquote><pre>
+template&lt;indirectly_readable It&gt;
+  using iter_const_reference_t =
+    common_reference_t&lt;const iter_value_t&lt;It&gt;&amp;&amp;, iter_reference_t&lt;It&gt;&gt;;
+</pre></blockquote>
+<p>
+it is still theoretically possible to create an <tt>input_iterator</tt> that does not have a valid 
+<tt>iter_const_reference_t</tt>, <a href="https://godbolt.org/z/oY3xoqPMa">for example</a>:
+</p>
+<blockquote><pre>
+#include &lt;iterator&gt;
+
+struct ref {
+  ref(int&amp;);
+};
+
+struct rref {
+  rref(const int&amp;);
+  rref(const ref&amp;);
+};
+
+struct I {
+  using value_type = int;
+  using difference_type = std::ptrdiff_t;
+
+  ref operator*() const;
+  I&amp; operator++();
+  I operator++(int);
+
+  friend rref iter_move(const I&amp;);
+};
+
+static_assert(std::input_iterator&lt;I&gt;); // pass
+using CR = std::iter_const_reference_t&lt;I&gt;;  // <span style="color:red;font-weight:bolder">error: no type named 'type' in 'struct std::common_reference&lt;const int&amp;&amp;, ref&gt;'</span>
+</pre></blockquote>
+<p>
+which causes <tt>basic_const_iterator&lt;I&gt;</tt> to produce a hard error internally when it is instantiated.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
