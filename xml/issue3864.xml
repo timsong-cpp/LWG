@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3864" status="New">
+<title><tt>zip</tt> over range of reference to an abstract type</title>
+<section><sref ref="[range.zip]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>28 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider:
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+struct Abstract {
+  virtual ~Abstract() = default;
+  virtual int f() = 0;
+};
+
+struct Concrete : Abstract {
+  int f() override { return 42; }
+};
+
+int main() {
+  Concrete c[10];
+
+  auto xformed = c | std::views::transform([](Concrete&amp; c) -&gt; Abstract&amp; {
+    return c;
+  });
+
+  for (Abstract&amp; a : xformed) { }  // <span style="color:green;font-weight:bold">ok</span>
+
+  auto zipped = std::views::zip(xformed);
+
+  for (auto&amp;&amp; [a] : zipped) { }    // <span style="color:red;font-weight:bolder">error</span>
+}
+</pre></blockquote>
+<p>
+Here, <tt>xformed</tt> is a range whose reference type is <tt>Abstract&amp;</tt> and whose <tt>value_type</tt> is <tt>Abstract</tt>. 
+Even though you can't actually create a value of that <tt>value_type</tt>, that's okay here, because no code is actually trying to do so.
+<p/>
+On the other hand, <tt>zipped</tt> is a range whose reference type is <tt>std::tuple&lt;Abstract&amp;&gt;</tt> and whose 
+<tt>value_type</tt> is <tt>std::tuple&lt;Abstract&gt;</tt>. No code here is actually trying to construct a <tt>value_type</tt> either, 
+but this code fails because simply instantiating <tt>std::tuple&lt;Abstract&gt;</tt> is an error. There's no other possible 
+<tt>value_type</tt> for <tt>zipped</tt> to have, <tt>std::tuple&lt;Abstract&gt;</tt> is correct &mdash; it's just that it happens 
+to be an ill-formed type in this context. There are workarounds for this case &mdash; you would have to make <tt>xformed</tt> 
+be a range of <tt>Abstract*</tt> or, probably better, a range of <tt>reference_wrapper&lt;Abstract&gt;</tt> instead. 
+<p/>
+This is unfortunate because many (most?) algorithms don't actually make any use of a range's <tt>value_type</tt>. The ones that do 
+(like <tt>ranges::min</tt>) obviously could not work, but currently we end up rejecting all uses. Probably the only possible way to 
+make this work is to allow <tt>value_type</tt> to be <tt>void</tt> (or absent), but it is currently a fairly fundamental type due 
+to its use in <tt>indirectly_readable</tt> to identify input iterators.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
