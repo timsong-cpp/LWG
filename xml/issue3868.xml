@@ -1,0 +1,169 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3868" status="New">
+<title>Constrained algorithms should not require <tt>output_iterator</tt></title>
+<section><sref ref="[alg.replace]"/><sref ref="[alg.fill]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>29 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In C++20, <tt>output_iterator</tt> is required to support <tt>*o++ = t</tt> mainly for backward compatibility,
+that is to say, in addition to avoiding needless breakage, this semantic is actually not very useful, as it can 
+be equivalently replaced by <tt>*o = t; ++o;</tt>.
+<p/>
+This is reflected in the current implementation for constrained algorithms in libstdc++ and MSVC-STL. 
+Even if the algorithm explicitly requires <tt>output_iterator</tt>, there is no code of the form <tt>*o++ = t</tt> in practice,
+and the latter of a more generic form is used instead.
+<p/>
+It seems to me that constrained algorithms should never require <tt>output_iterator</tt>, since there really isn't
+any desirable reason to use <tt>*o++ = t</tt> in the new iterator system.
+It would be more appropriate to relax <tt>output_iterator</tt> to <tt>weakly_incrementable</tt> 
+(or <tt>input_or_output_iterator</tt>) and <tt>indirectly_writable</tt>,
+given that many constrained algorithms already do that.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[algorithm.syn]"/>, header <tt>&lt;algorithm&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+
+namespace std {
+  [&hellip;]
+  namespace ranges {
+    template&lt;class I, class O&gt;
+      using replace_copy_result = in_out_result&lt;I, O&gt;;
+
+    template&lt;input_iterator I, sentinel_for&lt;I&gt; S, class T1, class T2,
+             <ins>weakly_incrementable</ins><del>output_iterator&lt;const T2&amp;&gt;</del> O, class Proj = identity&gt;
+      requires <ins>indirectly_writable&lt;O, const T2&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;I, O&gt; &amp;&amp;
+               indirect_binary_predicate&lt;ranges::equal_to, projected&lt;I, Proj&gt;, const T1*&gt;
+      constexpr replace_copy_result&lt;I, O&gt;
+        replace_copy(I first, S last, O result, const T1&amp; old_value, const T2&amp; new_value,
+                     Proj proj = {});
+    template&lt;input_range R, class T1, class T2, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T2&amp;&gt;</del> O,
+             class Proj = identity&gt;
+      requires <ins>indirectly_writable&lt;O, const T2&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt; &amp;&amp;
+               indirect_binary_predicate&lt;ranges::equal_to,
+                                         projected&lt;iterator_t&lt;R&gt;, Proj&gt;, const T1*&gt;
+      constexpr replace_copy_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+        replace_copy(R&amp;&amp; r, O result, const T1&amp; old_value, const T2&amp; new_value,
+                     Proj proj = {});
+
+    template&lt;class I, class O&gt;
+      using replace_copy_if_result = in_out_result&lt;I, O&gt;;
+
+    template&lt;input_iterator I, sentinel_for&lt;I&gt; S, class T, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T&amp;&gt;</del> O,
+             class Proj = identity, indirect_unary_predicate&lt;projected&lt;I, Proj&gt;&gt; Pred&gt;
+      requires <ins>indirectly_writable&lt;O, const T&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;I, O&gt;
+      constexpr replace_copy_if_result&lt;I, O&gt;
+        replace_copy_if(I first, S last, O result, Pred pred, const T&amp; new_value,
+                        Proj proj = {});
+    template&lt;input_range R, class T, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T&amp;&gt;</del> O, class Proj = identity,
+             indirect_unary_predicate&lt;projected&lt;iterator_t&lt;R&gt;, Proj&gt;&gt; Pred&gt;
+      requires <ins>indirectly_writable&lt;O, const T&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt;
+      constexpr replace_copy_if_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+        replace_copy_if(R&amp;&amp; r, O result, Pred pred, const T&amp; new_value,
+                        Proj proj = {});
+  }
+  [&hellip;]
+  namespace ranges {
+    template&lt;class T, <ins>input_or_output_iterator</ins><del>output_iterator&lt;const T&amp;&gt;</del> O, sentinel_for&lt;O&gt; S&gt;
+      <ins>requires indirectly_writable&lt;O, const T&amp;&gt;</ins>
+      constexpr O fill(O first, S last, const T&amp; value);
+    template&lt;class T, output_range&lt;const T&amp;&gt; R&gt;
+      constexpr borrowed_iterator_t&lt;R&gt; fill(R&amp;&amp; r, const T&amp; value);
+    template&lt;class T, <ins>input_or_output_iterator</ins><del>output_iterator&lt;const T&amp;&gt;</del> O&gt;
+      <ins>requires indirectly_writable&lt;O, const T&amp;&gt;</ins>
+      constexpr O fill_n(O first, iter_difference_t&lt;O&gt; n, const T&amp; value);
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[alg.replace]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S, class T1, class T2, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T2&amp;&gt;</del> O, 
+         class Proj = identity&gt;
+  requires <ins>indirectly_writable&lt;O, const T2&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;I, O&gt; &amp;&amp;
+           indirect_binary_predicate&lt;ranges::equal_to, projected&lt;I, Proj&gt;, const T1*&gt;
+constexpr ranges::replace_copy_result&lt;I, O&gt;
+  ranges::replace_copy(I first, S last, O result, const T1&amp; old_value, const T2&amp; new_value,
+                       Proj proj = {});
+template&lt;input_range R, class T1, class T2, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T2&amp;&gt;</del> O,
+         class Proj = identity&gt;
+  requires <ins>indirectly_writable&lt;O, const T2&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt; &amp;&amp;
+           indirect_binary_predicate&lt;ranges::equal_to, projected&lt;iterator_t&lt;R&gt;, Proj&gt;, const T1*&gt;
+constexpr ranges::replace_copy_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+  ranges::replace_copy(R&amp;&amp; r, O result, const T1&amp; old_value, const T2&amp; new_value,
+                       Proj proj = {});
+
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S, class T, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T&amp;&gt;</del> O,
+         class Proj = identity, indirect_unary_predicate&lt;projected&lt;I, Proj&gt;&gt; Pred&gt;
+  requires <ins>indirectly_writable&lt;O, const T&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;I, O&gt;
+constexpr ranges::replace_copy_if_result&lt;I, O&gt;
+  ranges::replace_copy_if(I first, S last, O result, Pred pred, const T&amp; new_value,
+                          Proj proj = {});
+template&lt;input_range R, class T, <ins>weakly_incrementable</ins><del>output_iterator&lt;const T&amp;&gt;</del> O, class Proj = identity,
+         indirect_unary_predicate&lt;projected&lt;iterator_t&lt;R&gt;, Proj&gt;&gt; Pred&gt;
+  requires <ins>indirectly_writable&lt;O, const T&amp;&gt; &amp;&amp;</ins> indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt;
+constexpr ranges::replace_copy_if_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+  ranges::replace_copy_if(R&amp;&amp; r, O result, Pred pred, const T&amp; new_value,
+                          Proj proj = {});
+
+</pre>
+<blockquote>
+<p>
+-6- Let <i>E</i> be
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+
+<li><p>Modify <sref ref="[alg.fill]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class T, <ins>input_or_output_iterator</ins><del>output_iterator&lt;const T&amp;&gt;</del> O, sentinel_for&lt;O&gt; S&gt;
+  <ins>requires indirectly_writable&lt;O, const T&amp;&gt;</ins>
+  constexpr O ranges::fill(O first, S last, const T&amp; value);
+template&lt;class T, output_range&lt;const T&amp;&gt; R&gt;
+  constexpr borrowed_iterator_t&lt;R&gt; ranges::fill(R&amp;&amp; r, const T&amp; value);
+template&lt;class T, <ins>input_or_output_iterator</ins><del>output_iterator&lt;const T&amp;&gt;</del> O&gt;
+  <ins>requires indirectly_writable&lt;O, const T&amp;&gt;</ins>
+  constexpr O ranges::fill_n(O first, iter_difference_t&lt;O&gt; n, const T&amp; value);
+</pre>
+<blockquote>
+<p>
+-1- Let <i>N</i> be max(0, <tt>n</tt>) for the <tt>fill_n</tt> algorithms, and <tt>last - first</tt> for the <tt>fill</tt> algorithms.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
