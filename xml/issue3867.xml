@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3867" status="New">
+<title>Should <tt>std::basic_osyncstream</tt>'s move assignment operator be <tt>noexcept</tt>?</title>
+<section><sref ref="[syncstream.osyncstream.overview]"/></section>
+<submitter>Jiang An</submitter>
+<date>29 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The synopsis of <tt>std::basic_osyncstream</tt> (<sref ref="[syncstream.osyncstream.overview]"/>) indicates that it's 
+member functions behave as if it hold a <tt>std::basic_syncbuf</tt> as its subobject, and according to 
+<sref ref="[functions.within.classes]"/>, <tt>std::basic_osyncstream</tt>'s move assignment operator should call 
+<tt>std::basic_syncbuf</tt>'s move assignment operator.
+<p/>
+However, currently <tt>std::basic_osyncstream</tt>'s move assignment operator is <tt>noexcept</tt>, while 
+<tt>std::basic_syncbuf</tt>'s is not. So when an exception is thrown from move assignment between <tt>std::basic_syncbuf</tt> 
+objects, <tt>std::terminate</tt> should be called.
+<p/>
+It's clarified in LWG <iref ref="3498"/> that an exception can escape from <tt>std::basic_syncbuf</tt>'s move 
+assignment operator. Is there any reason that an exception shouldn't escape from <tt>std::basic_osyncstream</tt>'s 
+move assignment operator? 
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[syncstream.osyncstream.overview]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class charT, class traits = char_traits&lt;charT&gt;, class Allocator = allocator&lt;charT&gt;&gt;
+  class basic_osyncstream : public basic_ostream&lt;charT, traits&gt; {
+  public:
+    [&hellip;]
+    using syncbuf_type = basic_syncbuf&lt;charT, traits, Allocator&gt;;
+    [&hellip;]
+    
+    <i>// assignment</i>
+    basic_osyncstream&amp; operator=(basic_osyncstream&amp;&amp;) <del>noexcept</del>;
+
+    [&hellip;]
+  
+  private:
+    syncbuf_type sb; <i>// exposition only</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol></resolution>
+
+</issue>
