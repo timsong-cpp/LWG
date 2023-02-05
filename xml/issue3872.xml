@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3872" status="New">
+<title><tt>basic_const_iterator</tt> should have custom <tt>iter_move</tt></title>
+<section><sref ref="[const.iterators]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>31 Jan 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The standard does not currently customize <tt>iter_move</tt> for <tt>basic_const_iterator</tt>, 
+which means that applying <tt>iter_move</tt> to <tt>basic_const_iterator</tt> will invoke the default behavior.
+Although the intent of such an operation is unpredictable, it does introduce some inconsistencies:
+</p>
+<blockquote><pre>
+int x[] = {1, 2, 3};
+using R1 = decltype(           x  | views::as_rvalue | views::as_const);
+using R2 = decltype(           x  | views::as_const  | views::as_rvalue);
+using Z1 = decltype(views::zip(x) | views::as_rvalue | views::as_const);
+using Z2 = decltype(views::zip(x) | views::as_const  | views::as_rvalue);
+
+static_assert(same_as&lt;ranges::range_reference_t&lt;R1&gt;,       const int&amp;&amp;&gt;);
+static_assert(same_as&lt;ranges::range_reference_t&lt;R2&gt;,       const int&amp;&amp;&gt;);
+static_assert(same_as&lt;ranges::range_reference_t&lt;Z1&gt;, tuple&lt;const int&amp;&amp;&gt;&gt;);
+static_assert(same_as&lt;ranges::range_reference_t&lt;Z2&gt;, tuple&lt;const int&amp;&amp;&gt;&gt;); // <span style="color:red;font-weight:bolder">failed</span>
+</pre></blockquote>
+<p>
+In the above example, <tt>views::zip(x) | views::as_const</tt> will produce a range whose iterator type is 
+<tt>basic_const_iterator</tt> with reference of <tt>tuple&lt;const int&amp;&gt;</tt>.
+Since <tt>iter_move</tt> adopts the default behavior, its rvalue reference will also be 
+<tt>tuple&lt;const int&amp;&gt;</tt>, so applying <tt>views::as_rvalue</tt> to it won't have any effect.
+<p/>
+Such an inconsistency seems undesirable.
+<p/>
+The proposed resolution adds an <tt>iter_move</tt> specialization for <tt>basic_const_iterator</tt> and specifies 
+the return type as 
+<tt>common_reference_t&lt;const iter_value_t&lt;It&gt;&amp;&amp;, iter_rvalue_reference_t&lt;It&gt;&gt;</tt>, 
+which is the type that <tt>input_iterator</tt> is guaranteed to be valid. This is also in sync with the behavior 
+of range-v3.
+</p>
+</discussion>
+
+<resolution>
+
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[const.iterators]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class I&gt;
+    concept <i>not-a-const-iterator</i> = <i>see below</i>;
+
+<ins>  template&lt;indirectly_readable I&gt;
+    using <i>iter-const-rvalue-reference-t</i> =  // <i>exposition only</i>
+      common_reference_t&lt;const iter_value_t&lt;I&gt;&amp;&amp;, iter_rvalue_reference_t&lt;I&gt;&gt;;</ins>
+
+  template&lt;input_iterator Iterator&gt;
+  class basic_const_iterator {
+    Iterator <i>current_</i> = Iterator();                             // <i>exposition only</i>
+    using <i>reference</i> = iter_const_reference_t&lt;Iterator&gt;;         // <i>exposition only</i>
+    <ins>using <i>rvalue-reference</i> = <i>iter-const-rvalue-reference-t</i>&lt;Iterator&gt;;  // <i>exposition only</i></ins>
+
+  public:
+    [&hellip;]
+    template&lt;sized_sentinel_for&lt;Iterator&gt; S&gt;
+      requires different-from&lt;S, basic_const_iterator&gt;
+      friend constexpr difference_type operator-(const S&amp; x, const basic_const_iterator&amp; y);
+      <ins>friend constexpr <i>rvalue-reference</i> iter_move(const basic_const_iterator&amp; i)
+        noexcept(noexcept(static_cast&lt;<i>rvalue-reference</i>&gt;(ranges::iter_move(i.<i>current_</i>)))) 
+      {
+        return static_cast&lt;<i>rvalue-reference</i>&gt;(ranges::iter_move(i.<i>current_</i>));
+      }</ins>
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
