@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3873" status="New">
+<title><tt>join_with_view</tt>'s <tt>const begin</tt> is underconstrained</title>
+<section><sref ref="[range.join.with.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>4 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In order to ensure that the pattern range is compatible with the inner range, 
+<tt>join_with_view</tt> requires that the two range types must satisfy <tt><i>compatible-joinable-ranges</i></tt>, 
+which requires that the value type, reference type, and rvalue reference type of the two range types share a common type.
+<p/>
+However, when the two range types are <tt>const</tt>-qualified, there is no guarantee that their common 
+reference type still exists, in which case a hard error may occur since <tt>join_with_view</tt>'s <tt>const begin</tt> 
+does not check for this (<a href="https://godbolt.org/z/hb6c3rxM4">online example</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+struct S {
+  S(const int&amp;);
+  S(int&amp;&amp;);
+  S(const int&amp;&amp;) = delete;
+};
+
+int main() {
+  const auto r = std::views::single(std::views::single(0))
+               | std::views::join_with(std::views::single(S{0}));
+  auto e = std::ranges::iter_move(r.begin()); // <span style="color:red;font-weight:bolder">hard error</span>
+}
+</pre></blockquote>
+
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
