@@ -1,0 +1,213 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3877" status="New">
+<title>Incorrect constraints on <tt>const</tt>-qualified monadic overloads for <tt>std::expected</tt></title>
+<section><sref ref="[expected.object.monadic]"/><sref ref="[expected.void.monadic]"/></section>
+<submitter>Sy Brand</submitter>
+<date>9 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The constraints for <tt>and_then</tt>, <tt>transform</tt>, <tt>transform_error</tt>, and <tt>or_else</tt> 
+for <tt>std::expected</tt> seem incorrect for <tt>const</tt> overloads. E.g., from <sref ref="[expected.object.monadic]"/>
+</p>
+<blockquote><pre>
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) const &amp;&amp;;
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+<i>Constraints</i>: <tt>is_move_constructible_v&lt;E&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+That constraint should likely be <tt>is_move_constructible_v&lt;const E&gt;</tt> for the <tt>const</tt>-qualified version. 
+Same for the lvalue overloads, and for the three other functions, including in the <tt>void</tt> partial specialization. 
+For example, currently this code would result in a hard compiler error inside the body of <tt>transform</tt> rather than 
+failing the constraint:
+</p>
+<blockquote><pre>
+const std::expected&lt;int, std::unique_ptr&lt;int&gt;&gt; e;
+std::move(e).transform([](auto) { return 42; });
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="n4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[expected.object.monadic]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Constraints</i>: <tt>is_copy_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- <i>Constraints</i>: <tt>is_move_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto or_else(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto or_else(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Constraints</i>: <tt>is_copy_constructible_v&lt;<del>T</del><ins>decltype((value()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto or_else(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto or_else(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-14- <i>Constraints</i>: <tt>is_move_constructible_v&lt;<del>T</del><ins>decltype((value()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-18- <i>Constraints</i>: <tt>is_copy_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-22- <i>Constraints</i>: <tt>is_move_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-26- <i>Constraints</i>: <tt>is_copy_constructible_v&lt;<del>T</del><ins>decltype((value()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-30- <i>Constraints</i>: <tt>is_move_constructible_v&lt;<del>T</del><ins>decltype((value()))</ins>&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[expected.void.monadic]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Constraints</i>: <tt>is_copy_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto and_then(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-6- <i>Constraints</i>: <tt>is_move_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-16- <i>Constraints</i>: <tt>is_copy_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto transform(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Constraints</i>: <tt>is_move_constructible_v&lt;<del>E</del><ins>decltype((error()))</ins>&gt;</tt> is <tt>true</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
