@@ -31,9 +31,80 @@ I think the intent is using <tt><i>index-type</i></tt> as-is without instantiati
 However, when <tt>Bound</tt> is an unsigned integer-class type, it's unclear which type should the difference type be, 
 or whether <tt>repeat_view</tt> should be well-formed when the possibly intended <tt><i>IOTA-DIFF-T</i>(Bound)</tt> is ill-formed.
 </p>
+<note>2023-02-09 Tim adds wording</note>
+<p>We should reject types for which there is no usable difference type.</p>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="n4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+// [&hellip;]
+namespace std::ranges {
+  template&lt;move_constructible W, semiregular Bound = unreachable_sentinel_t&gt;
+    requires <ins><i>see below</i></ins><del>(is_object_v&lt;W> &amp;&amp; same_as&lt;W, remove_cv_t&lt;W&gt;&gt; &amp;&amp;
+              (<i>is-integer-like</i>&lt;Bound> || same_as&lt;Bound, unreachable_sentinel_t&gt;))</del>
+  class repeat_view;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.repeat.view]"/> as indicated:</p>
+<blockquote>
+<pre>
+namespace std::ranges {
+  
+<ins>  template&lt;class T&gt;
+  concept <i>integer-like-with-usable-difference-type</i> =   //<i>exposition only</i>
+    <i>is-signed-integer-like</i>&lt;T> || (<i>is-integer-like</i>&lt;T> &amp;&amp; weakly_incrementable&lt;T>);</ins>
+
+  template&lt;move_constructible W, semiregular Bound = unreachable_sentinel_t&gt;
+    requires (is_object_v&lt;W> &amp;&amp; same_as&lt;W, remove_cv_t&lt;W&gt;&gt; &amp;&amp;
+              (<i><del>is-integer-like</del><ins>integer-like-with-usable-difference-type</ins></i>&lt;Bound> || same_as&lt;Bound, unreachable_sentinel_t&gt;))
+  class repeat_view {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.repeat.iterator]"/> as indicated:</p>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;move_constructible W, semiregular Bound<del> = unreachable_sentinel_t</del>&gt;
+    requires (is_object_v&lt;W> &amp;&amp; same_as&lt;W, remove_cv_t&lt;W&gt;&gt; &amp;&amp;
+              (<i><del>is-integer-like</del><ins>integer-like-with-usable-difference-type</ins></i>&lt;Bound> || same_as&lt;Bound, unreachable_sentinel_t&gt;))
+  class repeat_view&lt;W, Bound>::<i>iterator</i> {
+  private:
+    using <i>index-type</i> =                  <i>// exposition only</i>
+      conditional_t&lt;same_as&lt;Bound, unreachable_sentinel_t&gt;, ptrdiff_t, Bound&gt;;
+    [&hellip;]
+  public:
+    [&hellip;]
+    using difference_type = <ins><i>see below</i></ins><del>conditional_t&lt;<i>is-signed-integer-like</i>&lt;<i>index-type</i>&gt;,
+        <i>index-type</i>,
+        <i>IOTA-DIFF-T</i>(<i>index-type</i>)></del>;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+<p>
+<ins>-?- If <tt><i>is-signed-integer-like</i>&lt;<i>index-type</i>&gt;</tt> is <tt>true</tt>,
+the member <i>typedef-name</i> <tt>difference_type</tt> denotes <tt><i>index-type</i></tt>.
+Otherwise, it denotes <tt><i>IOTA-DIFF-T</i>(<i>index-type</i>)</tt> 
+(<sref ref="[range.iota.view]"/>).</ins>
+</p>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
