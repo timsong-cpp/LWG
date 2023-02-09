@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3879" status="New">
+<title><tt>erase_if</tt> for <tt>flat_{,multi}set</tt> is incorrectly specified</title>
+<section><sref ref="[flat.set.erasure]"/><sref ref="[flat.multiset.erasure]"/></section>
+<submitter>Tim Song</submitter>
+<date>9 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current specification of <tt>erase_if</tt> for <tt>flat_{,multi}set</tt>
+calls <tt>ranges::remove_if</tt> on the set, which is obviously incorrect &mdash;
+the set only present constant views of its elements.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="n4928"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[flat.set.erasure]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class Key, class Compare, class KeyContainer, class Predicate&gt;
+  typename flat_set&lt;Key, Compare, KeyContainer&gt;::size_type
+    erase_if(flat_set&lt;Key, Compare, KeyContainer&gt;&amp; c, Predicate pred);
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Effects:</i> Equivalent to:</del>
+</p>
+<blockquote>
+<pre>
+<del>auto [erase_first, erase_last] = ranges::remove_if(c, pred);
+auto n = erase_last - erase_first;
+c.erase(erase_first, erase_last);
+return n;</del>
+</pre>
+</blockquote>
+<p>
+<ins>
+-1- <i>Preconditions:</i> <tt>Key</tt> meets the <i>Cpp17MoveAssignable</i> requirements.
+</ins>
+<p/>
+<ins>
+-2- <i>Effects:</i> Let <i>E</i> be <tt>bool(pred(as_const(e)))</tt>. 
+Erases all elements <tt>e</tt> in <tt>c</tt> for which <i>E</i> holds.
+</ins>
+<p/>
+<ins>-3- <i>Returns:</i> The number of elements erased.</ins>
+<p/>
+<ins>-4- <i>Complexity:</i> Exactly <tt>c.size()</tt> applications of the predicate.</ins>
+<p/>
+<ins>-5- <i>Remarks:</i> Stable (<sref ref="[algorithm.stable]"/>). 
+If an invocation of <tt>erase_if</tt> exits via an exception, <tt>c</tt> is in a valid but
+unspecified state (<sref ref="[defns.valid]"/>). </ins>
+<p/>
+<ins>
+[<i>Note 1</i>: <tt>c</tt> still meets its invariants, but can be empty. &mdash; <tt>end note</tt>]
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+<li><p>Modify <sref ref="[flat.multiset.erasure]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class Key, class Compare, class KeyContainer, class Predicate&gt;
+  typename flat_multiset&lt;Key, Compare, KeyContainer&gt;::size_type
+    erase_if(flat_multiset&lt;Key, Compare, KeyContainer&gt;&amp; c, Predicate pred);
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Effects:</i> Equivalent to:</del>
+</p>
+<blockquote>
+<pre>
+<del>auto [erase_first, erase_last] = ranges::remove_if(c, pred);
+auto n = erase_last - erase_first;
+c.erase(erase_first, erase_last);
+return n;</del>
+</pre>
+</blockquote>
+<p>
+<ins>
+-1- <i>Preconditions:</i> <tt>Key</tt> meets the <i>Cpp17MoveAssignable</i> requirements.
+</ins>
+<p/>
+<ins>
+-2- <i>Effects:</i> Let <i>E</i> be <tt>bool(pred(as_const(e)))</tt>. 
+Erases all elements <tt>e</tt> in <tt>c</tt> for which <i>E</i> holds.
+</ins>
+<p/>
+<ins>-3- <i>Returns:</i> The number of elements erased.</ins>
+<p/>
+<ins>-4- <i>Complexity:</i> Exactly <tt>c.size()</tt> applications of the predicate.</ins>
+<p/>
+<ins>-5- <i>Remarks:</i> Stable (<sref ref="[algorithm.stable]"/>). 
+If an invocation of <tt>erase_if</tt> exits via an exception, <tt>c</tt> is in a valid but
+unspecified state (<sref ref="[defns.valid]"/>). </ins>
+<p/>
+<ins>
+[<i>Note 1</i>: <tt>c</tt> still meets its invariants, but can be empty. &mdash; <tt>end note</tt>]
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
