@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3880" status="New">
+<title>Clarify <tt>operator+=</tt> complexity for <tt>{chunk,stride}_view::<i>iterator</i></tt></title>
+<section><sref ref="[range.chunk.fwd.iter]"/><sref ref="[range.stride.iterator]"/></section>
+<submitter>Tim Song</submitter>
+<date>9 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The intent was that the precondition allows the call to <tt>ranges::advance</tt>,
+which otherwise would have time linear in the argument of <tt>operator+=</tt>,
+to actually be implemented using <tt>operator+=</tt> or equivalent for all but 
+the last step. This is at best very non-obvious and should be clarified.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="n4928"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[range.chunk.fwd.iter]"/> p13 as indicated:</p>
+<blockquote>
+<pre>
+constexpr <i>iterator</i>&amp; operator+=(difference_type x)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+</pre>
+<blockquote>
+<p> -12- <i>Preconditions:</i> If <tt>x</tt> is positive, 
+<tt>ranges::distance(<i>current_</i>, <i>end_</i>) > <i>n_</i> * (x - 1)</tt> is <tt>true</tt>.
+<p/>
+[<i>Note 1</i>: If <tt>x</tt> is negative, 
+the <i>Effects</i> paragraph implies a precondition. &mdash; <i>end note</i>]
+<p/>
+-13- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+if (x > 0) {
+  <ins>ranges::advance(<i>current_</i>, <i>n_</i> * (x - 1));</ins>
+  <i>missing_</i> = ranges::advance(<i>current_</i>, <i>n_</i><del> * x</del>, <i>end_</i>);
+} else if (x &lt; 0) {
+  ranges::advance(<i>current_</i>, <i>n_</i> * x + <i>missing_</i>);
+  <i>missing_</i> = 0;
+}
+return *this;
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+<li><p>Modify <sref ref="[range.stride.iterator]"/> p14 as indicated:</p>
+<blockquote>
+<pre>
+constexpr <i>iterator</i>&amp; operator+=(difference_type n) requires random_access_range&lt;<i>Base</i>&gt;;
+</pre>
+<blockquote>
+<p> -13- <i>Preconditions:</i> If <tt>n</tt> is positive, 
+<tt>ranges::distance(<i>current_</i>, <i>end_</i>) > <i>stride_</i> * (n - 1)</tt> is <tt>true</tt>.
+<p/>
+[<i>Note 1</i>: If <tt>n</tt> is negative, 
+the <i>Effects</i> paragraph implies a precondition. &mdash; <i>end note</i>]
+<p/>
+-14- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+if (n > 0) {
+  <ins>ranges::advance(<i>current_</i>, <i>stride_</i> * (n - 1));</ins>
+  <i>missing_</i> = ranges::advance(<i>current_</i>, <i>stride_</i><del> * n</del>, <i>end_</i>);
+} else if (n &lt; 0) {
+  ranges::advance(<i>current_</i>, <i>stride_</i> * n + <i>missing_</i>);
+  <i>missing_</i> = 0;
+}
+return *this;
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
