@@ -104,7 +104,7 @@ dates: meta-data/dates
 # Generate file with issue number and unix timestamp of last change.
 meta-data/dates: xml/issue[0-9]*.xml
 	for i in xml/issue[0-9]*.xml ; do \
-	  n=$${i:9} ; n=$${n%.xml} ; \
+	  n="$${i#xml/issue}" ; n="$${n%.xml}" ; \
 	  test -e $@ && grep -q "^$$n " $@ && test $$i -ot $@ && continue ; \
 	  echo $$i >&2 ; \
 	  git log -1 --pretty="format:$$n %ct%n" $$i ; \
