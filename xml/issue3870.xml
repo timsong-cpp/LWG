@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3870" status="New">
+<issue num="3870" status="Immediate">
 <title>Remove <tt><i>voidify</i></tt></title>
 <section><sref ref="[specialized.algorithms.general]"/></section>
 <submitter>Jonathan Wakely</submitter>
@@ -36,6 +36,69 @@ and the object to create, e.g. <tt>construct_at&lt;const T&gt;(ptr)</tt>.
 </li>
 </ul>
 </p>
+
+<note>Issaquah 2023-02-06; LWG</note>
+<p>
+Casey noted:
+<blockquote>
+The claimed benefit is allowing the <tt>uninitialized_xxx</tt> algorithms
+to create objects of const and/or volatile type, which they cannot otherwise do
+since they deduce the type of object to be created from the reference type
+of the pertinent iterator. Creating const objects has some (marginal?) benefits
+over using const pointers to mutable objects. For example, their non-mutable
+members cannot be modified via casting away const without undefined behavior.
+A unit test might take advantage of this behavior to force a compiler to
+diagnose such undefined behavior in a constant expression.
+</blockquote>
+</p>
+<p>
+The issue submitter was aware of this, but an open Core issue,
+CWG <a href="https://cplusplus.github.io/CWG/issues/2514.html">2514</a>,
+would invalidate that benefit. If accepted, objects with dynamic storage
+duration (such as those created by <tt>std::construct_as</tt> and the
+<tt>std::uninitialized_xxx</tt> algorithms) would never be const objects,
+so casting away the const would not be undefined. So implicitly removing
+const in <tt><i>voidify</i></tt> would still allowing modifying "truly const"
+objects (resulting in undefined behaviour), without being able to create
+"truly const" objects in locations where that actually <i>is</i> safe.
+If CWG 2514 is accepted, the <tt><i>voidify</i></tt> behaviour would be all
+downside.
+</p>
+<p>
+LWG requested removing the remaining casts from the propsed resolution,
+relying on an implicit conversion to <tt>void*</tt> instead.
+Move to Immediate for C++23.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[specialized.algorithms.general]"/>, <b>General</b>,
+as indicated:</p>
+
+<blockquote>
+<p>-4-
+Some algorithms specified in <sref ref="[specialized.algorithms]"/>
+make use of the exposition-only function <tt><i>voidify</i></tt>:
+</p>
+<blockquote>
+<pre><code>
+template&lt;class T&gt;
+  constexpr void* <i>voidify</i>(T&amp; obj) noexcept {
+    return <del>const_cast&lt;void*&gt;(</del>static_cast&lt;<del>const volatile </del>void*&gt;(addressof(obj))<del>)</del>;
+  }
+</code></pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
 </discussion>
 
 <resolution>
@@ -56,7 +119,7 @@ make use of the exposition-only function <tt><i>voidify</i></tt>:
 <pre><code>
 template&lt;class T&gt;
   constexpr void* <i>voidify</i>(T&amp; obj) noexcept {
-    return <del>const_cast&lt;void*&gt;(</del>static_cast&lt;<del>const volatile </del>void*&gt;(addressof(obj))<del>)</del>;
+    return <del>const_cast&lt;void*&gt;(static_cast&lt;const volatile void*&gt;(</del>addressof(obj)<del>))</del>;
   }
 </code></pre>
 </blockquote>
