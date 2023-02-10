@@ -181,7 +181,7 @@ auto lwg::format_section_tag_as_link(section_map & section_db, section_tag const
       o << tag;
    }
    else {
-      o << "<a href=\"https://wg21.link/" << tag.name << "\">[" << tag.name << "]</a>";
+      o << "<a href=\"https://eel.is/c++draft/" << tag.name << "\">[" << tag.name << "]</a>";
    }
    return o.str();
 }
