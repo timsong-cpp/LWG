@@ -49,9 +49,9 @@ adapters based on the one from the standard: <a href="https://godbolt.org/z/P1nr
 A simple fix is to wrap the underlying container in <tt>std::views::all(_t)</tt> 
 (<a href="https://godbolt.org/z/8MT1be838">https://godbolt.org/z/8MT1be838</a>).
 </p>
-</discussion>
 
-<resolution>
+<superseded>
+
 <p>
 This wording is relative to <paper num="n4928"/>.
 </p>
@@ -95,6 +95,69 @@ template&lt;class FormatContext&gt;
 <blockquote>
 <p>
 -3- <i>Effects</i>: Equivalent to: <tt>return <i>underlying_</i>.format(<ins>views::all(</ins>r.c<ins>)</ins>, ctx);</tt>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</superseded>
+
+<note>2023-02-10 Tim provides updated wording</note>
+<p>The container elements may not be const-formattable so we cannot 
+use the <tt>const</tt> formatter unconditionally. Also the current wording 
+is broken because an adaptor is not range and we cannot use 
+<tt><i>fmt-maybe-const</i></tt> on the adaptor &mdash; only the underlying container.</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="n4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[container.adaptors.format]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- For each of <tt>queue</tt>, <tt>priority_queue</tt>, and <tt>stack</tt>, the library provides the following formatter specialization
+where <tt><i>adaptor-type</i></tt> is the name of the template:
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class charT, class T, formattable&lt;charT&gt; Container, class... U&gt;
+  struct formatter&lt;<i>adaptor-type</i>&lt;T, Container, U...&gt;, charT&gt; {
+  private:
+    <ins>using <i>maybe-const-container</i> =                     // <i>exposition only</i>
+      <i>fmt-maybe-const</i>&lt;Container, charT&gt;;</ins>
+    using <i>maybe-const-adaptor</i> =                       // <i>exposition only</i>
+      <i><del>fmt-</del>maybe-const</i>&lt;<ins>is_const_v&lt;<i>maybe-const-container</i>&gt;, </ins><i>adaptor-type</i>&lt;T, Container, U...&gt;<del>, charT</del>&gt;; <ins>// <i>see <sref ref="[ranges.syn]"/></i></ins>
+      
+    formatter&lt;<ins>ranges::ref_view&lt;<i>maybe-const-container</i>&gt;</ins><del>Container</del>, charT&gt; <i>underlying_</i>;          // <i>exposition only</i>
+
+  public:
+    template&lt;class ParseContext&gt;
+      constexpr typename ParseContext::iterator
+        parse(ParseContext&amp; ctx);
+
+    template&lt;class FormatContext&gt;
+      typename FormatContext::iterator
+        format(<i>maybe-const-adaptor</i>&amp; r, FormatContext&amp; ctx) const;
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class FormatContext&gt;
+  typename FormatContext::iterator
+    format(<i>maybe-const-adaptor</i>&amp; r, FormatContext&amp; ctx) const;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Equivalent to: <tt>return <i>underlying_</i>.format(r.c, ctx);</tt>
 </p>
 </blockquote>
 </blockquote>
