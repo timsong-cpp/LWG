@@ -10,23 +10,23 @@
 
 <discussion>
 <p>
-While implementing <paper num="P2505R5"/> "Monadic Functions for <tt>std::expected</tt>" we found it odd that 
-the template type parameter for the assignment operator that accepts an argument by forwarding reference is 
-defaulted, but the template type parameter for <tt>value_or</tt> is not. For consistency, it would seem that 
-<tt><i>meow</i>.value_or(<i>woof</i>)</tt> should accept the same arguments <tt><i>woof</i></tt> as does 
+While implementing <paper num="P2505R5"/> "Monadic Functions for <tt>std::expected</tt>" we found it odd that
+the template type parameter for the assignment operator that accepts an argument by forwarding reference is
+defaulted, but the template type parameter for <tt>value_or</tt> is not. For consistency, it would seem that
+<tt><i>meow</i>.value_or(<i>woof</i>)</tt> should accept the same arguments <tt><i>woof</i></tt> as does
 <tt><i>meow</i> = <i>woof</i></tt>, even when those arguments are braced-initializers.
 <p/>
-That said, it would be peculiar to default the template type parameter of <tt>value_or</tt> to <tt>T</tt> 
-instead of <tt>remove_cv_t&lt;T&gt;</tt>. For <tt>expected&lt;const vector&lt;int&gt;, int&gt; <i>meow</i>{unexpect, 42};</tt>, 
-for example, <tt><i>meow</i>.value_or({1, 2, 3})</tt> would create a temporary <tt>const vector&lt;int&gt;</tt> 
-for the argument and return a copy of that argument. Were the default template argument instead 
-<tt>remove_cv_t&lt;T&gt;</tt>, <tt><i>meow</i>.value_or({1, 2, 3})</tt> could move construct its return value 
-from the argument <tt>vector&lt;int&gt;</tt>. For the same reason, the constructor that accepts a forwarding 
+That said, it would be peculiar to default the template type parameter of <tt>value_or</tt> to <tt>T</tt>
+instead of <tt>remove_cv_t&lt;T&gt;</tt>. For <tt>expected&lt;const vector&lt;int&gt;, int&gt; <i>meow</i>{unexpect, 42};</tt>,
+for example, <tt><i>meow</i>.value_or({1, 2, 3})</tt> would create a temporary <tt>const vector&lt;int&gt;</tt>
+for the argument and return a copy of that argument. Were the default template argument instead
+<tt>remove_cv_t&lt;T&gt;</tt>, <tt><i>meow</i>.value_or({1, 2, 3})</tt> could move construct its return value
+from the argument <tt>vector&lt;int&gt;</tt>. For the same reason, the constructor that accepts a forwarding
 reference with a default template argument of <tt>T</tt> should default that argument to <tt>remove_cv_t&lt;T&gt;</tt>.
 <p/>
-For consistency, it would be best to default the template argument of the perfect-forwarding construct, 
-perfect-forwarding assignment operator, and <tt>value_or</tt> to <tt>remove_cv_t&lt;T&gt;</tt>. Since all of 
-the arguments presented apply equally to <tt>optional</tt>, we believe <tt>optional</tt> should be changed 
+For consistency, it would be best to default the template argument of the perfect-forwarding construct,
+perfect-forwarding assignment operator, and <tt>value_or</tt> to <tt>remove_cv_t&lt;T&gt;</tt>. Since all of
+the arguments presented apply equally to <tt>optional</tt>, we believe <tt>optional</tt> should be changed
 consistently with <tt>expected</tt>. MSVCSTL has prototyped these changes successfully.
 </p>
 </discussion>
@@ -51,8 +51,8 @@ namespace std {
     [&hellip;]
     template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr optional&amp; operator=(U&amp;&amp;);
     [&hellip;]
-    template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) const &amp;;
-    template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) &amp;&amp;;
+    template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) const &amp;;
+    template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) &amp;&amp;;
     [&hellip;]
   };
   [&hellip;]
@@ -96,7 +96,7 @@ template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr o
 
 <blockquote>
 <pre>
-template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) const &amp;;
+template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) const &amp;;
 </pre>
 <blockquote>
 <p>
@@ -106,7 +106,7 @@ template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T
 </p>
 </blockquote>
 <pre>
-template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) &amp;&amp;;
+template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) &amp;&amp;;
 </pre>
 <blockquote>
 <p>
@@ -131,8 +131,8 @@ namespace std {
     [&hellip;]
     template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr expected&amp; operator=(U&amp;&amp;);
     [&hellip;]
-    template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) const &amp;;
-    template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) &amp;&amp;;
+    template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) const &amp;;
+    template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp;) &amp;&amp;;
     [&hellip;]
   };
   [&hellip;]
@@ -146,7 +146,7 @@ namespace std {
 
 <blockquote>
 <pre>
-template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; 
+template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt;
   constexpr explicit(!is_convertible_v&lt;U, T&gt;) expected(U&amp;&amp; v);
 </pre>
 <blockquote>
@@ -162,7 +162,7 @@ template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt;
 
 <blockquote>
 <pre>
-template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; 
+template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt;
   constexpr expected&amp; operator=(U&amp;&amp; v);
 </pre>
 <blockquote>
@@ -178,7 +178,7 @@ template&lt;class U = <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt;
 
 <blockquote>
 <pre>
-template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) const &amp;;
+template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) const &amp;;
 </pre>
 <blockquote>
 <p>
@@ -188,7 +188,7 @@ template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T
 </p>
 </blockquote>
 <pre>
-template&lt;class U <ins>= remove_cv_t&lt;</ins>T<ins>&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) &amp;&amp;;
+template&lt;class U <ins>= remove_cv_t&lt;T&gt;</ins>&gt; constexpr T value_or(U&amp;&amp; v) &amp;&amp;;
 </pre>
 <blockquote>
 <p>
