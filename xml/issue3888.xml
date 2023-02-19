@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3888" status="New">
+<title>Most ranges uninitialized memory algorithms are underconstrained</title>
+<section><sref ref="[specialized.construct]"/></section>
+<submitter>Jiang An</submitter>
+<date>17 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="3870"/> removed the support for constructing objects via <i>cv</i>-qualified lvalues. 
+However, it had not changed anything in the immediate context, which means some previously permitted 
+usages become hard errors instead of substitution failures.
+<p/>
+Note that <tt>ranges::uninitialized_default_construct</tt> and <tt>ranges::uninitialized_default_construct_n</tt> 
+are underconstrained even before LWG <iref ref="3870"/>, because <tt>remove_reference_t&lt;iter_reference_t&lt;I&gt;&gt;</tt> 
+may be a <tt>const</tt> type, while only it's <i>cv</i>-unqualified version (<tt>iter_value_t&lt;I&gt;</tt>) 
+is required to be <tt>default_initializable</tt>.
+<p/>
+<tt>construct_at</tt> and <tt>ranges::construct_at</tt> are also made underconstrained because the function 
+body is no longer valid when <tt>T</tt> is <i>cv</i>-qualified, which is not reflected in <i>Constraints:</i>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[special.mem.concepts]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class I&gt;
+concept <i>nothrow-input-iterator</i> = // <i>exposition only</i>
+  input_iterator&lt;I&gt; &amp;&amp;
+  is_lvalue_reference_v&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+  <ins>same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;, remove_reference_t&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;</ins>
+  same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;, iter_value_t&lt;I&gt;&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[specialized.construct]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints</i>: <ins><tt>T</tt> is a <i>cv</i>-unqualified type, and t</ins><del>T</del>he expression 
+<tt>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</tt> is well-formed when treated 
+as an unevaluated operand (<sref ref="[expr.context]"/>).
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
