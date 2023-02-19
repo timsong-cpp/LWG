@@ -1,0 +1,270 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3884" status="New">
+<title><tt>flat_<i>foo</i></tt> is missing allocator-extended copy/move constructors</title>
+<section><sref ref="[flat.map]"/><sref ref="[flat.multimap]"/>
+<sref ref="[flat.set]"/><sref ref="[flat.multiset]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>6 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+This issue is part of the "<tt>flat_<i>foo</i></tt>" sequence, LWG <iref ref="3786"/>, <iref ref="3802"/>, 
+<iref ref="3803"/>, <iref ref="3804"/>. <tt>flat_set</tt>, <tt>flat_multiset</tt>, <tt>flat_map</tt>, and 
+<tt>flat_multimap</tt> all have implicitly defaulted copy and move constructors, but they lack 
+allocator-extended versions of those constructors. This means that the following code is broken:
+</p>
+<blockquote><pre>
+// <a href="https://godbolt.org/z/qezv5rTrW"/>https://godbolt.org/z/qezv5rTrW<a/>
+#include &lt;cassert&gt;
+#include &lt;flat_set&gt;
+#include &lt;memory_resource&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+template&lt;class T, class Comp = std::less&lt;T&gt;&gt;
+using pmr_flat_set = std::flat_set&lt;T, Comp, std::pmr::vector&lt;T&gt;&gt;;
+
+int main() {
+  std::pmr::vector&lt;pmr_flat_set&lt;int&gt;&gt; vs = {
+    {1,2,3},
+    {4,5,6},
+  };
+  std::pmr::vector&lt;int&gt; v = std::move(vs[0]).extract();
+  assert(v.get_allocator().resource() == std::pmr::get_default_resource());
+}
+</pre></blockquote>
+<p>
+<tt>pmr_flat_set&lt;int&gt;</tt> advertises that it "<tt>uses_allocator</tt>" <tt>std::pmr::polymorphic_allocator&lt;int&gt;</tt>, 
+but in fact it lacks the allocator-extended constructor overload set necessary to interoperate with <tt>std::pmr::vector</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[flat.map.defn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+  class KeyContainer = vector&lt;Key&gt;, class MappedContainer = vector&lt;T&gt;&gt;
+  class flat_map {
+  public:
+    [&hellip;]
+    // <i><sref ref="[flat.map.cons]"/>, construct/copy/destroy</i>
+    flat_map() : flat_map(key_compare()) { }
+
+    <ins>template&lt;class Allocator&gt;
+      flat_map(const flat_map&amp;, const Allocator&amp; a);
+    template&lt;class Allocator&gt;
+      flat_map(flat_map&amp;&amp;, const Allocator&amp; a);</ins>
+
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.map.cons]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: As a drive-by fix, a missing closing <tt>&gt;</tt> is inserted in p11.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Allocator&gt;
+  flat_map(const flat_map&amp;, const Allocator&amp; a);
+template&lt;class Allocator&gt;
+  flat_map(flat_map&amp;&amp;, const Allocator&amp; a);</ins>
+template&lt;class Allocator&gt;
+  flat_map(const key_compare&amp; comp, const Allocator&amp; a);
+template&lt;class Allocator&gt;
+  explicit flat_map(const Allocator&amp; a);
+template&lt;class InputIterator, class Allocator&gt;
+  flat_map(InputIterator first, InputIterator last, const key_compare&amp; comp, const Allocator&amp; a);
+template&lt;class InputIterator, class Allocator&gt;
+  flat_map(InputIterator first, InputIterator last, const Allocator&amp; a);
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+-11- <i>Constraints</i>: <tt>uses_allocator_v&lt;key_container_type, Allocator<ins>&gt;</ins></tt> is <tt>true</tt> and 
+<tt>uses_allocator_v&lt;mapped_container_type, Allocator&gt;</tt> is <tt>true</tt>.
+<p/>
+-12- <i>Effects</i>: Equivalent to the corresponding non-allocator constructors except that <tt>c.keys</tt> and 
+<tt>c.values</tt> are constructed with uses-allocator construction (<sref ref="[allocator.uses.construction]"/>).
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.multimap.defn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+  class KeyContainer = vector&lt;Key&gt;, class MappedContainer = vector&lt;T&gt;&gt;
+  class flat_multimap {
+  public:
+    [&hellip;]
+    // <i><sref ref="[flat.multimap.cons]"/>, construct/copy/destroy</i>
+    flat_multimap() : flat_multimap(key_compare()) { }  
+
+    <ins>template&lt;class Allocator&gt;
+      flat_multimap(const flat_multimap&amp;, const Allocator&amp; a);
+    template&lt;class Allocator&gt;
+      flat_multimap(flat_multimap&amp;&amp;, const Allocator&amp; a);</ins>
+
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.multimap.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Allocator&gt;
+  flat_multimap(const flat_multimap&amp;, const Allocator&amp; a);
+template&lt;class Allocator&gt;
+  flat_multimap(flat_multimap&amp;&amp;, const Allocator&amp; a);</ins>
+template&lt;class Allocator&gt;
+  flat_multimap(const key_compare&amp; comp, const Allocator&amp; a);
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+-11- <i>Constraints</i>: <tt>uses_allocator_v&lt;key_container_type, Allocator&gt;</tt> is <tt>true</tt> and 
+<tt>uses_allocator_v&lt;mapped_container_type, Allocator&gt;</tt> is <tt>true</tt>.
+<p/>
+-12- <i>Effects</i>: Equivalent to the corresponding non-allocator constructors except that <tt>c.keys</tt> and 
+<tt>c.values</tt> are constructed with uses-allocator construction (<sref ref="[allocator.uses.construction]"/>).
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.set.defn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Key, class Compare = less&lt;Key&gt;, class KeyContainer = vector&lt;Key&gt;&gt;
+  class flat_set {
+  public:
+    [&hellip;]
+    // <i><sref ref="[flat.set.cons]"/>, constructors</i>
+    flat_set() : flat_set(key_compare()) { }
+    
+    <ins>template&lt;class Allocator&gt;
+      flat_set(const flat_set&amp;, const Allocator&amp; a);
+    template&lt;class Allocator&gt;
+      flat_set(flat_set&amp;&amp;, const Allocator&amp; a);</ins>
+
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.set.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Allocator&gt;
+  flat_set(const flat_set&amp;, const Allocator&amp; a);
+template&lt;class Allocator&gt;
+  flat_set(flat_set&amp;&amp;, const Allocator&amp; a);</ins>
+template&lt;class Allocator&gt;
+  flat_set(const key_compare&amp; comp, const Allocator&amp; a);
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+-9- <i>Constraints</i>: <tt>uses_allocator_v&lt;container_type, Allocator&gt;</tt> is <tt>true</tt>.
+<p/>
+-10- <i>Effects</i>: Equivalent to the corresponding non-allocator constructors except that <tt><i>c</i></tt> is 
+constructed with uses-allocator construction (<sref ref="[allocator.uses.construction]"/>).
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.multiset.defn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Key, class Compare = less&lt;Key&gt;, class KeyContainer = vector&lt;Key&gt;&gt;
+  class flat_multiset {
+  public:
+    [&hellip;]
+    // <i><sref ref="[flat.multiset.cons]"/>, constructors</i>
+    flat_multiset() : flat_multiset(key_compare()) { }
+    
+    <ins>template&lt;class Allocator&gt;
+      flat_multiset(const flat_multiset&amp;, const Allocator&amp; a);
+    template&lt;class Allocator&gt;
+      flat_multiset(flat_multiset&amp;&amp;, const Allocator&amp; a);</ins>
+
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[flat.multiset.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Allocator&gt;
+  flat_multiset(const flat_multiset&amp;, const Allocator&amp; a);
+template&lt;class Allocator&gt;
+  flat_multiset(flat_multiset&amp;&amp;, const Allocator&amp; a);</ins>
+template&lt;class Allocator&gt;
+  flat_multiset(const key_compare&amp; comp, const Allocator&amp; a);
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+-9- <i>Constraints</i>: <tt>uses_allocator_v&lt;container_type, Allocator&gt;</tt> is <tt>true</tt>.
+<p/>
+-10- <i>Effects</i>: Equivalent to the corresponding non-allocator constructors except that <tt><i>c</i></tt> is 
+constructed with uses-allocator construction (<sref ref="[allocator.uses.construction]"/>).
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
