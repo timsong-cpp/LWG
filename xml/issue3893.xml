@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3893" status="New">
+<title>LWG 3661 broke <tt>atomic&lt;shared_ptr&lt;T&gt;&gt; a; a = nullptr;</tt></title>
+<section><sref ref="[util.smartptr.atomic.shared]"/></section>
+<submitter>Zachary Wassall</submitter>
+<date>22 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="3661"/>, "<tt>constinit atomic&lt;shared_ptr&lt;T&gt;&gt; a(nullptr);</tt> should work" 
+added the following to <tt>atomic&lt;shared_ptr&lt;T&gt;&gt;</tt>:
+</p>
+<blockquote><pre>
+constexpr atomic(nullptr_t) noexcept : atomic() { }
+</pre></blockquote>
+<p>
+I believe that doing so broke the following example:
+</p>
+<blockquote><pre>
+atomic&lt;shared_ptr&lt;T&gt;&gt; a;
+a = nullptr;
+</pre></blockquote>
+<p>
+For reference, <tt>atomic&lt;shared_ptr&lt;T&gt;&gt;</tt> provides two assignment operator overloads:
+</p>
+<blockquote><pre>
+void operator=(const atomic&amp;) = delete;          // #1
+void operator=(shared_ptr&lt;T&gt; desired) noexcept;  // #2
+</pre></blockquote>
+<p>
+Prior to LWG <iref ref="3661"/>, the assignment in the example unambiguously matches #2. #1 is not viable because 
+<tt>nullptr_t</tt> is not convertible to <tt>atomic&lt;shared_ptr&lt;T&gt;&gt;</tt>. After LWG 3611, #1 is viable 
+and the assignment is ambiguous between #1 and #2.
+<p/>
+I believe this could be remedied easily enough by adding an assignment operator to match the added 
+<tt>nullptr_t</tt> constructor:
+</p>
+<blockquote><pre>
+void operator=(nullptr_t) noexcept;
+</pre></blockquote>
+
+<note>2023-02-25; Daniel comments and provides wording</note>
+<p>
+The suggested delegation below to <tt>store(nullptr)</tt> is not ambiguous and calls the constructor
+<tt>shared_ptr(nullptr_t)</tt>, which is guaranteed to be no-throwing.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[util.smartptr.atomic.shared]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; struct atomic&lt;shared_ptr&lt;T&gt;&gt; {
+    [&hellip;]
+    constexpr atomic() noexcept;
+    constexpr atomic(nullptr_t) noexcept : atomic() { }
+    atomic(shared_ptr&lt;T&gt; desired) noexcept;
+    atomic(const atomic&amp;) = delete;
+    void operator=(const atomic&amp;) = delete;
+    [&hellip;]
+    void operator=(shared_ptr&lt;T&gt; desired) noexcept;
+    <ins>void operator=(nullptr_t) noexcept;</ins>
+    [&hellip;]
+  private:
+    shared_ptr&lt;T&gt; p; // <i>exposition only</i>
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+void operator=(shared_ptr&lt;T&gt; desired) noexcept;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: Equivalent to <tt>store(desired)</tt>.
+</p>
+</blockquote>
+<pre>
+<ins>void operator=(nullptr_t) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Equivalent to <tt>store(nullptr)</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+
+</li>
+
+
+</ol>
+</resolution>
+
+</issue>
