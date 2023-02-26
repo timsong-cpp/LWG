@@ -15,6 +15,55 @@ Currently, <tt>std::(ranges::)destroy_at</tt> is specified to destroy array elem
 (<sref ref="[class.dtor]"/>/13) and the order for arrays created by <tt>std::make_shared</tt> and 
 <tt>std::allocate_shared</tt> (mandated by LWG <iref ref="3005"/>).
 </p>
+
+<superseded>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[specialized.destroy]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  constexpr void destroy_at(T* location);
+
+namespace ranges {
+  template&lt;destructible T&gt;
+    constexpr void destroy_at(T* location) noexcept;
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i>
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; If <tt>T</tt> is an array type, equivalent to <tt>destroy(<ins>rbegin</ins><del>begin</del>(*location), <ins>rend</ins><del>end</del>(*location))</tt>.</p></li>
+<li><p>(1.2) &mdash; Otherwise, equivalent to <tt>location-&gt;~T()</tt>.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</superseded>
+
+<note>2023-02-26; Daniel comments and provides alternative wording</note>
+<p>
+The suggested fix indeed corrects an inconsistency, but also implies a silent behaviour change at runtime, since at least MSVC STL and
+libstdc++ implement the array destruction order as specified (others not tested). 
+The below wording therefore suggests to introduce a specific feature macro for this, so that user code can potentially react on this,
+regardless of potential vendor API breakage hesitations. 
+The natural feature macro to increase would be that which introduced the specific array destruction behavior of <tt>destroy_at</tt>, 
+which was <paper num="P0896R4"/>, and which introduced <tt>__cpp_lib_ranges</tt>, on the other hand the specification change affects 
+both the <tt>std::ranges</tt> and the <tt>std</tt> forms of <tt>destroy_at</tt>, so it seems plausible to suggest a new, specific feature 
+macro for both <tt>destroy_at</tt> function templates. This is what the proposed wording does.
+<p/>
+LWG should clarify whether an entry to <sref ref="[diff.cpp20]"/> should be added as well.
+</p>
 </discussion>
 
 <resolution>
@@ -23,6 +72,23 @@ This wording is relative to <paper num="N4928"/>.
 </p>
 
 <ol>
+
+<li><p>Modify <sref ref="[version.syn]"/>, header <tt>&lt;version&gt;</tt> synopsis, as indicated and replace
+the placeholder <tt>YYYYMML</tt> by the year and month of adoption of this issue:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+#define __cpp_lib_coroutine         201902L  // <i>also in &lt;coroutine&gt;</i>
+<ins>#define __cpp_lib_destroy_at        YYYYMML  // <i>also in &lt;memory&gt;</i></ins>
+#define __cpp_lib_destroying_delete 201806L  // <i>also in &lt;new&gt;</i>
+[&hellip;]
+</pre>
+</blockquote>
+
+</li>
+
+
 
 <li><p>Modify <sref ref="[specialized.destroy]"/> as indicated:</p>
 
