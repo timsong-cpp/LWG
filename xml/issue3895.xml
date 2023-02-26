@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3895" status="New">
+<title>Various relation concepts are missing default values of the second template parameters</title>
+<section><sref ref="[concepts.syn]"/><sref ref="[iterator.synopsis]"/></section>
+<submitter>blacktea hamburger</submitter>
+<date>25 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::indirect_equivalence_relation</tt> and <tt>std::indirect_strict_weak_order</tt> have default values 
+for the second template parameters:
+</p>
+<blockquote><pre>
+template&lt;class F, class I1, class I2 = I1&gt;
+  concept indirect_equivalence_relation = <i>see below</i>;
+
+template&lt;class F, class I1, class I2 = I1&gt;
+  concept indirect_strict_weak_order = <i>see below</i>;
+</pre></blockquote>
+<p>
+But <tt>std::relation</tt>, <tt>std::equivalence_relation</tt>, <tt>std::strict_weak_order</tt>, and
+<tt>std::indirect_binary_predicate</tt> are missing such default values:
+</p>
+<blockquote><pre>
+template&lt;class R, class T, class U&gt;
+  concept relation = <i>see below</i>;
+
+template&lt;class R, class T, class U&gt;
+  concept equivalence_relation = <i>see below</i>;
+
+template&lt;class R, class T, class U&gt;
+  concept strict_weak_order = <i>see below</i>;
+  
+template&lt;class F, class I1, class I2&gt;
+  concept indirect_binary_predicate = <i>see below</i>;
+</pre></blockquote>
+<p>
+That makes them inconsistent and it should not be expected.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[concepts.syn]"/>, header <tt>&lt;concepts&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+// <i>all freestanding</i>
+namespace std {
+  [&hellip;]
+  
+  // <i><sref ref="[concept.relation]"/>, concept relation</i>
+  template&lt;class R, class T, class U <ins>= T</ins>&gt;
+    concept relation = <i>see below</i>;
+  
+  // <i><sref ref="[concept.equiv]"/>, concept equivalence_relation</i>
+  template&lt;class R, class T, class U <ins>= T</ins>&gt;
+    concept equivalence_relation = <i>see below</i>;
+  
+  // <i><sref ref="[concept.strictweakorder]"/>, concept strict_weak_order</i>
+  template&lt;class R, class T, class U <ins>= T</ins>&gt;
+    concept strict_weak_order = <i>see below</i>;
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[concept.relation]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class T, class U <ins>= T</ins>&gt;
+  concept relation =
+    predicate&lt;R, T, T&gt; &amp;&amp; predicate&lt;R, U, U&gt; &amp;&amp;
+    predicate&lt;R, T, U&gt; &amp;&amp; predicate&lt;R, U, T&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[concept.equiv]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class T, class U <ins>= T</ins>&gt;
+  concept equivalence_relation = relation&lt;R, T, U&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[concept.strictweakorder]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class T, class U <ins>= T</ins>&gt;
+  concept strict_weak_order = relation&lt;R, T, U&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[iterator.synopsis]"/>, header <tt>&lt;iterator&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std {
+  [&hellip;]
+  // <i><sref ref="[indirectcallable.indirectinvocable]"/>, indirect callables</i>
+  [&hellip;]
+  template&lt;class F, class I1, class I2 <ins>= I1</ins>&gt;
+    concept indirect_binary_predicate = <i>see below</i>; // <i>freestanding</i>
+
+  template&lt;class F, class I1, class I2 = I1&gt;
+    concept indirect_equivalence_relation = <i>see below</i>; // <i>freestanding</i>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[indirectcallable.indirectinvocable]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The indirect callable concepts are used to constrain those algorithms that accept callable objects 
+(<sref ref="[func.require]"/>) as arguments.
+</p>
+<blockquote><pre>
+[&hellip;]
+template&lt;class F, class I1, class I2 <ins>= I1</ins>&gt;
+  concept indirect_binary_predicate =
+    indirectly_readable&lt;I1&gt; &amp;&amp; indirectly_readable&lt;I2&gt; &amp;&amp;
+    copy_constructible&lt;F&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_value_t&lt;I1&gt;&amp;, iter_value_t&lt;I2&gt;&amp;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_value_t&lt;I1&gt;&amp;, iter_reference_t&lt;I2&gt;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_reference_t&lt;I1&gt;, iter_value_t&lt;I2&gt;&amp;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_reference_t&lt;I1&gt;, iter_reference_t&lt;I2&gt;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_common_reference_t&lt;I1&gt;, iter_common_reference_t&lt;I2&gt;&gt;;
+[&hellip;]
+</pre></blockquote>
+</blockquote>
+
+</li>
+
+
+</ol>
+</resolution>
+
+</issue>
