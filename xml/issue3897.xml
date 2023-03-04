@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3897" status="New">
+<title><tt>inout_ptr</tt> will not update raw pointer to 0</title>
+<section><sref ref="[inout.ptr.t]"/></section>
+<submitter>Doug Cook</submitter>
+<date>27 Feb 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>inout_ptr</tt> seems useful for two purposes:
+</p>
+<ol>
+<li><p>Using smart pointers with C-style APIs.</p></li>
+<li><p>Annotating raw pointers for use with C-style APIs.</p></li>
+</ol>
+<p>
+Unfortunately, as presently specified, it is not safe for developers to use <tt>inout_ptr</tt> for the second purpose. 
+It is not safe to change code from
+</p>
+<blockquote><pre>
+void* raw_ptr1;
+InitSomething(&amp;raw_ptr1);
+UpdateSomething(&amp;raw_ptr1); // In some cases may set raw_ptr1 = nullptr.
+CleanupSomething(raw_ptr1);
+</pre></blockquote>
+<p>
+to
+</p>
+<blockquote><pre>
+void* raw_ptr2;
+InitSomething(std::out_ptr(raw_ptr2));
+UpdateSomething(std::inout_ptr(raw_ptr2)); // <span style="color:red;font-weight:bolder">May leave dangling pointer</span>
+CleanupSomething(raw_ptr2);                // <span style="color:red;font-weight:bolder">Possible double-delete</span>
+</pre></blockquote>
+<p>
+In the case where <tt>UpdateSomething</tt> would set <tt>raw_ptr1 = nullptr</tt>, the currently-specified <tt>inout_ptr</tt> 
+implementation will leave <tt>raw_ptr2</tt> at its old value. This would likely lead to a double-delete in <tt>CleanupSomething</tt>.
+<p/>
+The issue occurs because <tt>inout_ptr</tt> is specified as follows:
+</p> 
+<ol>
+<li><p>Constructor: <em>If the user's pointer is a smart pointer</em>, perform a "<tt>release</tt>" operation.</p></li>
+<li><p>(C-style API executes)</p></li>
+<li><p><em>If the C-style API returns a non-<tt>NULL</tt> pointer</em>, propagate the returned value to the user's pointer.</p></li>
+</ol>
+<p>
+If the user's pointer is not a smart pointer, no "<tt>release</tt>" operation occurs, and if the C-style API returns a 
+<tt>NULL</tt> pointer, no propagation of the <tt>NULL</tt> occurs. We're left with a dangling raw pointer which is 
+different from the original behavior using <tt>&amp;</tt>.
+<p/>
+I see two potential solutions:
+</p>
+<ol>
+<li><p>Make the "<tt>release</tt>" operation unconditional (i.e. it applies to both smart and raw pointers). For raw pointers, 
+define the "<tt>release</tt>" operation as setting the raw pointer to <tt>nullptr</tt>.</p></li>
+<li><p>Make the return value propagation unconditional for raw pointers.</p></li>
+</ol>
+<p>
+Solution #2 seems likely to lead to more optimal code as it avoids an unnecessary branch.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[inout.ptr.t]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+~inout_ptr_t();
+</pre>
+<blockquote>
+<p>
+-9- Let <tt>SP</tt> be <tt><i>POINTER_OF_OR</i>(Smart, Pointer)</tt> (<sref ref="[memory.general]"/>).
+<p/>
+-10- Let <i>release-statement</i> be <tt>s.release();</tt> if an implementation does not call <tt>s.release()</tt> in the
+constructor. Otherwise, it is empty.
+<p/>
+-11- <i>Effects</i>: Equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(11.1) &mdash; </p>
+<blockquote><pre>
+<del>if (p) {</del>
+  apply([&amp;](auto&amp;&amp;... args) {
+    s = Smart( static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+<del>}</del>
+</pre></blockquote>
+<p>
+if <tt>is_pointer_v&lt;Smart&gt;</tt> is <tt>true</tt>;
+</p></li>
+<li><p>(11.2) &mdash; otherwise,</p>
+<blockquote><pre>
+<i>release-statement</i>;
+if (p) {
+  apply([&amp;](auto&amp;&amp;... args) {
+    s.reset(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+}
+</pre></blockquote>
+<p>
+if the expression <tt>s.reset(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...)</tt> is well-formed;
+</p>
+</li>
+<li><p>(11.3) &mdash; otherwise,</p>
+<blockquote><pre>
+<i>release-statement</i>;
+if (p) {
+  apply([&amp;](auto&amp;&amp;... args) {
+    s = Smart(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+}
+</pre></blockquote>
+<p>
+if <tt>is_constructible_v&lt;Smart, SP, Args...&gt;</tt> is <tt>true</tt>;
+</p>
+</li>
+<li><p>(11.4) &mdash; otherwise, the program is ill-formed.</p></li>
+</ol>
+
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
