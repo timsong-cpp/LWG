@@ -38,9 +38,8 @@ std::tuple {
 </pre></blockquote>
 
 <note>2023-02-18; Daniel provides wording</note>
-</discussion>
 
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4928"/>.
 </p>
@@ -142,6 +141,137 @@ tuple_element_t&lt;tuple_size_v&lt;UTuple&gt; - 1, UTuple&gt;</tt>.
 [&hellip;]
 <p/>
 -8- <i>Remarks</i>: The second overload is to be found via argument-dependent lookup (<sref ref="[basic.lookup.argdep]"/>) only.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</superseded>
+
+<note>2023-03-05; Daniel comments and provides improved wording</note>
+<p>
+The revised wording ensures that no ambiguity exists between the overload candidates, furthermore the additional wording about
+being found via argument-dependent lookup only has been eliminated, because the general conventions of <sref ref="[hidden.friends]"/>
+apply. 
+<p/>
+The reusage of the exposition-only concept <tt><i>different-from</i></tt> is already existing practice in various places of 
+<sref ref="[tuple]"/>. We have also existing wording practice where we have an extra <i>Constraints:</i> element added even though 
+a prototype has already a language constraint as part of its signature.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[tuple.syn]"/>, header <tt>&lt;tuple&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  // <i><sref ref="[tuple.rel]"/>, relational operators</i>
+  template&lt;class... TTypes, class... UTypes&gt;
+    constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp;, const tuple&lt;UTypes...&gt;&amp;);
+  <del>template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+    constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp;, const UTuple&amp;);</del>
+  template&lt;class... TTypes, class... UTypes&gt;
+    constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;TTypes, UTypes&gt;...&gt;
+      operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp;, const tuple&lt;UTypes...&gt;&amp;);
+  <del>template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+    constexpr <i>see below</i> operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp;, const UTuple&amp;);</del>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[tuple.tuple]"/>, class template <tt>tuple</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class... Types&gt;
+  class tuple {
+  public:
+    [&hellip;]
+
+    template&lt;<i>tuple-like</i> UTuple&gt;
+      constexpr tuple&amp; operator=(UTuple&amp;&amp;);
+    template&lt;<i>tuple-like</i> UTuple&gt;
+      constexpr const tuple&amp; operator=(UTuple&amp;&amp;) const;
+
+    <ins>// <i><sref ref="[tuple.rel]"/>, relational operators</i></ins>
+    <ins>template&lt;<i>tuple-like</i> UTuple&gt;
+      friend constexpr bool operator==(const tuple&amp;, const UTuple&amp;);</ins>
+    <ins>template&lt;<i>tuple-like</i> UTuple&gt;
+      friend constexpr <i>see below</i> operator&lt;=&gt;(const tuple&amp;, const UTuple&amp;);</ins>
+
+    // <i><sref ref="[tuple.swap]"/>, tuple swap</i>
+    constexpr void swap(tuple&amp;) noexcept(<i>see below</i>);
+    constexpr void swap(const tuple&amp;) const noexcept(<i>see below</i>);
+  };
+}
+</pre>
+</blockquote>
+
+</li>
+
+
+<li><p>Modify <sref ref="[tuple.rel]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class... TTypes, class... UTypes&gt;
+  constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp; t, const tuple&lt;UTypes...&gt;&amp; u);
+template&lt;<del>class... TTypes,</del> <i>tuple-like</i> UTuple&gt;
+  <ins>friend</ins> constexpr bool operator==(const tuple<del>&lt;TTypes...&gt;</del>&amp; t, const UTuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-1- For the first overload let <tt>UTuple</tt> be <tt>tuple&lt;UTypes...&gt;</tt>. <ins>For the second overload
+let <tt>TTypes</tt> denote the pack <tt>Types</tt>.</ins>
+<p/>
+<ins>-?- <i>Constraints</i>: For the second overload, <tt><i>different-from</i>&lt;UTuple, tuple&gt;</tt> 
+(<sref ref="[range.utility.helpers]"/>) is <tt>true</tt>.</ins>
+<p/>
+-2- <i>Mandates</i>: [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><del>(5.1) &mdash;</del> The elementary comparisons are performed in order from the zeroth index upwards. No comparisons
+or element accesses are performed after the first equality comparison that evaluates to <tt>false</tt>.</p></li>
+<li><p><del>(5.2) &mdash; The second overload is to be found via argument-dependent lookup (<sref ref="[basic.lookup.argdep]"/>) only.</del></p></li>
+</ol>
+</blockquote>
+<pre>
+template&lt;class... TTypes, class... UTypes&gt;
+  constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;TTypes, UTypes&gt;...&gt;
+    operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp; t, const tuple&lt;UTypes...&gt;&amp; u);
+template&lt;<del>class... TTypes,</del> <i>tuple-like</i> UTuple&gt;
+  <ins>friend</ins> constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;<del>T</del>Types, Elems&gt;...&gt; 
+    operator&lt;=&gt;(const tuple<del>&lt;TTypes...&gt;</del>&amp; t, const UTuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-6- For the second overload, <ins>let <tt>TTypes</tt> denote the pack <tt>Types</tt> and</ins> <tt>Elems</tt> denotes the 
+pack of types <tt>tuple_element_t&lt;0, UTuple&gt;, tuple_element_t&lt;1, UTuple&gt;, ... , 
+tuple_element_t&lt;tuple_size_v&lt;UTuple&gt; - 1, UTuple&gt;</tt>.
+<p/>
+<ins>-?- <i>Constraints</i>: For the second overload, <tt><i>different-from</i>&lt;UTuple, tuple&gt;</tt> 
+(<sref ref="[range.utility.helpers]"/>) is <tt>true</tt>.</ins>
+<p/>
+-7- <i>Effects</i>: [&hellip;]
+<p/>
+<del>-8- <i>Remarks</i>: The second overload is to be found via argument-dependent lookup (<sref ref="[basic.lookup.argdep]"/>) only.</del>
 </p>
 </blockquote>
 </blockquote>
