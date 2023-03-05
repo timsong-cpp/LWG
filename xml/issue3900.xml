@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3900" status="New">
+<title>The <tt>allocator_arg_t</tt> overloads of <tt>generator::promise_type::operator new</tt>
+should not be constrained</title>
+<section><sref ref="[coro.generator.promise]"/></section>
+<submitter>Tim Song</submitter>
+<date>4 Mar 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When the allocator is not type-erased, the <tt>allocator_arg_t</tt> overloads of
+<tt>generator::promise_type::operator new</tt> are constrained on
+<tt>convertible_to&lt;const Alloc&amp;, Allocator&gt;</tt>. As a result, if the
+the allocator is default-constructible (like <tt>polymorphic_allocator</tt> is)
+but the user accidentally provided a wrong type (say, <tt>memory_resource&amp;</tt>
+instead of <tt>memory_resource*</tt>), their code will silently fall back to
+using a default-constructed allocator. It would seem better to take the tag
+as definitive evidence of the user's intent to supply an allocator for the coroutine,
+and error out if the supplied allocator cannot be used.
+<p/>
+This change does mean that the user cannot deliberately pass an incompatible
+allocator (preceded by an <tt>std::allocator_arg_t</tt> tag) for their own use
+inside the coroutine, but that sort of API seems fragile and confusing at best,
+since the usual case is that allocators so passed <i>will</i> be used by
+<tt>generator</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[coro.generator.promise]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Ref, class V, class Allocator&gt;
+  class generator&lt;Ref, V, Allocator&gt;::promise_type {
+  public:
+    [&hellip;]
+    void* operator new(size_t size)
+      requires same_as&lt;Allocator, void&gt; || default_initializable&lt;Allocator&gt;;
+
+    template&lt;class Alloc, class... Args&gt;
+      <del>requires same_as&lt;Allocator, void&gt; || convertible_to&lt;const Alloc&amp;, Allocator&gt;</del>
+        void* operator new(size_t size, allocator_arg_t, const Alloc&amp; alloc, const Args&amp;...);
+
+    template&lt;class This, class Alloc, class... Args&gt;
+      <del>requires same_as&lt;Allocator, void&gt; || convertible_to&lt;const Alloc&amp;, Allocator&gt;</del>
+        void* operator new(size_t size, const This&amp;, allocator_arg_t, const Alloc&amp; alloc,
+                           const Args&amp;...);
+    [&hellip;]
+   };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+void* operator new(size_t size)
+  requires same_as&lt;Allocator, void&gt; || default_initializable&lt;Allocator&gt;;
+
+template&lt;class Alloc, class... Args&gt;
+  <del>requires same_as&lt;Allocator, void&gt; || convertible_to&lt;const Alloc&amp;, Allocator&gt;</del>
+  void* operator new(size_t size, allocator_arg_t, const Alloc&amp; alloc, const Args&amp;...);
+
+template&lt;class This, class Alloc, class... Args&gt;
+  <del>requires same_as&lt;Allocator, void&gt; || convertible_to&lt;const Alloc&amp;, Allocator&gt;</del>
+  void* operator new(size_t size, const This&amp;, allocator_arg_t, const Alloc&amp; alloc,
+                     const Args&amp;...);
+</pre>
+<blockquote>
+<p>
+-17- Let <tt>A</tt> be
+</p>
+<ol style="list-style-type: none">
+  <li><p>(17.1) &mdash; <tt>Allocator</tt>, if it is not <tt>void</tt>,</p></li>
+  <li><p>(17.2) &mdash; <tt>Alloc</tt> for the overloads with a template parameter <tt>Alloc</tt>, or</p></li>
+  <li><p>(17.3) &mdash; <tt>allocator&lt;void&gt;</tt> otherwise.</p></li>
+</ol>
+<p>
+Let <tt>B</tt> be <tt>allocator_traits&lt;A&gt;::template rebind_alloc&lt;U&gt;</tt>
+where <tt>U</tt> is an unspecified type whose size and alignment are both
+<tt>__STDCPP_DEFAULT_NEW_ALIGNMENT__</tt>.
+<p/>
+-18- <i>Mandates</i>: <tt>allocator_traits&lt;B&gt;::pointer</tt> is a pointer type.
+<ins>For the overloads with a template parameter <tt>Alloc</tt>,
+<tt>same_as&lt;Allocator, void&gt; || convertible_to&lt;const Alloc&amp;, Allocator&gt;</tt> is modeled.</ins>
+<p/>
+-19- <i>Effects</i>: Initializes an allocator <tt>b</tt> of type <tt>B</tt> with <tt>A(alloc)</tt>,
+for the overloads with a function parameter <tt>alloc</tt>, and with <tt>A()</tt> otherwise.
+Uses <tt>b</tt> to allocate storage for the smallest array of <tt>U</tt> sufficient
+to provide storage for a coroutine state of size <tt>size</tt>, and unspecified
+additional state necessary to ensure that <tt>operator delete</tt> can later
+deallocate this memory block with an allocator equal to <tt>b</tt>.
+<p/>
+-20- <i>Returns:</i> A pointer to the allocated storage.
+</p>
+
+</blockquote>
+</blockquote>
+
+
+</li>
+
+
+</ol>
+</resolution>
+
+</issue>

@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3899" status="New">
+<title><tt>co_yield</tt>ing elements of an lvalue <tt>generator</tt> is unnecessarily inefficient</title>
+<section><sref ref="[coro.generator.promise]"/></section>
+<submitter>Tim Song</submitter>
+<date>4 Mar 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider:
+</p>
+<blockquote>
+<pre>
+std::generator&lt;int&gt; f();
+std::generator&lt;int&gt; g() {
+    auto gen = f();
+    auto gen2 = f();
+    co_yield std::ranges::elements_of(std::move(gen));   // #1
+    co_yield std::ranges::elements_of(gen2);             // #2
+    // other stuff
+}
+</pre>
+</blockquote>
+<p>
+Both #1 and #2 compile. The differences are:
+</p>
+<ul>
+<li>
+<p>
+#2 is significantly less efficient (it uses the general overload of <tt>yield_value</tt>,
+so it creates a new coroutine frame and doesn't do symmetric transfer into <tt>gen2</tt>'s coroutine)
+</p>
+</li>
+<li>
+<p>
+the coroutine frame of <tt>gen</tt> and <tt>gen2</tt> are destroyed at different
+times: <tt>gen</tt>'s frame is destroyed at the end of #1, but <tt>gen2</tt>'s is
+not destroyed until the closing brace.
+</p>
+</li>
+</ul>
+<p>
+But as far as the user is concerned, neither <tt>gen</tt> nor <tt>gen2</tt> is
+usable after the <tt>co_yield</tt>. In both cases the only things you can do
+with the objects are:
+</p>
+<ul>
+<li><p>destroying them;</p></li>
+<li><p>assigning to them;</p></li>
+<li><p>call <tt>end()</tt> on them to get a copy of <tt>default_sentinel</tt>.</p></li>
+</ul>
+<p>
+We could make #2 ill-formed, but that seems unnecessary: there is no meaningful
+difference between <tt>generator</tt> and any other single-pass input range
+(or a <tt>generator</tt> with a different yielded type that has to go through
+the general overload) in this regard. We should just make #2 do the efficient
+thing too.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[coro.generator.promise]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Ref, class V, class Allocator&gt;
+  class generator&lt;Ref, V, Allocator&gt;::promise_type {
+  public:
+    [&hellip;]
+    auto yield_value(const remove_reference_t&lt;yielded&gt;&amp; lval)
+      requires is_rvalue_reference_v&lt;yielded&gt; &amp;&amp;
+        constructible_from&lt;remove_cvref_t&lt;yielded&gt;, const remove_reference_t&lt;yielded&gt;&amp;&gt;;
+
+    template&lt;class R2, class V2, class Alloc2, class Unused&gt;
+      requires same_as&lt;typename generator&lt;R2, V2, Alloc2&gt;::yielded, yielded&gt;
+        auto yield_value(ranges::elements_of&lt;generator&lt;R2, V2, Alloc2&gt;&amp;&amp;, Unused&gt; g) noexcept;
+<ins>    template&lt;class R2, class V2, class Alloc2, class Unused&gt;
+      requires same_as&lt;typename generator&lt;R2, V2, Alloc2&gt;::yielded, yielded&gt;
+        auto yield_value(ranges::elements_of&lt;generator&lt;R2, V2, Alloc2&gt;&amp;, Unused&gt; g) noexcept;</ins>
+
+    template&lt;ranges::input_range R, class Alloc&gt;
+      requires convertible_to&lt;ranges::range_reference_t&lt;R&gt;, yielded&gt;
+        auto yield_value(ranges::elements_of&lt;R, Alloc&gt; r) noexcept;
+    [&hellip;]
+   };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class R2, class V2, class Alloc2, class Unused&gt;
+  requires same_as&lt;typename generator&lt;R2, V2, Alloc2&gt;::yielded, yielded&gt;
+  auto yield_value(ranges::elements_of&lt;generator&lt;R2, V2, Alloc2&gt;&amp;&amp;, Unused&gt; g) noexcept;
+<ins>template&lt;class R2, class V2, class Alloc2, class Unused&gt;
+  requires same_as&lt;typename generator&lt;R2, V2, Alloc2&gt;::yielded, yielded&gt;
+  auto yield_value(ranges::elements_of&lt;generator&lt;R2, V2, Alloc2&gt;&amp;, Unused&gt; g) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+-10- <i>Preconditions</i>: A handle referring to the coroutine whose promise object
+is <tt>*this</tt> is at the top of <tt>*<i>active_</i></tt> of some generator
+object <tt>x</tt>. The coroutine referred to by <tt>g.range.<i>coroutine_</i></tt>
+is suspended at its initial suspend point.
+<p/>
+-11- <i>Returns:</i> An awaitable object of an unspecified type (<sref ref="[expr.await]"/>)
+into which <tt>g.range</tt> is moved, whose member <tt>await_ready</tt> returns <tt>false</tt>,
+whose member <tt>await_suspend</tt> pushes <tt>g.range.<i>coroutine_</i></tt> into <tt>*x.<i>active_</i></tt>
+and resumes execution of the coroutine referred to by <tt>g.range.<i>coroutine_</i></tt>,
+and whose member <tt>await_resume</tt> evaluates <tt>rethrow_exception(<i>except_</i>)</tt>
+if <tt>bool(<i>except_</i>)</tt> is <tt>true</tt>. If <tt>bool(<i>except_</i>)</tt> is <tt>false</tt>,
+the <tt>await_resume</tt> member has no effects.
+<p/>
+-12- <i>Remarks</i>: A <i>yield-expression</i> that calls
+<del>this function</del><ins>one of these functions</ins> has type
+<tt>void</tt> (<sref ref="[expr.yield]"/>).
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+
+</ol>
+</resolution>
+
+</issue>
