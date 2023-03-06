@@ -54,7 +54,7 @@ fi
 # title=$(xpath -q -s '' -e '/issue/title//text()' $xml | html2txt)
 
 # Use xpath to select text content of <title> element, with entities replaced.
-title=$(xpath -q -e 'string(/issue/title)' $xml)
+title=$(xpath -q -e 'normalize-space(/issue/title)' $xml)
 
 draft=`mktemp /tmp/draft.prio.mail.XXXXXX` || exit
 
