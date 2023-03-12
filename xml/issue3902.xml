@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3902" status="New">
+<title>Return type of <tt>std::declval&lt;<i>cv</i> void&gt;</tt> should be (<i>cv</i>-unqualified) <tt>void</tt></title>
+<section><sref ref="[declval]"/></section>
+<submitter>Jiang An</submitter>
+<date>7 Mar 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently libc++ and libstdc++ determine the return type of <tt>std::declval</tt> like this:
+</p>
+<blockquote><pre>
+template&lt;class _Tp&gt;
+_Tp&amp;&amp; __declval_ret(int); // selected when _Tp is a referenceable type
+
+template&lt;class _Tp&gt;
+_Tp __declval_ret(long); // selected when _Tp is cv void
+
+template&lt;class _Tp&gt;
+decltype(__declval_ret&lt;_Tp&gt;(0)) declval() noexcept;
+</pre></blockquote>
+ <p>
+This strategy avoids instantiation of class templates. But it also drops <i>cv</i>-qualifiers of the return type 
+when the type is <i>cv</i> <tt>void</tt>, which is different from the standard requirements. Such difference has 
+no impact in normal use of <tt>std::declval</tt>, but is observable via <tt>decltype(std::declval&lt;const void&gt;)</tt> 
+and its friends.
+<p/>
+Given maintainers may think it's reasonable to keep the current implementation 
+(see <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109049">GCC Bugzilla #109049</a>), 
+it may be worthwhile to legitimate such strategy.
+<p/>
+Should we make such construction ill-formed?
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4928"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[utility.syn]"/>, header <tt>&lt;utility&gt;</tt> synopsis, and <sref ref="[declval]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  <ins>remove_cv_t&lt;</ins>add_rvalue_reference_t&lt;T&gt;<ins>&gt;</ins> declval() noexcept; // <i>as unevaluated operand</i>
+</pre>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
