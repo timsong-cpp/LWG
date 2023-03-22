@@ -6,7 +6,7 @@
 <section><sref ref="[expected.object.general]"/></section>
 <submitter>Jiang An</submitter>
 <date>19 Feb 2023</date>
-<priority>99</priority>
+<priority>2</priority>
 
 <discussion>
 <p>
@@ -19,6 +19,16 @@ I think when <tt>T</tt> is <i>cv</i>-qualified, it would be better to store <tt>
 while sometimes (other than construction/destruction) access it via a <i>cv</i>-qualified glvalue, which can also avoid UB 
 associated with <tt>const</tt>/<tt>volatile</tt> objects.
 </p>
+
+<note>2023-03-22; Reflector poll</note>
+<p>
+Set priority to 2 after reflector poll.
+"Not clear if all these wording changes are needed or desired."
+"Unconvinced that the mixed-value-error swap should use <code>value()</code>,
+source is destroyed immediately anyway. The else branch should use
+<code>remove_cv_t</code> too."
+</p>
+
 </discussion>
 
 <resolution>
@@ -160,7 +170,16 @@ if constexpr (is_nothrow_move_constructible_v&lt;E&gt;) {
     throw;
   }
 } else {
-  [&hellip;]
+  T tmp(std::move(<i>val</i>));
+  destroy_at(addressof(<i>val</i>));
+  try {
+    construct_at(addressof(<i>unex</i>), std::move(rhs.<i>unex</i>));
+    destroy_at(addressof(rhs.<i>unex</i>));
+    construct_at(addressof(rhs.<i>val</i>), std::move(tmp));
+  } catch (...) {
+    construct_at(addressof(<i>val</i>), std::move(tmp));
+    throw;
+  }
 }
 <i>has_val</i> = false;
 rhs.<i>has_val</i> = true;
