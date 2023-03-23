@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3700" status="New">
+<issue num="3700" status="Resolved">
 <title>The <tt>const begin</tt> of the <tt>join_view</tt> family does not require <tt><i>InnerRng</i></tt> to be a range</title>
 <section><sref ref="[range.join.view]"/><sref ref="[range.join.with.view]"/></section>
 <submitter>Hewill Kang</submitter>
@@ -24,7 +24,7 @@ constexpr auto begin() const
 </pre>
 </blockquote>
 <p>
-which only requires <tt><i>InnerRng</i></tt> to be a reference type, but in some cases, <tt><i>InnerRng</i></tt> 
+which only requires <tt><i>InnerRng</i></tt> to be a reference type, but in some cases, <tt><i>InnerRng</i></tt>
 may not be a <tt>range</tt>. <a href="https://godbolt.org/z/P8baTb5ee">Consider</a>
 </p>
 <blockquote>
@@ -41,8 +41,8 @@ int main() {
 </pre>
 </blockquote>
 <p>
-The reference type of <tt>single_view</tt> is <tt>const split_view&amp;</tt>, which only has the non-<tt>const</tt> 
-version of <tt>begin</tt>, which will cause <tt>view_interface</tt>'s <tt>const front</tt> to be incorrectly 
+The reference type of <tt>single_view</tt> is <tt>const split_view&amp;</tt>, which only has the non-<tt>const</tt>
+version of <tt>begin</tt>, which will cause <tt>view_interface</tt>'s <tt>const front</tt> to be incorrectly
 instantiated, making <tt>r.front()</tt> unnecessarily ill-formed.
 </p>
 <p>
@@ -55,9 +55,7 @@ We should add this check for <tt>join_view</tt>'s <tt>const begin</tt>, as well 
 Set priority to 3 after reflector poll.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4910"/>.
 </p>
@@ -82,21 +80,21 @@ namespace std::ranges {
     constexpr auto begin() {
       [&hellip;]
     }
-    
-    constexpr auto begin() const 
+
+    constexpr auto begin() const
       requires input_range&lt;const V&gt; &amp;&amp;
-               <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
-               is_reference_v&lt;range_reference_t&lt;const V&gt;&gt;
+                <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
+                is_reference_v&lt;range_reference_t&lt;const V&gt;&gt;
     { return <i>iterator</i>&lt;true&gt;{*this, ranges::begin(<i>base_</i>)}; }
-    
+
     constexpr auto end() {
       [&hellip;]
     }
-    
+
     constexpr auto end() const
       requires input_range&lt;const V&gt; &amp;&amp;
-               <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
-               is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; {
+                <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
+                is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; {
       if constexpr (forward_range&lt;const V&gt; &amp;&amp;
                     forward_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;
                     common_range&lt;const V&gt; &amp;&amp;
@@ -106,9 +104,9 @@ namespace std::ranges {
         return <i>sentinel</i>&lt;true&gt;{*this};
     }
   };
-  
+
   [&hellip;]
-  
+
 }
 </pre>
 </blockquote>
@@ -135,21 +133,21 @@ namespace std::ranges {
     constexpr auto begin() {
       [&hellip;]
     }
-    constexpr auto begin() const 
+    constexpr auto begin() const
       requires input_range&lt;const V&gt; &amp;&amp;
-               forward_range&lt;const Pattern&gt; &amp;&amp;
-               <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
-               is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; { 
-      return <i>iterator</i>&lt;true&gt;{*this, ranges::begin(<i>base_</i>)}; 
+                forward_range&lt;const Pattern&gt; &amp;&amp;
+                <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
+                is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; {
+      return <i>iterator</i>&lt;true&gt;{*this, ranges::begin(<i>base_</i>)};
     }
-  
+
     constexpr auto end() {
       [&hellip;]
     }
     constexpr auto end() const
       requires input_range&lt;const V&gt; &amp;&amp; forward_range&lt;const Pattern&gt; &amp;&amp;
-               <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
-               is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; {
+                <ins>input_range&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;</ins>
+                is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; {
       using InnerConstRng = range_reference_t&lt;const V&gt;;
       if constexpr (forward_range&lt;const V&gt; &amp;&amp; forward_range&lt;InnerConstRng&gt; &amp;&amp;
                     common_range&lt;const V&gt; &amp;&amp; common_range&lt;InnerConstRng&gt;)
@@ -158,14 +156,20 @@ namespace std::ranges {
         return <i>sentinel</i>&lt;true&gt;{*this};
     }
   };
-  
+
   [&hellip;]
-  
+
 }
 </pre>
 </blockquote>
 </li>
 </ol>
+</superseded>
+
+<note>2023-03-22 Resolved by the adoption of <paper num="P2770R0"/> in Issaquah. Status changed: New &rarr; Resolved.</note>
+</discussion>
+
+<resolution>
 </resolution>
 
 </issue>
