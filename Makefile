@@ -105,7 +105,7 @@ dates: meta-data/dates
 meta-data/dates: xml/issue[0-9]*.xml
 	for i in xml/issue[0-9]*.xml ; do \
 	  n="$${i#xml/issue}" ; n="$${n%.xml}" ; \
-	  test -e $@ && grep -q "^$$n " $@ && test $$i -ot $@ && continue ; \
+	  grep -s -q "^$$n " $@ && test $$i -ot $@ && continue ; \
 	  echo $$i >&2 ; \
 	  git log -1 --pretty="format:$$n %ct%n" $$i ; \
 	done > $@.new
