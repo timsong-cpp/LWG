@@ -1,0 +1,78 @@
+# A workflow to update the online issues lists.
+
+name: Generate HTML pages
+
+on:
+  # This job must only be run when changes are pushed to the master branch!
+  push:
+    branches: [ master ]
+
+jobs:
+  update-html-pages:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Use cached git repo
+      # Try to use a cached copy of the repository to avoid cloning it again
+      # and then regenerating the meta-data/dates file from scratch (slow!)
+      id: cache-repo
+      uses: actions/cache@v3
+      with:
+        path: |
+          .git
+          xml
+          meta-data
+          src
+        key: cached-repo
+
+    - if: ${{ steps.cache-repo.outputs.cache-hit == 'true' }}
+      # Using cached git repo, so sync with the latest changes.
+      name: Update cached repo
+      run: |
+        # Make sure we are in a clean worktree on the right branch.
+        git reset --hard HEAD
+        git checkout master
+        # Fetch changes since the cache was saved.
+        git fetch
+        # Update timestamp of this file so only issue files that get
+        # changed by the next command will be newer than it.
+        touch meta-data/dates
+        # Do a hard reset instead of merge, just in case there has been
+        # a force push since the cache was last updated.
+        git reset --hard @{u}
+
+    - if: ${{ steps.cache-repo.outputs.cache-hit != 'true' }}
+      # Not using cached git repo, so clone it (with full history).
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Update issue timestamps
+      run: make dates
+
+    - name: Generate HTML lists
+      run: make lists
+
+    - name: Update online pages
+      run: |
+        : Push new HTML files to gh-pages branch
+        git config user.name "Chairbot"
+        git config user.email "lwgchair@gmail.com"
+        git checkout gh-pages
+        mv mailing/*.html .
+        rmdir mailing
+        # Stage any changes to the individual issues (including new files):
+        git add issue*.html
+        # This only compares the staged changes, so ignores new timestamps
+        # in the lwg-*.html files. The commit -a will pick those up though.
+        printf '\nChecking HTML issues for changes ...\n'
+        if git diff --cached --exit-code ; then
+          echo 'No changes, not publishing new lists.'
+          git reset --hard HEAD
+        else
+          printf '\nCommitting the changes above:\n'
+          git commit -a -m 'Automatic update from GitHub Actions workflow'
+          printf '\nPushing to the gh-pages branch:\n'
+          git push
+        fi
+        git checkout master
