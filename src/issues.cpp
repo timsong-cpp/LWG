@@ -92,7 +92,7 @@ auto report_date_file_last_modified(std::filesystem::path const & filename) -> g
       mtime = std::chrono::duration_cast<std::chrono::seconds>(sys_mtime.time_since_epoch()).count();
    }
 
-   return make_date(*std::localtime(&mtime));
+   return make_date(*std::gmtime(&mtime));
 }
 
 } // close unnamed namespace
