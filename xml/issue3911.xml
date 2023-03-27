@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3911" status="New">
+<title><code>unique_ptr</code>'s <code>operator*</code> is missing a mandate</title>
+<section>
+  <sref ref="[unique.ptr.single.observers]"/>
+  <sref ref="[unique.ptr.runtime.observers]"/>
+</section>
+<submitter>Brian Bi</submitter>
+<date>27 Mar 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The return type of <code>std::unique_ptr&lt;T&gt;::operator*</code> is
+<code>std::add_lvalue_reference_t&lt;T&gt;</code>,
+but there is no mandate stating that <code>*get()</code> is convertible to that type.
+There also does not appear to be a mandate that <code>*get()</code> is a valid expression;
+dereferenceability is not not part of the <i>Cpp17NullablePointer</i> requirements.
+A similar issue appears to exist for <code>std::unique_ptr&lt;T[]&gt;::operator[]</code>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="n4944"/>.
+</p>
+
+<ol>
+<li>
+<p>
+Add the following bullet before <sref ref="[unique.ptr.single.observers]"/> paragraph 1:
+</p>
+<blockquote>
+<pre><code>
+constexpr add_lvalue_reference_t&lt;T&gt; operator*() const noexcept(noexcept(*declval&lt;pointer&gt;()));
+</code></pre>
+<blockquote>
+<p><ins>-?-
+<i>Mandates</i>:
+<code>*get()</code> is a valid expression
+that is convertible to <code>add_lvalue_reference_t&lt;T&gt;</code>.
+</ins>
+</p>
+<p>
+-1- <i>Preconditions</i>:
+<code>get() != nullptr</code>.
+</p>
+<p>-2- <i>Returns</i>: <code>*get()</code>.</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Add the following bullet before <sref ref="[unique.ptr.runtime.observers]"/> paragraph 1:
+</p>
+<blockquote>
+<pre><code>
+constexpr T&amp; operator[](size_t i) const;
+</code></pre>
+<blockquote>
+<p><ins>-?-
+<i>Mandates</i>:
+<code>get()[i]</code> is a valid expression
+that is convertible to <code>T&amp;</code>.
+</ins>
+</p>
+<p>
+-1- <i>Preconditions</i>:
+<code>i</code> &lt; the number of elements in the array to which the stored pointer points.
+</p>
+<p>-2- <i>Returns</i>: <code>get()[i]</code>.</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
