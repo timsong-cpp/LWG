@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3916" status="New">
+<title><tt>allocator</tt>, <tt>polymorphic_allocator</tt>, and containers should forbid <i>cv</i>-qualified types</title>
+<section><sref ref="[range.range]"/></section>
+<submitter>Stephan T. Lavavej</submitter>
+<date>2 Apr 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="2447"/> adjusted what is now <paper num="N4944"/> <sref ref="[allocator.requirements.general]"/>/2.1 
+so that the <i>Cpp17Allocator</i> requirements are specified for <i>cv</i>-unqualified object types only.
+<p/>
+However, nothing in <sref ref="[default.allocator]"/> restricts what <tt>T</tt> in <tt>allocator&lt;T&gt;</tt> can be, 
+except where <sref ref="[allocator.members]"/>/2 and /6 require it to be complete for <tt>allocate()</tt> and 
+<tt>allocate_at_least()</tt> (and by implication, for <tt>deallocate()</tt>). (Long ago, allocator had member functions 
+whose signatures implied that <tt>const</tt>-qualified types were forbidden, but those signatures were deprecated and 
+removed. This explains the phrasing of an MSVC static assertion.)
+<p/>
+<sref ref="[mem.poly.allocator.class.general]"/> says a bit more about <tt>Tp</tt> in <tt>polymorphic_allocator&lt;Tp&gt;</tt> 
+but doesn't forbid anything. It says that if <tt>Tp</tt> is a <i>cv</i>-unqualified object type, then 
+<tt>polymorphic_allocator&lt;Tp&gt;</tt> meets the <i>Cpp17Allocator</i> requirements and allocator completeness requirements, 
+but that's all.
+<p/>
+There's some implementation variation here. libstdc++ and MSVC reject <tt>allocator&lt;const int&gt;</tt>. libc++ 
+(as of LLVM 16) accepts it but this appears to have been an extension that they're trying to get rid of (their maintainers 
+may be able to comment further; see 
+<a href="https://github.com/llvm/llvm-project/commit/a54d028895c91da356a4aaf30e27a5a5b90dd313">llvm-project/commit/a54d028895c91da356a4aaf30e27a5a5b90dd313</a>).
+These 3 implementations all reject <tt>allocator&lt;volatile int&gt;</tt>, <tt>polymorphic_allocator&lt;const int&gt;</tt>, 
+and <tt>polymorphic_allocator&lt;volatile int&gt;</tt> with varying messages.
+<p/>
+The Standard should provide clarity here, by mandating that only <i>cv</i>-unqualified object types be given to <tt>allocator</tt>, 
+<tt>polymorphic_allocator</tt>, and containers. (<tt>allocator&lt;void&gt;</tt> must also be allowed, of course. I forget 
+if <tt>polymorphic_allocator</tt> is supposed to accept <tt>void</tt>.) This would simply Standardize existing/desired practice. 
+While it may seem arcane, attempting to form <tt>vector&lt;const T&gt;</tt> is a common novice mistake &mdash; so common that 
+MSVC had to add a <tt>static_assert</tt> to emit a clear error message.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
