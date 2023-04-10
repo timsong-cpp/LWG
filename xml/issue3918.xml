@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3918" status="New">
+<title><tt>std::uninitialized_move/_n</tt> and guaranteed copy elision</title>
+<section><sref ref="[uninitialized.move]"/></section>
+<submitter>Jiang An</submitter>
+<date>4 Apr 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently <tt>std::move</tt> is unconditionally used in <tt>std::uninitialized_move</tt> and <tt>std::uninitialized_move_n</tt>, 
+which may involve unnecessary move construction if dereferencing the input iterator yields a prvalue.
+<p/>
+The status quo was mentioned in <a href="https://github.com/cplusplus/papers/issues/975#issuecomment-990323753">paper issue #975</a>, 
+but no further process is done since then.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4944"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[specialized.algorithms.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- Some algorithms specified in <sref ref="[specialized.algorithms]"/> make use of the <ins>following</ins> exposition-only 
+function<ins>s</ins> <del><tt><i>voidify</i></tt></del>:
+</p>
+<blockquote><pre>
+template&lt;class T&gt;
+  constexpr void* <i>voidify</i>(T&amp; obj) noexcept {
+    return addressof(obj);
+  }
+  
+<ins>template&lt;class I&gt;
+  decltype(auto) <i>deref-move</i>(const I&amp; it) {
+    if constexpr (is_lvalue_reference_v&lt;decltype(*it)&gt;)
+      return std::move(*it);
+    else
+      return *it;
+  }</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[uninitialized.move]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class NoThrowForwardIterator&gt;
+  NoThrowForwardIterator uninitialized_move(InputIterator first, InputIterator last,
+                                            NoThrowForwardIterator result);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: <tt>result + [0, (last - first))</tt> does not overlap with <tt>[first, last)</tt>.
+<p/>
+-2- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+for (; first != last; (void)++result, ++first)
+  ::new (<i>voidify</i>(*result))
+    typename iterator_traits&lt;NoThrowForwardIterator&gt;::value_type(<del>std::move(*</del><ins><i>deref-move</i>(</ins>first));
+return result;
+</pre></blockquote>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class InputIterator, class Size, class NoThrowForwardIterator&gt;
+  pair&lt;InputIterator, NoThrowForwardIterator&gt;
+    uninitialized_move_n(InputIterator first, Size n, NoThrowForwardIterator result);
+</pre>
+<blockquote>
+<p>
+-6- <i>Preconditions</i>: <tt>result + [0, n)</tt> does not overlap with <tt>first + [0, n)</tt>.
+<p/>
+-7- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+for (; n &gt; 0; ++result,(void) ++first, --n)
+  ::new (<i>voidify</i>(*result))
+    typename iterator_traits&lt;NoThrowForwardIterator&gt;::value_type(<del>std::move(*</del><ins><i>deref-move</i>(</ins>first));
+return {first, result};
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
