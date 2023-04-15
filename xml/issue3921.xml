@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3921" status="New">
+<title>Is <tt>std::chrono::duration&lt;std::int64_t, std::ratio&lt;INT64_MAX - 1, INT64_MAX&gt;&gt;{40}</tt> 
+required to be correctly formatted?</title>
+<section><sref ref="[time.format]"/></section>
+<submitter>Jiang An</submitter>
+<date>14 Apr 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently none of MSVC STL, libc++, and libstdc++ correctly formats 
+<tt>duration&lt;int64_t, ratio&lt;INT64_MAX -1, INT64_MAX&gt;&gt;{40}</tt> 
+(<a href="https://godbolt.org/z/GfaEsqMnz">Godbolt link</a>). In these implementations, 
+<tt>hh_mm_ss</tt> is used when formatting <tt>duration</tt> and thus <tt>duration_cast</tt> 
+is also involved. And it's extremely easy for <tt>duration_cast</tt> to cause UB when the 
+source type is <tt>duration&lt;int64_t, ratio&lt;INT64_MAX -1, INT64_MAX&gt;&gt;</tt>.
+<p/>
+However, <sref ref="[time.format]"/> doesn't say <tt>hh_mm_ss</tt> is equivalently used when 
+formatting duration. And it seems that the current wording require <tt>duration</tt> (whose 
+<tt>rep</tt> type is an arithmetic type) to be correctly formatted without UB, even if it is 
+of a weird type or extremely large (e.g. when it is 
+<tt>duration&lt;int64_t, ratio&lt;INT64_MAX, 1&gt;&gt;{INT64_MAX}</tt>).
+<p/>
+So, if it is intended that <tt>hh_mm_ss</tt> is used for formatting <tt>duration</tt>, 
+perhaps we should explicitly so specify in <sref ref="[time.format]"/>. And we may need to 
+fix initialization of <tt>hh_mm_ss</tt> to reduce UB whenever suitable.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
