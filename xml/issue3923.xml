@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3923" status="New">
+<title>The specification of <tt>numeric_limits</tt> doesn't clearly distinguish between implementation requirements
+and user requirements</title>
+<section><sref ref="[numeric.limits.general]"/></section>
+<submitter>Daniel Kr&uuml;gler</submitter>
+<date>15 Apr 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The wording of <sref ref="[numeric.limits.general]"/> seemingly has not been gone through a similar thorough 
+rewording review which we performed in the past to clean-up the working draft as we did via the series of 
+"Mandating" papers by Marshall Clow (<paper num="P1458"/> - <paper num="P1465"/> and even more).
+<p/>
+<sref ref="[numeric.limits.general]"/> is full of nowadays inappropriate wording forms, which doesn't 
+distinguish well enough between requirements imposed on implementations (Where we shouldn't use "shall" wording 
+such as in "Specializations shall be provided for each arithmetic type") and requirements imposed on
+user types, this has also caused confusion ending in issues such as LWG <iref ref="3922"/>.
+<p/>
+Another problem is the usage of the unclear wording "Non-arithmetic standard types", which should be replaced by
+a more precise wording form.
+<p/>
+An additional problem is that we actually <em>do</em> require an implementation to provide specializations
+for the (library-provided) integer class-types (<sref ref="[iterator.concept.winc]"/>), we should make that
+a bit clearer here as well.
+<p/>
+And in the light of the newly required library partial specializations for <i>cv</i>-qualified types we should
+presumably also restrict the actual intention to support program-defined specialization to "cv-unqualified
+program-defined types" (We use such wording for example in <sref ref="[range.range]"/> p7) 
+<p/>
+This issue is related to LWG <iref ref="3922"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4944"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> This wording would also solve LWG issue <iref ref="3922"/> under the assumption that
+option <b>A</b> is intended] 
+</p>
+</blockquote>
+
+<ol>
+<li>
+<p>Modify <sref ref="[limits.syn]"/>, header <tt>&lt;limits&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+// <i><sref ref="[numeric.limits.general]"/>, class template numeric_limits</i>
+template&lt;class T&gt; class numeric_limits;
+
+<ins>// <i><sref ref="[numeric.special]"/>, numeric_limits specializations</i></ins>
+template&lt;class T&gt; class numeric_limits&lt;const T&gt;;
+template&lt;class T&gt; class numeric_limits&lt;volatile T&gt;;
+template&lt;class T&gt; class numeric_limits&lt;const volatile T&gt;;
+
+template&lt;&gt; class numeric_limits&lt;bool&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[numeric.limits.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The <tt>numeric_limits</tt> class template provides a C++ program with information about various properties of
+the implementation's representation of the arithmetic types.
+<p/>
+[&hellip;]
+</p>
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> It is unclear whether the requirement in the following paragraph 2 is intended to apply to
+program-defined specializations as well. Consider as an example a user-defined type that provides arbitrary precision
+arithmetic which may require dynamic memory for certain operations. Is it invalid to specialize <tt>numeric_limits</tt>
+for such a type or may the program-defined specialization deviate from this requirement for at least some members?
+<p/>
+If we want to make this restriction relaxed for program-defined specializations, further wording would
+be needed to give that permission] 
+</p>
+</blockquote>
+<p>
+-2- For all members declared <tt>static constexpr</tt> in the <tt>numeric_limits</tt> template, specializations shall 
+define these values in such a way that they are usable as constant expressions.
+<p/>
+-3- For the <tt>numeric_limits</tt> primary template, all data members are value-initialized and all member functions
+return a value-initialized object.
+<p/>
+[<i>Note 1</i>: This means all members have zero or <tt>false</tt> values unless <tt>numeric_limits</tt> is specialized for a 
+type. &mdash; <i>end note</i>]
+<p/>
+-4- <ins>An implementation is required to provide s</ins><del>S</del>pecializations <del>shall be provided</del> 
+for each arithmetic type, both floating-point and integer, including <tt>bool</tt>.
+The member <tt>is_specialized</tt> <del>shall be</del><ins>is</ins> <tt>true</tt> for all such specializations of 
+<tt>numeric_limits</tt>.
+<p/>
+<del>-5- The value of each member of a specialization of <tt>numeric_limits</tt> on a cv-qualified type <tt>cv T</tt> shall 
+be equal to the value of the corresponding member of the specialization on the unqualified type <tt>T</tt>.</del>
+</p>
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> The following restriction to <i>cv</i>-unqualified program-defined types <em>could</em> be relaxed to
+program-defined types in general if we really want to support the case that 
+<tt>numeric_limits&lt;<i>cv</i> T&gt;::<i>meow</i></tt> or <tt>numeric_limits&lt;<i>cv</i> T&gt;::<i>wuff()</i></tt> is 
+allowed to return a different value than <tt>numeric_limits&lt;T&gt;::<i>meow</i></tt> or 
+<tt>numeric_limits&lt;T&gt;::<i>wuff()</i></tt>, respectively, for such types.
+<p/>
+Note that we have currently no precise definition of a type that is "emulating an arithmetic type". But we reuse here 
+the existing wording form from Table 99 &mdash; <i>Cpp17Clock</i> requirements [tab:time.clock] and 
+<sref ref="[time.duration.general]"/> p2, respectively, so this doesn't make things worse.] 
+</p>
+</blockquote>
+<p>
+<ins>-?- The <tt>numeric_limits</tt> template may be specialized for program-defined <i>cv</i>-unqualified types that are 
+emulating an arithmetic type. The member <tt>is_specialized</tt> shall be true for all such specializations of 
+<tt>numeric_limits</tt>.</ins>
+</p>
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> The following restriction is carefully drafted to ensure that a library has the freedom to provide such
+specializations for "extended" types (That are not necessarily integer class-types). The restriction is intended to apply only 
+to "official" (strict) C++ standard library types] 
+</p>
+</blockquote>
+<p>
+-6- <ins>An implementation shall not provide specializations for n</ins><del>N</del>on-arithmetic <del>standard</del> types
+<ins>of the C++ standard library</ins>, such as <tt>complex&lt;T&gt;</tt> (<sref ref="[complex]"/>)<ins>, unless specified
+otherwise (e.g. for integer class-types, <sref ref="[iterator.concept.winc]"/>)</ins><del>, shall not have 
+specializations</del>.
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[numeric.special]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> I have left the "shall" usage in p1, because this seems to be a requirement for program-defined
+specializations as well. The second sentence of p1 is one of the funny ones which partially look like introductory
+wording, but also seems to indicate requirements, albeit specified in an unusual way ("meaningful").] 
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-1- All members shall be provided for all specializations. However, many values are only required to be meaningful
+under certain conditions (for example, <tt>epsilon()</tt> is only meaningful if <tt>is_integer</tt> is <tt>false</tt>). 
+Any value that is not "meaningful" shall be set to <tt>0</tt> or <tt>false</tt>.
+<p/>
+-2- [<i>Example 1</i>: 
+<p/>
+[&hellip;]
+<p/>
+&mdash; <i>end note</i>]
+</p>
+<blockquote><pre>
+<ins>template&lt;class T&gt; class numeric_limits&lt;const T&gt;;
+template&lt;class T&gt; class numeric_limits&lt;volatile T&gt;;
+template&lt;class T&gt; class numeric_limits&lt;const volatile T&gt;;</ins>
+</pre></blockquote>
+<p>
+<ins>-?- Let <tt>NL</tt> denote <tt>numeric_limits&lt;T&gt;</tt> of the cv-unqualified type <tt>T</tt>. Then the 
+value of each member of these specializations of <tt>numeric_limits</tt> is equal to the value of the corresponding 
+member of the specialization <tt>NL</tt>.</ins>
+<p/>
+-3- The specialization for <tt>bool</tt> <del>shall be</del><ins>is</ins> provided as follows:
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
