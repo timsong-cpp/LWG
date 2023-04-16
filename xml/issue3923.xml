@@ -15,21 +15,22 @@ The wording of <sref ref="[numeric.limits.general]"/> seemingly has not been gon
 rewording review which we performed in the past to clean-up the working draft as we did via the series of 
 "Mandating" papers by Marshall Clow (<paper num="P1458"/> - <paper num="P1465"/> and even more).
 <p/>
-<sref ref="[numeric.limits.general]"/> is full of nowadays inappropriate wording forms, which doesn't 
+<sref ref="[numeric.limits.general]"/> contains several nowadays inappropriate wording forms, which don't 
 distinguish well enough between requirements imposed on implementations (Where we shouldn't use "shall" wording 
-such as in "Specializations shall be provided for each arithmetic type") and requirements imposed on
-user types, this has also caused confusion ending in issues such as LWG <iref ref="3922"/>.
+in the ambiguous form of "Specializations shall be provided for each arithmetic type") and requirements imposed on
+user types, this has also caused confusion as expressed in LWG <iref ref="3922"/>. It is "obvious"
+that a program is intended to be allowed to provide program-defined specializations, but as 
+LWG <iref ref="3922"/> points out, it is unclear how such a specialization is able to meet the requirement 
+"(b) the specialization meets the standard library requirements for the original template" specified in 
+<sref ref="[namespace.std]"/> p2.
 <p/>
 Another problem is the usage of the unclear wording "Non-arithmetic standard types", which should be replaced by
 a more precise wording form.
 <p/>
-An additional problem is that we actually <em>do</em> require an implementation to provide specializations
-for the (library-provided) integer class-types (<sref ref="[iterator.concept.winc]"/>), we should make that
-a bit clearer here as well.
-<p/>
-And in the light of the newly required library partial specializations for <i>cv</i>-qualified types we should
-presumably also restrict the actual intention to support program-defined specialization to "cv-unqualified
-program-defined types" (We use such wording for example in <sref ref="[range.range]"/> p7) 
+An additional problem is that we actually already <em>do</em> require an implementation to provide specializations
+for the (library-provided) integer class-types (<sref ref="[iterator.concept.winc]"/>), so contrary to what p6
+says, we already have at least one exception, where the library is required to specialize <tt>numeric_limits</tt>
+for a non-arithmetic type. We should make that a bit clearer here as well.
 <p/>
 This issue is related to LWG <iref ref="3922"/>.
 </p>
@@ -81,9 +82,10 @@ the implementation's representation of the arithmetic types.
 <blockquote class="note">
 <p>
 [<i>Drafting Note:</i> It is unclear whether the requirement in the following paragraph 2 is intended to apply to
-program-defined specializations as well. Consider as an example a user-defined type that provides arbitrary precision
-arithmetic which may require dynamic memory for certain operations. Is it invalid to specialize <tt>numeric_limits</tt>
-for such a type or may the program-defined specialization deviate from this requirement for at least some members?
+program-defined specializations as well. Consider as an example a user-defined arithmetic-like type that provides 
+arbitrary precision arithmetic which may require dynamic memory for certain object constructions. Is it invalid to specialize 
+<tt>numeric_limits</tt> for such a type or may the program-defined specialization deviate from this requirement for 
+at least some of its members?
 <p/>
 If we want to make this restriction relaxed for program-defined specializations, further wording would
 be needed to give that permission] 
@@ -99,7 +101,7 @@ return a value-initialized object.
 [<i>Note 1</i>: This means all members have zero or <tt>false</tt> values unless <tt>numeric_limits</tt> is specialized for a 
 type. &mdash; <i>end note</i>]
 <p/>
--4- <ins>An implementation is required to provide s</ins><del>S</del>pecializations <del>shall be provided</del> 
+-4- <ins>An implementation shall provide s</ins><del>S</del>pecializations <del>shall be provided</del> 
 for each arithmetic type, both floating-point and integer, including <tt>bool</tt>.
 The member <tt>is_specialized</tt> <del>shall be</del><ins>is</ins> <tt>true</tt> for all such specializations of 
 <tt>numeric_limits</tt>.
@@ -109,21 +111,30 @@ be equal to the value of the corresponding member of the specialization on the u
 </p>
 <blockquote class="note">
 <p>
-[<i>Drafting Note:</i> The following restriction to <i>cv</i>-unqualified program-defined types <em>could</em> be relaxed to
-program-defined types in general if we really want to support the case that 
-<tt>numeric_limits&lt;<i>cv</i> T&gt;::<i>meow</i></tt> or <tt>numeric_limits&lt;<i>cv</i> T&gt;::<i>wuff()</i></tt> is 
-allowed to return a different value than <tt>numeric_limits&lt;T&gt;::<i>meow</i></tt> or 
-<tt>numeric_limits&lt;T&gt;::<i>wuff()</i></tt>, respectively, for such types.
+[<i>Drafting Note:</i> If we had introduced <tt>numeric_limits</tt> today we would likely have only allowed to
+provide specializations for <i>cv</i>-unqualified program-defined types, but that ship has sailed long ago.
 <p/>
-Note that we have currently no precise definition of a type that is "emulating an arithmetic type". But we reuse here 
-the existing wording form from Table 99 &mdash; <i>Cpp17Clock</i> requirements [tab:time.clock] and 
-<sref ref="[time.duration.general]"/> p2, respectively, so this doesn't make things worse.] 
+Interestingly currently there doesn't exist a specification that defines under which situations the static member
+<tt>is_specialized</tt> should be defined <tt>true</tt> or <tt>false</tt> (This touches LWG <iref ref="205"/>). 
+The wording below does not attempt to improve that situation, but at least clarifies that its value may be different
+from that of the primary template.
+<p/>
+Note that this proposed wording does &mdash; opposed to the approach of LWG <iref ref="3922"/> &mdash; not restrict 
+that specializations can only be provided by program-defined types "emulating an arithmetic type", because that would 
+break existing specializations and is also problematic in the light of the non-existing definition of that term.
+<p/>
+The below wording strategy gives permission to specialize <tt>numeric_limits</tt> only for non-array object types.
+An alternative approach could make it a precondition instead to instantiate the template for non-array object types, 
+for example.] 
 </p>
 </blockquote>
 <p>
-<ins>-?- The <tt>numeric_limits</tt> template may be specialized for program-defined <i>cv</i>-unqualified types that are 
-emulating an arithmetic type. The member <tt>is_specialized</tt> shall be true for all such specializations of 
-<tt>numeric_limits</tt>.</ins>
+<ins>-?- A program may specialize the <tt>numeric_limits</tt> template for a program-defined non-array object type. 
+Such a specialization is permitted to define a value for any static member that differs from what the primary 
+template would have defined, as appropriate for that type.</ins> 
+<p/>
+<ins>[<i>Note</i>: It still has to meet the general requirements specified in subclause 
+<sref ref="[numeric.limits.general]"/> and subclause <sref ref="[numeric.special]"/> &mdash; <i>end note</i>].</ins>
 </p>
 <blockquote class="note">
 <p>
@@ -148,7 +159,11 @@ specializations</del>.
 <p>
 [<i>Drafting Note:</i> I have left the "shall" usage in p1, because this seems to be a requirement for program-defined
 specializations as well. The second sentence of p1 is one of the funny ones which partially look like introductory
-wording, but also seems to indicate requirements, albeit specified in an unusual way ("meaningful").] 
+wording, but also seems to indicate requirements, albeit specified in an unusual way ("meaningful").
+<p/>
+The extra wording added after p2 below attempts to improve the wording situation caused by LWG <iref ref="559"/>
+and does that by following a similar approach as done in <sref ref="[tuple.helper]"/>.
+] 
 </p>
 </blockquote>
 
