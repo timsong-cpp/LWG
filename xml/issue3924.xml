@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3924" status="New">
+<title>Stop token data race avoidance requirements unclear</title>
+<section><sref ref="[thread.stoptoken.intro]"/></section>
+<submitter>Brian Bi</submitter>
+<date>16 Apr 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The first sentence of <sref ref="[thread.stoptoken.intro]"/>/5 says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Calls to the functions <tt>request_stop</tt>, <tt>stop_requested</tt>, and <tt>stop_possible</tt> do not introduce data races.
+</p>
+</blockquote>
+<p>
+This could be read as saying that if you have a program that doesn't contain data races, 
+and you change it by adding a call to any of these three functions, such a change does not 
+"introduce" data races into the program. In other words, it could be read as saying that 
+these three functions don't race with any other member functions on the same 
+<tt>stop_token</tt> or <tt>stop_source</tt> object.
+<p/>
+I'm guessing the actual intended meaning is that calls to these three functions do not race
+with each other, because it would be more expensive if concurrent calls with 
+<tt>stop_token::operator=</tt> were also required to not race. (Also, none of these functions 
+can avoid racing with the destructor.)
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4944"/>.
+</p>
+<ol>
+<li>
+<p>Modify <sref ref="[thread.stoptoken.intro]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-5- Calls to the functions <tt>request_stop</tt>, <tt>stop_requested</tt>, and <tt>stop_possible</tt> 
+do not introduce data races <ins>with each other</ins>.
+A call to <tt>request_stop</tt> that returns <tt>true</tt> synchronizes with a call to 
+<tt>stop_requested</tt> on an associated <tt>stop_token</tt> or <tt>stop_source</tt> object that 
+returns <tt>true</tt>. Registration of a callback synchronizes with the invocation of that callback.
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
