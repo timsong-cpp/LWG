@@ -62,7 +62,7 @@ cat > $draft <<EOT
 From: $From
 Subject: Issue $issue: $title
 
-It's Monday, so it must be bug prioritization time!
+It's bug prioritization time!
 Thanks to everyone who participates.
 
 https://cplusplus.github.io/LWG/issue$issue
