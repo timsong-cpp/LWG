@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3939" status="New">
+<title>&sect;[format.string.std] <tt>char</tt> is not formatted as a character when <tt>charT</tt> is <tt>wchar_t</tt></title>
+<section><sref ref="[format.string.std]"/></section>
+<submitter>S. B. Tam</submitter>
+<date>26 May 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+(See discussion at <a href="https://github.com/microsoft/STL/pull/3723">microsoft/STL/pull/3723</a>)
+<p/>
+<sref ref="[format.string.std]"/> p21 says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+The available integer presentation types for integral types other than <tt>bool</tt> and <tt>charT</tt> are 
+specified in Table 68.
+</p>
+</blockquote>
+<p>
+When <tt>charT</tt> is <tt>wchar_t</tt>, the ordinary character type <tt>char</tt> falls into this category, and thus a 
+<tt>char</tt> gets formatted as an integer by default, not as a character.
+<p/>
+This arguably doesn't affect the <tt>std::format</tt> family, because they are specified in terms of <tt>make_format_args</tt>, 
+which calls the <tt>basic_format_arg</tt> constructor, which converts <tt>char</tt> to <tt>wchar_t</tt> 
+(<sref ref="[format.arg]"/> (6.2)). But it does affect the <tt>std::formatter&lt;char, wchar_t&gt;</tt> specialization, 
+which isn't specified to use <tt>basic_format_arg</tt>.
+<p/>
+This is especially problematic after <paper num="P2286R8"/>, which makes <tt>std::formatter&lt;char, wchar_t&gt;</tt> 
+debug-enabled, but there's no debug format for integral types other than <tt>charT</tt>.
+<p/>
+Perhaps [format.string.std] should say that the formatting arguments are converted as if through the <tt>basic_format_arg</tt> 
+constructor.
+<p/>
+At the time of writing, on libstdc++ and libc++, <tt>std::formatter&lt;char, wchar_t&gt;</tt> formats the argument as 
+a character when no specifier is given (<a href="https://godbolt.org/z/nnsEcvna3">godbolt.org/z/nnsEcvna3</a>), while 
+MSVC STL's <tt>std::formatter&lt;char, wchar_t&gt;</tt> outputs the integer value. But I'm about to change MSVC STL to 
+match the other implementations.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
