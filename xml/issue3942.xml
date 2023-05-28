@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3942" status="New">
+<title>Inconsistent use of <tt>const char_type&amp;</tt> in standard specializations of <tt>std::char_traits</tt></title>
+<section><sref ref="[char.traits.specializations]"/></section>
+<submitter>Jiang An</submitter>
+<date>27 May 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In the standard specializations of <tt>std::char_traits</tt> (<tt>std::char_traits&lt;char&gt;</tt> etc.), there 
+are a few member functions take a single character via a <tt>const char_type&amp;</tt> parameter, while other functions 
+take a single character by value.
+<p/>
+In C++98, there were more functions taking <tt>const char_type&amp;</tt>. <paper num="N2349"/> changed this in 
+C++11 by making some, but not all of them take <tt>char_type</tt>. It is unclear whether the inconsistency is 
+intended, and it seems better for these standard specializations to take a character by value.
+<p/>
+However, libstdc++ hasn't implemented the signature changes, perhaps due to ABI concerns. So it might be better 
+to loose the restrictions for the purpose of standardization.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4950"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> Two mutually exclusive options are prepared, depicted below by <b>Option A</b> and 
+<b>Option B</b>, respectively.] 
+</p>
+</blockquote>
+
+<p>
+<b>Option A:</b> This assumes that "by-value" arguments are intended.
+</p>
+
+<ol>
+<li>
+<p>Modify the class template <tt>char_traits</tt> specialization synopses in <sref ref="[char.traits.specializations.char]"/>, 
+<sref ref="[char.traits.specializations.char8.t]"/>, <sref ref="[char.traits.specializations.char16.t]"/>, 
+<sref ref="[char.traits.specializations.char32.t]"/>, and <sref ref="[char.traits.specializations.wchar.t]"/> 
+as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+    static constexpr void assign(char_type&amp; c1, <del>const </del>char_type<del>&amp;</del> c2) noexcept;
+[&hellip;]
+    static constexpr const char_type* find(const char_type* s, size_t n,
+                                           <del>const </del>char_type<del>&amp;</del> a);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+<p>
+<b>Option B:</b> This assumes that implementation-freedom to keep ABI stability is intended.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> It is intended to keep the <tt>assign(s, n, a)</tt> taking the character by value, 
+because the argument may be a character in <tt>[s, s + n)</tt>.] 
+</p>
+</blockquote>
+
+<ol>
+<li>
+<p>Add a paragraph at the end of <sref ref="[char.traits.specializations.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+<ins>-?- For each occurrence of the placeholder <tt><i>const-char-t</i></tt> in the synopsis of each of these 
+specializations, it is unspecified whether it denotes <tt>char_type</tt> or <tt>const char_type&amp;</tt>. 
+Likewise, for each occurrence of the placeholder <tt><i>const-int-t</i></tt> in the synopsis of each of 
+these specializations, it is unspecified whether it denotes <tt>int_type</tt> or <tt>const int_type&amp;</tt></ins>
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>Modify the class template <tt>char_traits</tt> specialization synopses in <sref ref="[char.traits.specializations.char]"/>, 
+<sref ref="[char.traits.specializations.char8.t]"/>, <sref ref="[char.traits.specializations.char16.t]"/>, 
+<sref ref="[char.traits.specializations.char32.t]"/>, and <sref ref="[char.traits.specializations.wchar.t]"/> 
+as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+    static constexpr void assign(char_type&amp; c1, <del>const char_type&amp;</del><ins><i>const-char-t</i></ins> c2) noexcept;
+    static constexpr bool eq(<del>char_type</del><ins><i>const-char-t</i></ins> c1, <del>char_type</del><ins><i>const-char-t</i></ins> c2) noexcept;
+    static constexpr bool lt(<del>char_type</del><ins><i>const-char-t</i></ins> c1, <del>char_type</del><ins><i>const-char-t</i></ins> c2) noexcept;
+[&hellip;]
+    static constexpr const char_type* find(const char_type* s, size_t n,
+                                           <del>const char_type&amp;</del><ins><i>const-char-t</i></ins> a);
+[&hellip;]
+    static constexpr int_type not_eof(<del>int_type</del><ins><i>const-int-t</i></ins> c) noexcept;
+    static constexpr char_type to_char_type(<del>int_type</del><ins><i>const-int-t</i></ins> c) noexcept;
+    static constexpr int_type to_int_type(<del>char_type</del><ins><i>const-char-t</i></ins> c) noexcept;
+    static constexpr bool eq_int_type(<del>int_type</del><ins><i>const-int-t</i></ins> c1, <del>int_type</del><ins><i>const-int-t</i></ins> c2) noexcept;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
