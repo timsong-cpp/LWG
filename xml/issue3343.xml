@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3343" status="New">
+<issue num="3343" status="Open">
 <title>Ordering of calls to <tt>unlock()</tt> and <tt>notify_all()</tt> in <i>Effects</i> element of <tt>notify_all_at_thread_exit()</tt> should be reversed</title>
 <section><sref ref="[thread.condition.nonmember]"/></section>
 <submitter>Lewis Baker</submitter>
@@ -122,9 +122,7 @@ the call to <tt>cv.notify_all()</tt>.
 
 <note>2020-02, Prague</note>
 <p>Response from SG1: "We discussed it in Prague. We agree it’s an error and SG1 agreed with the PR."</p>
-</discussion>
-
-<resolution>
+<superseded>
 <p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
 
 <ol>
@@ -152,5 +150,43 @@ cond.notify_all();
 </blockquote>
 </li>
 </ol>
+</superseded>
+
+<note>2023-06-13, Varna; Tim provides improved wording</note>
+<p>Addressed mailing list comments. Ask SG1 to check.</p>
+
+</discussion>
+
+<resolution>
+
+<p>This wording is relative to <paper num="n4950"/>.</p>
+
+<ol>
+<li><p>Change <sref ref="[thread.condition.nonmember]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void notify_all_at_thread_exit(condition_variable&amp; cond, unique_lock&lt;mutex&gt; lk);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Effects:</i> Transfers ownership of the lock associated with <tt>lk</tt> into internal
+storage and schedules <tt>cond</tt> to be notified when the current thread
+exits<del>,</del><ins>.  This notification is sequenced</ins> after all
+objects of thread storage duration associated with the current thread have been
+destroyed<del>.  This notification</del> <ins>and</ins> is equivalent to:
+</p>
+<blockquote><pre>
+<del>lk.unlock();</del>
+cond.notify_all();
+<ins>lk.unlock();</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 </issue>
