@@ -19,9 +19,175 @@ The term "character type" is used in <sref ref="[defns.ntcts]"/>, <sref ref="[lo
 "wide-character type" is used in <sref ref="[depr.locale.stdcvt]"/>, but the core
 language only defines a "wide-character set" and "wide-character literal".
 </p>
+
+<note>2023-06-14; Daniel comments</note>
+<p>
+Given the resolution of <paper num="P2314"/> which had introduced to
+<sref ref="[basic.fundamental]"/> p11 a definition of "character type":
+</p>
+<blockquote><p>
+The types <tt>char</tt>, <tt>wchar_t</tt>, <tt>char8_t</tt>, <tt>char16_t</tt>, <tt>char32_t</tt> are collectively
+called <i>character types</i>.
+</p></blockquote>
+<p>
+one might feel tempted to have most parts of this issue resolved here, but I think that this
+actually is a red herring.
+<p/>
+First, as Jonathan already pointed out, for two places, <sref ref="[ostream.formatted.reqmts]"/> and
+<sref ref="[ostream.inserters.character]"/>, this clearly doesn't work, instead it seems as if we 
+should replace "character type of the stream" here by "<tt>char_type</tt> of the stream".
+<p/>
+To me "<tt>char_type</tt> of the stream" sounds a bit odd (we usually refer to <tt>char_type</tt>
+in terms of a qualified name such as <tt>X::char_type</tt> instead unless we are specifying
+a member of some <tt>X</tt>, where we can omit the qualification) and in the suggested
+wording below I'm taking advantage of the already defined term "character container type"
+(<sref ref="[defns.character.container]"/>) instead, which seems to fit its intended purpose here.
+<p/>
+Second, on further inspection it turns out that actually only <em>one</em> usage of the
+term "character type" seems to be intended to refer to the actual core language meaning (See
+the unchanged wording for <sref ref="[facet.num.put.virtuals]"/> in the proposed wording
+below), all other places quite clearly must refer to the above mentioned
+"character container type".
+<p/>
+For the problem related to the missing definition of "wide-character type" (used two times in
+<sref ref="[depr.locale.stdcvt]"/>) I would like to suggest a less general and less inventive
+approach to solve the definition problem here, because it only occurs in an already deprecated
+component specification: My suggestion is to simply get rid of that term
+by just identifying <tt>Elem</tt> with being one of <tt>wchar_t</tt>, <tt>char16_t</tt>, or, 
+<tt>char32_t</tt>. (This result is identical to identifying "wide-character type" with
+a "character type that is not a narrow character type (<sref ref="[basic.fundamental]"/>)", but this
+seemingly more general definition doesn't provide a real advantage.)
+</p>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="N4950"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> All usages of "character type" in <sref ref="[format]"/> seem to be without problems.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[locale.category]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The more interpretation of "character container type" instead of character type by
+the meaning of the core language seems safe here. It seeme reasonable that an implementation allows more then
+the core character types, but still could request additional constraints imposed on them. Even if an implementation
+does never intend to support anything beyond <tt>char</tt> and <tt>wchar_t</tt>, the wording below is harmless.
+One alternative could be here to use the even more general term "char-like types" from <sref ref="[strings.general]"/>, but
+I'm unconvinced that this buys us much]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-6- [&hellip;] A template parameter with name <tt>C</tt> represents the
+set of types containing <tt>char</tt>, <tt>wchar_t</tt>, and any other implementation-defined 
+character <ins>container</ins> types <ins>(<sref ref="[defns.character.container]"/>)</ins> that meet the
+requirements for a character on which any of the iostream components can be instantiated. [&hellip;]
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Keep <sref ref="[facet.num.put.virtuals]"/> of <b>Stage 1</b> following p4 <em>unchanged</em>:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The wording here seems to refer to the pure core language wording form of a character type.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+[&hellip;] For conversion from an integral type other than a character type, the function determines the
+integral conversion specifier as indicated in Table 110.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[iostreams.limits.pos]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Similar to <sref ref="[locale.category]"/> above the more interpretation of "character container type" 
+instead of character type by the meaning of the core language seems safe here. ]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-3- In the classes of Clause 31, a template parameter with name <tt>charT</tt> represents a member of the set of types
+containing <tt>char</tt>, <tt>wchar_t</tt>, and any other implementation-defined character <ins>container</ins> types 
+<ins>(<sref ref="[defns.character.container]"/>)</ins> that meet the requirements
+for a character on which any of the iostream components can be instantiated.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[ostream.formatted.reqmts]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- If a formatted output function of a stream <tt>os</tt> determines padding, it does so as follows. Given a <tt>charT</tt>
+character sequence <tt>seq</tt> where <tt>charT</tt> is the character <ins>container</ins> type of the stream, [&hellip;]
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[ostream.inserters.character]"/> as indicated:</p>
+
+<blockquote><pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; out, charT c);
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; out, char c);
+// specialization
+template&lt;class traits&gt;
+  basic_ostream&lt;char, traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char, traits&gt;&amp; out, char c);
+// signed and unsigned
+template&lt;class traits&gt;
+  basic_ostream&lt;char, traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char, traits&gt;&amp; out, signed char c);
+template&lt;class traits&gt;
+  basic_ostream&lt;char, traits&gt;&amp; operator&lt;&lt;(basic_ostream&lt;char, traits&gt;&amp; out, unsigned char c);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Behaves as a formatted output function (<sref ref="[ostream.formatted.reqmts]"/>) of <tt>out</tt>. 
+Constructs a character sequence <tt>seq</tt>. If <tt>c</tt> has type <tt>char</tt> and the character <ins>container</ins> 
+type of the stream is not <tt>char</tt>, then <tt>seq</tt> consists of <tt>out.widen(c)</tt>; otherwise <tt>seq</tt> 
+consists of <tt>c</tt>. Determines padding for <tt>seq</tt> as described in <sref ref="[ostream.formatted.reqmts]"/>. 
+Inserts <tt>seq</tt> into <tt>out</tt>. Calls <tt>os.width(0)</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[depr.locale.stdcvt]"/> as indicated:</p>
+
+<blockquote>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; <tt>Elem</tt> is <ins>one of</ins><del>the wide-character type, such as</del> 
+<tt>wchar_t</tt>, <tt>char16_t</tt>, or <tt>char32_t</tt>.</p></li>
+<li><p>(1.2) &mdash; <tt>Maxcode</tt> is the largest <del>wide-character code</del> 
+<ins>value of <tt>Elem</tt> converted to <tt>unsigned long</tt></ins> that the facet will read or 
+write without reporting a conversion error.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
 </resolution>
 
 </issue>
