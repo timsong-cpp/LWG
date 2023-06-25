@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3947" status="New">
+<title>Unexpected constraints on <tt>adjacent_transform_view::base()</tt></title>
+<section><sref ref="[range.adjacent.transform.view]"/></section>
+<submitter>Bo Persson</submitter>
+<date>17 Jun 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In section <sref ref="[range.adjacent.transform.view]"/> the class
+<tt>ranges::adjacent_transform_view</tt> got two new <tt>base()</tt> members from
+<iref ref="3848"/>.
+<p/>
+The first one looks like
+</p>
+<blockquote><pre>
+constexpr V base() const &amp; requires copy_constructible&lt;<i>InnerView</i>&gt;
+{ return <i>inner_</i>.base(); }
+</pre></blockquote>
+<p>
+Here the requirement is that <tt><i>InnerView</i></tt> is copy constructible, when it in
+fact returns an object of type <tt>V</tt>. That seems odd.
+<p/>
+I would expect the constraint to instead be <tt>copy_constructible&lt;V&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4950"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.adjacent.transform.view]"/>, class template 
+<tt>adjacent_transform_view</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, move_constructible F, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; (N &gt; 0) &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+      regular_invocable&lt;F&amp;, <i>REPEAT</i>(range_reference_t&lt;V&gt;, N)...&gt; &amp;&amp;
+      <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, <i>REPEAT</i>(range_reference_t&lt;V&gt;, N)...&gt;&gt;
+  class adjacent_transform_view : public view_interface&lt;adjacent_transform_view&lt;V, F, N&gt;&gt; {
+    [&hellip;]
+    adjacent_view&lt;V, N&gt; <i>inner_</i>; // <i>exposition only</i>
+    
+    using <i>InnerView</i> = adjacent_view&lt;V, N&gt;; // <i>exposition only</i>
+    [&hellip;]
+  public:
+    [&hellip;]
+    constexpr V base() const &amp; requires copy_constructible&lt;<ins>V</ins><del><i>InnerView</i></del>&gt; { return <i>inner_</i>.base(); }
+    constexpr V base() &amp;&amp; { return std::move(<i>inner_</i>).base(); }
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
