@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3960" status="New">
+<title>How does <tt>chrono::parse</tt> handle duplicated data?</title>
+<section><sref ref="[time.parse]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>28 Jul 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+A call to <tt>chrono::parse</tt> can encounter redundant or contradictory
+data, e.g.
+<pre><blockquote>stringstream("2023 2022") >> chrono::parse("%Y %C%y", yr);
+</blockquote></pre>
+or even simpler:
+<pre><blockquote>stringstream("2023 2022") >> chrono::parse("%Y %Y", yr);
+</blockquote></pre>
+These cases can both be successfully parsed, as the input stream contains the
+expected values in the expected format. But what value will <tt>yr</tt> have
+after it returns?
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4950"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[time.parse]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-17-
+If the <tt>from_stream</tt> overload fails to parse everything specified by
+the format string, or if insufficient information is parsed to specify
+a complete duration, time point, or calendrical data structure,
+<tt>setstate(ios_base::failbit)</tt> is called on the <tt>basic_istream</tt>.
+</p>
+<p><ins>
+-?-
+A format string can contain multiple flags that correspond to the same
+information, (e.g., <tt>"%Y %C%y"</tt> or <tt>"%R %H:%M"</tt>). If such a
+format string is successfully parsed but the extracted dates or times are
+not consistent, the value assigned to the <tt>tp</tt> argument is unspecified.
+</ins>
+</p>
+<p><ins>
+[<i>Example</i>:
+</ins>
+<pre><blockquote><ins>chrono::year y;
+stringstream("1905 1915") >> parse("%Y %C%y", y);
+</ins></blockquote></pre>
+<ins>
+The value of <tt>y</tt> is unspecified; <tt>y.ok()</tt> can be <tt>false</tt>.
+&mdash; <i>end example</i>]
+</ins>
+</p>
+
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
