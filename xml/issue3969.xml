@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3969" status="New">
+<title><tt>std::ranges::fold_left_first_with_iter</tt> should be more ADL-proof</title>
+<section><sref ref="[alg.fold]"/></section>
+<submitter>Jiang An</submitter>
+<date>10 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The following program is currently ill-formed, because <sref ref="[alg.fold]"/>/10 requires evaluating 
+<tt>*init</tt>, where <tt>init</tt> is an object of an <tt>optional</tt> specialization, which triggers 
+ADL and finds unwanted overloads.
+</p>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;optional&gt;
+
+namespace myns {
+  struct Foo {};
+  
+  void operator*(std::optional&lt;Foo&gt;&amp;);
+  void operator*(const std::optional&lt;Foo&gt;&amp;);
+}
+
+int main()
+{
+  myns::Foo x[1]{};
+  std::ranges::fold_left_first_with_iter(x, []&lt;class T&gt;(T lhs, T) { return lhs; });
+}
+</pre></blockquote>
+<p>
+I think only the member <tt>operator*</tt> overload is intendedly used.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4950"/>.
+</p>
+
+<ol>
+
+<li><p>Modify the <sref ref="[alg.fold]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S,
+         <i>indirectly-binary-left-foldable</i>&lt;iter_value_t&lt;I&gt;, I&gt; F&gt;
+  requires constructible_from&lt;iter_value_t&lt;I&gt;, iter_reference_t&lt;I&gt;&gt;
+  constexpr <i>see below</i> ranges::fold_left_first_with_iter(I first, S last, F f);
+template&lt;input_range R, <i>indirectly-binary-left-foldable</i>&lt;range_value_t&lt;R&gt;, iterator_t&lt;R&gt;&gt; F&gt;
+  requires constructible_from&lt;range_value_t&lt;R&gt;, range_reference_t&lt;R&gt;&gt;
+  constexpr <i>see below</i> ranges::fold_left_first_with_iter(R&amp;&amp; r, F f);
+</pre>
+<blockquote>
+<p>
+-9- Let <tt>U</tt> be
+</p>
+<blockquote><pre>
+decltype(ranges::fold_left(std::move(first), last, iter_value_t&lt;I&gt;(*first), f))
+</pre></blockquote>
+<p>
+-10- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+if (first == last)
+  return {std::move(first), optional&lt;U&gt;()};
+optional&lt;U&gt; init(in_place, *first);
+for (++first; first != last; ++first)
+  <del>*init</del><ins>init.operator*()</ins> = invoke(f, std::move(<del>*init</del><ins>init.operator*()</ins>), *first);
+return {std::move(first), std::move(init)};
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
