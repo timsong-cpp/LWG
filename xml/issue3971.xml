@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3971" status="New">
+<title>Join ranges of rvalue references with ranges of prvalues</title>
+<section><sref ref="[range.join.with.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>21 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The issue that <tt>concat_view</tt> implicitly breaks equality-preserving by concatenating range of references with range 
+of prvalues seems to be reflected in <tt>join_view</tt> as well.
+<p/>
+When the reference of the inner range is <tt>string&amp;&amp;</tt> and the reference of the pattern range is prvalue 
+<tt>string</tt>, dereferencing its iterator will move the elements of the inner range to the returned <tt>string</tt>, 
+which makes the second dereference get an empty <tt>string</tt> (<a href="https://godbolt.org/z/5YYzK5qsr">demo</a>):
+</p>
+<blockquote>
+<pre>
+vector v1{"hello"s};
+vector v2{"world"s};
+vector v{v1 | views::as_rvalue, v2 | views::as_rvalue};
+auto pattern = views::iota(0, 1) | views::transform([](int) { return ", "s; });
+ranges::forward_range auto joined = v | views::join_with(pattern);
+fmt::print("{}\n", joined); // ["hello", ", ", "world"]
+fmt::print("{}\n", joined); // <span style="color:red;font-weight:bolder">["", ", ", ""]</span>
+</pre>
+</blockquote>
+
+<p>Not sure if we should ban such less common case.</p>
+</discussion>
+
+<resolution>
+
+</resolution>
+
+</issue>
