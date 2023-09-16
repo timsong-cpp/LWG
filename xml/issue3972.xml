@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3972" status="New">
+<title>Issues with <tt>join_with_view::<i>iterator</i></tt>'s <tt>iter_swap</tt></title>
+<section><sref ref="[range.join.with.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>04 Sep 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>iter_swap</tt> customization for <tt>join_with_view::<i>iterator</i></tt> allows swapping iterators 
+with different element types, potentially leading to unsafe behavior, <a href="https://godbolt.org/z/5qzGb881x">for example</a>:
+</p>
+<blockquote>
+<pre>
+vector&lt;vector&lt;string&gt;&gt; x{{"a"}, {"b"}, {"c"}};
+vector&lt;string_view&gt;    y{"-"};
+auto r = x | views::join_with(y);
+auto i = r.begin();
+auto j = ranges::next(i);
+ranges::iter_swap(j, i);
+for (auto&amp;&amp; elem : r)
+  cout &lt;&lt; elem &lt;&lt; " "; // <span style="color:red;font-weight:bolder">AddressSanitizer: stack-use-after-return on address</span>
+</pre>
+</blockquote>
+<p>
+The above swaps two iterators whose reference are <tt>string_view&amp;</tt> and <tt>string&amp;</tt> respectively, 
+which ultimately results in <tt>string_view</tt> being referenced to a local variable and left dangling.
+</p>
+</discussion>
+
+<resolution>
+
+</resolution>
+
+</issue>
