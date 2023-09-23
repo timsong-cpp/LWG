@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3979" status="New">
+<title>Should we reject <tt>std::bind_front&lt;42&gt;()</tt> and its friends?</title>
+<section><sref ref="[func.not.fn]"/><sref ref="[func.bind.partial]"/></section>
+<submitter>Jiang An</submitter>
+<date>22 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::bind_front&lt;42&gt;()</tt> seems to be currently well-formed, but the result isn't invocable with any arguments. 
+Given we are already detecting types and values of the NTTP for new overloads of <tt>std::bind_front</tt>, 
+<tt>std::bind_back</tt>, and <tt>std::not_fn</tt>, it might be better to diagnose such cases when NTTP is of a scalar type.
+<p/>
+Note that we might need to separately handle NTTP of scalar and class types for these functions when 
+<a href="https://wg21.link/CWG2459">CWG2459</a> is not resolved, because it might be necessary to avoid copying a 
+template parameter object.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify the <sref ref="[func.not.fn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;auto f&gt; constexpr <i>unspecified</i> not_fn() noexcept;
+</pre>
+<blockquote>
+<p>
+-6- [&hellip;]
+<p/>
+-7- <i>Mandates</i>: If <del><tt>is_pointer_v&lt;F&gt; || is_member_pointer_v&lt;F&gt;</tt> is <tt>true</tt>, then 
+<tt>f != nullptr</tt> is <tt>true</tt></del><ins><tt>is_scalar_v&lt;F&gt;</tt> is <tt>true</tt>, then either 
+<tt>is_pointer_v&lt;F&gt; &amp;&amp; is_function_v&lt;remove_pointer_t&lt;F&gt;&gt;</tt> is <tt>true</tt> or 
+<tt>is_member_pointer_v&lt;F&gt;</tt> is <tt>true</tt>, and <tt>f != nullptr</tt> is <tt>true</tt> in either case</ins>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify the <sref ref="[func.bind.partial]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;auto f, class... Args&gt;
+  constexpr <i>unspecified</i> bind_front(Args&amp;&amp;... args);
+template&lt;auto f, class... Args&gt;
+  constexpr <i>unspecified</i> bind_back(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-6- [&hellip;]
+<p/>
+-7- <i>Mandates</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; [&hellip;]</p></li>
+<li><p>(7.2) &mdash; [&hellip;]</p></li>
+<li><p>(7.3) &mdash; if <del><tt>is_pointer_v&lt;F&gt; || is_member_pointer_v&lt;F&gt;</tt> is <tt>true</tt>, then 
+<tt>f != nullptr</tt> is <tt>true</tt></del><ins><tt>is_scalar_v&lt;F&gt;</tt> is <tt>true</tt>, then either 
+<tt>is_pointer_v&lt;F&gt; &amp;&amp; is_function_v&lt;remove_pointer_t&lt;F&gt;&gt;</tt> is <tt>true</tt> or 
+<tt>is_member_pointer_v&lt;F&gt;</tt> is <tt>true</tt>, and <tt>f != nullptr</tt> is <tt>true</tt> in either case</ins>.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
