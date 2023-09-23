@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3977" status="New">
+<title><tt>constexpr</tt> and <tt>noexcept</tt> for operators for bitmask types</title>
+<section><sref ref="[bitmask.types]"/></section>
+<submitter>Jiang An</submitter>
+<date>19 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, no operator in <sref ref="[bitmask.types]"/>/2 is specified as <tt>noexcept</tt>, and the compound assignment 
+operators are not specified as <tt>constexpr</tt>.
+<p/>
+Implementations are divergent on this. E.g., MSVC STL 
+<a href="https://github.com/microsoft/STL/blob/8f67ece4a654625220642c92fa029a5cfc77afa8/stl/inc/type_traits#L2266-L2297">consistently 
+marks them <tt>constexpr</tt> and <tt>noexcept</tt></a> (given MSVC STL doesn't support pre-C++14 modes), while libstdc++'s 
+<a href="https://github.com/gcc-mirror/gcc/blob/fab08d12b40ad637c5a4ce8e026fb43cd3f0fad1/libstdc%2B%2B-v3/include/bits/regex_constants.h#L395-L408">compound 
+assignment operators for <tt>match_flag_type</tt></a> are <tt>constexpr</tt> since C++14 but lack <tt>noexcept</tt>, and 
+<a href="https://github.com/gcc-mirror/gcc/blob/fab08d12b40ad637c5a4ce8e026fb43cd3f0fad1/libstdc%2B%2B-v3/include/std/future#L176-L183">the 
+operators for <tt>launch</tt></a> are <tt>noexcept</tt> but not <tt>constexpr</tt>.
+<p/>
+I think it's better to ensure more consistency be integer types and non-integer bitmask types, i.e., require the 
+compound assignment operators to be <tt>constexpr</tt> (only available in C++14 and later) and all operators to be <tt>noexcept</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify the <sref ref="[bitmask.types]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The bitmask type <tt><i>bitmask</i></tt> can be written:
+</p>
+<blockquote>
+<pre>
+// <i>For exposition only.</i>
+// <i>int_type is an integral type capable of representing all values of the bitmask type.</i>
+enum <i>bitmask</i> : int_type {
+  <i>V</i><sub>0</sub> = 1 &lt;&lt; 0, <i>V</i><sub>1</sub> = 1 &lt;&lt; 1, <i>V</i><sub>2</sub> = 1 &lt;&lt; 2, <i>V</i><sub>3</sub> = 1 &lt;&lt; 3, &hellip;
+};
+
+inline constexpr <i>bitmask</i> <i>C</i><sub>0</sub>(<i>V</i><sub>0</sub>);
+inline constexpr <i>bitmask</i> <i>C</i><sub>1</sub>(<i>V</i><sub>1</sub>);
+inline constexpr <i>bitmask</i> <i>C</i><sub>2</sub>(<i>V</i><sub>2</sub>);
+inline constexpr <i>bitmask</i> <i>C</i><sub>3</sub>(<i>V</i><sub>3</sub>);
+
+[&hellip;]
+
+constexpr bitmask operator&amp;(bitmask X, bitmask Y) <ins>noexcept</ins> {
+  return static_cast&lt;bitmask&gt;(
+    static_cast&lt;int_type&gt;(X) &amp; static_cast&lt;int_type&gt;(Y));
+}
+constexpr bitmask operator|(bitmask X, bitmask Y) <ins>noexcept</ins> {
+  return static_cast&lt;bitmask&gt;(
+    static_cast&lt;int_type&gt;(X) | static_cast&lt;int_type&gt;(Y));
+}
+constexpr bitmask operator^(bitmask X, bitmask Y) <ins>noexcept</ins> {
+  return static_cast&lt;bitmask&gt;(
+    static_cast&lt;int_type&gt;(X) ^ static_cast&lt;int_type&gt;(Y));
+}
+constexpr bitmask operator~(bitmask X) <ins>noexcept</ins> {
+  return static_cast&lt;bitmask&gt;(~static_cast&lt;int_type&gt;(X));
+}
+<ins>constexpr</ins> bitmask&amp; operator&amp;=(bitmask&amp; X, bitmask Y) <ins>noexcept</ins> {
+  X = X &amp; Y; return X;
+}
+<ins>constexpr</ins> bitmask&amp; operator|=(bitmask&amp; X, bitmask Y) <ins>noexcept</ins> {
+  X = X | Y; return X;
+}
+<ins>constexpr</ins> bitmask&amp; operator^=(bitmask&amp; X, bitmask Y) <ins>noexcept</ins> {
+  X = X ^ Y; return X;
+}
+</pre>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
