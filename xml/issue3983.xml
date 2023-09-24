@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3983" status="New">
+<title><tt>ranges::to</tt> adaptors are underconstrained</title>
+<section><sref ref="[range.utility.conv.adaptors]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>23 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>ranges::to</tt> adaptor returns a range adaptor closure object that stores a copy of the decayed parameter pack.
+<p/>
+However, the function signature does not constrain the type of arguments, which leads to hard errors within the function 
+body when they cannot be copied (<a href="https://godbolt.org/z/9f8q3zvb5">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+struct NonMovable {
+  NonMovable() = default;
+  NonMovable(NonMovable&amp;&amp;) = delete;
+};
+
+int main() {
+  auto r = std::ranges::to&lt;std::vector&gt;(NonMovable{}); // <span style="color:red;font-weight:bolder">hard error in MSVC-STL and libc++</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;compare&gt;              // <i>see <a href="https://wg21.link/compare.syn">[compare.syn]</a></i>
+#include &lt;initializer_list&gt;     // <i>see <a href="https://wg21.link/initializer.list.syn">[initializer.list.syn]</a></i>
+#include &lt;iterator&gt;             // <i>see <a href="https://wg21.link/iterator.synopsis">[iterator.synopsis]</a></i>
+
+namespace std::ranges {
+  [&hellip;]
+  // <i><sref ref="[range.utility.conv]"/>, range conversions</i>
+  template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;C&gt;&gt;)
+    constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);                                          // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, input_range R, class... Args&gt;
+    constexpr auto to(R&amp;&amp; r, Args&amp;&amp;... args);                                       // <i>freestanding</i>
+  template&lt;class C, class... Args&gt;
+    requires (!view&lt;C&gt;) <ins>&amp;&amp; (constructible_from&lt;decay_t&lt;Args&gt;, Args&gt; &amp;&amp; ...)</ins>
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, class... Args&gt;
+    <ins>requires (constructible_from&lt;decay_t&lt;Args&gt;, Args&gt; &amp;&amp; ...)</ins>
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.utility.conv.adaptors]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C, class... Args&gt;
+  requires (!view&lt;C&gt;) <ins>&amp;&amp; (constructible_from&lt;decay_t&lt;Args&gt;, Args&gt; &amp;&amp; ...)</ins>
+  constexpr auto to(Args&amp;&amp;... args);
+template&lt;template&lt;class...&gt; class C, class... Args&gt;
+  <ins>requires (constructible_from&lt;decay_t&lt;Args&gt;, Args&gt; &amp;&amp; ...)</ins>
+  constexpr auto to(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: For the first overload, <tt>C</tt> is a cv-unqualified class type.
+<p/>
+-2- <i>Returns</i>: A range adaptor closure object (<sref ref="[range.adaptor.object]"/>) <tt>f</tt> that is a 
+perfect forwarding call wrapper (<sref ref="[func.require]"/>) with the following properties:
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
