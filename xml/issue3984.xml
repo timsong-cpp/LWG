@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3984" status="New">
+<title><tt>ranges::to</tt>'s recursion branch may be ill-formed</title>
+<section><sref ref="[range.utility.conv.to]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>23 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When <tt>r</tt> is a nested range, <tt>ranges::to</tt> constructs the object recursively through <tt>r | views::transform(...)</tt>.
+<p/>
+However, the expression is ill-formed when the type of lvalue <tt>r</tt> does not model <tt>viewable_range</tt> 
+(<a href="https://godbolt.org/z/98rxGz73Y">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+#include &lt;list&gt;
+
+int main() {
+  std::vector&lt;std::vector&lt;int&gt;&gt; v;
+  auto r = std::views::all(std::move(v));
+  auto l = std::ranges::to&lt;std::list&lt;std::list&lt;int&gt;&gt;&gt;(r); // <span style="color:red;font-weight:bolder">hard error in MSVC-STL and libc++</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;C&gt;)
+  constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: <tt>C</tt> is a cv-unqualified class type.
+</p>
+<p>
+-2- <i>Returns</i>: An object of type <tt>C</tt> constructed from the elements of <tt>r</tt> in the following manner:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; If <tt>C</tt> does not satisfy <tt>input_range</tt> or 
+<tt>convertible_to&lt;range_reference_t&lt;R&gt;, range_value_t&lt;C&gt;&gt;</tt> is <tt>true</tt>:</p>
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+</ol></li>
+<li><p>(2.2) &mdash; Otherwise, if <tt>input_range&lt;range_reference_t&lt;R&gt;&gt;</tt> is <tt>true</tt>:
+</p>
+<blockquote>
+<pre>
+to&lt;C&gt;(<ins>ref_view(</ins>r<ins>)</ins> | views::transform([](auto&amp;&amp; elem) {
+  return to&lt;range_value_t&lt;C&gt;&gt;(std::forward&lt;decltype(elem)&gt;(elem));
+}), std::forward&lt;Args&gt;(args)...);
+</pre>
+</blockquote>
+</li>
+<li><p>(2.3) &mdash; Otherwise, the program is ill-formed.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
