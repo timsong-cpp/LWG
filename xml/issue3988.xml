@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3988" status="New">
+<title><tt>basic_const_iterator(T&amp;&amp;)</tt> constructor is redundant</title>
+<section><sref ref="[const.iterators]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>27 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <tt>basic_const_iterator(T&amp;&amp; t)</tt> constructor constrains the template <tt>T</tt> to be 
+implicitly converted to the underlying iterator type <tt>I</tt> and initializes it via forwarding <tt>t</tt>, 
+which seems redundant and introduces inconsistency as <tt>basic_const_iterator(I i)</tt> already handles such case:
+</p>
+<blockquote><pre>
+#include &lt;iterator&gt;
+  
+int main() {
+  int* p;
+  std::reverse_iterator&lt;const int*&gt; ri(p);     // calls reverse_iterator(I i)
+  std::move_iterator&lt;const int*&gt; mi(p);        // calls move_iterator(I i)
+  std::basic_const_iterator&lt;const int*&gt; ci(p); // calls basic_const_iterator(T&amp;&amp; t) not basic_const_iterator(I i)
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[const.iterators.iterator]"/>, class template <tt>basic_const_iterator</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+
+  template&lt;input_iterator Iterator&gt;
+  class basic_const_iterator {
+    [&hellip;]
+    constexpr basic_const_iterator(Iterator current);
+    [&hellip;]
+    <del>template&lt;<i>different-from</i>&lt;basic_const_iterator&gt; T&gt;
+        requires convertible_to&lt;T, Iterator&gt;
+      constexpr basic_const_iterator(T&amp;&amp; current);</del>
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[const.iterators.ops]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<del>template&lt;<i>different-from</i>&lt;basic_const_iterator&gt; T&gt;
+  requires convertible_to&lt;T, Iterator&gt;
+  constexpr basic_const_iterator(T&amp;&amp; current);</del>
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Effects</i>: Initializes <tt><i>current_</i></tt> with <tt>std::forward&lt;T&gt;(current)</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
