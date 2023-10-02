@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3985" status="New">
+<title><tt>ranges::to</tt> should <i>Mandates</i> <tt>C</tt> not to be view</title>
+<section><sref ref="[range.utility.conv.to]"/><sref ref="[range.utility.conv.adaptors]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>25 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In order to solve issues in LWG <iref ref="3787"/> and LWG <iref ref="3847"/> that the template parameter <tt>C</tt> 
+can be specified as an unreasonable type, <tt>ranges::to</tt> adds a <i>Mandates</i> that requires <tt>C</tt> to be a 
+<i>cv</i>-unqualified class type.
+</p>
+<p>
+However, the earliest requirement that <tt>C</tt> not be a view was still imposed by the constraints of function signatures,
+although it is unclear why <i>Constraints</i> were used in the first place, such a way of kicking out the function candidate 
+does bring undesirable hard errors and poor diagnostics (<a href="https://godbolt.org/z/K1f15K71n">demo</a>):
+</p>
+<p>
+I think consistent use of <i>Mandates</i> for template parameter <tt>C</tt> is more appropriate, as <tt>static_assert</tt> 
+provide clearer and more readable diagnostics.
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+int main() {
+  auto iota = std::views::iota(0, 10);
+  auto take = std::ranges::to&lt;std::ranges::take_view&gt;(iota, 5);  // <span style="color:red;font-weight:bolder">hard error in function body</span>
+  auto drop = iota | std::ranges::to&lt;std::ranges::drop_view&gt;(5); // <span style="color:red;font-weight:bolder">poor diagnostics</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[ranges.syn]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+#include &lt;iterator&gt;             // <i>see <sref ref="[iterator.synopsis]"/></i>
+
+namespace std::ranges {
+  [&hellip;]
+  // <i><sref ref="[range.utility.conv]"/>, range conversions</i>
+  template&lt;class C, input_range R, class... Args&gt; <del>requires (!view&lt;C&gt;)</del>
+    constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);                                          // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, input_range R, class... Args&gt;
+    constexpr auto to(R&amp;&amp; r, Args&amp;&amp;... args);                                       // <i>freestanding</i>
+  template&lt;class C, class... Args&gt; <del>requires (!view&lt;C&gt;)</del>
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  template&lt;template&lt;class...&gt; class C, class... Args&gt;
+    constexpr auto to(Args&amp;&amp;... args);                                              // <i>freestanding</i>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+
+<blockquote>
+<pre>template&lt;class C, input_range R, class... Args&gt; <del>requires (!view&lt;C&gt;)</del>
+  constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: <tt>C</tt> is a cv-unqualified class type <ins>and does not satisfy <tt>view</tt></ins>.
+</p>
+[&hellip;]
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.utility.conv.adaptors]"/> as indicated:</p>
+
+<blockquote>
+<pre>template&lt;class C, class... Args&gt; <del>requires (!view&lt;C&gt;)</del>
+  constexpr auto to(Args&amp;&amp;... args);
+template&lt;template&lt;class...&gt; class C, class... Args&gt;
+  constexpr auto to(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: For the first overload, <tt>C</tt> is a cv-unqualified class type <ins>and does not satisfy <tt>view</tt></ins>.
+</p>
+[&hellip;]
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
