@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3991" status="New">
+<title><tt>variant</tt>'s move constructor should not be guaranteed to produce a valueless by exception state</title>
+<section><sref ref="[variant.assign]"/></section>
+<submitter>Brian Bi</submitter>
+<date>29 Aug 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[variant.assign]"/> bullet 8.4 states that an alternative-changing move assignment on <tt>std::variant</tt> 
+is equivalent to a call to <tt>emplace</tt>. However, bullet 10.1 also states that if the construction of the new 
+alternative exits via an exception, then the destination of the assignment is guaranteed to become valueless 
+by exception. This is inconsistent with the specification of <tt>emplace</tt>, <sref ref="[variant.mod]"/>/11, 
+which permits (but does not require) the variant to become valueless.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[variant.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr variant&amp; operator=(variant&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt><i>j</i></tt> be <tt>rhs.index()</tt>.
+<p/>
+[&hellip;]
+<p/>
+-8- <i>Effects</i>:
+</p>
+<ol style="list-style-type:none">
+<li><p>(8.1) &mdash; If neither <tt>*this</tt> nor <tt>rhs</tt> holds a value, there is no effect.</p></li>
+<li><p>(8.2) &mdash; Otherwise, if <tt>*this</tt> holds a value but <tt>rhs</tt> does not, destroys the value 
+contained in <tt>*this</tt> and sets <tt>*this</tt> to not hold a value.</p></li>
+<li><p>(8.3) &mdash; Otherwise, if <tt>index() == <i>j</i></tt>, assigns <tt>get&lt;<i>j</i>&gt;(std::move(rhs))</tt> 
+to the value contained in <tt>*this</tt>.</p></li>
+<li><p>(8.4) &mdash; Otherwise, equivalent to <tt>emplace&lt;<i>j</i>&gt;(get&lt;<i>j</i>&gt;(std::move(rhs)))</tt>.</p></li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+-10- <i>Remarks:</i> [&hellip;]
+</p>
+<ol style="list-style-type:none">
+<li><p><del>(10.1) &mdash; If an exception is thrown during the call to <tt>T<sub><i>j</i></sub></tt>'s move construction 
+(with <tt><i>j</i></tt> being <tt>rhs.index()</tt>), the <tt>variant</tt> will hold no value.</del></p></li>
+<li><p><del>(10.2) &mdash;</del> If an exception is thrown during the call to <tt>T<sub><i>j</i></sub></tt>'s move assignment, 
+the state of the contained value is as defined by the exception safety guarantee of <tt>T<sub><i>j</i></sub></tt>'s move 
+assignment; <tt>index()</tt> will be <tt><i>j</i></tt>.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
