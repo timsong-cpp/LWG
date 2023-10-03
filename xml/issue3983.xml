@@ -28,9 +28,8 @@ int main() {
   auto r = std::ranges::to&lt;std::vector&gt;(NonMovable{}); // <span style="color:red;font-weight:bolder">hard error in MSVC-STL and libc++</span>
 }
 </pre></blockquote>
-</discussion>
 
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4958"/>.
 </p>
@@ -85,6 +84,51 @@ perfect forwarding call wrapper (<sref ref="[func.require]"/>) with the followin
 <p/>
 [&hellip;]
 </p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</superseded>
+
+<note>2023-09-28; Hewill provides alternative wording</note>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.utility.conv.adaptors]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C, class... Args&gt; requires (!view&lt;C&gt;)
+  constexpr auto to(Args&amp;&amp;... args);
+template&lt;template&lt;class...&gt; class C, class... Args&gt;
+  constexpr auto to(Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: For the first overload, <tt>C</tt> is a cv-unqualified class type.
+<p/>
+-2- <i>Returns</i>: A range adaptor closure object (<sref ref="[range.adaptor.object]"/>) <tt>f</tt> that is a 
+perfect forwarding call wrapper (<sref ref="[func.require]"/>) with the following properties:
+</p>
+<ol style="list-style-type:none">
+<li><p>(2.1) &mdash; It has no target object.</p></li>
+<li><p>(2.2) &mdash; Its bound argument entities <tt>bound_args</tt> consist of objects of types <tt>decay_t&lt;Args&gt;...</tt> 
+direct-non-list-initialized with <tt>std::forward&lt;Args&gt;(args)...</tt>, respectively. </p></li>
+<li><p>(2.3) &mdash; Its call pattern is <tt>to&lt;C&gt;(r, bound_args...)</tt>, where <tt>r</tt> is the argument used in a 
+function call expression of <tt>f</tt>.</p></li>
+</ol>
+<p><ins>
+-?- <i>Remarks</i>: The expression <tt>to(args...)</tt> is well-formed if and only if the initialization of the bound argument entities 
+of the result, as specified above, are all well-formed.
+</ins></p>
 </blockquote>
 </blockquote>
 
