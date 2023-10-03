@@ -2,28 +2,41 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="3988" status="New">
-<title><tt>basic_const_iterator(T&amp;&amp;)</tt> constructor is redundant</title>
-<section><sref ref="[const.iterators]"/></section>
+<title>Should <tt>as_const_view</tt> and <tt>basic_const_iterator</tt> provide <tt>base()</tt>?</title>
+<section><sref ref="[const.iterators]"/><sref ref="[range.as.const.view]"/></section>
 <submitter>Hewill Kang</submitter>
-<date>27 Aug 2023</date>
+<date>28 Aug 2023</date>
 <priority>99</priority>
 
 <discussion>
 <p>
-The <tt>basic_const_iterator(T&amp;&amp; t)</tt> constructor constrains the template <tt>T</tt> to be 
-implicitly converted to the underlying iterator type <tt>I</tt> and initializes it via forwarding <tt>t</tt>, 
-which seems redundant and introduces inconsistency as <tt>basic_const_iterator(I i)</tt> already handles such case:
+Currently, both <tt>as_const_view</tt> and <tt>basic_const_iterator</tt> provide <tt>base()</tt> members to 
+return the underlying range and iterator, which seems to expose vulnerabilities in modifying them:
 </p>
 <blockquote><pre>
-#include &lt;iterator&gt;
-  
+#include &lt;vector&gt;
+#include &lt;ranges&gt;
+
 int main() {
-  int* p;
-  std::reverse_iterator&lt;const int*&gt; ri(p);     // calls reverse_iterator(I i)
-  std::move_iterator&lt;const int*&gt; mi(p);        // calls move_iterator(I i)
-  std::basic_const_iterator&lt;const int*&gt; ci(p); // calls basic_const_iterator(T&amp;&amp; t) not basic_const_iterator(I i)
+  std::vector v{1, 2, 3};
+  
+  auto f = [](std::span&lt;int&gt;::const_iterator i) {
+    *i.base() = 4;
+  };
+  f(std::span{v}.cbegin());
+
+  auto g = [](const std::ranges::constant_range auto&amp; r) {
+    r.begin().base()[1] = 5;
+    r.base()[2] = 6;
+  };
+  g(std::ranges::as_const_view(v));
+
+  // v now becomes [4, 5, 6]
 }
 </pre></blockquote>
+<p>
+I don't think such a shortcut should be provided as it doesn't seem to be the intention and could be harmful.
+</p>
 </discussion>
 
 <resolution>
@@ -43,11 +56,8 @@ namespace std {
   template&lt;input_iterator Iterator&gt;
   class basic_const_iterator {
     [&hellip;]
-    constexpr basic_const_iterator(Iterator current);
-    [&hellip;]
-    <del>template&lt;<i>different-from</i>&lt;basic_const_iterator&gt; T&gt;
-        requires convertible_to&lt;T, Iterator&gt;
-      constexpr basic_const_iterator(T&amp;&amp; current);</del>
+    <del>constexpr const Iterator&amp; base() const &amp; noexcept;</del>
+    <del>constexpr Iterator base() &amp;&amp;;</del>
     [&hellip;]
   };
 }
@@ -60,15 +70,40 @@ namespace std {
 
 <blockquote>
 <pre>
-<del>template&lt;<i>different-from</i>&lt;basic_const_iterator&gt; T&gt;
-  requires convertible_to&lt;T, Iterator&gt;
-  constexpr basic_const_iterator(T&amp;&amp; current);</del>
+<del>constexpr const Iterator&amp; base() const &amp; noexcept;</del>
 </pre>
 <blockquote>
 <p>
-<del>-3- <i>Effects</i>: Initializes <tt><i>current_</i></tt> with <tt>std::forward&lt;T&gt;(current)</tt>.</del>
+<del>-4- <i>Effects</i>: Equivalent to: <tt>return <i>current_</i>;</tt></del>
 </p>
 </blockquote>
+<pre>
+<del>constexpr Iterator base() &amp;&amp;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-5- <i>Effects</i>: Equivalent to: <tt>return std::move(<i>current_</i>);</tt></del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.as.const.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+    requires input_range&lt;V&gt;
+  class as_const_view : public view_interface&lt;as_const_view&lt;V&gt;&gt; {
+    [&hellip;]
+    <del>constexpr V base() const &amp; requires copy_constructible&lt;V&gt; { return <i>base_</i>; }</del>
+    <del>constexpr V base() &amp;&amp; { return std::move(<i>base_</i>); }</del>
+    [&hellip;]
+  };
+}
+</pre>
 </blockquote>
 
 </li>
