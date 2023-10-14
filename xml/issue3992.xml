@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3992" status="New">
+<title><tt>basic_stringbuf::str()&amp;&amp;</tt> should enforce &#x1d4aa;(1)</title>
+<section><sref ref="[stringbuf.members]"/></section>
+<submitter>Peter Sommerlad</submitter>
+<date>05 Oct 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Recent discussions on <a href="https://github.com/llvm/llvm-project/issues/64644">llvm-64644</a>
+came to the conclusion that <tt>basic_stringbuf() &amp;&amp;</tt> introduced by <paper num="P0408"/>
+might just copy the underlying buffer into a string object and not actually move the allocated space. 
+While the wording tried to encourage that, especially with the postcondition that the buffer must 
+be empty afterwards, it failed to specify that the move is never a copy.
+<p/>
+I suggest to amend the specification to enforce implementors to do the <tt>&#x1d4aa;(1)</tt> thing. 
+There might be ABI issues for those who still copy.
+<p/>
+Some investigation into <sref ref="[container.reqmts]"/> p.16 and <sref ref="[basic.string.general]"/> 
+shows that a <tt>basic_string</tt> as a standard container should move with <tt>&#x1d4aa;(1)</tt>.
+<p/>
+Unfortunately, we cannot say
+</p>
+<blockquote><p>
+<ins><tt>str().data() == buf.data()</tt> before calling <tt>str()</tt></ins>
+</p></blockquote>
+<p>
+as a postcondition due to SSO. Maybe a note could be added to eliminate the confusion.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4958"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[stringbuf.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+basic_string&lt;charT, traits, Allocator&gt; str() &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+-9- <i>Postconditions</i>: The underlying character sequence <tt>buf</tt> is empty and <tt>pbase()</tt>, <tt>pptr()</tt>, 
+<tt>epptr()</tt>, <tt>eback()</tt>, <tt>gptr()</tt>, and <tt>egptr()</tt> are initialized as if by calling 
+<tt>init_buf_ptrs()</tt> with an empty <tt>buf</tt>.
+<p/>
+-10- <i>Returns</i>: A <tt>basic_string&lt;charT, traits, Allocator&gt;</tt> object move constructed from the 
+<tt>basic_stringbuf</tt>'s underlying character sequence in <tt>buf</tt>. This can be achieved by first adjusting <tt>buf</tt> 
+to have the same content as <tt>view()</tt>.
+<p/>
+<ins>[<i>Note:</i> &mdash; <sref ref="[container.reqmts]"/> require the move construction of the return
+value to be <tt>&#x1d4aa;(1)</tt> <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
