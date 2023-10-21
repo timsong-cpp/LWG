@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="3999" status="New">
+<title>P0439R0 changed the value category of memory order constants</title>
+<section><sref ref="[atomics.order]"/></section>
+<submitter>Jiang An</submitter>
+<date>18 Oct 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="P0439R0"/> made <tt>std::memory_order</tt> an scoped enumeration type. However, it also 
+changed former enumerators (<tt>std::memory_order_seq_cst</tt>) to <tt>constexpr</tt> variables.
+<p/>
+It is unclear the additional change is intended while it presumably bothered nobody in practice. 
+Given there is <tt>using enum</tt> (<paper num="P1099R5"/>) in C++20, it may be better to keep 
+these constants being prvalues.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[atomics.syn]"/>, header <tt>&lt;atomic&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  // <i><sref ref="[atomics.order]"/>, order and consistency</i>
+  enum class memory_order : <i>unspecified</i>;                        // <i>freestanding</i>
+  <del>inline constexpr memory_order memory_order_relaxed = memory_order::relaxed</del><ins>using memory_order::memory_order_relaxed</ins>; // <i>freestanding</i>
+  <del>inline constexpr memory_order memory_order_consume = memory_order::consume</del><ins>using memory_order::memory_order_consume</ins>; // <i>freestanding</i>
+  <del>inline constexpr memory_order memory_order_acquire = memory_order::acquire</del><ins>using memory_order::memory_order_acquire</ins>; // <i>freestanding</i>
+  <del>inline constexpr memory_order memory_order_release = memory_order::release</del><ins>using memory_order::memory_order_release</ins>; // <i>freestanding</i>
+  <del>inline constexpr memory_order memory_order_acq_rel = memory_order::acq_rel</del><ins>using memory_order::memory_order_acq_rel</ins>; // <i>freestanding</i>
+  <del>inline constexpr memory_order memory_order_seq_cst = memory_order::seq_cst</del><ins>using memory_order::memory_order_seq_cst</ins>; // <i>freestanding</i>
+  
+  [&hellip;]
+}
+[&hellip;]
+</pre></blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[atomics.order]"/> as indicated:</p>
+
+<blockquote><pre>
+namespace std {
+  enum class memory_order : <i>unspecified</i> {
+    relaxed, consume, acquire, release, acq_rel, seq_cst<ins>,
+    memory_order_relaxed = relaxed, memory_order_consume = consume, memory_order_acquire = acquire,
+    memory_order_release = release, memory_order_acq_rel = acq_rel, memory_order_seq_cst = seq_cst</ins>
+  };
+}</pre></blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
