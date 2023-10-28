@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4003" status="New">
+<title><tt>view_interface::back</tt> is overconstrained</title>
+<section><sref ref="[view.interface]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>28 Oct 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>view_interface</tt> only provides the <tt>back</tt> member when the derived class satisfies both 
+<tt>bidirectional_range</tt> and <tt>common_range</tt>, which ensures that <tt>ranges::prev</tt> can act its sentinel.
+<p/>
+However, requiring <tt>common_range</tt> seems to be too strict because when the derived class satisfies both 
+<tt>random_access_range</tt> and <tt>sized_range</tt>, its end iterator can still be calculated in constant time, 
+which is what some range adaptors currently do to greedily become common ranges.
+<p/>
+I think we should follow similar rules to eliminate this inconsistency (<a href="https://godbolt.org/z/1oEf58Krh">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+constexpr auto r = std::ranges::subrange(std::views::iota(0), 5);
+constexpr auto z = std::views::zip(r);
+static_assert(r.back() == 4); // <span style="color:red;font-weight:bolder">ill-formed</span>
+static_assert(std::get&lt;0&gt;(z.back()) == 4); // ok
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[view.interface]"/>, class template <tt>view_interface</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+namespace std::ranges {
+  template&lt;class D&gt;
+    requires is_class_v&lt;D&gt; &amp;&amp; same_as&lt;D, remove_cv_t&lt;D&gt;&gt;
+  class view_interface {
+    [&hellip;]
+  public:
+    [&hellip;]
+    constexpr decltype(auto) back() requires <ins>(</ins>bidirectional_range&lt;D&gt; &amp;&amp; common_range&lt;D&gt;<ins>) ||</ins>
+                                             <ins>(random_access_range&lt;D&gt; &amp;&amp; sized_range&lt;D&gt;)</ins>;
+    constexpr decltype(auto) back() const
+      requires <ins>(</ins>bidirectional_range&lt;const D&gt; &amp;&amp; common_range&lt;const D&gt;<ins>) ||</ins>
+               <ins>(random_access_range&lt;const D&gt; &amp;&amp; sized_range&lt;const D&gt;)</ins>;
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[view.interface.members]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr decltype(auto) back() requires <ins>(</ins>bidirectional_range&lt;D&gt; &amp;&amp; common_range&lt;D&gt;<ins>) ||</ins>
+                                         <ins>(random_access_range&lt;D&gt; &amp;&amp; sized_range&lt;D&gt;)</ins>;
+constexpr decltype(auto) back() const
+  requires <ins>(</ins>bidirectional_range&lt;const D&gt; &amp;&amp; common_range&lt;const D&gt;<ins>) ||</ins>
+           <ins>(random_access_range&lt;const D&gt; &amp;&amp; sized_range&lt;const D&gt;)</ins>;
+</pre>
+<blockquote>
+<p>
+-3- <i>Preconditions</i>: <tt>!empty()</tt> is <tt>true</tt>.
+<p/>
+-4- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+<ins>auto <i>common-arg-end</i> = []&lt;class R&gt;(R&amp; r) {
+  if constexpr (common_range&lt;R&gt;) {
+    return ranges::end(r);
+  } else {
+    return ranges::begin(r) + ranges::distance(r);
+  }
+};</ins>
+return *ranges::prev(<ins><i>common-arg-end</i></ins><del>ranges::end</del>(<i>derived</i>()));
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
