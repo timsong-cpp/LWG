@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4010" status="New">
+<title><tt>subrange::advance</tt> should be improved</title>
+<section><sref ref="[range.subrange.access]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>09 Nov 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>subrange::advance</tt> always increments <tt><i>begin_</i></tt> via <tt>ranges::advance(<i>begin_</i>, 
+n, <i>end_</i>)</tt>, which has &#x1d4aa;(<tt>n</tt>) complexity for non-common random-access ranges,
+which can be improved to &#x1d4aa;(1) with the help of the <tt><i>size_</i></tt> member (if provided).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.subrange.access]"/> as indicated:</p>
+
+<pre>
+constexpr subrange&amp; advance(iter_difference_t&lt;I&gt; n);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+if constexpr (bidirectional_iterator&lt;I&gt;) {
+  if (n &lt; 0) {
+    ranges::advance(<i>begin_</i>, n);
+    if constexpr (<i>StoreSize</i>)
+      <i>size_</i> += <i>to-unsigned-like</i>(-n);
+    return *this;
+  }
+}
+
+<del>auto d = n - ranges::advance(<i>begin_</i>, n, <i>end_</i>);</del>
+if constexpr (<i>StoreSize</i>) <ins>{
+  n = std::min(n, static_cast&lt;decltype(n)&gt;(<i>size_</i>));
+  ranges::advance(<i>begin_</i>, n);</ins>
+  <i>size_</i> -= <i>to-unsigned-like</i>(<ins>n</ins><del>d</del>);
+<ins>} else {
+  ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+}</ins>
+return *this;
+</pre></blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
