@@ -1,0 +1,201 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4014" status="New">
+<title>LWG 3809 changes behavior of some existing <tt>std::subtract_with_carry_engine</tt> code</title>
+<section><sref ref="[rand.eng.sub]"/></section>
+<submitter>Matt Stephanson</submitter>
+<date>15 Nov 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Issue <iref ref="3809"/> pointed out that <tt>subtract_with_carry_engine&lt;T&gt;</tt> can be seeded with values 
+from a <tt>linear_congruential_engine&lt;T, 40014u, 0u, 2147483563u&gt;</tt> object, which results in narrowing 
+when <tt>T</tt> is less than 32 bits. Part of the resolution was to modify the LCG seed sequence as follows:
+</p>
+<blockquote>
+<pre>explicit subtract_with_carry_engine(result_type value);</pre>
+<p>-7- <i>Effects</i>:
+Sets the values of
+<math>
+  <mrow>
+    <msub> <mi>X</mi> <mrow> <mo>-</mo> <mi>r</mi> </mrow> </msub>
+    <mo separator="true">,</mo>
+    <mo>&hellip;</mo>
+    <mo separator="true">,</mo>
+    <msub> <mi>X</mi> <mrow> <mo>-</mo> <mn>1</mn> </mrow> </msub>
+  </mrow>
+</math>,
+in that order, as specified below. If
+<math>
+  <mrow>
+    <msub> <mi>X</mi> <mrow> <mo>-</mo> <mn>1</mn> </mrow> </msub>
+  </mrow>
+</math>
+is then <math> <mn>0</mn> </math>,
+sets <math> <mi>c</mi> </math> to <math> <mn>1</mn> </math>;
+otherwise sets <math> <mi>c</mi> </math> to <math> <mn>0</mn> </math>.
+</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;
+To set the values
+<math> <mrow> <msub> <mi>X</mi> <mi>k</mi> </msub> </mrow> </math>,
+first construct <tt>e</tt>, a <tt>linear_congruential_engine</tt> object,
+as if by the following definition:
+</p>
+<blockquote><pre>
+linear_congruential_engine&lt;<del>result_type</del><ins>uint_least32_t</ins>,
+                           40014u,0u,2147483563u&gt; e(value == 0u ? default_seed : value);
+</pre></blockquote>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;
+Then, to set each
+<math> <mrow> <msub> <mi>X</mi> <mi>k</mi> </msub> </mrow> </math>,
+obtain new values
+<math>
+  <mrow>
+    <msub> <mi>z</mi> <mn>0</mn> </msub>
+    <mo separator="true">,</mo>
+    <mo>&hellip;</mo>
+    <mo separator="true">,</mo>
+    <msub> <mi>z</mi> <mrow> <mi>n</mi> <mo>-</mo> <mn>1</mn> </mrow> </msub>
+  </mrow>
+</math>
+from
+<math>
+  <mrow>
+    <mi>n</mi> <mo>=</mo>
+    <mo form="prefix" stretchy="false">&#x2308;</mo>
+    <mi>w</mi> <mo lspace="0em" rspace="0em">/</mo> <mn>32</mn>
+    <mo form="postfix" stretchy="false">&#x2309;</mo>
+  </mrow>
+</math>
+successive invocations of <tt>e</tt>.
+Set
+<math> <mrow> <msub> <mi>X</mi> <mi>k</mi> </msub> </mrow> </math>
+to
+<math>
+  <mrow>
+    <mrow>
+      <mo fence="true" form="prefix">(</mo>
+      <msubsup>
+        <mo movablelimits="false">&sum;</mo>
+        <mrow> <mi>j</mi> <mo>=</mo> <mn>0</mn> </mrow>
+        <mrow> <mi>n</mi> <mo>-</mo> <mn>1</mn> </mrow>
+      </msubsup>
+      <msub> <mi>z</mi> <mi>j</mi> </msub>
+      <mo>&#x2219;</mo>
+      <msup> <mn>2</mn> <mrow> <mn>32</mn> <mi>j</mi> </mrow> </msup>
+      <mo fence="true" form="postfix">)</mo>
+    </mrow>
+    <mo lspace="0.2222em" rspace="0.2222em">mod</mo>
+    <mi>m</mi>
+  </mrow>
+</math>.
+</p>
+</blockquote>
+<p>
+Inside <tt>linear_congruential_engine</tt>, the seed is reduced modulo 2147483563, so <tt>uint_least32_t</tt> 
+is fine from that point on. This resolution, however, forces <tt>value</tt>, the user-provided seed, to be 
+truncated from <tt>result_type</tt> to <tt>uint_least32_t</tt> before the reduction, which generally will 
+change the result. It also breaks the existing behavior that two seeds are equivalent if they're in the same 
+congruence class modulo the divisor.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/> <em>after the wording changes applied</em> by LWG <iref ref="3809"/>,
+which had been accepted into the working paper during the Kona 2023-11 meeting.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[rand.eng.sub]"/> as indicated:</p>
+
+<blockquote>
+<pre>explicit subtract_with_carry_engine(result_type value);</pre>
+<p>-7- <i>Effects</i>:
+Sets the values of
+<math>
+  <mrow>
+    <msub> <mi>X</mi> <mrow> <mo>-</mo> <mi>r</mi> </mrow> </msub>
+    <mo separator="true">,</mo>
+    <mo>&hellip;</mo>
+    <mo separator="true">,</mo>
+    <msub> <mi>X</mi> <mrow> <mo>-</mo> <mn>1</mn> </mrow> </msub>
+  </mrow>
+</math>,
+in that order, as specified below. If
+<math>
+  <mrow>
+    <msub> <mi>X</mi> <mrow> <mo>-</mo> <mn>1</mn> </mrow> </msub>
+  </mrow>
+</math>
+is then <math> <mn>0</mn> </math>,
+sets <math> <mi>c</mi> </math> to <math> <mn>1</mn> </math>;
+otherwise sets <math> <mi>c</mi> </math> to <math> <mn>0</mn> </math>.
+</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;
+To set the values
+<math> <mrow> <msub> <mi>X</mi> <mi>k</mi> </msub> </mrow> </math>,
+first construct <tt>e</tt>, a <tt>linear_congruential_engine</tt> object,
+as if by the following definition:
+</p>
+<blockquote><pre>
+linear_congruential_engine&lt;uint_least32_t,
+                           40014u,0u,2147483563u&gt; e(value == 0u ? default_seed : 
+                           <ins>static_cast&lt;uint_least32_t&gt;(</ins>value<ins> % 2147483563u)</ins>);
+</pre></blockquote>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;
+Then, to set each
+<math> <mrow> <msub> <mi>X</mi> <mi>k</mi> </msub> </mrow> </math>,
+obtain new values
+<math>
+  <mrow>
+    <msub> <mi>z</mi> <mn>0</mn> </msub>
+    <mo separator="true">,</mo>
+    <mo>&hellip;</mo>
+    <mo separator="true">,</mo>
+    <msub> <mi>z</mi> <mrow> <mi>n</mi> <mo>-</mo> <mn>1</mn> </mrow> </msub>
+  </mrow>
+</math>
+from
+<math>
+  <mrow>
+    <mi>n</mi> <mo>=</mo>
+    <mo form="prefix" stretchy="false">&#x2308;</mo>
+    <mi>w</mi> <mo lspace="0em" rspace="0em">/</mo> <mn>32</mn>
+    <mo form="postfix" stretchy="false">&#x2309;</mo>
+  </mrow>
+</math>
+successive invocations of <tt>e</tt>.
+Set
+<math> <mrow> <msub> <mi>X</mi> <mi>k</mi> </msub> </mrow> </math>
+to
+<math>
+  <mrow>
+    <mrow>
+      <mo fence="true" form="prefix">(</mo>
+      <msubsup>
+        <mo movablelimits="false">&sum;</mo>
+        <mrow> <mi>j</mi> <mo>=</mo> <mn>0</mn> </mrow>
+        <mrow> <mi>n</mi> <mo>-</mo> <mn>1</mn> </mrow>
+      </msubsup>
+      <msub> <mi>z</mi> <mi>j</mi> </msub>
+      <mo>&#x2219;</mo>
+      <msup> <mn>2</mn> <mrow> <mn>32</mn> <mi>j</mi> </mrow> </msup>
+      <mo fence="true" form="postfix">)</mo>
+    </mrow>
+    <mo lspace="0.2222em" rspace="0.2222em">mod</mo>
+    <mi>m</mi>
+  </mrow>
+</math>.
+</p>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
