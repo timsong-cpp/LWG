@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4015" status="New">
+<title>LWG 3973 broke <code>const</code> overloads of <code>std::optional</code> monadic operations</title>
+<section><sref ref="[optional.monadic]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>24 Nov 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The resolution of LWG <iref ref="3973"/> (adopted in Kona) changed all
+occurrences of <code>value()</code> to <code>*val</code>.
+The intention was not to change the meaning, just avoid the non-freestanding
+<code>value()</code> function, and avoid ADL that would be caused by using
+<code>**this</code>.
+However, in the <code>const</code> overloads such as
+<code>and_then(F&amp;&amp;) const</code> the type of <code>value()</code>
+was <code>const T&amp;</code>, but the type of <code>*val</code> is always 
+<code>T&amp;</code>. This implies that the const overloads invoke the callable
+with a non-const argument, which is incorrect (and would be undefined
+behaviour for a <code>const std::optional&lt;T&gt;</code>).
+
+</p>
+<p>
+On the LWG reflector it was suggested that we should rewrite the specification
+of <code>std::optional</code> to stop using an exposition-only data member
+of type <code>T*</code>. No such member ever exists in real implemetations,
+so it is misleading and leads to specification bugs of this sort.
+</p>
+<p>
+Change the class definition in <sref ref="[optional.optional.general]"/>
+to use a union, and update every use of <code>val</code> accordingly
+throughout <sref ref="[optional.optional]"/>.
+For consistency with <sref ref="[expected.object.general]"/> we might
+also want to introduce a <code>bool has_val</code> member and refer to
+that in the specification.
+</p>
+<blockquote>
+<pre><code>
+  private:
+    <del>T *val;         <em>// exposition only</em></del>
+    <ins>bool has_val;   <em>// exposition only</em></ins>
+    <ins>union {</ins>
+      <ins>T val;        <em>// exposition only</em></ins>
+    <ins>};</ins>
+  };
+</code></pre>
+</blockquote>
+<p>For example, in <sref ref="[optional.mod]"/>:</p>
+<blockquote>
+<p>
+-1- <i>Effects</i>:
+If <code>*this</code> contains a value, calls
+<code>val<del>-&gt;</del><ins>.</ins>T::~T()</code> to destroy the contained
+value<ins> and sets <code>has_val</code> to <code>false</code></ins>;
+otherwise no effect.
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>
+</p>
+</resolution>
+
+</issue>
