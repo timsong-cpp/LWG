@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4016" status="New">
+<title><code><i>container-insertable</i></code> checks do not match what <code><i>container-inserter</i></code> does</title>
+<section><sref ref="[range.utility.conv]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>24 Nov 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The exposition-only helper <code><i>container-inserter</i></code> uses either
+<code>std::back_inserter</code> or <code>std::inserter</code>. Both
+<code>std::back_insert_iterator</code> and <code>std::insert_iterator</code>
+require <code>C::value_type</code> to be a valid type.
+They also incur a conversion to that <code>value_type</code> which has to
+be moved into the container.
+It's also possible (although arguably not worth caring about) that
+<code>range_value_t&lt;C&gt;</code> is not the same type as
+<code>C::value_type</code>, and that conversion to <code>C::value_type</code>
+could be ill-formed (we only check that conversion from
+<code>range_reference_t&lt;R&gt;</code> to <code>range_value_t&lt;C&gt;</code>
+is well-formed).
+</p>
+<p>
+It seems preferable to remove the use of insert iterators, so that we don't
+need to check their requirements at all.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.utility.conv.general]"/> as indicated:</p>
+
+<blockquote>
+<p>-4- Let <code><i>container-insertable</i></code> be defined as follows:
+<blockquote>
+<pre><code>template&lt;class Container, class Ref&gt;
+constexpr bool <i>container-insertable</i> =         <i>// exposition only</i>
+  requires(Container&amp; c, Ref&amp;&amp; ref) {
+           requires (<ins>requires { c.emplace_back(std::forward&lt;Ref&gt;(ref)); } ||</ins>
+                     requires { c.push_back(std::forward&lt;Ref&gt;(ref)); } ||
+                     <ins>requires { c.emplace(c.end(), std::forward&lt;Ref&gt;(ref)); } ||</ins>
+                     requires { c.insert(c.end(), std::forward&lt;Ref&gt;(ref)); });
+};
+</code></pre>
+</blockquote>
+</p>
+<p>-5- Let <code><i>container-inserter</i></code> be defined as follows:
+<blockquote>
+<pre><code>template&lt;class Container<del>, class Ref</del>&gt;
+constexpr auto <i>container-inserter</i>(Container&amp; c) {     <i>// exposition only</i>
+<del>  if constexpr (requires { c.push_back(declval&lt;Ref&gt;()); })
+    return back_inserter(c);
+  else
+    return inserter(c, c.end());</del>
+<ins>  return [&amp;c]&lt;class Ref&gt;(Ref&amp;&amp; ref) {
+    if constexpr (requires { c.emplace_back(declval&lt;Ref&gt;()); })
+      c.emplace_back(std::forward&lt;Ref&gt;(ref));
+    else if constexpr (requires { c.push_back(declval&lt;Ref&gt;()); })
+      c.push_back(std::forward&lt;Ref&gt;(ref));
+    else if constexpr (requires { c.emplace(c.end(), declval&lt;Ref&gt;()); })
+      c.emplace(c.end(), std::forward&lt;Ref&gt;(ref));
+    else
+      c.insert(c.end(), std::forward&lt;Ref&gt;(ref));
+  };</ins>
+};
+</code></pre>
+</blockquote>
+</p>
+</blockquote>
+</li>
+<li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+<blockquote>
+<p>(2.1.4) Otherwise, if
+<ul style="list-style-type: none">
+<li>&mdash; <code>constructible_from&lt;C, Args...&gt;</code> is <code>true</code>, and</li>
+<li>&mdash; <code><i>container-insertable</i>&lt;C, range_reference_t&lt;R&gt;&gt;</code> is <code>true</code>:</li>
+</ul>
+<blockquote>
+<pre><code>
+C c(std::forward&lt;Args&gt;(args)...);
+if constexpr (sized_range&lt;R&gt; &amp;&amp; <i>reservable-container</i>&lt;C&gt;)
+c.reserve(static_cast&lt;range_size_t&lt;C&gt;&gt;(ranges::size(r)));
+ranges::<del>copy</del><ins>for_each</ins>(r, <i>container-inserter</i><del>&lt;range_reference_t&lt;R&gt;&gt;</del>(c));
+</code></pre>
+</blockquote>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
