@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4017" status="New">
+<title>Behavior of <tt>std::views::split</tt> on an empty range</title>
+<section><sref ref="[range.split.iterator]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>19 Nov 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following example (which uses <tt>fmt::println</tt> instead of <tt>std::println</tt>, 
+but they do the same thing in C++23):
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;ranges&gt;
+#include &lt;fmt/ranges.h&gt;
+
+int main()
+{
+  fmt::println("{}", std::views::split(std::string(" x "), ' '));
+  fmt::println("{}", std::views::split(std::string(" "), ' '));
+  fmt::println("{}", std::views::split(std::string("x"), ' '));
+  fmt::println("{}", std::views::split(std::string(""), ' '));
+}
+</pre></blockquote>
+<p>
+The output of this program (as specified today) is 
+</p>
+<blockquote><pre>
+[[], ['x'], []]
+[[], []]
+[['x']]
+[]
+</pre></blockquote>
+<p>
+The principle set out in LWG <iref ref="3478"/> is that splitting a sequence containing <tt>N</tt> 
+delimiters should lead to <tt>N+1</tt> subranges. That principle was broken if the <tt>N</tt>-th 
+delimiter was at the end of the sequence, which was fixed by <paper num="P2210"/>. 
+<p/>
+However, the principle is still broken if the sequence contains zero delimiters. A non-empty sequence 
+will split into one range, but an empty sequence will split into zero ranges. That last line is incorrect 
+&mdash; splitting an empty range on a delimiter should yield a range of an empty range &mdash; not 
+simply an empty range.
+<p/>
+Proposed Resolution: Currently, <tt>split_view::iterator</tt>'s constructor unconditionally initializes 
+<tt><i>trailing_empty_</i></tt> to <tt>false</tt>. Instead, change <sref ref="[range.split.iterator]"/>/1 
+to initialize <tt><i>trailing_empty_</i></tt> to <tt><i>cur_</i> == <i>next_</i>.begin()</tt> (i.e. 
+<tt><i>trailing_empty_</i></tt> is typically <tt>false</tt>, but if we're empty on initialization then we 
+have to have a trailing empty range).
+<p/>
+The following demo shows my implementation from <paper num="P2210"/>, adjusted to fix this: 
+<a href="https://godbolt.org/z/axWb64j9f">godbolt.org/z/axWb64j9f</a>
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.split.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <i>iterator</i>(split_view&amp; parent, iterator_t&lt;V&gt; current, subrange&lt;iterator_t&lt;V&gt;&gt; next);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Initializes <tt><i>parent_</i></tt> with <tt>addressof(parent)</tt>, <tt><i>cur_</i></tt> with 
+<tt>std::move(current)</tt>, <del>and</del> <tt><i>next_</i></tt> with <tt>std::move(next)</tt><ins>, and
+<tt><i>trailing_empty_</i></tt> with <tt><i>cur_</i> == <i>next_</i>.begin()</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
