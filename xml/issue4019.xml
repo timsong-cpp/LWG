@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4019" status="New">
+<title>Reversing an infinite range leads to an infinite loop</title>
+<section><sref ref="[range.reverse]"/></section>
+<submitter>Barry Revzin</submitter>
+<date>25 Nov 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following:
+</p>
+<blockquote><pre>
+auto a = views::iota(0) | views::reverse;
+auto b = views::repeat(42) | views::reverse;
+</pre></blockquote>
+<p>
+Here, <tt>views::iota(0)</tt> and <tt>views::repeat(42)</tt> are both non-common bidirectional (even random-access) ranges. 
+They are also infinite ranges, even if the standard doesn't really recognize that. 
+<p/>
+<tt>views::reverse</tt> on a non-common range will actually compute the end iterator for you. So while both declarations 
+of <tt>a</tt> and <tt>b</tt> above compile, attempting to use either in any way will lead to an infinite loop when you 
+<tt>try a.begin()</tt> or <tt>b.begin()</tt>.
+<p/>
+A reddit posts suggests disallowing reversing a non-common range but that likely breaks reasonable use-cases. We could at 
+the very least recognize ranges whose sentinel is <tt>unreachable_t</tt> and reject those from consideration. For instance, 
+we could change <sref ref="[range.iter.op.next]"/>/3 to <i>Mandate</i> that <tt>S</tt> is not <tt>unreachable_t</tt>.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
