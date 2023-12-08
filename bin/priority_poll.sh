@@ -4,6 +4,15 @@
 # git pull
 # for i in `seq 3858 3864` ; do bin/priority_poll $i || break ; sleep 2 ; done
 
+# Email will be sent using 'mutt' if present, or 'mailx' otherwise.
+# The sender address can be set by the first one found of: --from option;
+# the $EMAIL environment variable; or git config user.email and user.name.
+
+die() {
+  echo "$0: $*" >&2
+  exit 1
+}
+
 To="C++ Library Working Group <lib@lists.isocpp.org>"
 From=${EMAIL}
 
@@ -13,7 +22,6 @@ usage()
   exit $1
 }
 
-
 while [[ "$1" == -* ]]
 do
   case "$1" in
@@ -22,31 +30,36 @@ do
     --to) To="$2" ; shift ;;
     --from=*) From="${1#--from=}" ;;
     --from) From="$2" ; shift ;;
-    *) echo "$0: Invalid argument: $1" >&2 ; exit 1 ;;
+    *) die "Invalid argument: $1" ;;
   esac
   shift
 done
 
 [ $# -eq 1 ] || usage 1 >&2
 
-: ${From:?'address not set, use --from or $EMAIL'}
+if [ -z "$From" ]; then
+  if From="$(git config user.email)"; then
+    if name="$(git config user.name)"; then
+      From="$name <$From>"
+      unset name
+    fi
+  fi
+fi
+
+[ -n "$From" ] || die 'address not set, use --from or $EMAIL'
 
 issue=$1
-xml=$(printf "xml/issue%04d.xml" $issue)
-if [ ! -f $xml ]
+if ! xml=$(printf "xml/issue%04d.xml" $issue) || [ ! -f "$xml" ]
 then
-  echo "$0: No such issue: $issue" >&2
-  exit 1
+  die "No such issue: $issue"
 fi
 
 if [ $(xpath -q -e '/issue/priority/text()' $xml) != 99 ]
 then
-  echo "$0: Priority already set: $issue" >&2
-  exit 1
+  die "Priority already set: $issue"
 elif [ "$(xpath -q -e '/issue/@status' $xml)" != ' status="New"' ]
 then
-  echo "$0: Status is not \"New\": $issue" >&2
-  exit 1
+  die "Status is not \"New\": $issue"
 fi
 
 # Convert HTML to plain text (specifically, replace entities).
@@ -58,10 +71,19 @@ title=$(xpath -q -e 'normalize-space(/issue/title)' $xml)
 
 draft=`mktemp /tmp/draft.prio.mail.XXXXXX` || exit
 
-cat > $draft <<EOT
-From: $From
-Subject: Issue $issue: $title
+subject="Issue $issue: $title"
 
+if [ -x "$(command -v mutt)" ]; then
+  use_mutt=yes
+  cat > $draft <<EOT
+From: $From
+Subject: $subject
+EOT
+else
+  use_mutt=no
+fi
+
+cat >> $draft <<EOT
 It's bug prioritization time!
 Thanks to everyone who participates.
 
@@ -81,7 +103,12 @@ Please add your comments to this thread. Comments which are insightful or summar
 
 EOT
 
-mutt -H $draft -- "$To" </dev/null || exit 1
+if [ "$use_mutt" = yes ]; then
+  mutt -H $draft -- "$To" </dev/null || exit 1
+else
+  mailx -s "$subject" -S "from=$From" "$To" < $draft || exit 1
+fi
+
 echo "Sent: Issue $issue: $title"
 
 rm $draft
