@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4021" status="New">
+<title><tt>mdspan::is_always_<i>meow</i>()</tt> should be <tt>noexcept</tt></title>
+<section><sref ref="[mdspan.extents.expo]"/></section>
+<submitter>Stephan T. Lavavej</submitter>
+<date>07 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It can easily be proven that <tt>mdspan::is_always_<i>meow</i>()</tt> is preconditionless and can never throw exceptions. 
+microsoft/STL has already shipped a <tt>noexcept</tt>-strengthened implementation, libc++ would like to (see 
+<a href="https://github.com/llvm/llvm-project/pull/74254">llvm/llvm-project#74254</a>), and together we believe that the 
+Standard should simply mandate <tt>noexcept</tt> so users can rely on this. The proof is:
+</p>
+<ul>
+<li><p>N4964 <sref ref="[mdspan.mdspan.overview]"/>/3:</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+<tt>LayoutPolicy</tt> shall meet the layout mapping policy requirements (<sref ref="[mdspan.layout.policy.reqmts]"/>) [&hellip;]
+</p>
+</blockquote>
+</li>
+<li>
+<p>
+<sref ref="[mdspan.layout.policy.reqmts]"/>/1: 
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+A type <tt>MP</tt> meets the <i>layout mapping policy</i> requirements 
+if for a type <tt>E</tt> that is a specialization of <tt>extents</tt>, <tt>MP::mapping&lt;E&gt;</tt> is valid and denotes 
+a type <tt>X</tt> that meets the layout mapping requirements (<sref ref="[mdspan.layout.reqmts]"/>) [&hellip;]
+</p>
+</blockquote>
+</li>
+<li><p><sref ref="[mdspan.layout.reqmts]"/>/1, /1.5, /22, /24, /26:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+A type <tt>M</tt> meets the <i>layout mapping</i> requirements if
+<p/>
+[&hellip;]
+</p>
+<ol style="list-style-type: none">
+<li><p>
+&mdash; the following types and expressions are well-formed and have the specified semantics.
+<p/>
+[&hellip;]
+<p/>
+<tt>M::is_always_unique()</tt>
+<p/>
+<i>Result</i>: A constant expression (<sref ref="[expr.const]"/>) of type <tt>bool</tt>.
+<p/>
+[&hellip;]
+<p/>
+<tt>M::is_always_exhaustive()</tt>
+<p/>
+<i>Result</i>: A constant expression (<sref ref="[expr.const]"/>) of type <tt>bool</tt>.
+<p/>
+[&hellip;]
+<p/>
+<tt>M::is_always_strided()</tt>
+<p/>
+<i>Result</i>: A constant expression (<sref ref="[expr.const]"/>) of type <tt>bool</tt>.
+</p></li>
+</ol>
+</blockquote>
+</li>
+</ul>
+<p>
+Constant expressions can surely be obtained without throwing exceptions.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4964"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[mdspan.mdspan.overview]"/>, class template <tt>mdspan</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+static constexpr bool is_always_unique() <ins>noexcept</ins>
+  { return mapping_type::is_always_unique(); }
+static constexpr bool is_always_exhaustive() <ins>noexcept</ins>
+  { return mapping_type::is_always_exhaustive(); }
+static constexpr bool is_always_strided() <ins>noexcept</ins>
+  { return mapping_type::is_always_strided(); }
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
