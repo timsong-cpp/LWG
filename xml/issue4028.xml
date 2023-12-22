@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4028" status="New">
+<title><tt>std::is_(nothrow_)convertible</tt> should be reworded to avoid dependence on the <tt>return</tt> statement</title>
+<section><sref ref="[meta.rel]"/></section>
+<submitter>Jiang An</submitter>
+<date>18 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current specification for <tt>std::is_convertible</tt> is sensitive to the requirements for the <tt>return</tt> 
+statements. As a result, the requirements were accidentally changed by <paper num="P0135R1"/> and then changed back by 
+CWG issue <a href="https://wg21.link/cwg2426">2426</a>. The current revision of <paper num="P2748"/> also plans to 
+change the wording for <tt>std::is_convertible</tt> to avoid actual behavioral changing.
+<p/>
+IMO it's better to specify <tt>std::is_convertible</tt> in a such way that is independent to <tt>return</tt> statements. 
+The proposed resolution matches what mainstream implementations do, and should resolve LWG <iref ref="3400"/> together.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[meta.rel]"/> as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 49 &mdash; Type relationship predicates [tab:meta.rel]</caption>
+<tr style="text-align:center">
+<th>Template</th>
+<th>Condition</th>
+<th>Comments</th>
+</tr>
+<tr>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+</tr>
+<tr>
+<td>
+<pre>
+template&lt;class From, class To&gt;
+struct is_convertible;
+</pre>
+</td>
+<td><i>see below</i></td>
+<td>
+<tt>From</tt> and <tt>To</tt> shall be<br/>
+complete types, <tt><i>cv</i> void</tt>, or arrays of<br/>
+unknown bound.
+</td>
+</tr>
+<tr>
+<td>
+<pre>
+template&lt;class From, class To&gt;
+struct is_nothrow_convertible;
+</pre>
+</td>
+<td>
+<tt>is_convertible_v&lt;From,<br/>
+To&gt;</tt> is <tt>true</tt> and <del>the</del><br/>
+<del>conversion, as defined by</del><br/>
+<del><tt>is_convertible</tt>, is known</del><br/>
+<del>not to throw any exceptions</del><br/>
+<ins>either both <tt>From</tt> and <tt>To</tt><br/>
+are <tt><i>cv</i> void</tt>, or the function call<br/>
+expression used for specifying <tt>is_convertible</tt><br/>
+is non-throwing</ins> (<sref ref="[expr.unary.noexcept]"/>)
+</td>
+<td>
+<tt>From</tt> and <tt>To</tt> shall be<br/>
+complete types, <tt><i>cv</i> void</tt>, or arrays of<br/>
+unknown bound.
+</td>
+</tr>
+<tr>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+<td>[&hellip;]</td>
+</tr>
+</table>
+
+<p>
+-5- The predicate condition for a template specialization <tt>is_convertible&lt;From, To&gt;</tt> 
+shall be satisfied if and only if <del>the return expression in the following code would be well-formed, 
+including any implicit conversions to the return type of the function:</del>
+</p>
+<blockquote><pre>
+<del>To test() {
+  return declval&lt;From&gt;();
+}</del>
+</pre></blockquote>
+<p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; either both <tt>From</tt> and <tt>To</tt> are <tt><i>cv</i> void</tt>, or</ins></p></li>
+<li><p><ins>(?.2) &mdash; <tt>To</tt> is neither array nor function type and the function call expression 
+<tt><i>conv-dest</i>(declval&lt;From&gt;())</tt> would be well-formed when treated as an unevaluated operand, 
+where <tt><i>conv-dest</i></tt> is a hypothetical function declared as</ins></p>
+<blockquote><pre>
+<ins>void <i>conv-dest</i>(To) noexcept;</ins>
+</pre></blockquote>
+<p>
+<ins>.</ins>
+</p>
+</li>
+</ol>
+<p/>
+[<i>Note 2</i>: This requirement gives well-defined results for reference types, array types, function types, 
+and <i>cv</i> <tt>void</tt>. &mdash; <i>end note</i>]
+<p/>
+Access checking is performed in a context unrelated to <tt>To</tt> and <tt>From</tt>. Only the validity of the 
+immediate context of the expression of the <del>return statement (<sref ref="[stmt.return]"/>)</del>
+<ins>function call expression (<sref ref="[expr.call]"/>)</ins> (including initialization of the 
+<del>returned</del><ins>parameter</ins> object or reference) is considered.
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+</resolution>
+
+</issue>
