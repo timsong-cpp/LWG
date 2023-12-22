@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4029" status="New">
+<title><tt>basic_string</tt> accidentally fails to meet the reversible container requirements</title>
+<section><sref ref="[basic.string.general]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>18 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The complexity requirements for a reversible container (<sref ref="[container.rev.reqmts]"/>) are that each 
+function must have constant complexity. The corresponding member functions in <sref ref="[string.iterators]"/> 
+have no complexity requirements, and <tt>basic_string</tt> unintentionally is not a reversible container 
+(unless the implementation coincidentally provides constant complexity member functions).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> The proposed wording is similar to the specification in <sref ref="[vector.overview]"/> p2 
+and suggests to simply strike <sref ref="[string.iterators]"/>, because it doesn't say anything new compared to 
+<sref ref="[container.reqmts]"/> and <sref ref="[container.rev.reqmts]"/>.
+<p/>
+Alternatively, one could add a
+<p/>
+<ins><i>Complexity</i>: Constant.</ins>
+<p/>
+paragraph to each function in <sref ref="[string.iterators]"/>, but that would be less clearer and would not
+explicitly say <tt>basic_string</tt> meets the reversible container requirements.
+] 
+</p>
+</blockquote>
+
+<ol>
+
+<li><p>Modify <sref ref="[basic.string.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- A specialization of <tt>basic_string</tt> is a contiguous container <ins>and reversible container</ins> 
+(<sref ref="[container.reqmts]"/>).
+<p/>
+-3- In all cases, <tt>[data(), data() + size()]</tt> is a valid range, <tt>data() + size()</tt> points at 
+an object with value <tt>charT()</tt> (a "null terminator"), and <tt>size() &lt;= capacity()</tt> is <tt>true</tt>.
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class charT, class traits = char_traits&lt;charT&gt;,
+           class Allocator = allocator&lt;charT&gt;&gt;
+  class basic_string {
+    [&hellip;]
+    // <i><del><sref ref="[string.iterators]"/>,</del> iterators</i>
+    constexpr iterator begin() noexcept;
+    constexpr const_iterator begin() const noexcept;
+    constexpr iterator end() noexcept;
+    constexpr const_iterator end() const noexcept;
+  
+    constexpr reverse_iterator rbegin() noexcept;
+    constexpr const_reverse_iterator rbegin() const noexcept;
+    constexpr reverse_iterator rend() noexcept;
+    constexpr const_reverse_iterator rend() const noexcept;
+  
+    constexpr const_iterator cbegin() const noexcept;
+    constexpr const_iterator cend() const noexcept;
+    constexpr const_reverse_iterator crbegin() const noexcept;
+    constexpr const_reverse_iterator crend() const noexcept;
+  
+    // <i><sref ref="[string.capacity]"/>, capacity</i>
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre></blockquote>
+[&hellip;]
+</blockquote>
+</li>
+
+<li><p>Remove subclause <sref ref="[string.iterators]"/> in its entirety:</p>
+
+<blockquote>
+<p>
+<del><b>23.4.3.4 Iterator support [string.iterators]</b></del>
+</p>
+<pre>
+<del>constexpr iterator begin() noexcept;
+constexpr const_iterator begin() const noexcept;
+constexpr const_iterator cbegin() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Returns</i>: An iterator referring to the first character in the string.</del>
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+<del>constexpr reverse_iterator rend() noexcept;
+constexpr const_reverse_iterator rend() const noexcept;
+constexpr const_reverse_iterator crend() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-4- <i>Returns</i>: An iterator which is semantically equivalent to <tt>reverse_iterator(begin())</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+</resolution>
+
+</issue>
