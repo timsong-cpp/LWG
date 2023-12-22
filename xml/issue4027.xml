@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4027" status="New">
+<title><tt><i>possibly-const-range</i></tt> should prefer returning <tt>const R&amp;</tt></title>
+<section><sref ref="[ranges.syn]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>17 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt><i>possibly-const-range</i></tt> currently only returns <tt>const R&amp;</tt> when <tt>R</tt> does not 
+satisfy <tt>constant_range</tt> and <tt>const R</tt> satisfies <tt>constant_range</tt>.
+<p/>
+Although it's not clear why we need the former condition, this does diverge from the legacy <tt>std::cbegin</tt> 
+(<a href="https://godbolt.org/z/636osY7os">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+int main() {
+  auto r = std::views::single(0)
+        | std::views::transform([](int) { return 0; });
+  using C1 = decltype(std::ranges::cbegin(r));
+  using C2 = decltype(std::cbegin(r));
+  static_assert(std::same_as&lt;C1, C2&gt;); // <span style="color:red;font-weight:bolder">failed</span>
+}
+</pre></blockquote>
+<p>
+Since <tt>R</tt> itself is <tt>constant_range</tt>, so <tt><i>possibly-const-range</i></tt>, above just returns 
+<tt>R&amp;</tt> and <tt>C1</tt> is <tt>transform_view::<i>iterator</i>&lt;false&gt;</tt>; <tt>std::cbegin</tt> 
+specifies to return <tt>as_const(r).begin()</tt>, which makes that <tt>C2</tt> is 
+<tt>transform_view::<i>iterator</i>&lt;true&gt;</tt> which is different from <tt>C1</tt>.
+<p/>
+I believe <tt>const R&amp;</tt> should always be returned if it's a range, regardless of whether <tt>const R</tt> 
+or <tt>R</tt> is a <tt>constant_range</tt>, just as <tt><i>fmt-maybe-const</i></tt> in format ranges always prefers 
+<tt>const R</tt> over <tt>R</tt>.
+<p/>
+Although it is theoretically possible for <tt>R</tt> to satisfy <tt>constant_range</tt> and that <tt>const R</tt> 
+is a mutable range, such nonsense range type should not be of interest.
+<p/>
+This relaxation of constraints allows for maximum consistency with <tt>std::cbegin</tt>, and in some cases can 
+preserve constness to the greatest extent (<a href="https://godbolt.org/z/3hYToMq35">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+int main() {
+  auto r = std::views::single(0) | std::views::lazy_split(0);
+  (*std::ranges::cbegin(r)).front() = 42; // ok
+  (*std::cbegin(r)).front() = 42; // <span style="color:red;font-weight:bolder">not ok</span>
+}
+</pre></blockquote>
+<p>
+Above, <tt>*std::ranges::cbegin</tt> returns a range of type <tt>const lazy_split_view::<i>outer-iterator</i>&lt;false&gt;::value_type</tt>, 
+which does not satisfy <tt>constant_range</tt> because its reference type is <tt>int&amp;</tt>.
+<p/>
+However, <tt>*std::cbegin(r)</tt> returns <tt>lazy_split_view::<i>outer-iterator</i>&lt;true&gt;::value_type</tt> 
+whose reference type is <tt>const int&amp;</tt> and satisfies <tt>constant_range</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[ranges.syn]"/>, header <tt>&lt;ranges&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+#include &lt;iterator&gt;             // <i>see <sref ref="[iterator.synopsis]"/></i>
+
+namespace std::ranges {
+  [&hellip;]
+
+  // <i><sref ref="[range.as.const]"/>, as const view</i>
+  template&lt;input_range R&gt;
+    constexpr auto&amp; <i>possibly-const-range</i>(R&amp; r) noexcept { // <i>exposition only</i>
+      if constexpr (<ins>input</ins><del>constant</del>_range&lt;const R&gt;<del> &amp;&amp; !constant_range&lt;R&gt;</del>) {
+        return const_cast&lt;const R&amp;&gt;(r);
+      } else {
+        return r;
+      }
+    }
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+</resolution>
+
+</issue>
