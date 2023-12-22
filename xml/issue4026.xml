@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4026" status="New">
+<title>Assignment operators of <tt>std::expected</tt> should propagate triviality</title>
+<section><sref ref="[expected.object.assign]"/><sref ref="[expected.void.assign]"/></section>
+<submitter>Jiang An</submitter>
+<date>16 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, only copy and move constructors of <tt>std::expected</tt> are required to propagate triviality, 
+while copy and move assignment operators are not. Given that the assignment operators of <tt>std::optional</tt> 
+and <tt>std::variant</tt> are already required to propagate triviality, it seems to me that we should also 
+apply such requirements for <tt>std::expected</tt>.
+<p/>
+Such changes are being made in libc++ (<a href="https://github.com/llvm/llvm-project/pull/74768">llvm/llvm-project#74768</a>). 
+And it may be desired to make the triviality improvement portable.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[expected.object.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr expected&amp; operator=(const expected&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-4- <i>Remarks</i>: This operator is defined as deleted unless:
+</p>
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+</ol>
+<p>
+<ins>-?- This operator is trivial if:</ins>
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; <tt>is_trivially_copy_constructible_v&lt;T&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.2) &mdash; <tt>is_trivially_copy_assignable_v&lt;T&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.3) &mdash; <tt>is_trivially_destructible_v&lt;T&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.4) &mdash; <tt>is_trivially_copy_constructible_v&lt;E&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.5) &mdash; <tt>is_trivially_copy_assignable_v&lt;E&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.6) &mdash; <tt>is_trivially_destructible_v&lt;E&gt;</tt> is <tt>true</tt>.</ins></p></li>
+</ol>
+</blockquote>
+<pre>
+constexpr expected&amp; operator=(expected&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-5- <i>Constraints</i>: [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-8- <i>Remarks</i>: The exception specification is equivalent to:
+<p/>
+[&hellip;]
+</p>
+<p>
+<ins>-?- This operator is trivial if:</ins>
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; <tt>is_trivially_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.2) &mdash; <tt>is_trivially_move_assignable_v&lt;T&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.3) &mdash; <tt>is_trivially_destructible_v&lt;T&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.4) &mdash; <tt>is_trivially_move_constructible_v&lt;E&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.5) &mdash; <tt>is_trivially_move_assignable_v&lt;E&gt;</tt> is <tt>true</tt>, and</ins></p></li>
+<li><p><ins>(?.6) &mdash; <tt>is_trivially_destructible_v&lt;E&gt;</tt> is <tt>true</tt>.</ins></p></li>
+</ol>
+
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[expected.void.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr expected&amp; operator=(const expected&amp; rhs);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-3- <i>Remarks</i>: This operator is defined as deleted unless <tt>is_copy_assignable_v&lt;E&gt;</tt> 
+is <tt>true</tt> and <tt>is_copy_constructible_v&lt;E&gt;</tt> is <tt>true</tt>.
+<p/>
+<ins>-?- This operator is trivial if <tt>is_trivially_copy_constructible_v&lt;E&gt;</tt>, 
+<tt>is_trivially_copy_assignable_v&lt;E&gt;</tt>, and <tt>is_trivially_destructible_v&lt;E&gt;</tt> are 
+all <tt>true</tt>.</ins>
+</p>
+</blockquote>
+<pre>
+constexpr expected&amp; operator=(expected&amp;&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects</i>: [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-6- <i>Remarks</i>: The exception specification is equivalent to <tt>is_nothrow_move_constructible_v&lt;E&gt; &amp;&amp;
+is_nothrow_move_assignable_v&lt;E&gt;</tt>.
+<p/>
+-7- This operator is defined as deleted unless <tt>is_move_constructible_v&lt;E&gt;</tt> is <tt>true</tt> 
+and <tt>is_move_assignable_v&lt;E&gt;</tt> is <tt>true</tt>.
+<p/>
+<ins>-?- This operator is trivial if <tt>is_trivially_move_constructible_v&lt;E&gt;</tt>, 
+<tt>is_trivially_move_assignable_v&lt;E&gt;</tt>, and <tt>is_trivially_destructible_v&lt;E&gt;</tt> are 
+all <tt>true</tt>.</ins>
+</p>
+
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+</resolution>
+
+</issue>
