@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4035" status="New">
+<title><tt>single_view</tt> should provide <tt>empty</tt></title>
+<section><sref ref="[macro.names]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>31 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Although <tt>single_view::empty</tt> can be synthesized through <tt>view_interface</tt>,
+it seems more worthwhile to provide a static <tt>empty</tt> for it which eliminates the 
+need to pass in an object parameter, guarantees <tt>noexcept</tt>-ness, and is consistent 
+with the design of <tt>empty_view</tt> (<a href="https://godbolt.org/z/Yr6bhM11n">demo</a>):
+</p>
+<blockquote>
+<pre>
+#include &lt;ranges&gt;
+auto empty = std::views::empty&lt;int&gt;;
+static_assert(noexcept(empty.empty()));
+static_assert(noexcept(empty.size()));
+auto single = std::views::single(0);
+static_assert(noexcept(single.empty())); // <span style="color:red;font-weight:bolder">fire</span>
+static_assert(noexcept(single.size()));
+</pre>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.single.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;move_constructible T&gt;
+    requires is_object_v&lt;T&gt;
+  class single_view : public view_interface&lt;single_view&lt;T&gt;&gt; {
+    [&hellip;]
+  public:
+    [&hellip;]
+    constexpr T* begin() noexcept;
+    constexpr const T* begin() const noexcept;
+    constexpr T* end() noexcept;
+    constexpr const T* end() const noexcept;
+    <ins>static constexpr bool empty() noexcept;</ins>
+    static constexpr size_t size() noexcept;
+    constexpr T* data() noexcept;
+    constexpr const T* data() const noexcept;
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr T* end() noexcept;
+constexpr const T* end() const noexcept;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: Equivalent to: <tt>return data() + 1;</tt>
+</p>
+</blockquote>
+<pre>
+<ins>static constexpr bool empty() noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Equivalent to: <tt>return false;</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+</resolution>
+
+</issue>
