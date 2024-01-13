@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4032" status="New">
+<title>Possibly invalid types in the constraints of constructors of <tt>std::shared_ptr</tt></title>
+<section><sref ref="[util.smartptr.shared.const]"/></section>
+<submitter>Jiang An</submitter>
+<date>25 Dec 2023</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <sref ref="[util.smartptr.shared.const]"/>/3 and /9.1 says <tt>Y(*)[N]</tt> and <tt>Y(*)[]</tt>, 
+however, they may be invalid types when <tt>Y</tt> is an array type of unknown bound or a function type. 
+Presumably, the constraints should be satisfied only when the mentioned <tt>Y(*)[N]</tt> or <tt>Y(*)[]</tt> is valid.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[util.smartptr.shared.const]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Y&gt; explicit shared_ptr(Y* p);
+</pre>
+<blockquote>
+<p>
+-3- <i>Constraints</i>: When <tt>T</tt> is an array type, the expression <tt>delete[] p</tt> is well-formed 
+and either <tt>T</tt> is <tt>U[N]</tt> and <tt>Y(*)[N]</tt> is <ins>a valid type and</ins> convertible to 
+<tt>T*</tt>, or <tt>T</tt> is <tt>U[]</tt> and <tt>Y(*)[]</tt> is <ins>a valid type and</ins> convertible to 
+<tt>T*</tt>. When <tt>T</tt> is not an array type, the expression <tt>delete p</tt> is well-formed and 
+<tt>Y*</tt> is convertible to <tt>T*</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class Y, class D&gt; shared_ptr(Y* p, D d);
+template&lt;class Y, class D, class A&gt; shared_ptr(Y* p, D d, A a);
+template&lt;class D&gt; shared_ptr(nullptr_t p, D d);
+template&lt;class D, class A&gt; shared_ptr(nullptr_t p, D d, A a);
+</pre>
+<blockquote>
+<p>
+-9- <i>Constraints</i>: <tt>is_move_constructible_v&lt;D&gt;</tt> is <tt>true</tt>, and <tt>d(p)</tt> 
+is a well-formed expression. For the first two overloads:
+</p>
+<ol style="list-style-type: none">
+<li><p>(9.1) &mdash; If <tt>T</tt> is an array type, then either <tt>T</tt> is <tt>U[N]</tt> and 
+<tt>Y(*)[N]</tt> is <ins>a valid type and</ins> convertible to <tt>T*</tt>, or <tt>T</tt> is <tt>U[]</tt> and
+<tt>Y(*)[]</tt> is <ins>a valid type and</ins> convertible to <tt>T*</tt>.</p></li>
+<li><p>(9.2) &mdash; If <tt>T</tt> is not an array type, then <tt>Y*</tt> is convertible to <tt>T*</tt>.</p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+</resolution>
+
+</issue>
