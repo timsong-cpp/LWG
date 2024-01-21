@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4042" status="New">
+<title><tt>std::print</tt> should permit an efficient implementation</title>
+<section><sref ref="[print.fun]"/></section>
+<submitter>Victor Zverovich</submitter>
+<date>20 Jan 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::print</tt>/<tt>std::vprint*</tt> is currently defined in terms of formatting into a temporary string, e.g. 
+<sref ref="[print.fun]"/>:
+</p>
+<blockquote>
+<pre>
+void vprint_nonunicode(FILE* stream, string_view fmt, format_args args);
+</pre>
+<blockquote>
+<p>
+<i>Preconditions</i>: <tt>stream</tt> is a valid pointer to an output C stream.
+<p/>
+<i>Effects</i>: Writes the result of <tt>vformat(fmt, args)</tt> to <tt>stream</tt>.
+<p/>
+<i>Throws</i>: Any exception thrown by the call to <tt>vformat</tt> (<sref ref="[format.err.report]"/>).
+ <tt>system_error</tt> if writing to <tt>stream</tt> fails. May throw <tt>bad_alloc</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+This is done to make it clear that noninterleaved output is desired while keeping specification simple and portable.
+<p/>
+Unfortunately, the current specification seems to prohibit a more efficient implementation that performs formatting 
+directly into a stream buffer under a lock (<tt>flockfile</tt>/<tt>funlockfile</tt> in POSIX) like <tt>printf</tt> does. 
+The difference can be observable in case of an I/O error that occurs before a custom formatter is called. In the 
+(double buffered) implementation that directly follows the spec all formatters will be called, while in a more efficient 
+(locking) implementation subsequent formatters may not be called.
+<p/>
+The easiest fix, given in the current proposed resolution, is to say that some arguments may not be formatted in 
+case of a write error. It might be a bit weird considering that the spec says that we construct a string first so an 
+alternative resolution is to replace <tt>vformat</tt> with <tt>vformat_to</tt> info some unspecified buffer iterator 
+and state noninterleaving requirement separately. 
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[print.fun]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void vprint_unicode(FILE* stream, string_view fmt, format_args args);
+</pre>
+<blockquote>
+<p>
+-6- <i>Preconditions</i>: <tt>stream</tt> is a valid pointer to an output C stream.
+<p/>
+-7- <i>Effects</i>: The function initializes an automatic variable via
+</p>
+<blockquote><pre>
+string out = vformat(fmt, args);
+</pre></blockquote>
+<p>
+If <tt>stream</tt> refers to a terminal capable of displaying Unicode, writes out to the terminal using the
+native Unicode API; if out contains invalid code units, the behavior is undefined and implementations
+are encouraged to diagnose it. Otherwise writes <tt>out</tt> to <tt>stream</tt> unchanged. If the native 
+Unicode API is used, the function flushes <tt>stream</tt> before writing <tt>out</tt>.
+<p/>
+<ins>If writing to the terminal or <tt>stream</tt> fails, some arguments in <tt>args</tt> may not be formatted.</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+void vprint_nonunicode(FILE* stream, string_view fmt, format_args args);
+</pre>
+<blockquote>
+<p>
+-11- <i>Preconditions</i>: <tt>stream</tt> is a valid pointer to an output C stream.
+<p/>
+-12- <i>Effects</i>: Writes the result of <tt>vformat(fmt, args)</tt> to <tt>stream</tt>. <ins>If writing to 
+<tt>stream</tt> fails, some arguments in <tt>args</tt> may not be formatted.</ins>
+<p/>
+-13- <i>Throws</i>: [&hellip;].
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
