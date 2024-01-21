@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4041" status="New">
+<title>The requirements on literal type in [concept.swappable] should be removed</title>
+<section><sref ref="[concept.swappable]"/></section>
+<submitter>Jiang An</submitter>
+<date>20 Jan 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[concept.swappable]"/> bullet (2.3.1) currently requires <tt>T</tt> to be a literal type in order 
+to make the swapping expression a constant expression in that case. The requirement was likely automatically 
+enforced by the core language rules in C++20 and thus essentially redundant.
+<p/>
+However, as <paper num="P2448R2"/> relaxed the restrictions on constexpr functions, it seems that the 
+swapping expression can be a constant expression even if <tt>T</tt> is not a literal type.
+<p/>
+E.g. the following program is accepted by GCC/libstdc++ in C++23 mode 
+(<a href="https://godbolt.org/z/dWeb3xTxd">demo</a>).
+</p>
+<blockquote><pre>
+#include &lt;concepts&gt;
+
+struct NonLiteral {
+  NonLiteral() {} // <span style="color:red;font-weight:bolder">non-constexpr</span>
+  constexpr NonLiteral(const NonLiteral&amp;) noexcept {};
+  constexpr NonLiteral&amp; operator=(const NonLiteral&amp;) noexcept { return *this; };
+};
+
+int main()
+{
+  NonLiteral x;
+  static_assert((std::ranges::swap(x, x), true));
+}
+</pre></blockquote>
+<p>
+IMO there's no good reason to additionally require literal types since C++23, which would complicate implementations.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[concept.swappable]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <tt>ranges::swap</tt> denotes a customization point object (<sref ref="[customization.point.object]"/>). 
+The expression <tt>ranges::swap(E1, E2)</tt> for subexpressions <tt>E1</tt> and <tt>E2</tt> is expression-equivalent 
+to an expression <tt>S</tt> determined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; [&hellip;]</p></li>
+<li><p>(2.2) &mdash; [&hellip;]</p></li>
+<li><p>(2.3) &mdash; Otherwise, if <tt>E1</tt> and <tt>E2</tt> are lvalues of the same type <tt>T</tt> that 
+models <tt>move_constructible&lt;T&gt;</tt> and <tt>assignable_from&lt;T&amp;, T&gt;</tt>, <tt>S</tt> is an 
+expression that exchanges the denoted values. <tt>S</tt> is a constant expression if</p>
+<ol style="list-style-type: none">
+<li><p><del>(2.3.1) &mdash; <tt>T</tt> is a literal type (<sref ref="[basic.types.general]"/>),</del></p></li>
+<li><p>(2.3.2) &mdash; both <tt>E1 = std::move(E2)</tt> and <tt>E2 = std::move(E1)</tt> are constant subexpressions 
+(<sref ref="[defns.const.subexpr]"/>), and</p></li>
+<li><p>(2.3.3) &mdash; the full-expressions of the initializers in the declarations</p>
+<blockquote><pre>
+T t1(std::move(E1));
+T t2(std::move(E2));
+</pre></blockquote>
+<p>
+are constant subexpressions.
+</p></li>
+<li><p>(2.4) &mdash; Otherwise, <tt>ranges::swap(E1, E2)</tt> is ill-formed.</p></li>
+</ol>
+<p>
+<tt>noexcept(S)</tt> is equal to <tt>is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; is_nothrow_move_assignable_v&lt;T&gt;</tt>.
+</p>
+</li>
+<li><p>(2.4) &mdash; Otherwise, <tt>ranges::swap(E1, E2)</tt> is ill-formed.</p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
