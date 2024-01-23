@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4043" status="New">
+<title><code>"ASCII"</code> is not a registered character encoding</title>
+<section><sref ref="[text.encoding.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>23 Jan 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The IANA Charater Sets registry does not contain "ASCII" as an alias of the
+"US-ASCII" encoding. This is apparently for historical reasons, because there
+used to be some ambiguity about exactly what "ASCII" meant. I don't think
+those historical reasons are relevant to C++26, but the absence of "ASCII"
+in the IANA registry means that it's not a registered character encoding
+as defined by <sref ref="[text.encoding.general]"/>.
+</p>
+
+<p>
+This means that the encoding referred to by notes in the C++ standard
+(<sref ref="[fs.path.generic]"/>, <sref ref="[facet.numpunct.virtuals]"/>)
+and by an example in the <code>std::text_encoding</code> proposal
+(<paper num="P1885"/>) isn't actually usable in portable code.
+So <code>std::text_encoding("ASCII")</code> creates an object with
+<code>mib() == std::text_encoding::other</code>, which is not the same
+encoding as <code>std::text_encoding("US-ASCII")</code>.
+This seems surprising.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[text.encoding.general]"/> as indicated:</p>
+
+<blockquote>
+<p>-1-
+A <i>registered character encoding</i> is a character encoding scheme
+in the IANA Character Sets registry.
+</p>
+<p>
+[<i>Note 1</i>:
+The IANA Character Sets registry uses the term “character sets” to refer to character encodings.
+&mdash; <i>end note</i>]
+</p>
+<p>
+The primary name of a registered character encoding is the name
+of that encoding specified in the IANA Character Sets registry.
+</p>
+
+<p>-2-
+The set of known registered character encodings contains every
+registered character encoding specified in the IANA Character Sets registry
+except for the following:
+<ol style="list-style-type: none">
+<li>(2.1) &ndash; NATS-DANO (33)</li>
+<li>(2.2) &ndash; NATS-DANO-ADD (34)</li>
+</ol>
+</p>
+
+<p>-3-
+Each known registered character encoding is identified by an enumerator in
+<code>text_encoding::id</code>, and has a set of zero or more <i>aliases</i>.
+</p>
+
+<p>-4-
+The set of aliases of a known registered character encoding is an
+implementation-defined superset of the aliases specified in the
+IANA Character Sets registry.
+<ins>The set of aliases for <code>text_encoding::id::ASCII</code> includes
+<code>"ASCII"</code>.</ins>
+No two aliases or primary names of distinct registered character encodings
+are equivalent when compared by <code>text_encoding::<i>comp-name</i></code>.
+</p>
+
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
