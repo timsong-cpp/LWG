@@ -48,9 +48,12 @@ $(PGMS):
 clean:
 	rm -f $(PGMS) src/*.o
 
+# Remove everything.
+# Caution: Regenerating meta-data/dates will take about 30 minutes.
 distclean: clean
 	rm -f meta-data/annex-f meta-data/networking-annex-f
 	rm -f meta-data/dates
+	rm -f meta-data/index.json meta-data/paper_titles.txt
 	rm -f -r mailing
 
 history: bin/lists
@@ -59,7 +62,7 @@ history: bin/lists
 mailing:
 	mkdir $@
 
-lists: mailing bin/lists dates
+lists: mailing bin/lists dates meta-data/paper_titles.txt
 	bin/lists
 
 define update
@@ -115,6 +118,22 @@ meta-data/dates: xml/issue[0-9]*.xml
 	rm $@.new
 	$(call update,$@)
 
-.PRECIOUS: meta-data/dates
 
-.PHONY: dates
+new-papers:
+	rm -f meta-data/index.json meta-data/paper_titles.txt
+	$(MAKE) meta-data/paper_titles.txt
+
+optcmd = $(shell command -v $(1) || echo :)
+
+# If python is not installed then create an empty meta-data/paper_titles.txt
+meta-data/index.json:
+	$(call optcmd,curl) https://wg21.link/index.json > $@
+
+# If python is not installed then create an empty meta-data/paper_titles.txt
+meta-data/paper_titles.txt: | meta-data/index.json
+	$(call optcmd,python) bin/make_paper_titles.py $| > $@
+
+.PRECIOUS: meta-data/dates
+.PRECIOUS: meta-data/paper_titles.txt
+
+.PHONY: dates new-papers

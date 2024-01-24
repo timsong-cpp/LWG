@@ -39,6 +39,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include <filesystem>
@@ -214,6 +215,29 @@ namespace
                "<blockquote class=\"note\">\n",
                "</blockquote>" } },
    };
+}
+
+std::unordered_map<std::string, std::string> paper_titles = [] {
+   std::unordered_map<std::string, std::string> titles;
+   std::ifstream in{"meta-data/paper_titles.txt"};
+   std::string paper_number, title;
+   while (in >> paper_number && std::getline(in, title))
+      titles[paper_number] = title;
+   return titles;
+}();
+
+// The title of the specified paper, formatted as an HTML title="..." attribute.
+std::string paper_title_attr(std::string paper_number) {
+   auto title = paper_titles[paper_number];
+   if (!title.empty())
+   {
+      for (auto p = title.find('&'); p != title.npos; p = title.find('&', p+5))
+         title.replace(p, 1, "&amp;");
+      for (auto p = title.find('"'); p != title.npos; p = title.find('"', p+6))
+         title.replace(p, 1, "&quot;");
+      title = " title=\"" + title + "\"";
+   }
+   return title;
 }
 
 void format_issue_as_html(lwg::issue & is,
@@ -427,8 +451,10 @@ void format_issue_as_html(lwg::issue & is,
                std::transform(paper_number.begin(), paper_number.end(), paper_number.begin(),
                      [] (unsigned char c) { return std::toupper(c); });
 
+               auto title = paper_title_attr(paper_number);
+
                j -= i - 1;
-               std::string r = "<a href=\"https://wg21.link/" + paper_number + "\">" + paper_number + "</a>";
+               std::string r = "<a href=\"https://wg21.link/" + paper_number + "\"" + title + ">" + paper_number + "</a>";
                s.replace(i, j, r);
                i += r.size() - 1;
                continue;
