@@ -55,14 +55,23 @@ void replace_all_irefs(std::vector<lwg::issue> const & issues, std::string & s) 
 } // close unnamed namespace
 
 auto lwg::make_html_anchor(lwg::issue const & iss) -> std::string {
-   auto temp = std::to_string(iss.num);
+   auto num = std::to_string(iss.num);
+   auto title = iss.title;
+   // Remove XML elements from the title to just get the text nodes.
+   for (auto p = title.find('<'); p != title.npos; p = title.find('<', p))
+      title.erase(p, title.find('>', p) + 1 - p);
+   // Attribute text is delimited with quotes so replace them with "&quot;".
+   for (auto p = title.find('"'); p != title.npos; p = title.find('"', p+6))
+      title.replace(p, 1, "&quot;");
 
    std::string result{"<a href=\""};
    result += filename_for_status(iss.stat);
    result += '#';
-   result += temp;
+   result += num;
+   result += "\" title=\"";
+   result += title;
    result += "\">";
-   result += temp;
+   result += num;
    result += "</a>";
    return result;
 }
