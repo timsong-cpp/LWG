@@ -63,7 +63,7 @@ lists: mailing bin/lists dates
 	bin/lists
 
 define update
-  if diff -N -u $(1) $(1).tmp ; then rm $(1).tmp ; else mv $(1).tmp $(1) ; fi
+  if diff -N -u $(1) $(1).tmp ; then rm $(1).tmp ; else mv $(1).tmp $(1) ; fi ; touch $(1)
 endef
 
 WG21 := $(HOME)/src/cplusplus
