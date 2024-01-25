@@ -115,8 +115,7 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
    }
    k += sizeof("<issue num=\"") - 1;
    auto l = tx.find('\"', k);
-   std::istringstream temp{tx.substr(k, l-k)};
-   temp >> is.num;
+   is.num = std::stoi(tx.substr(k, l-k));
 
    // Get issue status
    k = tx.find("status=\"", l);
@@ -199,10 +198,9 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
    }
    k += sizeof("<date>") - 1;
    l = tx.find("</date>", k);
-   temp.clear();
-   temp.str(tx.substr(k, l-k));
 
    try {
+      std::istringstream temp{tx.substr(k, l-k)};
       is.date = parse_date(temp);
 
       // Get modification date
