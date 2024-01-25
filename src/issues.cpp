@@ -149,8 +149,8 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
          continue;
       }
       auto code = "<code>" + escape_special_chars(tx.substr(p + 1, p2 - p - 1)) + "</code>";
-      tx.replace(p, p2 - p + 1, code);
-      p += code.size();
+      tx.replace(p+1, p2 - p - 1, code);
+      p += code.size() + 2;
    }
 
    issue is;
