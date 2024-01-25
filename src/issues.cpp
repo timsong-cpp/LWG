@@ -95,16 +95,63 @@ auto report_date_file_last_modified(std::filesystem::path const & filename) -> g
    return make_date(*std::gmtime(&mtime));
 }
 
+// Replace '<' and '>' and '&' with HTML character references.
+// This is used to turn backtick-quoted inline code into valid XML/HTML.
+std::string escape_special_chars(std::string s) {
+   static const std::vector<std::pair<char, std::string_view>> subs {
+      { '&', "&amp;" }, // this has to come first!
+      { '<', "&lt;" },
+      { '>', "&gt;" },
+   };
+   for (auto [c, r] : subs)
+      for (auto p = s.find(c); p != s.npos; p = s.find(c, p+r.size()))
+         s.replace(p, 1, r);
+   return s;
+}
+
 } // close unnamed namespace
 
 auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
   lwg::section_map & section_db) -> issue {
    struct bad_issue_file : std::runtime_error {
-      bad_issue_file(std::string const & filename, char const * error_message)
+      bad_issue_file(std::string const & filename, std::string error_message)
          : runtime_error{"Error parsing issue file " + filename + ": " + error_message}
-         {
-      }
+         { }
    };
+
+   // Replace ```code block``` with valid XML.
+   for (size_t p = tx.find("\n```\n"); p != tx.npos; p = tx.find("\n```\n", p))
+   {
+      size_t p2 = tx.find("\n```\n", p + 5);
+      if (p2 == tx.npos)
+         throw bad_issue_file{filename, "Unmatched ``` code block: " + tx.substr(p, 10)};
+      auto code = "\n<pre><code>" + escape_special_chars(tx.substr(p + 5, p2 - p - 5)) + "\n</code></pre>\n";
+      tx.replace(p, p2 - p + 5, code);
+      p += code.size();
+   }
+
+   // Replace inline `code` with valid XML.
+   for (size_t p = tx.find('`'); p != tx.npos; p = tx.find('`', p))
+   {
+      if (tx[p+1] == '`')
+      {
+         // Some issues use double backtick for ``quotes like this''.
+         // We don't want to do anything here.
+         p += 2;
+         continue;
+      }
+      size_t p2 = tx.find('`', p + 1);
+      if (p2 > tx.find('\n', p + 1))
+      {
+         // Do not treat "`foo\nbar`" as inline code.
+         // Move to the next backtick and check that one.
+         p = p2;
+         continue;
+      }
+      auto code = "<code>" + escape_special_chars(tx.substr(p + 1, p2 - p - 1)) + "</code>";
+      tx.replace(p, p2 - p + 1, code);
+      p += code.size();
+   }
 
    issue is;
 
