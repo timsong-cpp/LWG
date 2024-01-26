@@ -148,9 +148,14 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
          p = p2;
          continue;
       }
-      auto code = "<code>" + escape_special_chars(tx.substr(p + 1, p2 - p - 1)) + "</code>";
-      tx.replace(p+1, p2 - p - 1, code);
-      p += code.size() + 2;
+      // This class attribute is used by the CSS in src/report_generator.cpp
+      // so that the backticks are still displayed if this occurs inside a
+      // <pre> element (because that always displays in code font anyway).
+      auto code = "<code class='backtick'>"
+         + escape_special_chars(tx.substr(p + 1, p2 - p - 1))
+         + "</code>";
+      tx.replace(p, p2 - p + 1, code);
+      p += code.size();
    }
 
    issue is;

@@ -171,6 +171,8 @@ R"(<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 <style type="text/css">
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
