@@ -2,6 +2,7 @@
 <html lang="en-US">
 
 <head>
+<meta charset="utf-8">
 <title>How To</title>
 </head>
 
@@ -80,45 +81,31 @@ git push</pre>
 <p>New versions of the issues lists will be automatically published online.</p>
 
 <h2>Update meta-data</h2>
-<p>The files in <code>issues/meta-data</code> need to be updated whenever 
-there is a new draft of the working paper.</p>
-<p>To do this, we need an up-to-date copy of the data in Annex F in a file <code>bin/annex-f</code>.</p>
+<p>
+The files in <code>issues/meta-data</code> need to be updated whenever
+there is a new draft of the working paper.
+</p>
+<p>
+To do this, we need an up-to-date copy of the data in Annex F in a file <code>meta-data/annex-f</code>.
+</p>
 <p>This can be more or less automatically generated (on a Unix system):</p>
 <ol>
-<li>Get a current copy of the source for the standard, and build it.  (These instructions assume that it's in <code>$WG21/draft/source</code>)</li>
-<li>Generate <code>annex-f</code> using:
-<ul>
-<li><code>cd $WG21/draft/source ; grep newlabel *.aux | sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\(Clause\|Annex\) //' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort > $WG21/issues/annex-f</code>
-</li>
-</ul>
-<p>Inspect the resulting file to see if looks reasonable.  I usually compare it to the previous version of <code>annex-f</code> as well.</p>
-<p>Check whether entries starting with <code>defns.</code> are contained as well (Previous versions of the working
-draft pdf did not have corresponding section numbers)</p>
-</li>
-<li>Optionally, repeat this procedure for the Networking TS, but replace the name <code>annex-f</code> with <code>networking-annex-f</code>.</li>
-</ol>
-<p>Once the <code>annex-f</code> file(s) exist in the proper format, perform the following steps:</p>
-<ol>
-<li>
-<p>Copy file <code>annex-f</code> (and optionally the <code>networking-annex-f</code> file) into the <code>bin</code> directory.</p>
-</li>
-<li>
-<p>Execute the file <code>bin/build_section_data.bat</code>. This will produce the files <code>bin/index</code> and
-<code>bin/section.data</code>. If <code>networking-annex-f</code> is present, it will also produce <code>bin/networking-index</code> and 
-<code>bin/networking-section.data</code>; otherwise, it will use the contents of <code>meta-data/networking-section.data</code> to populate
-the networking TS data.</p>
-</li>
-<li>
-<p>Double-check that both files look OK. Especially take care to compare <code>bin/section.data</code> with
-<code>meta-data/section.data</code> for suspicious changes.</p>
-</li>
-<li>
-<p>If you are happy with the deltas, replace the
-the current <code>meta-data/section.data</code> by the freshly generated <code>bin/section.data</code>, and similarly for 
-<code>networking-section.data</code> if you regenerated it.
-</p>
+<li>Get a current copy of the source for the standard, and build it at the right Git revision for the new working draft
+(there is usually a Git tag for each N-numbered working draft).</li>
+<li>Run <code>make meta-data/section.data</code> to regenerate it.
+You can set the Make variables <code>WG21</code> or <code>NET</code>
+to tell the makefile where to find the LaTeX sources.</li>
+<li>Use <code>git diff meta-data/section.data</code> to check that the changes look OK.</li>
+<li>Optionally, repeat this procedure for the Networking TS.
+First build the TS sources at the desired revision,
+then run <code>rm meta-data/networking-annex-f ; make meta-data/section.data</code>.
+The makefile rule for the TS meta-data will only try to regenerate the file
+if it doesn't exist, so that having the TS sources present is not required.
+You can set the Make variables <code>WG21</code> or <code>NET</code>
+to tell the makefile where to find the LaTeX sources.
 </li>
 </ol>
+<p>If you are happy with the deltas of the <code>annex-f</code> files, commit them to Git.</p>
 
 <h2>Generate Issues Lists for a Mailing</h2>
 <p>We no longer include lists of issues, accepted/resolved issues, and rejected/closed issues in each mailing.

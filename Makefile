@@ -77,10 +77,12 @@ filter-net-ts-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)
 meta-data/annex-f: $(wildcard $(DRAFT)/source/*.aux)
 	test -d "$(DRAFT)" && grep newlabel $^ | $(filter-annex-f) > $@
 
-# Prerequisites are commented out, so that this won't be regenerated
-# unless the file is removed first.
-meta-data/networking-annex-f: # $(wildcard $(NET)/src/*.aux)
-	grep newlabel $^ /dev/null | $(filter-net-ts-annex-f) > $@
+net-ts-sources := $(wildcard $(NET)/src/*.aux)
+# This target has no prerequisites, so it won't complain if the net-ts sources
+# are not cloned and built in $(NET), and it won't be regenerated unless the
+# meta-data/networking-annex-f file is removed first.
+meta-data/networking-annex-f: # $(net-ts-sources)
+	grep newlabel $(net-ts-sources) /dev/null | $(filter-net-ts-annex-f) > $@
 
 meta-data/networking-section.data: meta-data/networking-annex-f bin/section_data
 	if [ -s $< ]; then \
