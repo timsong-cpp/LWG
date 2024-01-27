@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4048" status="New">
+<title>Inconsistent preconditions for transparent insertion of <tt>std::flat_map/std::flat_set</tt></title>
+<section><sref ref="[flat.set]"/><sref ref="[flat.map.overview]"/></section>
+<submitter>Jiang An</submitter>
+<date>26 Jan 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The preconditions for transparent insertion of associative containers (<sref ref="[map.modifiers]"/>/13, 
+<sref ref="[map.modifiers]"/>/29, and <sref ref="[set.modifiers]"/>/3) detect the results of <tt>equal_range</tt>, 
+while those for <tt>std::flat_set</tt> and <tt>std::flat_map</tt> (<sref ref="[flat.set.modifiers]"/>/2 and 
+<sref ref="[flat.map.modifiers]"/>/20) currently detect the results of <tt>find</tt>, which is inconsistent.
+<p/>
+During implementing <tt>std::flat_set</tt> in MSVC STL, it was reported 
+(<a href="https://github.com/microsoft/STL/issues/4105">microsoft/STL#4105</a>) that the current preconditions 
+for <tt>std::flat_set::insert</tt> can lead to inconsistent results. Tim Song told that the current preconditions 
+were copied from old revisions of <paper num="P2363"/>. So, presumably we should change these preconditions for 
+flat container adaptors to consistently use <tt>equal_range</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[flat.map.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class K, class... Args&gt;
+  pair&lt;iterator, bool&gt; try_emplace(K&amp;&amp; k, Args&amp;&amp;... args);
+template&lt;class K, class... Args&gt;
+  iterator try_emplace(const_iterator hint, K&amp;&amp; k, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-20- <i>Preconditions</i>: The conversion from <tt>k</tt> into <tt>key_type</tt> constructs an 
+object <tt>u</tt>, for which <tt><del>find(k) == find(u)</del><ins>equal_range(k) == equal_range(u)</ins></tt> 
+is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[flat.set.modifiers]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class K&gt; pair&lt;iterator, bool&gt; insert(K&amp;&amp; x);
+template&lt;class K&gt; iterator insert(const_iterator hint, K&amp;&amp; x);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- <i>Preconditions</i>: The conversion from <tt>x</tt> into <tt>value_type</tt> constructs an 
+object <tt>u</tt>, for which <tt><del>find(x) == find(u)</del><ins>equal_range(x) == equal_range(u)</ins></tt> 
+is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
