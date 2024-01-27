@@ -158,6 +158,13 @@ auto lwg::parse_issue_from_file(std::string tx, std::string const & filename,
       p += code.size();
    }
 
+   // <tt> is obsolete in HTML5, replace with <code>:
+   for (auto p = tx.find("<tt"); p != tx.npos; p = tx.find("<tt", p+5))
+      if (tx.at(p+3) == '>' || tx.at(p+3) == ' ')
+         tx.replace(p, 3, "<code");
+   for (auto p = tx.find("</tt>"); p != tx.npos; p = tx.find("</tt>", p+7))
+         tx.replace(p, 5, "</code>");
+
    issue is;
 
    // Get issue number
