@@ -1,0 +1,221 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4050" status="New">
+<title>Should <tt>views::iota(0) | views::take(5)</tt> be <tt>views::iota(0, 5)</tt>?</title>
+<section><sref ref="[range.take.overview]"/><sref ref="[range.take.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>28 Jan 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Given that C++20 ranges does not introduce the <i>infinite range</i> notification present in range/v3, 
+this means that <tt>views::iota(0) | views::take(5)</tt> will currently return a <tt>take_view</tt> object 
+that does not model <tt>sized_range</tt>.
+</p>
+<p>
+However, with the introduction of C++23 <tt>repeat_view</tt>, its interaction with <tt>views::take</tt>/<tt>drop</tt> 
+does have special handling depending on whether it is an infinite range, which causes 
+<tt>views::repeat(0) | views::take(5)</tt> to return a <tt>repeat_view</tt> objects that satisfy <tt>sized_range</tt>.
+</p>
+<p>
+This inconsistency leads to very different behavior of these two range factories in the case of infinite ranges 
+(<a href="https://godbolt.org/z/4bvToE96x">demo</a>):
+</p>
+<blockquote>
+<pre>
+#include &lt;ranges&gt;
+
+auto take_and_drop = std::views::drop(5)
+                   | std::views::take(4)
+                   | std::views::drop(3)
+                   | std::views::take(2)
+                   | std::views::drop(1);
+
+// The type of iota is drop_view&lt;take_view&lt;drop_view&lt;take_view&lt;drop_view&lt;iota_view&lt;int, unreachable_sentinel_t&gt;&gt;&gt;&gt;&gt;&gt;, which is indeed a template bloat.
+auto iota = std::views::iota(0) | take_and_drop;
+static_assert(!std::ranges::sized_range&lt;decltype(iota)&gt;); // <span style="color:red;font-weight:bolder">failed</span>
+
+// The type of repeat is simply std::ranges::repeat_view&lt;int, long&gt;
+std::ranges::sized_range auto repeat = std::views::repeat(0) | take_and_drop; // ok
+</pre>
+</blockquote>
+<p>
+If we do account for the infinity of <tt>repeat_view</tt>, then I see no reason not to do it for <tt>iota_view</tt>, 
+as this is obviously intuitive and can indeed be considered an enhancement.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.take.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+  -2- The name <tt>views::take</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+  Let <tt>E</tt> and <tt>F</tt> be expressions, let <tt>T</tt> be <tt>remove_cvref_t&lt;decltype((E))&gt;</tt>,
+  and let <tt>D</tt> be <tt>range_difference_t&lt;decltype((E))&gt;</tt>.
+  If <tt>decltype((F))</tt> does not model <tt>convertible_to&lt;D&gt;</tt>, <tt>views::take(E, F)</tt>
+  is ill-formed. Otherwise, the expression <tt>views::take(E, F)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+  <li>
+    <p>(2.1) &mdash; if <tt>T</tt> is a specialization of <tt>empty_view</tt> (<sref ref="[range.empty.view]"/>),
+      then <tt>((void)F, <i>decay-copy</i>(E))</tt>, except that the evaluations of <tt>E</tt>
+      and <tt>F</tt> are indeterminately sequenced.
+    </p>
+  </li>
+  <li>
+    <p>(2.2) &mdash; Otherwise, if <tt>T</tt> models <tt>random_access_range</tt> and <tt>sized_range</tt>
+      and is a specialization of <tt>span</tt> (<sref ref="[views.span]"/>),
+      <tt>basic_string_view</tt> (<sref ref="[string.view]"/>), or <tt>ranges::subrange</tt> 
+      (<sref ref="[range.subrange]"/>), then <tt>U(ranges::begin(E), ranges::begin(E) + 
+      std::min&lt;D&gt;(ranges::distance(E), F))</tt>, except that <tt>E</tt> is evaluated only once, 
+      where <tt>U</tt> is a type determined as follows:
+    </p>
+    <ol style="list-style-type: none">
+      <li>
+        <p>(2.2.1) &mdash; if <tt>T</tt> is a specialization of <tt>span</tt>, then <tt>U</tt> is
+          <tt>span&lt;typename T::element_type&gt;</tt>;
+        </p>
+      </li>
+      <li>
+        <p>(2.2.2) &mdash; otherwise, if <tt>T</tt> is a specialization of <tt>basic_string_view</tt>, then
+          <tt>U</tt> is <tt>T</tt>;
+        </p>
+      </li>
+      <li>
+        <p>(2.2.3) &mdash; otherwise, <tt>T</tt> is a specialization of <tt>subrange</tt>,
+          and <tt>U</tt> is <tt>subrange&lt;iterator_t&lt;T&gt;&gt;</tt>;</p>
+      </li>
+    </ol>
+  </li>
+  <li>
+    <p>(2.3) &mdash; otherwise, if <tt>T</tt> is a specialization of <tt>iota_view</tt> 
+      (<sref ref="[range.iota.view]"/>) that models <tt>random_access_range</tt> and <tt>sized_range</tt>, then
+      <tt>iota_view(*ranges::begin(E), *(ranges::begin(E) + std::min&lt;D&gt;(ranges::distance(E), F)))</tt>,
+      except that <tt>E</tt> is evaluated only once.
+    </p>
+  </li>
+  <li>
+    <p>(2.?) &mdash; <ins>Otherwise, if <tt>T</tt> is a specialization of <tt>iota_view</tt>
+        that models <tt>random_access_range</tt> and <tt>same_as&lt;sentinel_t&lt;T&gt;,
+          unreachable_sentinel_t&gt;</tt> is <tt>true</tt>, then
+        <tt>views::iota(*ranges::begin(E), *(ranges::begin(E) + static_cast&lt;D&gt;(F)))</tt>,
+        except that <tt>E</tt> is evaluated only once.</ins></p>
+  </li>
+
+  <li>
+    <p>(2.4) &mdash; Otherwise, if <tt>T</tt> is a specialization of <tt>repeat_view</tt> 
+       (<sref ref="[range.repeat.view]"/>):
+    </p>
+    <ol style="list-style-type: none">
+      <li>
+        <p>(2.4.1) &mdash; if <tt>T</tt> models <tt>sized_range</tt>, then
+        <pre>  views::repeat(*E.<i>value_</i>, std::min&lt;D&gt;(ranges::distance(E), F))</pre>
+        except that <tt>E</tt> is evaluated only once;</p>
+      </li>
+      <li>
+        <p>(2.4.2) &mdash; otherwise, <tt>views::repeat(*E.<i>value_</i>, static_cast&lt;D&gt;(F))</tt>.
+        </p>
+      </li>
+    </ol>
+  </li>
+  <li>
+    <p>(2.5) &mdash; Otherwise, <tt>take_view(E, F)</tt>.</p>
+  </li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.drop.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+  -2- The name <tt>views::drop</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+  Let <tt>E</tt> and <tt>F</tt> be expressions, let <tt>T</tt> be <tt>remove_cvref_t&lt;decltype((E))&gt;</tt>,
+  and let <tt>D</tt> be <tt>range_difference_t&lt;decltype((E))&gt;</tt>.
+  If <tt>decltype((F))</tt> does not model <tt>convertible_to&lt;D&gt;</tt>, <tt>views::drop(E, F)</tt>
+  is ill-formed. Otherwise, the expression <tt>views::drop(E, F)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+  <li>
+    <p>(2.1) &mdash; if <tt>T</tt> is a specialization of <tt>empty_view</tt> (<sref ref="[range.empty.view]"/>),
+      then <tt>((void)F, <i>decay-copy</i>(E))</tt>, except that the evaluations of <tt>E</tt>
+      and <tt>F</tt> are indeterminately sequenced.
+    </p>
+  </li>
+  <li>
+    <p>(2.2) &mdash; Otherwise, if <tt>T</tt> models <tt>random_access_range</tt> and <tt>sized_range</tt>
+      and is
+    </p>
+    <ol style="list-style-type: none">
+      <li>
+        <p>(2.2.1) &mdash; a specialization of <tt>span</tt> (<sref ref="[views.span]"/>),</p>
+      </li>
+      <li>
+        <p>(2.2.2) &mdash; a specialization of <tt>basic_string_view</tt> (<sref ref="[string.view]"/>), </p>
+      </li>
+      <li>
+        <p>(2.2.3) &mdash; a specialization of <tt>iota_view</tt> (<sref ref="[range.iota.view]"/>), or</p>
+      </li>
+      <li>
+        <p>(2.2.4) &mdash; a specialization of <tt>subrange</tt> (<sref ref="[range.subrange]"/>)
+          where <tt>T::<i>StoreSize</i></tt> is <tt>false</tt>,</p>
+      </li>
+    </ol>
+    <p>then <tt>U(ranges::begin(E) + std::min&lt;D&gt;(ranges::distance(E), F), ranges::end(E))</tt>,
+      except that <tt>E</tt> is evaluated only once, where <tt>U</tt> is <tt>span&lt;typename
+        T::element_type&gt;</tt>
+      if <tt>T</tt> is a specialization of <tt>span</tt> and <tt>T</tt> otherwise.
+    </p>
+  </li>
+  <li>
+    <p>(2.?) &mdash; <ins>Otherwise, if <tt>T</tt> is a specialization of <tt>iota_view</tt>
+        that models
+        <tt>random_access_range</tt> and <tt>same_as&lt;sentinel_t&lt;T&gt;,
+          unreachable_sentinel_t&gt;</tt> is <tt>true</tt>, then
+        <tt>views::iota(*(ranges::begin(E) + static_cast&lt;D&gt;(F)))</tt>.</ins>
+    </p>
+  </li>
+  <li>
+    <p>(2.3) &mdash; Otherwise, if <tt>T</tt> is a specialization of <tt>subrange</tt>
+      (<sref ref="[range.subrange]"/>) that models
+      <tt>random_access_range</tt> and <tt>sized_range</tt>, then
+      <tt>T(ranges::begin(E) + std::min&lt;D&gt;(ranges::distance(E), F), ranges::end(E),
+        <i>to-unsigned-like</i>(ranges::distance(E) - std::min&lt;D&gt;(ranges::distance(E), F)))</tt>,
+      except that <tt>E</tt> and <tt>F</tt> are each evaluated only once.
+    </p>
+  </li>
+  <li>
+    <p>(2.4) &mdash; Otherwise, if <tt>T</tt> is a specialization of <tt>repeat_view</tt> (<sref ref="[range.repeat.view]"/>):
+    </p>
+    <ol style="list-style-type: none">
+      <li>
+        <p>(2.4.1) &mdash; if <tt>T</tt> models <tt>sized_range</tt>, then
+        <pre>  views::repeat(*E.<i>value_</i>, ranges::distance(E) - std::min&lt;D&gt;(ranges::distance(E), F))</pre>
+        except that <tt>E</tt> is evaluated only once;</p>
+      </li>
+      <li>
+        <p>(2.4.2) &mdash; otherwise, <tt>((void)F, <i>decay-copy</i>(E))</tt>, except that the evaluations of
+          <tt>E</tt> and <tt>F</tt> are indeterminately sequenced.</p>
+      </li>
+    </ol>
+  </li>
+  <li>
+    <p>(2.5) &mdash; Otherwise, <tt>drop_view(E, F)</tt>.
+    </p>
+  </li>
+
+</ol>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
