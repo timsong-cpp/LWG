@@ -881,13 +881,13 @@ void report_generator::make_individual_issues(std::vector<issue> const & issues,
    }
 
    for(auto & iss : issues){
-       fs::path filename{path / ("issue" + std::to_string(iss.num) + ".html")};
-       std::ofstream out{filename};
-       if (!out)
+      fs::path filename{path / ("issue" + std::to_string(iss.num) + ".html")};
+      std::ofstream out{filename};
+      if (!out)
          throw std::runtime_error{"Failed to open " + filename.string()};
-       print_file_header(out, std::string("Issue ") + std::to_string(iss.num) + ": " + prune_title_tags(iss.title));
-       print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues, print_issue_type::individual);
-       print_file_trailer(out);
+      print_file_header(out, std::string("Issue ") + std::to_string(iss.num) + ": " + prune_title_tags(iss.title));
+      print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues, print_issue_type::individual);
+      print_file_trailer(out);
    }
 }
 } // close namespace lwg
