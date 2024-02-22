@@ -6,7 +6,7 @@
 <section><sref ref="[support.c.headers.general]"/></section>
 <submitter>Jiang An</submitter>
 <date>06 Jul 2023</date>
-<priority>99</priority>
+<priority>3</priority>
 
 <discussion>
 <p>
@@ -20,6 +20,78 @@ Presumably, <tt><i>name</i>.h</tt> should provide macros shown in the synopsis o
 generally require implementations of the C standard library to change. I think we should make clarification in 
 <sref ref="[support.c.headers.general]"/>.
 </p>
+
+<note>2024-02-22; Reflector poll</note>
+<p>
+Set priority to 3 after reflector poll in July 2023.
+</p>
+<note>Jonathan commented</note>
+<p>
+The issue says that "such requirement would generally require implementations
+of the C standard library to change" but this is not true.
+A conforming C++ library already needs a C++-aware <code>&lt;stdlib.h&gt;</code> and <code>&lt;math.h&gt;</code>, and has done so since C++98! We should be cautious about expanding the set of C headers that need to be C++-aware, but if we require <code>&lt;stdlib.h&gt;</code> to define these functions:
+<pre><code>
+constexpr long abs(long);
+constexpr long long abs(long long);
+</code></pre>
+then it can also define <code>__cpp_lib_constexpr_math</code>.
+</p>
+<p>
+We have these <code>&lt;cxxx&gt;</code> headers providing feature test macros:
+</p>
+<pre>
+&lt;cmath&gt;:
+__cpp_lib_constexpr_cmath
+ __cpp_lib_hypot
+__cpp_lib_interpolate
+__cpp_lib_math_special_functions
+
+&lt;cstddef&gt;:
+__cpp_lib_byte
+
+&lt;cstdlib&gt;:
+__cpp_lib_constexpr_cmath
+</pre>
+<p>
+For <code>&lt;stdlib.h&gt;</code> and <code>&lt;math.h&gt;</code>
+the implementation already needs a C++-specific version of the header,
+because <code>::abs</code> is required to be overloaded (and constexpr) in
+<code>&lt;stdlib.h&gt;</code> and <code>&lt;math.h&gt;</code>
+(and all the math functions have to be constexpr even if you include
+<code>&lt;math.h&gt;</code>).
+So I see no issue here: the <code>&lt;xxx.h&gt;</code> headers should obviously
+define the same macros as the <code>&lt;cxxx&gt;</code> headers.
+</p>
+<p>
+We do not require <code>::byte</code> to be in <code>&lt;stddef.h&gt;</code>,
+so maybe we should not require the macro there either.
+Except that <code>std::byte</code> is permitted to be in
+<code>&lt;stddef.h&gt;</code>,
+just not in the global namespace (see LWG <iref ref="3883"/>).
+So maybe SD-6 should simply clarify that the macro indicates the presence
+of <code>std::byte</code>, not <code>::byte</code>,
+and whether <code>std::byte</code> and its macro are defined
+by <code>&lt;stddef.h&gt;</code> is unspecified.
+Also related to LWG <iref ref="3484"/>.
+</p>
+
+<note>Jens commented</note>
+
+<p>
+It seems <sref ref="[support.c.headers]"/> is silent on which macros
+from the <code>&lt;cxxx&gt;</code> headers are made available via the <code>&lt;xxx.h&gt;</code> headers,
+given that <sref ref="[support.c.headers.other]"/> talks about names placed in
+the standard library namespace (macros don't fit that description).
+</p>
+
+<note>Ben noted some additional macros</note>
+<pre><code>
+#define __cpp_lib_freestanding_cstdlib      <em>new-val // freestanding, also in &lt;cstdlib&gt;, &lt;cmath&gt;</em>
+#define __cpp_lib_freestanding_cstring      <em>new-val // freestanding, also in &lt;cstring&gt;</em>
+#define __cpp_lib_freestanding_cwchar       <em>new-val // freestanding, also in &lt;cwchar&gt;</em>
+#define __cpp_lib_freestanding_errc         <em>new-val // freestanding, also in &lt;cerrno&gt;, &lt;system_error&gt;</em>
+</code></pre>
+
 </discussion>
 
 <resolution>
