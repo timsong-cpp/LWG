@@ -483,10 +483,6 @@ R"(<table>
    out << "<p>" << build_timestamp << "</p>";
 }
 
-inline std::string prune_title_tags(const std::string& title){
-    return lwg::strip_xml_elements(title);
-}
-
 } // close unnamed namespace
 
 namespace lwg
@@ -903,7 +899,7 @@ void report_generator::make_individual_issues(std::vector<issue> const & issues,
       std::ofstream out{filename};
       if (!out)
          throw std::runtime_error{"Failed to open " + filename.string()};
-      print_file_header(out, std::string("Issue ") + num + ": " + prune_title_tags(iss.title),
+      print_file_header(out, std::string("Issue ") + num + ": " + lwg::strip_xml_elements(iss.title),
             // XXX should we use e.g. lwg-active.html#num as the canonical URL for the issue?
             filename.filename().string(),
             "C++ library issue. Status: " + iss.stat);
