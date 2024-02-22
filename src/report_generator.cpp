@@ -6,6 +6,7 @@
 
 #include "mailing_info.h"
 #include "sections.h"
+#include "html_utils.h"
 
 #include <algorithm>
 #include <cassert>
@@ -167,7 +168,7 @@ void print_list(std::ostream & out, Container const & source, char const * separ
 
 
 
-void print_file_header(std::ostream& out, std::string const & title, std::string const & url_filename = {}, std::string const & desc = {}) {
+void print_file_header(std::ostream& out, std::string const & title, std::string url_filename = {}, std::string desc = {}) {
    out <<
 R"(<!DOCTYPE html>
 <html lang="en">
@@ -178,8 +179,8 @@ R"(<!DOCTYPE html>
    if (url_filename.size()) {
       // Open Graph metadata
       out << R"(
-<meta property="og:title" content=")" << title << R"(">
-<meta property="og:description" content=")" << desc << R"(">
+<meta property="og:title" content=")" << lwg::replace_reserved_char(title, '"', "&quot;") << R"(">
+<meta property="og:description" content=")" << lwg::replace_reserved_char(desc, '"', "&quot;") << R"(">
 <meta property="og:url" content="https://cplusplus.github.io/LWG/)" << url_filename << R"(">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
@@ -482,9 +483,8 @@ R"(<table>
    out << "<p>" << build_timestamp << "</p>";
 }
 
-std::string prune_title_tags(const std::string& title){
-    static const std::regex rx("<[^>]*>");
-    return std::regex_replace(title, rx, "");
+inline std::string prune_title_tags(const std::string& title){
+    return lwg::strip_xml_elements(title);
 }
 
 } // close unnamed namespace
@@ -904,7 +904,9 @@ void report_generator::make_individual_issues(std::vector<issue> const & issues,
       if (!out)
          throw std::runtime_error{"Failed to open " + filename.string()};
       print_file_header(out, std::string("Issue ") + num + ": " + prune_title_tags(iss.title),
-            filename.filename().string(), "C++ library issue. Status: " + iss.stat);
+            // XXX should we use e.g. lwg-active.html#num as the canonical URL for the issue?
+            filename.filename().string(),
+            "C++ library issue. Status: " + iss.stat);
       print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues, print_issue_type::individual);
       print_file_trailer(out);
    }

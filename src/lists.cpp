@@ -47,6 +47,7 @@ namespace fs = std::filesystem;
 
 // solution specific headers
 #include "date.h"
+#include "html_utils.h"
 #include "issues.h"
 #include "mailing_info.h"
 #include "report_generator.h"
@@ -231,10 +232,8 @@ std::string paper_title_attr(std::string paper_number) {
    auto title = paper_titles[paper_number];
    if (!title.empty())
    {
-      for (auto p = title.find('&'); p != title.npos; p = title.find('&', p+5))
-         title.replace(p, 1, "&amp;");
-      for (auto p = title.find('"'); p != title.npos; p = title.find('"', p+6))
-         title.replace(p, 1, "&quot;");
+      title = lwg::replace_reserved_char(std::move(title), '&', "&amp;");
+      title = lwg::replace_reserved_char(std::move(title), '"', "&quot;");
       title = " title=\"" + title + "\"";
    }
    return title;
