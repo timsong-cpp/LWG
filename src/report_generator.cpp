@@ -167,13 +167,26 @@ void print_list(std::ostream & out, Container const & source, char const * separ
 
 
 
-void print_file_header(std::ostream& out, std::string const & title) {
+void print_file_header(std::ostream& out, std::string const & title, std::string const & url_filename = {}, std::string const & desc = {}) {
    out <<
 R"(<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>)" << title << R"(</title>
+<title>)" << title << R"(</title>)";
+
+   if (url_filename.size()) {
+      // Open Graph metadata
+      out << R"(
+<meta property="og:title" content=")" << title << R"(">
+<meta property="og:description" content=")" << desc << R"(">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/)" << url_filename << R"(">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">)";
+   }
+
+   out << R"(
 <style>
   p {text-align:justify}
   li {text-align:justify}
@@ -226,7 +239,6 @@ R"(<!DOCTYPE html>
 </head>
 <body>
 )";
-
 }
 
 
@@ -491,7 +503,8 @@ void report_generator::make_active(std::vector<issue> const & issues, fs::path c
    std::ofstream out{filename};
    if (!out)
      throw std::runtime_error{"Failed to open " + filename.string()};
-   print_file_header(out, "C++ Standard Library Active Issues List");
+   print_file_header(out, "C++ Standard Library Active Issues List", filename.filename().string(),
+         "Unresolved issues in the C++ Standard Library");
    print_paper_heading(out, "active", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("active") << '\n';
    out << "<h2 id='History'>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
@@ -509,7 +522,8 @@ void report_generator::make_defect(std::vector<issue> const & issues, fs::path c
    std::ofstream out(filename);
    if (!out)
      throw std::runtime_error{"Failed to open " + filename.string()};
-   print_file_header(out, "C++ Standard Library Defect Reports and Accepted Issues");
+   print_file_header(out, "C++ Standard Library Defect Reports and Accepted Issues", filename.filename().string(),
+         "Resolved issues in the C++ Standard Library");
    print_paper_heading(out, "defect", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("defect") << '\n';
    out << "<h2 id='History'>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
@@ -526,7 +540,8 @@ void report_generator::make_closed(std::vector<issue> const & issues, fs::path c
    std::ofstream out{filename};
    if (!out)
      throw std::runtime_error{"Failed to open " + filename.string()};
-   print_file_header(out, "C++ Standard Library Closed Issues List");
+   print_file_header(out, "C++ Standard Library Closed Issues List", filename.filename().string(),
+         "Rejected C++ standard library issues");
    print_paper_heading(out, "closed", lwg_issues_xml);
    out << lwg_issues_xml.get_intro("closed") << '\n';
    out << "<h2 id='History'>Revision History</h2>\n" << lwg_issues_xml.get_revisions(issues, diff_report) << '\n';
@@ -768,7 +783,8 @@ void report_generator::make_sort_by_status_mod_date(std::vector<issue> & issues,
    std::ofstream out{filename};
    if (!out)
      throw std::runtime_error{"Failed to open " + filename.string()};
-   print_file_header(out, "LWG Index by Status and Date");
+   print_file_header(out, "LWG Index by Status and Date", filename.filename().string(),
+         "C++ standard library issues list");
 
    out <<
 R"(<h1>C++ Standard Library Issues List (Revision )" << lwg_issues_xml.get_revision() << R"()</h1>
@@ -815,7 +831,8 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, fs::path
    std::ofstream out(filename);
    if (!out)
      throw std::runtime_error{"Failed to open " + filename.string()};
-   print_file_header(out, "LWG Index by Section");
+   print_file_header(out, "LWG Index by Section", filename.filename().string(),
+         "C++ standard library issues list");
 
    out << "<h1>C++ Standard Library Issues List (Revision " << lwg_issues_xml.get_revision() << ")</h1>\n";
    out << "<h1>Index by Section</h1>\n";
@@ -881,11 +898,13 @@ void report_generator::make_individual_issues(std::vector<issue> const & issues,
    }
 
    for(auto & iss : issues){
-      fs::path filename{path / ("issue" + std::to_string(iss.num) + ".html")};
+      auto num = std::to_string(iss.num);
+      fs::path filename{path / ("issue" + num + ".html")};
       std::ofstream out{filename};
       if (!out)
          throw std::runtime_error{"Failed to open " + filename.string()};
-      print_file_header(out, std::string("Issue ") + std::to_string(iss.num) + ": " + prune_title_tags(iss.title));
+      print_file_header(out, std::string("Issue ") + num + ": " + prune_title_tags(iss.title),
+            filename.filename().string(), "C++ library issue. Status: " + iss.stat);
       print_issue(out, iss, section_db, all_issues, issues_by_status, active_issues, print_issue_type::individual);
       print_file_trailer(out);
    }
