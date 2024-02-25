@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4055" status="New">
+<title>&sect;[iterator.operations] <tt>std::distance</tt> is missing a precondition</title>
+<section><sref ref="[iterator.operations]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>25 Feb 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>std::distance</tt> for random access iterators is defined in terms of 
+<tt>(last - first)</tt> (<sref ref="[iterator.operations]"/> p5) for 
+<i>Cpp17RandomAccessIterators</i>.
+<p/>
+However, this subtraction is not guaranteed to be well-defined
+(<sref ref="[random.access.iterators]"/>, Table [tab:randomaccessiterator]):
+</p>
+<blockquote>
+<table border="1">
+<caption>Table 91: <i>Cpp17RandomAccessIterator</i> requirements (in addition to 
+<i>Cpp17BidirectionalIterator</i>) [tab:randomaccessiterator]</caption>
+<tr align="center">
+<th>Expression</th>
+<th>Return type</th>
+<th>Operational semantics</th>
+<th>Assertion&#47;note<br/>pre-&#47;post-condition</th>
+</tr> 
+
+<tr>
+<td colspan="4" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<tt>b - a</tt>
+</td>
+<td>
+<tt>difference_type</tt>
+</td>
+<td>
+<tt>return n;</tt>
+</td>
+<td>
+<i>Preconditions</i>: there exists a<br/>
+value <tt>n</tt> of type <tt>difference_type</tt><br/> 
+such that <tt>a + n == b</tt>.<br/>
+<tt>b == a + (b - a)</tt>.
+</td>
+</tr>
+
+</table>
+
+</blockquote>
+<p>
+For example, pointer subtraction is undefined if the result isn't representable 
+as <tt>std::ptrdiff_t</tt>, and user-defined types with random access iterators 
+aren't required to have a difference which is always representable by 
+<tt>difference_type</tt> in general.
+<p/>
+<tt>std::distance(&amp;a, &amp;b)</tt> can't be well-defined when 
+<tt>&amp;b - &amp;a</tt> is not, so <tt>std::distance</tt> is missing a precondition:
+</p>
+<blockquote>
+<p>
+[&hellip;] <ins>and <tt>typename iterator_traits&lt;InputIterator&gt;::difference_type</tt> 
+can represent the result of this function call</ins>.
+</p>
+</blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.operations]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator&gt;
+  constexpr typename iterator_traits&lt;InputIterator&gt;::difference_type
+    distance(InputIterator first, InputIterator last);
+</pre>
+<blockquote>
+<p>
+-4-<i>Preconditions</i>: <tt>last</tt> is reachable from <tt>first</tt>, or <tt>InputIterator</tt> 
+meets the <i>Cpp17RandomAccessIterator</i> requirements<ins>,</ins> <del>and</del> <tt>first</tt> 
+is reachable from <tt>last</tt> <ins>, and 
+<tt>typename iterator_traits&lt;InputIterator&gt;::difference_type</tt> can represent the result of 
+this function call</ins>.
+<p/>
+-5- <i>Effects</i>: If <tt>InputIterator</tt> meets the <i>Cpp17RandomAccessIterator</i> 
+requirements, returns <tt>(last - first)</tt>; otherwise, increments <tt>first</tt> until <tt>last</tt> 
+is reached and returns the number of increments.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
