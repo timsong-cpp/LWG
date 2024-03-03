@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4056" status="New">
+<title>The effects of <tt>std::swap</tt> are under-specified</title>
+<section><sref ref="[utility.swap]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>28 Feb 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Subclause <sref ref="[utility.swap]"/> describes the effect of <tt>std::swap</tt> as follows:
+</p>
+<blockquote>
+<p>
+<i>Effects</i>: Exchanges values stored in two locations.
+</p>
+</blockquote>
+<p>
+This description is extremely vague. A possible implementation which complies with this wording is:
+</p>
+<blockquote>
+<pre>
+template&lt;class T&gt;
+constexpr void swap(T&amp;, T&amp;) noexcept(/* ... */)
+{
+    int __x = 0, __ y = 0;
+    int __ z = __ x;
+    __ x = __ y;
+    __ y = __ z;
+}
+</pre>
+</blockquote>
+<p>
+This exchanges values stored in two locations; namely in the locations of two objects with automatic 
+storage duration within <tt>swap</tt>. Since this has no observable effect and complies, it is also 
+valid to implement <tt>swap</tt> as follows:
+</p>
+<blockquote>
+<pre>
+template&lt;class T&gt;
+constexpr void swap(T&amp;, T&amp;) noexcept(/* ... */) { }
+</pre>
+</blockquote>
+<p>
+Furthermore, there is implementation divergence. 
+<a href="https://github.com/llvm/llvm-project/blob/26402777ebf4eb3d8f3d5a45943b451c740b2d76/libcxx/include/__utility/swap.h#L42">
+libc++ uses direct-initialization</a> to construct a temporary <tt>T</tt>, but 
+<a href="https://github.com/gcc-mirror/gcc/blob/80c386cb20d38ebc55f30a79418fabfbed904b87/libstdc%2B%2B-v3/include/bits/move.h#L221">
+libstdc++ uses copy-initialization</a>. For most types, this hopefully calls the same constructor, however, 
+this is not universally true. The standard should specify in more detail what is meant to happen.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[utility.swap]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  constexpr void swap(T&amp; a, T&amp; b) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints</i>: <tt>is_move_constructible_v&lt;T&gt;</tt> is <tt>true</tt> and 
+<tt>is_move_assignable_v&lt;T&gt;</tt> is <tt>true</tt>.
+<p/>
+-2-<i>Preconditions</i>: Type <tt>T</tt> meets the <i>Cpp17MoveConstructible</i> (Table 31) and 
+<i>Cpp17MoveAssignable</i> (Table 33) requirements.
+<p/>
+-3- <i>Effects</i>: <del>Exchanges values stored in two locations.</del><ins>Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>auto t(std::move(a));
+a = std::move(b);
+b = std::move(t);</ins>
+</pre></blockquote>
+<p>
+-4- <i>Remarks</i>: The exception specification is equivalent to: [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
