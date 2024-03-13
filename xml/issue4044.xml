@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="4044" status="New">
+<issue num="4044" status="Open">
 <title>Confusing requirements for <code>std::print</code> on POSIX platforms</title>
 <section><sref ref="[print.fun]"/></section>
 <submitter>Jonathan Wakely</submitter>
 <date>24 Jan 2024</date>
-<priority>99</priority>
+<priority>3</priority>
 
 <discussion>
 <p>
@@ -114,9 +114,13 @@ other than <span style="font-variant: small-caps">u+fffd</span> substitution
 should be done, although that seems the most obvious implementation to me.
 </p>
 
-</discussion>
 
-<resolution>
+<note>2024-03-12; Reflector poll</note>
+<p>
+Set priority to 3 after reflector poll and send to SG16.
+</p>
+
+<superseded>
 <p>
 This wording is relative to <paper num="N4971"/>.
 </p>
@@ -241,6 +245,167 @@ per the Unicode Standard, Chapter 3.9
 If invoking the native Unicode API  does not require transcoding,
 implementations are encouraged to diagnose invalid code units.
 </ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</superseded>
+
+<note>2024-03-12; Jonathan updates wording based on SG16 feedback</note>
+<p>
+SG16 reviewed the issue and approved the proposed resolution with
+the wording about diagnosing invalid code units removed.
+</p>
+<p>
+SG16 favors removing the following text (both occurrences) from the proposed
+wording. This is motivated by a lack of understanding regarding what it means
+to diagnose such invalid code unit sequences given that the input is likely
+provided at run-time.
+
+<blockquote>
+If invoking the native Unicode API does not require transcoding, implementations are encouraged to diagnose invalid code units.
+</blockquote>
+</p>
+
+<p>
+Some concern was expressed regarding how the current wording is structured.
+At present, the wording leads with a Windows centric perspective;
+if the stream refers to a terminal ... use the native Unicode API ...
+otherwise write code units to the stream.
+It might be an improvement to structure the wording such that use of the native
+Unicode API is presented as a fallback for implementations that require its use
+when writing directly to the stream is not sufficient to produce desired
+results. In other words, the wording should permit direct writing to the stream
+even when the stream is directed to a terminal and a native Unicode API is
+available when the implementation has reason to believe that doing so will
+produce the correct results. For example, Microsoft's HoloLens has a Windows
+based operating system, but it only supports use of UTF-8 as the system code
+page and therefore would not require the native Unicode API bypass;
+implementations for it could avoid the overhead of checking to see if the
+stream is directed to a console.
+</p>
+
+</discussion>
+
+<resolution>
+
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ostream.formatted.print]"/> as indicated:</p>
+<blockquote>
+<pre>
+void vprint_unicode(ostream&amp; os, string_view fmt, format_args args);
+void vprint_nonunicode(ostream&amp; os, string_view fmt, format_args args);
+</pre>
+<p>-3-
+<i>Effects</i>:
+Behaves as a formatted output function
+(<sref ref="[ostream.formatted.reqmts]"/>)
+of <code>os</code>, except that:
+<ol style="list-style-type: none">
+<li>(3.1) &ndash;
+failure to generate output is reported as specified below, and
+</li>
+<li>(3.2) &ndash;
+any exception thrown by the call to <code>vformat</code> is propagated without
+regard to the value of <code>os.exceptions()</code> and without turning on
+<code>ios_base::badbit</code> in the error state of <code>os</code>.
+</li>
+</ol>
+</p>
+<p>
+After constructing a <code>sentry</code> object,
+the function initializes an automatic variable via
+<pre><code>  string out = vformat(os.getloc(), fmt, args); </code></pre>
+If the function is <code>vprint_unicode</code>
+and <code>os</code> is a stream that
+refers to a terminal <ins>that is only</ins> capable of displaying Unicode
+<ins>via a native Unicode API,</ins>
+which is determined in an implementation-defined manner,
+<ins>flushes <code>os</code> and then</ins>
+writes <code>out</code> to the terminal using the native Unicode API;
+if <code>out</code> contains invalid code units, the behavior is undefined
+<del>and implementations are encouraged to diagnose it</del>.
+<del>
+If the native Unicode API is used, the function flushes <code>os</code>
+before writing <code>out</code>.
+</del>
+Otherwise, (is <code>os</code> is not such a stream or the function is
+<code>vprint_nonunicode</code>), inserts the character sequence
+[<code>out.begin()</code>,<code>out.end()</code>) into <code>os</code>.
+If writing to the terminal or inserting into <code>os</code> fails, calls
+<code>os.setstate(ios_base::badbit)</code>
+(which may throw <code>ios_base::failure</code>).
+</p>
+<p>-4-
+<i>Recommended practice</i>:
+For <code>vprint_unicode</code>,
+if invoking the native Unicode API requires transcoding, implementations
+should substitute invalid code units with
+<span style="font-variant: small-caps">u+fffd replacement character</span>
+per the Unicode Standard, Chapter 3.9
+<span style="font-variant: small-caps">u+fffd</span> Substitution in Conversion.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[print.fun]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+void vprint_unicode(FILE* stream, string_view fmt, format_args args);
+</pre>
+<p>-6-
+<i>Preconditions</i>:
+<code>stream</code> is a valid pointer to an output C stream.
+</p>
+<p>-7-
+<i>Effects</i>:
+The function initializes an automatic variable via
+<pre><code>  string out = vformat(fmt, args); </code></pre>
+If <code>stream</code> refers to a terminal <ins>that is only</ins>
+capable of displaying Unicode
+<ins>via a native Unicode API</ins>,
+<ins>flushes <code>stream</code> and then</ins>
+writes <code>out</code> to the terminal using the native Unicode API;
+if <code>out</code> contains invalid code units, the behavior is undefined
+<del>and implementations are encouraged to diagnose it</del>.
+Otherwise writes <code>out</code> to stream unchanged.
+<del>
+If the native Unicode API is used, the function flushes <code>stream</code>
+before writing <code>out</code>.
+</del>
+</p>
+<p>
+[<i>Note 1</i>:
+On <del>POSIX and</del> Windows<del>,</del>
+<ins>the native Unicode API is <code>WriteConsoleW</code> and</ins>
+<code>stream</code> referring to a terminal means that<del>,
+respectively, <code>isatty(fileno(stream))</code> and</del>
+<code>GetConsoleMode(_get_osfhandle(_fileno(stream)), ...)</code>
+return nonzero.
+&mdash; <i>end note</i>]
+</p>
+<p>
+<del>
+[<i>Note 2</i>:
+On Windows, the native Unicode API is <code>WriteConsoleW</code>.
+&mdash; <i>end note</i>]
+</del>
+</p>
+<p>-8-
+<i>Throws</i>:  [...]
+</p>
+<p>-9-
+<i>Recommended practice</i>:
+If invoking the native Unicode API requires transcoding, implementations
+should substitute invalid code units with
+<span style="font-variant: small-caps">u+fffd replacement character</span>
+per the Unicode Standard, Chapter 3.9
+<span style="font-variant: small-caps">u+fffd</span> Substitution in Conversion.
 </p>
 </blockquote>
 </li>
