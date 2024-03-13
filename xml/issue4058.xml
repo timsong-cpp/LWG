@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4058" status="New">
+<title><code>std::to_address()</code> should be SFINAE-friendly</title>
+<section><sref ref="[section.ref.here]"/></section>
+<submitter>Peter Kasting</submitter>
+<date>13 Mar 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="3545"/> made <code>std::pointer_traits</code> SFINAE-friendly.
+However, <code>std::to_address</code> is still not required to be SFINAE-friendly.
+</p>
+<p>
+This requires callers who wish to accept both pointer-like and non-pointer-like
+types to guard calls with a constraint that reimplements the core logic of
+<code>to_address</code>, such as the following:
+</p>
+<pre><code>
+template&lt;typename T&gt;
+concept IsPointerLike = requires { typename std::pointer_traits&lt;T&gt;::pointer; }
+                         || requires (const T&amp; t) { t.operator-&gt;(); };
+</code></pre>
+<p>
+Making `to_address` not be SFINAE-friendly
+<a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=113074#c7">was seen as desirable</a>,
+so `std::contiguous_iterator` would produce a hard error for types marked with
+`contiguous_iterator_tag` that do not properly support `to_address`.
+Thus any fix should not regress that unless LWG explicitly decides to do so.
+Also note that libc++'s current implementation of `to_address`,
+which is SFINAE-friendly,
+<a href="https://godbolt.org/z/e681Ynhf1">does not produce such a hard error</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[pointer.conversion]"/> as indicated:</p>
+<blockquote>
+<p><code>
+template&lt;class Ptr&gt; constexpr auto to_address(const Ptr&amp; p) noexcept;
+</code></p>
+<p><ins>
+-?- <em>Constraints</em>:
+Either the expression
+<code>pointer_traits&lt;Ptr&gt;::to_address(p)</code> is well-formed
+(see <sref ref="[pointer.traits.optmem]"/>),
+or the expression <code>p.operator-&gt;()</code> is well-formed.
+</ins></p>
+<p>
+-3- <em>Returns</em>:
+<code>pointer_traits&lt;Ptr&gt;::to_address(p)</code>
+if that expression is well-formed
+<del>(see <sref ref="[pointer.traits.optmem]"/>)</del>,
+otherwise <code>to_address(p.operator-&gt;())</code>.
+</p>
+</blockquote>
+</li>
+<li>
+<p>Modify <sref ref="[iterator.concept.contiguous]"/> as indicated:</p>
+<blockquote>
+<p>
+-1- The <code>contiguous_iterator</code> concept provides a guarantee that
+the denoted elements are stored contiguously in memory.
+</p>
+<pre><code>
+template&lt;class I&gt;
+  concept contiguous_iterator =
+    random_access_iterator&lt;I&gt; &amp;&amp;
+    derived_from&lt;ITER_CONCEPT(I), contiguous_iterator_tag&gt; &amp;&amp;
+    is_lvalue_reference_v&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+    same_as&lt;iter_value_t&lt;I&gt;, remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;&gt; &amp;&amp;
+    <del>requires(const I&amp; i) {
+      { to_address(i) } -&gt; same_as&lt;add_pointer_t&lt;iter_reference_t&lt;I&gt;&gt;&gt;;
+    }</del>
+    <ins>std::same_as&lt;decltype([] { return std::to_address(std::declval&lt;I&gt;()); }()),
+                 std::add_pointer_t&lt;std::iter_reference_t&lt;I&gt;&gt;&gt;</ins>;
+</code></pre>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
