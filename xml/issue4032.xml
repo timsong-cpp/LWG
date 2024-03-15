@@ -6,7 +6,7 @@
 <section><sref ref="[util.smartptr.shared.const]"/></section>
 <submitter>Jiang An</submitter>
 <date>25 Dec 2023</date>
-<priority>99</priority>
+<priority>4</priority>
 
 <discussion>
 <p>
@@ -14,9 +14,17 @@ Currently, <sref ref="[util.smartptr.shared.const]"/>/3 and /9.1 says <tt>Y(*)[N
 however, they may be invalid types when <tt>Y</tt> is an array type of unknown bound or a function type. 
 Presumably, the constraints should be satisfied only when the mentioned <tt>Y(*)[N]</tt> or <tt>Y(*)[]</tt> is valid.
 </p>
-</discussion>
 
-<resolution>
+<note>2024-03-15; Reflector poll</note>
+<p>
+Set priority to 4 after reflector poll.
+</p>
+<p>
+Jens pointed out that "convertible", as a core language concept,
+goes from "expression" to "type", not from "type" to "type".
+</p>
+
+<superseded>
 <p>
 This wording is relative to <paper num="N4971"/>.
 </p>
@@ -56,6 +64,115 @@ is a well-formed expression. For the first two overloads:
 <tt>Y(*)[N]</tt> is <ins>a valid type and</ins> convertible to <tt>T*</tt>, or <tt>T</tt> is <tt>U[]</tt> and
 <tt>Y(*)[]</tt> is <ins>a valid type and</ins> convertible to <tt>T*</tt>.</p></li>
 <li><p>(9.2) &mdash; If <tt>T</tt> is not an array type, then <tt>Y*</tt> is convertible to <tt>T*</tt>.</p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+</superseded>
+
+<note>2024-03-15; Jonathan provides alternative wording</note>
+<p>
+Can we just use <code>is_convertible_v&lt;Y(*)[N], T*&gt;</code>?
+With `enable_if`-style SFINAE an invalid type will cause substitution failure
+and with a <em>requires-clause</em> the constraints won't be satisfied.
+Either way we get the desired outcome.
+Also, the delete expression is already required to be well-formed, which
+rules out function types, so that part of the issue is NAD.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[util.smartptr.shared.const]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Y&gt; explicit shared_ptr(Y* p);
+</pre>
+<blockquote>
+<p>
+-3- <i>Constraints</i>: When <tt>T</tt> is an array type, the expression <tt>delete[] p</tt> is well-formed 
+and either<ins>:</ins>
+<del><tt>T</tt> is <tt>U[N]</tt> and <tt>Y(*)[N]</tt> is convertible to 
+<tt>T*</tt>, or <tt>T</tt> is <tt>U[]</tt> and <tt>Y(*)[]</tt> is convertible to 
+<tt>T*</tt>.</del>
+</p>
+<ol style="list-style-type: none">
+<li>&mdash;
+<ins>
+<code>is_bounded_array_v&lt;T&gt; &amp;&amp;
+is_convertible_v&lt;Y(*)[rank_v&lt;T&gt;], T*&gt;</code> is <code>true</code>,
+or
+</ins>
+</li>
+<li>&mdash;
+<ins>
+<code>is_unbounded_array_v&lt;T&gt; &amp;&amp; is_convertible_v&lt;Y(*)[], T*&gt;</code> is <code>true</code>.
+</ins>
+</li>
+</ol>
+<p>
+When <tt>T</tt> is not an array type, the expression <tt>delete p</tt> is well-formed and
+<del><tt>Y*</tt> is convertible to <tt>T*</tt></del>
+<ins><code>is_convertible_v&lt;Y*, T*&gt;</code> is <code>true</code></ins>.
+</p>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class Y, class D&gt; shared_ptr(Y* p, D d);
+template&lt;class Y, class D, class A&gt; shared_ptr(Y* p, D d, A a);
+template&lt;class D&gt; shared_ptr(nullptr_t p, D d);
+template&lt;class D, class A&gt; shared_ptr(nullptr_t p, D d, A a);
+</pre>
+<blockquote>
+<p>
+-9- <i>Constraints</i>: <tt>is_move_constructible_v&lt;D&gt;</tt> is <tt>true</tt>, and <tt>d(p)</tt>
+is a well-formed expression. For the first two overloads:
+</p>
+<ol style="list-style-type: none">
+<li><p>(9.1) &mdash; If <tt>T</tt> is an array type, then either<ins>:</ins>
+<del>
+<tt>T</tt> is <tt>U[N]</tt> and
+<tt>Y(*)[N]</tt> is convertible to <tt>T*</tt>, or <tt>T</tt> is <tt>U[]</tt> and
+<tt>Y(*)[]</tt> is convertible to <tt>T*</tt>.
+</del>
+</p>
+<ol style="list-style-type: none">
+<li>&mdash;
+<ins>
+<code>is_bounded_array_v&lt;T&gt; &amp;&amp;
+is_convertible_v&lt;Y(*)[rank_v&lt;T&gt;], T*&gt;</code> is <code>true</code>,
+or
+</ins>
+</li>
+<li>&mdash;
+<ins>
+<code>is_unbounded_array_v&lt;T&gt; &amp;&amp;
+is_convertible_v&lt;Y(*)[], T*&gt;</code> is <code>true</code>.
+</ins>
+</li>
+</ol>
+</li>
+<li><p>(9.2) &mdash; If <tt>T</tt> is not an array type, then
+<del><tt>Y*</tt> is convertible to <tt>T*</tt></del>
+<ins><code>is_convertible_v&lt;Y*, T*&gt;</code> is <code>true</code></ins>.
+</p></li>
 </ol>
 <p>
 [&hellip;]
