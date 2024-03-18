@@ -5,7 +5,7 @@ do
 
 # To add a comment use the following (changing the date and text!)
 #    sed -i '/<\/discussion/i\
-#<note>2022-07-15; LWG telecon: move to Ready</note>\
+#<note>2024-03-18; Tokyo: move to Ready</note>\
 #' xml/issue$issue_number.xml
 
 done
