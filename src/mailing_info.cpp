@@ -69,7 +69,9 @@ auto lwg::make_html_anchor(lwg::issue const & iss) -> std::string {
    result += num;
    result += "\" title=\"";
    result += title;
-   result += "\">";
+   result += " (Status: ";
+   result += iss.stat;
+   result += ")\">";
    result += num;
    result += "</a>";
    return result;
