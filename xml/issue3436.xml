@@ -86,9 +86,7 @@ std::construct_at(&amp;a, 0, 1, 2);
 <p>
 and leads to a UB.
 </p>
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4901"/>. 
 </p>
@@ -125,5 +123,51 @@ else
 </blockquote>
 </li>
 </ol>
+</superseded>
+
+<note>2024-03-18; Jonathan provides new wording</note>
+<p>
+During Core review in Varna, Hubert suggested creating `T[1]` for array case.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>. 
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[specialized.construct]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i>
+<ins><tt>is_unbounded_array_v&lt;T&gt;</tt> is <tt>false</tt>.</ins>
+The expression <tt>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</tt> is well-formed
+when treated as an unevaluated operand (<sref ref="[expr.context]"/>).
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<ins>if constexpr (is_array_v&lt;T&gt;)
+  return ::new (<i>voidify</i>(*location)) T[1]{{std::forward&lt;Args&gt;(args)...}};
+else</ins>
+  return ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>could use 
 </resolution>
 </issue>
