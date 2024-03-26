@@ -1,0 +1,163 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4060" status="New">
+<title><tt>submdspan</tt> preconditions do not forbid creating invalid pointer</title>
+<section><sref ref="[mdspan.submdspan.submdspan]"/></section>
+<submitter>Mark Hoemmen</submitter>
+<date>26 Mar 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Oliver Lee and Ryan Wooster pointed out to us that creating a <tt>submdspan</tt> with zero-length 
+tuple-like or <tt>strided_slice</tt> slice specifiers at the upper extent can cause <tt>submdspan</tt> 
+to access the input <tt>mdspan</tt>'s mapping out of bounds. The resulting <tt>mdspan</tt> will have 
+zero size and therefore <tt>mdspan::operator[]</tt> can't be called, but the offset computation is 
+nevertheless invalid. In a constexpr context, the result is ill-formed; Clang actually reports a 
+build error.
+<p/>
+Oliver and Ryan offer the following example and analysis.
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Example 1:
+</p>
+<blockquote><pre>
+auto x = std::array&lt;int, 3&gt;{};
+auto A = mdspan{x.data(), extents{3}};
+auto B = submdspan(A, pair{3, 3});
+</pre></blockquote>
+<p>
+B is an <tt>mdspan</tt> with zero elements.
+<p/>
+Example 2:
+</p>
+<blockquote><pre>
+auto y = std::array&lt;int, 9&gt;{};
+auto C = mdspan{y.data(), extents{3, 3}};
+auto D = submdspan(C, pair{3, 3}, pair{3, 3});
+</pre></blockquote>
+<p>
+A precondition for each slice specifier is (<sref ref="[mdspan.submdspan.extents]"/>):
+</p>
+<blockquote><pre>
+0 &le; <i>first_</i>&lt;index_type, <i>k</i>&gt;(slices...) &le; <i>last_</i>&lt;<i>k</i>&gt;(src.extents(), slices...) &le; src.extent(<i>k</i>).
+</pre></blockquote>
+<p>
+Our understanding is that precondition is satisfied. In the second example, <tt><i>first_</i>&lt;0&gt;</tt> 
+is 3 and <tt><i>first_</i>&lt;1&gt;</tt> is also 3.
+<p/>
+However, the submapping offset is defined as <tt>(*this)(<i>first_</i>&lt;index_type, P&gt;(slices...)...)</tt>, 
+which then can result in an invalid data handle of the <tt>submdspan</tt>, even if the data handle is never 
+accessed/dereferenced.
+<p/>
+<a href="https://godbolt.org/z/zaMTbMEK7">godbolt demo</a>
+</p>
+</blockquote>
+<p>
+We comment further to explain why we expect this situation to come up often in practice.
+<p/>
+Consider the following use case:
+<p/>
+Suppose we have an <tt>N x N</tt> mdspan representing a matrix <tt>A</tt>, and we want to partition it 
+into a <tt>2 x 2</tt> "matrix of matrices" (also called a "block matrix").
+<p/>
+This partitioning is a common operation in linear algebra algorithms such as matrix factorizations.
+Examples of this <tt>2 x 2</tt> partitioning appear in <paper num="P2642"/> and <paper num="P1673"/>.
+</p>
+<blockquote><pre>
+mdspan A{A_ptr, N, N};
+size_t p = partition_point(N); // <i>integer in 0, 1, &hellip;, N (inclusive)</i>
+auto A_00 = submdspan(A, tuple{0, p}, tuple{0, p});
+auto A_10 = submdspan(A, tuple{p, N}, tuple{0, 0});
+auto A_01 = submdspan(A, tuple{0, p}, tuple{p, N});
+auto A_11 = submdspan(A, tuple{p, N}, tuple{p, N});
+</pre></blockquote>
+<p>
+Presented in table form:
+</p>
+<table border="1">
+<tr>
+  <td><tt>A_00</tt></td>
+  <td><tt>A_01</tt></td>
+</tr>
+<tr>
+  <td><tt>A_10</tt></td>
+  <td><tt>A_11</tt></td>
+</tr>
+</table> 
+<p>
+It's valid for <tt>p</tt> to be <tt>0</tt>. That makes every block but <tt>A_11</tt> have zero size.
+<p/>
+Thus, it should also be valid for <tt>p</tt> to be <tt>N</tt>.
+<p/>
+That makes every block but <tt>A_00</tt> have zero size.
+<p/>
+However, that leads to the aforementioned UB.
+<p/>
+It doesn't make sense to change <tt><i>first_</i></tt> or <tt><i>last_</i></tt>. The definitions of 
+<tt><i>first_</i></tt> and <tt><i>last_</i></tt> are meant to turn the slice specifier into a pair of bounds.
+Since <tt>submdspan(A, tuple{p, N}, tuple{p, N})</tt> is valid even if <tt>p</tt> equals <tt>N</tt>,
+then that strongly suggests that <tt><i>first_</i>&lt;0&gt;</tt> and <tt><i>first_</i>&lt;1&gt;</tt> 
+should always be <tt>p</tt>, even if <tt>p</tt> equals <tt>N</tt>.
+<p/>
+The only other thing we can change is the offset. (<tt>data_handle_type</tt> doesn't have to be a pointer 
+or even <tt>default_initializable</tt>.) If the result of <tt>submdspan_extents</tt> has <tt>size()</tt> zero, 
+then the offset must also be zero.
+<p/>
+The offset is one of the return values of <tt>submdspan_mapping</tt>, which is a customization point.
+However, we don't want users to have to remember to handle this case consistently.
+Setting offset to zero depends only on the result's extents, not on its mapping, so it makes sense to handle 
+it outside of the <tt>submdspan_mapping</tt> customization point.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[mdspan.submdspan.submdspan]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class ElementType, class Extents, class LayoutPolicy,
+         class AccessorPolicy, class... SliceSpecifiers&gt;
+  constexpr auto submdspan(
+    const mdspan&lt;ElementType, Extents, LayoutPolicy, AccessorPolicy&gt;&amp; src,
+    SliceSpecifiers... slices) -&gt; <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-1- Let <tt>index_type</tt> be <tt>typename Extents::index_type</tt>.
+<p/>
+-2- Let <tt>sub_map_offset</tt> be the result of <tt>submdspan_mapping(src.mapping(), slices...)</tt>.
+<p/>
+[&hellip;]
+<p/>
+-3- <i>Constraints</i>: [&hellip;]
+<p/>
+-4- <i>Mandates</i>: [&hellip;]
+<p/>
+-5-<i>Preconditions</i>: [&hellip;]
+<p/>
+-6- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto sub_map_offset = submdspan_mapping(src.mapping(), slices...);
+<ins>size_t sub_offset = sub_map_offset.mapping.extents().size() == 0 ?
+  sub_map_offset.mapping.required_span_size() :
+  sub_map_offset.offset;</ins>
+return mdspan(src.accessor().offset(src.data(), <ins>sub_offset</ins><del>sub_map_offset.offset</del>),
+              sub_map_offset.mapping,
+              AccessorPolicy::offset_policy(src.accessor()));
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
