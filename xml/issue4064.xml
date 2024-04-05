@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4064" status="New">
+<title>Clarify that <tt>std::launder</tt> is not needed when using the result of <tt>std::memcpy</tt></title>
+<section><sref ref="[cstring.syn]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>05 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<blockquote><pre>
+int x = 0;
+alignas(int) std::byte y[sizeof(int)];
+int z = *reinterpret_cast&lt;int*&gt;(std::memcpy(y, &amp;x, sizeof(int)));
+</pre></blockquote>
+<p>
+This example should be well-defined, even without the use of <tt>std::launder</tt>.
+<tt>std::memcpy</tt> implicitly creates an <tt>int</tt> inside <tt>y</tt>, and 
+<a href="https://www.iso-9899.info/n3047.html#7.26.2.1p3">https://www.iso-9899.info/n3047.html#7.26.2.1p3</a> 
+states that
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+The <tt>memcpy</tt> function returns the value of [the destination operand].
+</p>
+</blockquote>
+<p>
+In conjunction with <sref ref="[cstring.syn]"/> p3, this presumably means that <tt>std::memcpy</tt> 
+returns a pointer to the (first) implicitly-created object, and no use of <tt>std::launder</tt> 
+is necessary.
+<p/>
+The wording should be clarified to clearly support this interpretation or reject it.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[cstring.syn]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- The functions <tt>memcpy</tt> and <tt>memmove</tt> are signal-safe (<sref ref="[support.signal]"/>). 
+Both functions implicitly create objects (<sref ref="[intro.object]"/>) in the destination region of 
+storage immediately prior to copying the sequence of characters to the destination. <ins>Both functions 
+return a pointer to the first implicitly created object.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
