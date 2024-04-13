@@ -45,10 +45,9 @@ Peter Dimov argues that (1) isn't likely to break enough to matter.
 </p>
 
 <note>2019-06-16 Priority set to 3 based on reflector discussion</note>
-</discussion>
 
-<resolution>
-<p>This wording is relative to <a href="https://wg21.link/n4810">N4810</a>.</p>
+<superseded>
+<p>This wording is relative to <paper num="N4810"/>.</p>
 
 <blockquote class="note">
 <p>
@@ -101,6 +100,82 @@ is <tt>remove_cv_t&lt;U&gt;</tt>.
 </blockquote>
 </li>
 
+</ol>
+</superseded>
+
+<note>2024-04-13; Jiang An comments and provides improved wording</note>
+<p>
+The currently proposed resolution is meaningless, because "(allocated) storage suitable to hold an object of type 
+<tt>remove_cv_t&lt;U&gt;</tt>" is always "storage suitable to hold an object of type <tt>U</tt>", and vice versa. 
+Also, the current specification doesn't seem to specify the type of <tt>pv</tt> in the cases of <tt>allocator_shared</tt>, 
+because <tt>pv</tt> is merely specified to point some storage instead of an object.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[util.smartptr.shared.create]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As the issue submitter prefers option (2), this is wording for that.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&amp;lt;class T, ...>
+  shared_ptr&amp;lt;T&amp;gt; make_shared(<i>args</i>);
+template&amp;lt;class T, class A, ...>
+  shared_ptr&amp;lt;T&amp;gt; allocate_shared(const A&amp; a, <i>args</i>);
+template&amp;lt;class T, ...>
+  shared_ptr&amp;lt;T&amp;gt; make_shared_for_overwrite(<i>args</i>);
+template&amp;lt;class T, class A, ...>
+  shared_ptr&amp;lt;T&amp;gt; allocate_shared_for_overwrite(const A&amp; a, <i>args</i>);
+</pre>
+<blockquote>
+<p>
+-2- <i>Preconditions:</i> [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-7- <i>Remarks:</i>
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; [&hellip;]</p></li>
+<li><p>[&hellip;]</p></li>
+<li><p>(7.5) &mdash; When a (sub)object of a non-array type <tt>U</tt> is specified to have an initial 
+value of <tt>v</tt>, or <tt>U(l...)</tt>, where <tt>l...</tt> is a list of constructor arguments, 
+<tt>allocate_shared</tt> shall initialize this (sub)object via the expression
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.5.1) &mdash; <tt>allocator_traits&lt;A2&gt;::construct(a2, pv, v)</tt> or</p></li>
+<li><p>(7.5.2) &mdash; <tt>allocator_traits&lt;A2&gt;::construct(a2, pv, l...)</tt></p></li>
+</ol>
+<p>
+respectively, where <tt>pv</tt> <ins>has type <tt>remove_cv_t&lt;U&gt;*</tt> and</ins> points to storage 
+suitable to hold an object of type <tt>U</tt> and <tt>a2</tt> of type <tt>A2</tt> is a rebound copy of 
+the allocator a passed to <tt>allocate_shared</tt> such that its <tt>value_type</tt> is 
+<tt>remove_cv_t&lt;U&gt;</tt>.
+</p>
+</li>
+<li><p>(7.6) &mdash; [&hellip;]</p></li>
+<li><p>(7.7) &mdash; When a (sub)object of non-array type <tt>U</tt> is specified to have a default 
+initial value, <tt>allocate_shared</tt> shall initialize this (sub)object via the expression 
+<tt>allocator_traits&lt;A2&gt;::construct(a2, pv)</tt>, where <tt>pv</tt> <ins>has type <tt>remove_cv_t&lt;U&gt;*</tt> 
+and</ins> points to storage suitable to hold an object of type <tt>U</tt> and <tt>a2</tt> of type <tt>A2</tt> 
+is a rebound copy of the allocator a passed to <tt>allocate_shared</tt> such that its <tt>value_type</tt> 
+is <tt>remove_cv_t&lt;U&gt;</tt>.
+</p>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
 </ol>
 </resolution>
 </issue>
