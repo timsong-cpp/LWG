@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4065" status="New">
+<title>Requirements for fancy pointers might be insufficient for self-referential implementation of containers</title>
+<section><sref ref="[allocator.requirements.general]"/></section>
+<submitter>Jiang An</submitter>
+<date>07 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <sref ref="[allocator.requirements.general]"/>/2.12 imposes a precondition for 
+<tt>pointer_traits::pointer_to</tt> that <tt>r</tt> denotes an object whose storage is allocated 
+by the allocator.
+<p/>
+However, as mentioned in <paper num="P0773R0"/>, some containers are self-referential in current 
+implementations, and thus a fancy pointer stored in the last node (as required by LWG <iref ref="2261"/>) 
+needs to be able to point to a sentinel node in the container object. Given the container object can 
+be constructed at any location, perhaps we should specify that <tt>pointer_traits::pointer_to</tt> 
+works on any lvalue.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[allocator.requirements.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- In subclause <sref ref="[allocator.requirements]"/>,
+</p>
+<ol style="list-style-type: none">
+<li><p>[&hellip;]</p></li>
+<li><p>(2.10) &mdash; <tt>p</tt> denotes a value of type <tt>XX::pointer</tt> obtained by calling 
+<tt>a1.allocate</tt>, where <tt>a1 == a</tt>,</p></li>
+<li><p>(2.11) &mdash; [&hellip;],</p></li>
+<li><p>(2.12) &mdash; <tt>r</tt> denotes a<ins>n l</ins>value of type <tt>T<del>&amp;</del></tt> 
+<del>obtained by the expression <tt>*p</tt></del>,</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+<pre>
+pointer_traits&lt;XX::pointer&gt;::pointer_to(r)
+</pre>
+<blockquote>
+<p>
+-33- <i>Result:</i> <tt>XX::pointer</tt>
+<p/>
+-34- <i>Postconditions:</i> <del>Same as <tt>p</tt></del><ins>Let <tt>p1</tt> denote the return value. 
+<tt>*p1</tt> refers to the same object as <tt>r</tt></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
