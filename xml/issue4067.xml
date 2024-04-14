@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4067" status="New">
+<title>Inconsistency and potential infinity meta-recursion in <tt>std::chrono::zoned_time</tt>'s constructors</title>
+<section><sref ref="[time.zone.zonedtime.ctor]"/></section>
+<submitter>Jiang An</submitter>
+<date>14 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, there are no requirements on a program-defined <tt>std::chrono::zoned_traits</tt> specialization. 
+So a <tt>zoned_traits&lt;<i>UserDefinedTzPtr</i>&gt;::locate_zone</tt> possibly returns a <tt>string_view</tt>, 
+which leads to infinity meta-recursion when checking the constraints of <tt>zoned_time</tt>'s constructors 
+that take a <tt>string_view</tt>.
+<p/>
+Also, the constructor of <tt>zoned_time</tt> taking only one <tt>string_view</tt> is inconsistent with others 
+and even self-inconsistent. For other constructors taking <tt>string_view</tt>, it is expected that the return 
+value of <tt>locate_zone</tt> is only implicitly converted to a <tt>TimeZonePtr</tt>. But the return value is 
+permitted to be convertible to <tt>zoned_time</tt> or <tt>sys_time&lt;Duration&gt;</tt> in this constructor. 
+And given the <tt>locate_name</tt> function may be an overload set that distinguishes lvalues and rvalues of 
+<tt>string_view</tt>, the use of <tt>locate_time(string_view{})</tt> in the constraints doesn't always reflect 
+<tt>locate_time(name)</tt> in the effects as the return types can be different.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.zone.zonedtime.ctor]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Add the following two paragraphs to the very beginning of subclause
+<sref ref="[time.zone.zonedtime.ctor]"/>] 
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+<ins>-?- Let <tt><i>locatable-as-tzptr</i></tt> be <tt>true</tt> if given an lvalue <tt>sv</tt> of type 
+<tt>string_view</tt>, <tt>traits::locate_zone(sv)</tt> is well-formed and <tt>TimeZonePtr</tt> is implicitly 
+convertible from its return type, and <tt>false</tt> otherwise. Only the validity of the immediate context 
+of the invocation and conversion is considered.</ins>
+<p/>
+<ins>-?- In every constructor that takes a <tt>string_view</tt> parameter <tt>name</tt>, let 
+<tt><i>converted-tzptr</i></tt> be a variable of type <tt>TimeZonePtr</tt> that is copy-initialized 
+from <tt>traits::locate_zone(name)</tt>.</ins>
+<p/>
+[&hellip;]
+</p>
+<pre>
+explicit zoned_time(string_view name);
+</pre>
+<blockquote>
+<p>
+-7- <i>Constraints:</i> <del><tt>traits::locate_zone(string_view{})</tt> is a well-formed expression and 
+<tt>zoned_time</tt> is constructible from the return type of <tt>traits::locate_zone(string_view{})</tt></del>
+<ins><tt><i>locatable-as-tzptr</i></tt> is <tt>true</tt></ins>.
+<p/>
+-8- <i>Effects:</i> Initializes <tt>zone_</tt> with <tt>traits::locate_zone(name)</tt> and default 
+constructs <tt>tp_</tt>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+zoned_time(string_view name, const sys_time&lt;Duration&gt;&amp; st);
+</pre>
+<blockquote>
+<p>
+-13- <i>Constraints:</i> <del><tt>zoned_time</tt> is constructible from the return type of 
+<tt>traits::locate_zone(name)</tt> and <tt>st</tt></del><ins><tt><i>locatable-as-tzptr</i></tt> is 
+<tt>true</tt></ins>.
+<p/>
+-14- <i>Effects:</i> Equivalent to construction with 
+<tt>{<del>traits::locate_zone(name)</del><ins>std::move(<i>converted-tzptr</i>)</ins>, st}</tt>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+zoned_time(string_view name, const local_time&lt;Duration&gt;&amp; tp);
+</pre>
+<blockquote>
+<p>
+-18- <i>Constraints:</i> <ins><tt><i>locatable-as-tzptr</i></tt> is <tt>true</tt> and</ins>
+<tt>zoned_time</tt> is constructible from <del>the return type of 
+<tt>traits::locate_zone(name)</tt></del><ins><tt>TimeZonePtr</tt></ins> and <tt>tp</tt>.
+<p/>
+-19- <i>Effects:</i> Equivalent to construction with 
+<tt>{<del>traits::locate_zone(name)</del><ins>std::move(<i>converted-tzptr</i>)</ins>, tp}</tt>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+zoned_time(string_view name, const local_time&lt;Duration&gt;&amp; tp, choose c);
+</pre>
+<blockquote>
+<p>
+-23- <i>Constraints:</i> <ins><tt><i>locatable-as-tzptr</i></tt> is <tt>true</tt> and</ins> 
+<tt>zoned_time</tt> is constructible from <del>the return type of 
+<tt>traits::locate_zone(name)</tt></del><ins><tt>TimeZonePtr</tt></ins>, 
+<tt>local_time&lt;Duration&gt;</tt>, and <tt>choose</tt>.
+<p/>
+-24- <i>Effects:</i> Equivalent to construction with 
+<tt>{<del>traits::locate_zone(name)</del><ins>std::move(<i>converted-tzptr</i>)</ins>, tp, c}</tt>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+template&lt;class Duration2, class TimeZonePtr2&gt;
+  zoned_time(string_view name, const zoned_time&lt;Duration2, TimeZonePtr2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-32- <i>Constraints:</i> <ins><tt><i>locatable-as-tzptr</i></tt> is <tt>true</tt> and</ins>
+<tt>zoned_time</tt> is constructible from <del>the return type of 
+<tt>traits::locate_zone(name)</tt></del><ins><tt>TimeZonePtr</tt></ins> 
+and the type <tt>zoned_time&lt;Duration2, TimeZonePtr2&gt;</tt>.
+<p/>
+-33- <i>Effects:</i> Equivalent to construction with 
+<tt>{<del>traits::locate_zone(name)</del><ins>std::move(<i>converted-tzptr</i>)</ins>, y}</tt>.
+</p>
+</blockquote>
+<pre>
+template&lt;class Duration2, class TimeZonePtr2&gt;
+  zoned_time(string_view name, const zoned_time&lt;Duration2, TimeZonePtr2&gt;&amp; y, choose c);
+</pre>
+<blockquote>
+<p>
+-34- <i>Constraints:</i> <ins><tt><i>locatable-as-tzptr</i></tt> is <tt>true</tt> and</ins> 
+<tt>zoned_time</tt> is constructible from <del>the return type of 
+<tt>traits::locate_zone(name)</tt></del><ins><tt>TimeZonePtr</tt></ins>, the type 
+<tt>zoned_time&lt;Duration2, TimeZonePtr2&gt;</tt>, and the type <tt>choose</tt>.
+<p/>
+-35- <i>Effects:</i> Equivalent to construction with 
+<tt>{<del>traits::locate_zone(name)</del><ins>std::move(<i>converted-tzptr</i>)</ins>, y, c}</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
