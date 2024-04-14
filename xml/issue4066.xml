@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4066" status="New">
+<title><tt>ranges::to</tt> should reserve when <tt>sized_sentinel_for</tt> is satisfied</title>
+<section><sref ref="[range.utility.conv.to]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>13 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>ranges::to</tt> currently only reserves when <tt>r</tt> satisfies <tt>sized_range</tt>.
+However, we can also extract its size when <tt>r</tt> is an <tt>input_range</tt> that its sentinel-iterator 
+pair satisfies <tt>sized_sentinel_for</tt>.
+<p/>
+Given that we have specifically designed the decision tree, I see no reason not to reserve in this case, 
+since we'd be calling <tt>ranges::begin(r)</tt> anyway.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4971"/> <b>after</b> LWG <iref ref="4016"/> has been applied.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.utility.conv.to]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;C&gt;)
+  constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: <tt>C</tt> is a cv-unqualified class type.
+</p>
+<p>
+-2- <i>Returns</i>: An object of type <tt>C</tt> constructed from the elements of <tt>r</tt> in the following manner:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; [&hellip;]</p>
+<ol style="list-style-type: none">
+<li><p>(2.1.1) &mdash; [&hellip;]</p></li>
+<li><p>(2.1.2) &mdash; [&hellip;]</p></li>
+<li><p>(2.1.3) &mdash; [&hellip;]</p></li>
+<li><p>(2.1.4) &mdash; Otherwise, if</p>
+<ol style="list-style-type: none">
+<li><p>(2.1.4.1) &mdash; <tt>constructible_from&lt;C, Args...&gt;</tt> is <tt>true</tt>, and</p></li>
+<li><p>(2.1.4.2) &mdash; <tt><i>container-appendable</i>&lt;C, range_reference_t&lt;R&gt;&gt;</tt> is
+<tt>true</tt>:</p>
+<blockquote>
+<pre>
+C c(std::forward&lt;Args&gt;(args)...);
+<ins>subrange s{r};</ins>
+if constexpr (<del>sized_range&lt;R&gt;</del><ins>requires { s.size(); }</ins> &amp;&amp; <i>reservable-container</i>&lt;C&gt;)
+  c.reserve(static_cast&lt;range_size_t&lt;C&gt;&gt;(<del>ranges::size(r)</del><ins>s.size()</ins>));
+ranges::for_each(<del>r</del><ins>s</ins>, <i>container-append</i>(c));
+</pre>
+</blockquote>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</blockquote>
+
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
