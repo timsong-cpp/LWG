@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4069" status="New">
+<title><code>std::atomic&lt;volatile T&gt;</code> should be ill-formed</title>
+<section><sref ref="[atomics.types.generic]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+As a result of <a href="https://wg21.link/cwg2094" title="2094. Trivial copy/move constructor for class with volatile member. Status: C++17">Core DR 2094</a>
+(concerning triviality of volatile-qualified subobjects),
+<code>is_trivially_copyable_v&lt;volatile int&gt;</code> is now true,
+which means that `volatile int` is a valid type for `std::atomic`.
+</p>
+<p>
+Libsdc++ and libc++ can't actually compile that type though,
+and that seems very sensible to me.
+</p>
+
+<p>
+Even worse is that <code>std::atomic&lt;volatile int&gt;</code> will not
+select the specialization for `int`, because that is clearly specified by
+<sref ref="[atomics.types.int]"/> to only be for cv-unqualified types.
+<sref ref="[atomics.types.float]"/> also says it's only for cv-unqualified
+floating-point types. And <sref ref="[atomics.types.pointer]"/> will only
+match cv-unqualified pointer types.
+This means that even when <code>std::atomic&lt;volatile int&gt;</code>
+compiles (as with MSVC) you can't use members like `fetch_add` because that
+only exists on the specialization, not the primary template.
+</p>
+
+<p>
+Should we add something to `std::atomic` to make it not valid again,
+as was the case (and presumably the original intent) before CWG DR 2094?
+</p>
+
+<p>
+A similar question exists for <code>std::atomic_ref&lt;volatile int&gt;</code>
+although there are apparently valid uses for that type. However, the
+`atomic_ref` specializations for integers, floats, and pointers are only
+for cv-unqualified types, so it doesn't work usefully.
+For `atomic_ref` we might want to allow `volatile`-qualified types <em>and</em>
+make the specializations match them.
+</p>
+</discussion>
+
+<resolution>
+<p>
+</p>
+</resolution>
+
+</issue>
