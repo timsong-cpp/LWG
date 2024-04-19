@@ -1,0 +1,142 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4071" status="New">
+<title><code>reference_wrapper</code> comparisons are not SFINAE-friendly</title>
+<section><sref ref="[refwrap.comparisons]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="p2944r3"/> added these hidden friends to `reference_wrapper`:
+</p>
+<pre><code>
+   friend constexpr <em>synth-three-way-result</em>&lt;T&gt; operator&lt;=&gt;(reference_wrapper, reference_wrapper);
+   friend constexpr <em>synth-three-way-result</em>&lt;T&gt; operator&lt;=&gt;(reference_wrapper, const T&amp;);
+   friend constexpr <em>synth-three-way-result</em>&lt;T&gt; operator&lt;=&gt;(reference_wrapper, reference_wrapper&lt;const T&gt;);
+</code></pre>
+
+<p>
+These functions are not templates, and so their declarations are ill-formed
+for any type that does have any comparison operators, e.g.
+<pre><code>
+    struct A { } a;
+    std::reference_wrapper&lt;A&gt; r(a);
+</code></pre>
+</p>
+<p>
+Instantiating <code>reference_wrapper&lt;A&gt;</code> will instantiate
+the declarations of the hidden friends, will attempt to determine the
+return types of the <code>operator&lt;=&gt;</code> functions.
+That fails because <em>`synth-three-way`</em> is constrained
+and can't be called with arguments of type `A`.
+</p>
+
+<p>
+This can be solved by changing those functions into templates, so they
+aren't instantiated eagerly, e.g.,
+<pre><code>
+    <ins>template&lt;class U = T&gt;</ins>
+    friend constexpr <em>synth-three-way-result</em>&lt;<del>T</del><ins>U</ins>&gt; operator&lt;=&gt;(reference_wrapper, reference_wrapper);
+</code></pre>
+or by giving them a deduced return type (so that it isn't instantiated eagerly)
+and constraining them to only be callable when valid:
+<pre><code>
+    friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper x, reference_wrapper y)
+    <ins>requires requires (const T t) { <em>synth-three-way</em>(t, t); }</ins>
+</code></pre>
+The second alternative is used in the proposed resolution.
+</p>
+<p>
+In practice the <em>requires-clause</em> can be implemented more simply
+(and efficiently) by checking the constraints of <em>synth-three-way</em>
+directly:
+<pre><code>    requires (const T t) { { t &lt; t } -> <em>boolean-testable</em>; }
+</code></pre>
+but when specified in prose in a <em>Constraints</em>: element it seems
+clearer to just use <code><em>synth-three-way</em>(x.get(), y.get())</code>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[refwrap.general]"/> as indicated:</p>
+
+<blockquote>
+<pre><code>
+   // [refwrap.comparisons], comparisons
+   friend constexpr bool operator==(reference_wrapper, reference_wrapper);
+   friend constexpr bool operator==(reference_wrapper, const T&amp;);
+   friend constexpr bool operator==(reference_wrapper, reference_wrapper&lt;const T&gt;);
+
+   friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper, reference_wrapper);
+   friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper, const T&amp;);
+   friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper, reference_wrapper&lt;const T&gt;);
+</code></pre>
+</blockquote>
+
+</li>
+<li><p>Modify <sref ref="[refwrap.comparisons]"/> as indicated:</p>
+<blockquote>
+<pre><code>
+friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper x, reference_wrapper y);
+</code></pre>
+
+<p>
+<ins>-?-
+<em>Constraints</em>:
+The expression
+<code><em>synth-three-way</em>(x.get(), y.get())</code>
+is well-formed.
+</ins>
+</p>
+
+<p>-7-
+<em>Returns</em>: <code><em>synth-three-way</em>(x.get(), y.get())</code>.
+</p>
+
+<pre><code>
+friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper x, const T&amp; y);
+</code></pre>
+
+<p>
+<ins>-?-
+<em>Constraints</em>:
+The expression
+<code><em>synth-three-way</em>(x.get(), y)</code>
+is well-formed.
+</ins>
+</p>
+
+<p>-8-
+<em>Returns</em>: <code><em>synth-three-way</em>(x.get(), y)</code>.
+</p>
+
+<pre><code>
+friend constexpr <del><em>synth-three-way-result</em>&lt;T&gt;</del><ins>auto</ins> operator&lt;=&gt;(reference_wrapper x, reference_wrapper&lt;const T&gt; y);
+</code></pre>
+
+<p>-9-
+<em>Constraints</em>: <code>is_const_v&lt;T&gt;</code> is `false`.
+<ins>
+The expression
+<code><em>synth-three-way</em>(x.get(), y)</code>
+is well-formed.
+</ins>
+</p>
+
+<p>-10-
+<em>Returns</em>: <code><em>synth-three-way</em>(x.get(), y.get())</code>.
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
