@@ -1,0 +1,185 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4072" status="New">
+<title>`std::optional` comparisons: constrain harder</title>
+<section><sref ref="[section.ref.here]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="p2944r3"/> added constraints to `std::optional`'s comparisons, e.g.
+</p>
+<blockquote>
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator==(const optional&lt;T&gt;&amp; x, const optional&lt;U&gt;&amp; y);
+</code></pre>
+-1- <em><del>Mandates</del><ins>Constraints</ins></em>:
+The expression `*x == *y` is well-formed and its result is convertible to `bool`.
+<p> &hellip; </p>
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator==(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+-1- <em><del>Mandates</del><ins>Constraints</ins></em>:
+The expression `*x == v` is well-formed and its result is convertible to `bool`.
+</blockquote>
+
+<p>
+But I don't think the constraint on the second one (the "compare with value")
+is correct. If we try to compare two optionals that can't be compared,
+such as <code>optional&lt;void*&gt;</code> and <code>optional&lt;int&gt;</code>,
+then the first overload is not valid due to the new constraints, and so does
+not participate in overload resolution.  But that means we now consider the
+second overload, but that's ambiguous. We could either use
+<code>operator==&lt;void*, optional&lt;int&gt;&gt;</code> or we could use
+<code>operator==&lt;optional&gt;void*&lt;, int&gt;</code> with the arguments
+reversed (using the C++20 default comparison rules).
+We never even get as far as checking the new constraints on those overloads,
+because they're simply ambiguous.
+</p>
+<p>
+Before <paper num="p2944r3"/> overload resolution always would have selected
+the first overload, for comparing two optionals. But because that is now
+constrained away, we consider an overload that should never be used for
+comparing two optionals. The solution is to add an additional constraint
+to the "compare with value" overloads so that they won't be used when the
+"value" is really another optional.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.comp.with.t]"/> as indicated:</p>
+
+<blockquote>
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator==(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+<p>-1-
+<em>Constraints</em>:
+<ins>`U` is not a specialization of `optional`.</ins>
+The expression <code>*x == v</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator==(const T&amp; v, const optional&lt;U&gt;&amp; x);
+</code></pre>
+<p>-3-
+<em>Constraints</em>:
+<ins>`T` is not a specialization of `optional`.</ins>
+The expression <code>v == *x</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator!=(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+<p>-5-
+<em>Constraints</em>:
+<ins>`U` is not a specialization of `optional`.</ins>
+The expression <code>*x != v</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator!=(const T&amp; v, const optional&lt;U&gt;&amp; x);
+</code></pre>
+<p>-7-
+<em>Constraints</em>:
+<ins>`T` is not a specialization of `optional`.</ins>
+The expression <code>v != *x</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&lt;(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+<p>-9-
+<em>Constraints</em>:
+<ins>`U` is not a specialization of `optional`.</ins>
+The expression <code>*x &lt; v</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&lt;(const T&amp; v, const optional&lt;U&gt;&amp; x);
+</code></pre>
+<p>-11-
+<em>Constraints</em>:
+<ins>`T` is not a specialization of `optional`.</ins>
+The expression <code>v &lt; *x</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&gt;(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+<p>-13-
+<em>Constraints</em>:
+<ins>`U` is not a specialization of `optional`.</ins>
+The expression <code>*x &gt; v</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&gt;(const T&amp; v, const optional&lt;U&gt;&amp; x);
+</code></pre>
+<p>-15-
+<em>Constraints</em>:
+<ins>`T` is not a specialization of `optional`.</ins>
+The expression <code>v &gt; *x</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&lt;=(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+<p>-17-
+<em>Constraints</em>:
+<ins>`U` is not a specialization of `optional`.</ins>
+The expression <code>*x &lt;= v</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&lt;=(const T&amp; v, const optional&lt;U&gt;&amp; x);
+</code></pre>
+<p>-19-
+<em>Constraints</em>:
+<ins>`T` is not a specialization of `optional`.</ins>
+The expression <code>v &lt;= *x</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&gt;=(const optional&lt;T&gt;&amp; x, const U&amp; v);
+</code></pre>
+<p>-21-
+<em>Constraints</em>:
+<ins>`U` is not a specialization of `optional`.</ins>
+The expression *x &gt;= v` is well-formed
+and its result is convertible to `bool`.
+</p>
+
+<pre><code>
+template&lt;class T, class U&gt; constexpr bool operator&gt;=(const T&amp; v, const optional&lt;U&gt;&amp; x);
+</code></pre>
+<p>-23-
+<em>Constraints</em>:
+<ins>`T` is not a specialization of `optional`.</ins>
+The expression <code>v &gt;= *x</code> is well-formed
+and its result is convertible to `bool`.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
