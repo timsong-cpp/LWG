@@ -1,0 +1,115 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4070" status="New">
+<title>Transcoding by <code>std::formatter&lt;std::filesystem::path&gt;</code></title>
+<section><sref ref="[fs.path.fmtr.funcs]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[fs.path.fmtr.funcs]"/> says:
+
+<blockquote>
+If `charT` is `char`, `path::value_type` is `wchar_t`,
+and the literal encoding is UTF-8, then the escaped path is
+transcoded from the native encoding for wide character strings to UTF-8
+with maximal subparts of ill-formed subsequences substituted with
+<span style="font-variant:small-caps">u+fffd</span>
+replacement character per the Unicode Standard [...].
+Otherwise, transcoding is implementation-defined.
+</blockquote>
+</p>
+
+<p>
+This seems to mean that the Unicode substitutions are only done
+for an escaped path, i.e. when the `?` option is used. Otherwise, the form
+of transcoding is completely implementation-defined.
+However, this makes no sense.
+An escaped string will have no ill-formed subsequences, because they will
+already have been replaced as per <sref ref="[format.string.escaped]"/>:
+<blockquote>
+Otherwise (<em>X</em> is a sequence of ill-formed code units),
+each code unit <em>U</em> is appended to <em>E</em> in order as
+the sequence <code>\x{<em>hex-digit-sequence</em>}</code>,
+where <code><em>hex-digit-sequence</em></code> is the shortest hexadecimal
+representation of <em>U</em> using lower-case hexadecimal digits.
+</blockquote>
+</p>
+<p>
+So only unescaped strings can have ill-formed sequences by the time
+we do transcoding to `char`, but whether or not any
+<span style="font-variant:small-caps">u+fffd</span> substitution
+occurs is just implementation-defined.
+</p>
+
+<p>
+I believe we want to specify the substitutions are done when transcoding
+an <em>unescaped</em> path (and it doesn't matter whether we specify it
+for escaped paths, because it's a no-op if escaping happens first,
+as is apparently intended).
+</p>
+
+<p>
+It does matter whether we escape first or perform substitutions first.
+If we escape first then every code unit in an ill-formed sequence is
+individually escaped as `\x{hex-digit-sequence}`.
+So an ill-formed sequence of two `wchar_t` values will be escaped as
+two `\x{...}` strings, which are then transcoded to UTF-8.
+If we transcode (with substitutions first) then the entire
+ill-formed sequence is replaced with a single replacement character,
+which will then be escaped as `\x{fffd}`.
+SG16 should be asked to confirm that escaping first is intended,
+so that an escaped string shows the original invalid code units.
+For a non-escaped string, we want the ill-formed sequence to be
+formatted as &#xfffd;, which the proposed resolution tries to ensure.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[fs.path.fmtr.funcs]"/> as indicated:</p>
+
+<blockquote>
+<pre><code>
+template&lt;class FormatContext&gt;
+  typename FormatContext::iterator
+    format(const filesystem::path&amp; p, FormatContext&amp; ctx) const;
+</code></pre>
+<blockquote>-5-
+<em>Effects</em>:
+Let `s` be <code>p.generic_string&lt;filesystem::path::value_type&gt;()</code>
+if the `g` option is used, otherwise `p.native()`.
+Writes `s into `ctx.out()`, adjusted according to the path-format-spec.
+If `charT` is `char`, `path::value_type` is `wchar_t`,
+and the literal encoding is UTF-8, then the
+<del>escaped path</del>
+<ins>(possible escaped) string</ins>
+is transcoded from the native encoding for wide character strings to UTF-8
+with maximal subparts of ill-formed subsequences substituted with
+<span style="font-variant:small-caps">u+fffd</span> replacement character per
+the Unicode Standard, Chapter 3.9 <span style="font-variant:small-caps">u+fffd</span>
+Substitution in Conversion.
+If `charT` and `path::value_type` are the same then no transcoding is performed.
+Otherwise, transcoding is implementation-defined
+</blockquote>
+</blockquote>
+</li>
+<li>
+Modify the entry in the index of implementation-defined behavior as indicated:
+<blockquote>
+transcoding of a formatted `path` when `charT` and `path::value_type` differ
+<ins>and not converting from `wchar_t` to UTF-8</ins>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
