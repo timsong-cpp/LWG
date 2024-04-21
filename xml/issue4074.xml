@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4074" status="New">
+<title><tt><i>compatible-joinable-ranges</i></tt> is underconstrained</title>
+<section><sref ref="[range.join.with.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>21 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>join_with_view</tt> requires the value type, reference and rvalue reference of the inner range 
+and pattern range to share common (reference) types through <tt><i>compatible-joinable-ranges</i></tt>.
+<p/>
+However, unlike what <tt>concat_view</tt> and <tt>generator</tt> do, this concept only requires that 
+these three types be valid and does not further check the relationship between them to be compatible 
+with the <tt>indirectly_readable</tt> requirement for <tt>input_iterator</tt>.
+This results in a validly-constructed <tt>join_with_view</tt> that may not model <tt>input_range</tt>, 
+which seems unintended.
+<p/>
+The proposed resolution aliases <tt><i>compatible-joinable-ranges</i></tt> to <tt><i>concatable</i></tt> 
+i.e. specialization for two ranges to fully constrain, and I believe this could also be a better fit for 
+LWG <iref ref="3971"/>.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <a href="https://wg21.link/N4981">N4981</a>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[range.join.with.view]"/> as indicated:</p>
+  
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class R, class P&gt;
+    concept <i>compatible-joinable-ranges</i> = <ins><i>concatable</i>&lt;R, P&gt;;</ins>  // <i>exposition only</i>
+        <del>common_with&lt;range_value_t&lt;R&gt;, range_value_t&lt;P&gt;&gt; &amp;&amp;
+        common_reference_with&lt;range_reference_t&lt;R&gt;, range_reference_t&lt;P&gt;&gt; &amp;&amp;
+        common_reference_with&lt;range_rvalue_reference_t&lt;R&gt;, range_rvalue_reference_t&lt;P&gt;&gt;;</del>
+  
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
