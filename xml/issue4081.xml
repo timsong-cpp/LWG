@@ -1,0 +1,122 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4081" status="New">
+<title><tt>concat_view::<i>iterator</i>::operator-</tt> is overconstrained</title>
+<section><sref ref="[range.concat.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>26 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, two <tt>concat_view::<i>iterator</i></tt>s can only be subtracted if
+<tt><i>concat-is-random-access</i></tt> is satisfied, which seems overconstrained since the implementation
+does not rely on all underlying ranges being <tt>random_access_range</tt> or <tt>common_range</tt>.
+<p/>
+Generally speaking, iterators provide <tt>operator-</tt> mainly based on whether it satisfies 
+<tt>sized_sentinel_for</tt> rather than being category-specific.
+For example, <tt>counted_iterator</tt>s that only model <tt>input_iterator</tt> can still be subtracted.
+We have no reason to reject the following:
+</p>
+<blockquote><pre>
+std::list l = {1, 2, 3};
+auto r = l | std::views::take(3);
+auto c = std::ranges::concat_view{r};
+auto it = c.begin();
+it++;
+auto d = it - c.begin(); // <span style="color:red;font-weight:bolder">error: no match for 'operator-'</span>
+</pre></blockquote>
+<p>
+The proposed resolution lists a minimal constraint formula based on the implementation details of <tt>operator-</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.concat.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp;
+              <i>concatable</i>&lt;Views...&gt;
+  template&lt;bool Const&gt;
+  class concat_view&lt;Views...&gt;::<i>iterator</i> {
+
+  public:
+    [&hellip;]
+    friend constexpr difference_type operator-(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <del><i>concat-is-random-access</i>&lt;Const, Views...&gt;</del><ins><i>see below</i></ins>;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+friend constexpr difference_type operator-(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <del><i>concat-is-random-access</i>&lt;Const, Views...&gt;</del><ins><i>see below</i></ins>;
+</pre>
+<blockquote>
+<p>
+-32- <i>Preconditions</i>: <tt>x.<i>it_</i>.valueless_by_exception()</tt> and
+<tt>y.<i>it_</i>.valueless_by_exception()</tt> are each <tt>false</tt>.
+</p>
+<p>
+-33- <i>Effects</i>: Let <tt><i>i</i><sub>x</sub></tt> denote <tt>x.<i>it_</i>.index()</tt> and
+<tt><i>i</i><sub>y</sub></tt> denote <tt>y.<i>it_</i>.index()</tt>.
+</p>
+<ol style="list-style-type: none">
+<li>
+<p>(33.1) &mdash; if <tt><i>i</i><sub>x</sub> &gt; <i>i</i><sub>y</sub></tt>, let
+  <tt><i>d</i><sub>y</sub></tt> be <tt>ranges::distance(std::get&lt;<i>i</i><sub>y</sub>&gt;(y.<i>it_</i>),
+    ranges::end(std::get&lt;<i>i</i><sub>y</sub>&gt;(y.<i>parent_</i>-&gt;<i>views_</i>)))</tt>,
+  <tt><i>d</i><sub>x</sub></tt> be
+  <tt>ranges::distance(ranges::begin(std::get&lt;<i>i</i><sub>x</sub>&gt;(x.<i>parent_</i>-&gt;<i>views_</i>)),
+    std::get&lt;<i>i</i><sub>x</sub>&gt;(x.<i>it_</i>))</tt>. 
+  Let <tt><i>s</i></tt> denote the sum of the sizes of all the ranges
+  <tt>std::get&lt;<i>i</i>&gt;(x.<i>parent_</i>-><i>views_</i>)</tt> for every integer <tt><i>i</i></tt> in
+  the range <tt>[<i>i</i><sub>y</sub> + 1, <i>i</i><sub>x</sub>)</tt>
+  if there is any, and <tt>0</tt> otherwise, of type <tt>difference_type</tt>, equivalent to:
+</p>
+<blockquote>
+<pre>return <i>d</i><sub>y</sub> + <i>s</i> + <i>d</i><sub>x</sub>;</pre>
+</blockquote>
+<p>(33.2) &mdash; otherwise, if <tt><i>i</i><sub>x</sub> &lt; <i>i</i><sub>y</sub></tt>
+  is <tt>true</tt>, equivalent to:</p>
+<blockquote>
+<pre>return -(y - x);</pre>
+</blockquote>
+<p>(33.3) &mdash; otherwise, equivalent to:</p>
+<blockquote>
+<pre>return std::get&lt;<i>i</i><sub>x</sub>&gt;(x.<i>it_</i>) - std::get&lt;<i>i</i><sub>y</sub>&gt;(y.<i>it_</i>);</pre>
+</blockquote>
+</li>
+</ol>
+<p>
+<ins>-?- <i>Remarks</i>: Let <tt>Fs</tt> be the pack that consists of all elements of <tt>Views</tt> except the
+last element, and let <tt>Rs</tt> be the pack that consists of all elements of <tt>Views</tt> except the first
+element. The expression in the <i>requires-clause</i> is equivalent to:</ins>
+</p>
+<blockquote>
+<pre><ins>(sized_sentinel_for&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;,
+                    iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...) &amp;&amp;
+(sized_sentinel_for&lt;sentinel_t&lt;<i>maybe-const</i>&lt;Const, Fs&gt;&gt;,
+                    iterator_t&lt;<i>maybe-const</i>&lt;Const, Fs&gt;&gt;&gt; &amp;&amp; ...) &amp;&amp;
+<i>all-forward</i>&lt;Const, Rs...&gt;</ins></pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
