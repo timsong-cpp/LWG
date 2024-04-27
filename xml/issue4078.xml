@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4078" status="New">
+<title>What if arguments alias the output buffer in `std::format_to`?</title>
+<section><sref ref="[format.functions]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>24 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<blockquote><pre>
+int main() {
+  int x = 12345;
+  // note: this is "awoo" followed by 28 zeros (<sref ref="[dcl.init.string]"/> p3)
+  char buffer[32] = "awoo";
+  std::format_to(buffer, "{}{}", x, buffer);
+  std::println("{}", buffer);
+}
+</pre></blockquote>
+<p>
+The output of this code is unspecified to be either <tt>"1234512345"</tt> or <tt>"12345awoo"</tt>, 
+where GCC currently outputs the former. Formatting occurs through function calls 
+(see <sref ref="[format.formatter.spec]"/> p1) and those cannot be unsequenced, however, it's also 
+nowhere stated in what order the arguments get formatted and how the output iterator is advanced 
+between calls to the formatters.
+<p/>
+The status quo is undesirable because unspecified formatting output is not useful to the user, 
+and the lack of a precondition which would forbid aliasing between arguments and the output buffer 
+restricts the implementation.
+<p/>
+My intuition is to add <i>Preconditions</i> specifications to functions in <sref ref="[format.functions]"/> 
+which would forbid the output range of the output iterator to overlap ranges of the arguments.
+<p/>
+A friend of mine has suggested to add a <i>Preconditions</i> to the <i>BasicFormatter</i> requirements 
+instead, dealing with the issue at the root (<tt>f.format(u, fc)</tt>).
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
