@@ -24,9 +24,7 @@ i.e. specialization for two ranges to fully constrain, and I believe this could 
 LWG <iref ref="3971"/>.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4981"/>.
 </p>
@@ -44,6 +42,119 @@ namespace std::ranges {
         common_reference_with&lt;range_rvalue_reference_t&lt;R&gt;, range_rvalue_reference_t&lt;P&gt;&gt;;</del>
   
   [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</superseded>
+
+<note>2024-04-24; Hewill Kang provides improved wording</note>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[ranges.syn]"/> as indicated:</p>
+  
+<blockquote>
+<pre>
+#include &lt;compare&gt;              // <i>see <sref ref="[compare.syn]"/></i>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+#include &lt;iterator&gt;             // <i>see <sref ref="[iterator.synopsis]"/></i>
+
+namespace std::ranges {
+  [&hellip;]
+  // <i><sref ref="[range.join.with]"/></i>, <i>join with view</i>
+  <del>template&lt;class R, class P&gt;
+    concept <i>compatible-joinable-ranges</i> = <i>see below</i>; // <i>exposition only</i></del>
+
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires <del>view&lt;V&gt; &amp;&amp; input_range&lt;range_reference_t&lt;V&gt;&gt;
+          &amp;&amp; view&lt;Pattern&gt;
+          &amp;&amp; <i>compatible-joinable-ranges</i>&lt;range_reference_t&lt;V&gt;, Pattern&gt;</del>
+          <ins><i>see below</i></ins>
+  class join_with_view;                                                             // <i>freestanding</i>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.join.with.view]"/> as indicated:</p>
+  
+<blockquote>
+<pre>
+namespace std::ranges {
+  <del>template&lt;class R, class P&gt;
+    concept <i>compatible-joinable-ranges</i> =            // <i>exposition only</i>
+        common_with&lt;range_value_t&lt;R&gt;, range_value_t&lt;P&gt;&gt; &amp;&amp;
+        common_reference_with&lt;range_reference_t&lt;R&gt;, range_reference_t&lt;P&gt;&gt; &amp;&amp;
+        common_reference_with&lt;range_rvalue_reference_t&lt;R&gt;, range_rvalue_reference_t&lt;P&gt;&gt;;</del>
+  
+  [&hellip;]
+
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; input_range&lt;range_reference_t&lt;V&gt;&gt;
+          &amp;&amp; view&lt;Pattern&gt;
+          &amp;&amp; <i><del>compatible-joinable-ranges</del><ins>concatable</ins></i>&lt;range_reference_t&lt;V&gt;, Pattern&gt;
+  class join_with_view : public view_interface&lt;join_with_view&lt;V, Pattern&gt;&gt; {
+    [&hellip;]
+    constexpr auto begin() const
+      requires forward_range&lt;const V&gt; &amp;&amp;
+               forward_range&lt;const Pattern&gt; &amp;&amp;
+               is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;
+               input_range&lt;range_reference_t&lt;const V&gt;&gt; <ins>&amp;&amp;
+               <i>concatable</i>&lt;range_reference_t&lt;const V&gt;, const Pattern&gt;</ins> {
+      return <i>iterator</i>&lt;true&gt;{*this, ranges::begin(<i>base_</i>)};
+    }
+    [&hellip;]
+    constexpr auto end() const
+      requires forward_range&lt;const V&gt; &amp;&amp; forward_range&lt;const Pattern&gt; &amp;&amp;
+               is_reference_v&lt;range_reference_t&lt;const V&gt;&gt; &amp;&amp;
+               input_range&lt;range_reference_t&lt;const V&gt;&gt; <ins>&amp;&amp;
+               <i>concatable</i>&lt;range_reference_t&lt;const V&gt;, const Pattern&gt;</ins> {
+      [&hellip;]
+    }
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.join.with.iterator]"/> as indicated:</p>
+  
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; input_range&lt;range_reference_t&lt;V&gt;&gt;
+          &amp;&amp; view&lt;Pattern&gt; &amp;&amp; <i><del>compatible-joinable-ranges</del><ins>concatable</ins></i>&lt;range_reference_t&lt;V&gt;, Pattern&gt;
+  template&lt;bool Const&gt;
+  class join_with_view&lt;V, Pattern&gt;::<i>iterator</i> {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[range.join.with.sentinel]"/> as indicated:</p>
+  
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; input_range&lt;range_reference_t&lt;V&gt;&gt;
+          &amp;&amp; view&lt;Pattern&gt; &amp;&amp; <i><del>compatible-joinable-ranges</del><ins>concatable</ins></i>&lt;range_reference_t&lt;V&gt;, Pattern&gt;
+  template&lt;bool Const&gt;
+  class join_with_view&lt;V, Pattern&gt;::<i>sentinel</i> {
+    [&hellip;]
+  };
 }
 </pre>
 </blockquote>
