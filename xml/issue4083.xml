@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4083" status="New">
+<title><tt>views::as_rvalue</tt> should reject non-input ranges</title>
+<section><sref ref="[range.as.rvalue.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>27 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>views::as_rvalue(r)</tt> equivalent to <tt>views::all(r)</tt> when <tt>r</tt>'s reference and rvalue reference are
+of the same type, which means that in this case we only need to check whether the type of <tt>r</tt> models <tt>viewable_range</tt>.
+<p/>
+However, libstdc++'s implementation always requires <tt>as_rvalue_view{r}</tt> to be valid, which leads to
+divergence when <tt>r</tt> is not an <tt>input_range</tt> (<a href="https://godbolt.org/z/EbzEsK88Y">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+
+struct I {
+  int operator*();
+  using difference_type = int;
+  I&amp; operator++();
+  void operator++(int);
+};
+
+std::ranges::range auto r = std::ranges::subrange{I{}, std::unreachable_sentinel}
+                          | std::views::as_rvalue; // <span style="color:red;font-weight:bolder">// well-formed in libc++/MSVC-STL, ill-formed in libstdc++</span>
+</pre></blockquote>
+<p>
+Although this is precisely a bug in libstdc++ that does not conform to the current wording, it is reasonable to
+require <tt>r</tt> to be an <tt>input_range</tt> to be consistent with the constraints of <tt>as_rvalue_view</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.as.rvalue.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <tt>views::as_rvalue</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+Let <tt>E</tt> be an expression and let <tt>T</tt> be <tt>decltype((E))</tt>. The expression 
+<tt>views::as_rvalue(E)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; <tt>views::all(E)</tt> if <ins><tt>T</tt> models <tt>input_range</tt> and</ins> 
+<tt>same_as&lt;range_rvalue_reference_t&lt;T&gt;, range_reference_t&lt;T&gt;&gt;</tt> is <tt>true</tt>.</p></li>
+<li><p>(2.2) &mdash; Otherwise, <tt>as_rvalue_view(E)</tt>.</p></li>
+</ol>
+
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
