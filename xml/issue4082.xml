@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4082" status="New">
+<title><tt>views::concat(r)</tt> is well-formed when <tt>r</tt> is an <tt>output_range</tt></title>
+<section><sref ref="[range.concat.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>27 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>views::concat</tt> will return <tt>views::all(r)</tt> when it takes only one argument, 
+which only requires that the type of <tt>r</tt> models <tt>viewable_range</tt> which includes <tt>output_range</tt>:
+</p>
+<blockquote><pre>
+std::vector&lt;int&gt; v;
+auto r = std::views::counted(std::back_inserter(v), 3);
+auto c = std::views::concat(r); // <span style="color:red;font-weight:bolder">well-formed</span>
+</pre></blockquote>
+<p>
+Since <tt>concat_view</tt> requires all ranges to be <tt>input_range</tt>, this seems inconsistent. 
+We should reject the above just like <tt>views::zip_transform</tt> still requires <tt>F</tt> to be 
+<tt>move_constructible</tt> in the case of an empty pack.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.concat.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <tt>views::concat</tt> denotes a customization point object (<sref ref="[customization.point.object]"/>).
+Given a pack of subexpressions <tt>Es...</tt>, the expression <tt>views::concat(Es...)</tt> is expression-equivalent to
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; <tt>views::all(Es...)</tt> if <tt>Es</tt> is a pack with only one element <ins>whose type models 
+<tt>input_range</tt></ins>,</p></li>
+<li><p>(2.2) &mdash; otherwise, <tt>concat_view(Es...)</tt>.</p></li>
+</ol>
+
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
