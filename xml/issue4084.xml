@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4084" status="New">
+<title><code>std::fixed</code> ignores <code>std::uppercase</code></title>
+<section><sref ref="[facet.num.put.virtuals]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>30 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In Table 114 &ndash; Floating-point conversions [tab:facet.num.put.fp]
+we specify that a floating-point value should be printed as if by `%f`
+when <code>(flags &amp; floatfield) == fixed</code>.
+This ignores whether `uppercase` is also set in `flags`,
+meaning there is no way to use `%F` as the conversion specifier.
+</p>
+<p>
+That's fine for finite values, because 1.23 in fixed format has
+no exponent character and no hex digits.
+But `%f` and `%F` are not equivalent, because the latter prints `"NAN"`
+and `"INF"` (or `"INFINITY"`).
+It seems there is no way to print `"NAN"` using `std::num_put`, is that right?
+</p>
+<p>
+Libstdc++ and MSVC prints `"inf"` for the following code,
+but libc++ prints `"INF"` which I think is non-conforming:
+<pre><code>
+    std::cout &lt;&lt; std::uppercase &lt;&lt; std::fixed &lt;&lt; std::numeric_limits&lt;double&gt;::infinity();
+</code></pre>
+</p>
+<p>
+The libc++ behaviour seems more useful and less surprising.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[facet.num.put.virtuals]"/> as indicated:</p>
+
+<blockquote>
+<table style="border: 1px solid">
+<caption style="caption-side: top">
+Table 114 &ndash; Floating-point conversions [tab:facet.num.put.fp]
+</caption>
+<tr style="text-align: center">
+<th style="border-bottom: 1px solid">State</th>
+<th style="border-bottom: 1px solid">`stdio` equivalent</th>
+</tr>
+<tr>
+<td>
+`floatfield == ios_base::fixed` <ins><code>&amp;&amp; !uppercase</code></ins>
+</td>
+<td style="text-align: center">`%f`</td>
+</tr>
+<tr>
+<td><ins>`floatfield == ios_base::fixed`</ins></td>
+<td style="text-align: center"><ins>`%F`</ins></td>
+</tr>
+<tr>
+<td><code>floatfield == ios_base::fixed &amp;&amp; !uppercase</code></td>
+<td style="text-align: center">`%e`</td>
+</tr>
+<tr>
+<td><code>floatfield == ios_base::fixed</code></td>
+<td style="text-align: center">`%E`</td>
+</tr>
+<tr>
+<td>
+<code>
+floatfield == (ios_base::fixed | ios_base::scientific)` &amp;&amp; !uppercase
+</code>
+</td>
+<td style="text-align: center">`%a`</td>
+</tr>
+<tr>
+<td><code>floatfield == (ios_base::fixed | ios_base::scientific)</code></td>
+<td style="text-align: center">`%A`</td>
+</tr>
+<tr>
+<td>`!uppercase`</td>
+<td style="text-align: center">`%g`</td>
+</tr>
+<tr>
+<td><em>otherwise</em></td>
+<td style="text-align: center">`%G`</td>
+</tr>
+</table>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
