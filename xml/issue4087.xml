@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4087" status="New">
+<title>Standard exception messages have unspecified encoding</title>
+<section><sref ref="[exception]"/></section>
+<submitter>Victor Zverovich</submitter>
+<date>28 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The null-terminated multibyte string returned by the <tt>what</tt> method of <tt>std::exception</tt> 
+and its subclasses in the standard has an unspecified encoding. The closest thing in the specification 
+is the "suitable for conversion and display as a <tt>wstring</tt>" part in <i>Remarks</i> 
+(<sref ref="[exception]"/> p6) but it is too vague to be useful because anything can be converted to 
+<tt>wstring</tt> in one way or another:
+</p>
+<blockquote>
+<pre>
+virtual const char* what() const noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Returns</i>: An implementation-defined <span style="font-variant:small-caps">ntbs</span>.
+<p/>
+<i>Remarks</i>: The message may be a null-terminated multibyte string (<sref ref="[multibyte.strings]"/>), 
+suitable for conversion and display as a <tt>wstring</tt> (<sref ref="[string.classes]"/>, 
+<sref ref="[locale.codecvt]"/>). The return value remains valid until the exception object from which it 
+is obtained is destroyed or a non-<tt>const</tt> member function of the exception object is called.
+</p>
+</blockquote>
+</blockquote>
+<p>
+As a result, it is impossible to portably use the exception message, e.g. print it. Since exception 
+messages are commonly combined with string literals and are often constructed from string literals, 
+at the very least the standard should say that the message is compatible with them, i.e. that it is 
+in the ordinary literal encoding or its subset.
+<p/>
+To give a specific example of this problem, consider the following code compiled on Windows with 
+Microsoft Visual C++, the ordinary literal encoding of UTF-8 and the system locale set to Belarusian 
+(the language of the text in this example):
+</p>
+<blockquote>
+<pre>
+std::uintmax_t size = 0;
+try {
+  size = std::filesystem::file_size(L"Шчучыншчына");
+} catch (const std::exception&amp; e) {
+  std::print("Памылка: {}", e.what());
+}
+</pre>
+</blockquote>
+<p>
+Since both <tt>std::filesystem::path</tt> and <tt>std::print</tt> support Unicode one would expect this 
+to work and, when run, print a readable error message if the file "Шчучыншчына" doesn't exist. However, 
+the output will be corrupted instead. The reason for the corruption is that <tt>filesystem_error</tt> 
+requires including the path in the message but doesn't say that it should be transcoded 
+(<sref ref="[fs.filesystem.error.members]"/> p7):
+</p>
+<blockquote>
+<pre>
+virtual const char* what() const noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Returns</i>: An <span style="font-variant:small-caps">ntbs</span> that incorporates the <tt>what_arg</tt> 
+argument supplied to the constructor. The exact format is unspecified. Implementations should include the 
+<tt>system_error::what()</tt> string and the pathnames of <tt>path1</tt> and <tt>path2</tt> in the native 
+format in the returned string.
+</p>
+</blockquote>
+</blockquote>
+<p>
+Therefore, the message will contain literal text in the ordinary literal encoding (UTF-8) combined with a 
+path, most likely in the operating system dependent current encoding for pathnames which in this case is CP1251. 
+So different parts of the output will be in two incompatible encodings and therefore unusable with 
+<tt>std::print</tt> or any other facility.
+<p/>
+The actual observable behavior for the above example is no output in the Windows console which 
+is extremely broken but appears to be conformant with the current specification. It was reproduced with 
+{fmt}'s implementation of <tt>print</tt> since Microsoft STL doesn't implement <tt>std::print</tt> yet. 
+Replacing <tt>std::print</tt> with another output facility produces a different but equally unusable form 
+of mojibake.
+</p>
+
+<note>2024-05-04; Daniel comments</note>
+<p>
+The proposed wording is incomplete. There are about 12 other <tt>what</tt> specifications in the Standard
+Library with exactly the same specification as <tt>exception::what</tt> that would either need to get the 
+same treatment or we would need general wording somewhere that says that the specification "contract" of 
+<tt>exception::what</tt> extends to all of its derived classes. A third choice could be that we introduce 
+a new definition such as an <span style="font-variant:small-caps">lntbs</span> (or maybe "literal 
+<span style="font-variant:small-caps">ntbs</span>") that is essentially an 
+<span style="font-variant:small-caps">ntbs</span> in the ordinary literal encoding.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[exception]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+virtual const char* what() const noexcept;
+</pre>
+<blockquote>
+<p>
+<i>Returns</i>: An implementation-defined <span style="font-variant:small-caps">ntbs</span> 
+<ins>in the ordinary literal encoding</ins>.
+<p/>
+<i>Remarks</i>: The message may be a null-terminated multibyte string (<sref ref="[multibyte.strings]"/>), 
+suitable for conversion and display as a <tt>wstring</tt> (<sref ref="[string.classes]"/>, 
+<sref ref="[locale.codecvt]"/>). The return value remains valid until the exception object from which it 
+is obtained is destroyed or a non-<tt>const</tt> member function of the exception object is called.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
