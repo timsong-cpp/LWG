@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4091" status="New">
+<title><tt>concat_view</tt> rejects non-movable references</title>
+<section><sref ref="[range.concat.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>01 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In order to prevent non-equality-preserving behavior of <tt>operator*</tt> and <tt>iter_move</tt>, 
+<tt>concat_view</tt> introduces the <tt><i>concat-indirectly-readable</i></tt> concept, part of which is:
+</p>
+<blockquote><pre>
+template&lt;class Ref, class RRef, class It&gt;
+  concept <i>concat-indirectly-readable-impl</i> =                         // <i>exposition only</i>
+    requires (const It it) {
+      { *it } -&gt; convertible_to&lt;Ref&gt;;
+      { ranges::iter_move(it) } -&gt; convertible_to&lt;RRef&gt;;
+    };
+</pre></blockquote>
+<p>
+This isn't quite right because <tt>convertible_to</tt> checks <tt>is_convertible_v</tt> which doesn't 
+understand copy elision. This makes the current <tt>concat_view</tt> unable to work with ranges whose 
+reference is non-movable prvalue:
+</p>
+<blockquote><pre>
+auto r = std::views::iota(0, 5)
+       | std::views::transform([](int) { return NonMovable{}; });
+auto c1 = std::ranges::concat_view(r);    // <span style="color:red;font-weight:bolder">ill-formed, concat_indirectly_readable not satisfied</span>
+auto c2 = std::ranges::concat_view(r, r); // <span style="color:red;font-weight:bolder">ditto</span>
+</pre></blockquote>
+<p>
+Since <tt>std::visit&lt;R&gt;</tt> is used in the implementation to perform reference conversion for the 
+underlying iterator, the more accurate one should be <tt>is_invocable_r</tt> which does understand guaranteed 
+elision.
+<p/>
+Note that <tt>join_with_view</tt> has the same issue because <tt><i>compatible-joinable-ranges</i></tt> 
+requires that the <tt>value_type</tt> of the inner range and pattern range must satisfy <tt>common_with</tt>, 
+which always fails for non-movable types. However, this can be automatically resolved by LWG 
+<iref ref="4074"/>'s resolution.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.concat.view]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The exposition-only <tt><i>concat-indirectly-readable</i></tt> concept is equivalent to:
+</p>
+<blockquote>
+<pre>
+<ins>template&lt;class Ref, class CRef&gt;
+concept <i>concat-ref-compatible-with</i> = is_invocable_r_v&lt;CRef, Ref()&gt;;  // <i>exposition only</i></ins>
+  
+template&lt;class Ref, class RRef, class It&gt;
+concept <i>concat-indirectly-readable-impl</i> =                         // <i>exposition only</i>
+  requires (const It it) {
+    { *it } -&gt; <del>convertible_to</del><ins><i>concat-ref-compatible-with</i></ins>&lt;Ref&gt;;
+    { ranges::iter_move(it) } -&gt; <del>convertible_to</del><ins><i>concat-ref-compatible-with</i></ins>&lt;RRef&gt;;
+  };
+
+template&lt;class... Rs&gt;
+  concept <i>concat-indirectly-readable</i> =                              // <i>exposition only</i>
+    common_reference_with&lt;<i>concat-reference-t</i>&lt;Rs...&gt;&amp;&amp;,
+                          <i>concat-value-t</i>&lt;Rs...&gt;&amp;&gt; &amp;&amp;
+    common_reference_with&lt;<i>concat-reference-t</i>&lt;Rs...&gt;&amp;&amp;,
+                          <i>concat-rvalue-reference-t</i>&lt;Rs...&gt;&amp;&amp;&gt; &amp;&amp;
+    common_reference_with&lt;<i>concat-rvalue-reference-t</i>&lt;Rs...&gt;&amp;&amp;,
+                          <i>concat-value-t</i>&lt;Rs...&gt; const&amp;&gt; &amp;&amp;
+    (<i>concat-indirectly-readable-impl</i>&lt;<i>concat-reference-t</i>&lt;Rs...&gt;,
+                                     <i>concat-rvalue-reference-t</i>&lt;Rs...&gt;,
+                                     iterator_t&lt;Rs&gt;&gt; &amp;&amp; ...);
+</pre>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
