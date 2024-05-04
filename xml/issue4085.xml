@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4085" status="New">
+<title><tt>ranges::generate_random</tt>'s helper lambda should specify the return type</title>
+<section><sref ref="[alg.rand.generate]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>28 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The non-specialized case of <tt>generate_random(r, g, d)</tt> would call
+<tt>ranges::generate(r, [&amp;d, &amp;g] { return invoke(d, g); })</tt>.
+However, the lambda does not explicitly specify the return type, which leads 
+to a hard error when <tt>invoke</tt> returns a reference to the object that is not copyable or
+<tt>R</tt> is not the <tt>output_range</tt> for <tt>decay_t&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[alg.rand.generate]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class G, class D&gt;
+  requires output_range&lt;R, invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; &amp;&amp; invocable&lt;D&amp;, G&amp;&gt; &amp;&amp;
+           uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+constexpr borrowed_iterator_t&lt;R&gt; ranges::generate_random(R&amp;&amp; r, G&amp;&amp; g, D&amp;&amp; d);
+</pre>
+<p>-5- <i>Effects</i>:</p>
+<ol style="list-style-type: none">
+<li><p>(5.1) &mdash; [&hellip;]</p></li>
+<li><p>(5.2) &mdash; [&hellip;]</p></li>
+<li><p>(5.3) &mdash; Otherwise, calls:</p>
+<blockquote><pre>
+ranges::generate(std::forward&lt;R&gt;(r), [&amp;d, &amp;g] <ins>-&gt; decltype(auto)</ins> { return invoke(d, g); });
+</pre></blockquote>
+</li>
+</ol>
+<p>-6- <i>Returns</i>: <tt>ranges::end(r)</tt></p>
+<p>-7- <i>Remarks</i>: The effects of <tt>generate_random(r, g, d)</tt> shall be equivalent to</p>
+<blockquote><pre>
+ranges::generate(std::forward&lt;R&gt;(r), [&amp;d, &amp;g] <ins>-&gt; decltype(auto)</ins> { return invoke(d, g); })
+</pre></blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
