@@ -1,0 +1,136 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4086" status="New">
+<title><tt>ranges::generate_random_n</tt> is missing</title>
+<section><sref ref="[alg.rand.generate]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>29 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<paper num="P1068"/> introduced <tt>ranges::generate_random</tt> which has both range and 
+iterator-sentinel pair overloads. However, the <tt><i>_n</i></tt> version never seems to be discussed.
+<p/>
+In view of the fact that <tt>generate</tt> and <tt>fill</tt> have their corresponding <tt><i>_n</i></tt> siblings, 
+namely <tt>generate_n</tt> and <tt>fill_n</tt>, adding <tt>generate_random_n</tt> does improve consistency 
+and provide a more intuitive and simple way to generate a specified number of random numbers.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[rand.synopsis]"/>, header <tt>&lt;random&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+
+namespace std {
+  [&hellip;]
+  namespace ranges {
+    // <i><sref ref="[alg.rand.generate]"/></i>, generate_random
+    template&lt;class R, class G&gt;
+      requires output_range&lt;R, invoke_result_t&lt;G&amp;&gt;&gt; &amp;&amp;
+               uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+      constexpr borrowed_iterator_t&lt;R&gt; generate_random(R&amp;&amp; r, G&amp;&amp; g);
+
+    template&lt;class G, output_iterator&lt;invoke_result_t&lt;G&amp;&gt;&gt; O, sentinel_for&lt;O&gt; S&gt;
+      requires uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+      constexpr O generate_random(O first, S last, G&amp;&amp; g);
+
+    <ins>template&lt;class G, output_iterator&lt;invoke_result_t&lt;G&amp;&gt;&gt; O&gt;
+      requires uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+      constexpr O generate_random_n(O first, iter_difference_t&lt;O&gt; n, G&amp;&amp; g);</ins>
+
+    template&lt;class R, class G, class D&gt;
+      requires output_range&lt;R, invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; &amp;&amp; invocable&lt;D&amp;, G&amp;&gt; &amp;&amp;
+               uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+    constexpr borrowed_iterator_t&lt;R&gt; generate_random(R&amp;&amp; r, G&amp;&amp; g, D&amp;&amp; d);
+
+    template&lt;class G, class D, output_iterator&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; O, sentinel_for&lt;O&gt; S&gt;
+      requires invocable&lt;D&amp;, G&amp;&gt; &amp;&amp; uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+    constexpr O generate_random(O first, S last, G&amp;&amp; g, D&amp;&amp; d);
+
+    <ins>template&lt;class G, class D, output_iterator&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; O&gt;
+      requires invocable&lt;D&amp;, G&amp;&gt; &amp;&amp; uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+    constexpr O generate_random_n(O first, iter_difference_t&lt;O&gt; n, G&amp;&amp; g, D&amp;&amp; d);</ins>
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.rand.generate]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class G, output_iterator&lt;invoke_result_t&lt;G&amp;&gt;&gt; O, sentinel_for&lt;O&gt; S&gt;
+  requires uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+constexpr O ranges::generate_random(O first, S last, G&amp;&amp; g);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+return generate_random(subrange&lt;O, S&gt;(std::move(first), last), g);
+</pre></blockquote>
+</blockquote>
+<pre><ins>
+template&lt;class G, output_iterator&lt;invoke_result_t&lt;G&amp;&gt;&gt; O&gt;
+  requires uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+constexpr O ranges::generate_random_n(O first, iter_difference_t&lt;O&gt; n, G&amp;&amp; g);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>return generate_random(counted_iterator(std::move(first), n),
+            default_sentinel, g).base();</ins>
+</pre></blockquote>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class G, class D, output_iterator&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; O, sentinel_for&lt;O&gt; S&gt;
+  requires invocable&lt;D&amp;, G&amp;&gt; &amp;&amp; uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+constexpr O ranges::generate_random(O first, S last, G&amp;&amp; g, D&amp;&amp; d);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+return generate_random(subrange&lt;O, S&gt;(std::move(first), last), g, d);
+</pre></blockquote>
+</blockquote>
+<pre><ins>
+template&lt;class G, class D, output_iterator&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; O&gt;
+  requires invocable&lt;D&amp;, G&amp;&gt; &amp;&amp; uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt;
+constexpr O ranges::generate_random_n(O first, iter_difference_t&lt;O&gt; n, G&amp;&amp; g, D&amp;&amp; d);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>return generate_random(counted_iterator(std::move(first), n),
+          default_sentinel, g, d).base();</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
