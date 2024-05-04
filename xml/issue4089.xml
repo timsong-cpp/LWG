@@ -1,0 +1,178 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4089" status="New">
+<title><tt>concat_view::<i>iterator</i></tt>'s <tt>iter_swap</tt> is overconstrained</title>
+<section><sref ref="[range.concat.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>30 Apr 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When the underlying iterator of two <tt>concat_view::<i>iterator</i></tt>s are of different types,
+their <tt>iter_swap</tt> will dispatch <tt>ranges::swap</tt> to swap elements, which is reflected 
+in its constraints of <tt>swappable_with&lt;iter_reference_t&lt;<i>iterator</i>&gt;,
+iter_reference_t&lt;<i>iterator</i>&gt;&gt;</tt>.
+<p/>
+However, when the underlying iterators are all of the same type, <tt>ranges::swap</tt> will never 
+be invoked, making checking for <tt>swappable_with</tt> unnecessary in this case.
+<p/>
+This results in the current wording rejecting the following:
+</p>
+<blockquote>
+<pre>
+struct I {
+  using value_type = int;
+  using difference_type = int;
+  std::reference_wrapper&lt;int&gt; operator*() const;
+  I&amp; operator++();
+  void operator++(int);
+  bool operator==(const I&amp;) const;
+  friend void iter_swap(const I&amp;, const I&amp;); // custom iter_swap
+};
+
+static_assert(std::indirectly_swappable&lt;I&gt;);
+
+int main() {
+  std::ranges::subrange&lt;I, I&gt; s1, s2;
+  std::ranges::swap_ranges(s1, s2);
+  std::ranges::concat_view c1{s1}, c2{s2};
+  std::ranges::swap_ranges(c1, c2); // <span style="color:red;font-weight:bolder">ill-formed</span>
+}
+</pre>
+</blockquote>
+<p>
+Because <tt>reference_wrapper</tt> does not satisfy <tt>swappable_with</tt>, <tt>concat_view::<i>iterator</i></tt>
+does not have a valid <tt>iter_swap</tt>, leading to the constraints of <tt>swap_ranges</tt> being unsatisfied.
+<p/>
+This doesn't seem like it should be, and I think providing a simplified homogeneous <tt>iter_swap</tt> specialization
+for <tt>concat_view::<i>iterator</i></tt> is reasonable.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.concat.iterator]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp;
+              <i>concatable</i>&lt;Views...&gt;
+  template&lt;bool Const&gt;
+  class concat_view&lt;Views...&gt;::<i>iterator</i> {
+
+  public:
+    using iterator_category = <i>see below</i>;                                // <i>not always present.</i>
+    using iterator_concept = <i>see below</i>;
+    using value_type = <i>concat-value-t</i>&lt;<i>maybe-const</i>&lt;Const, Views&gt;...&gt;;
+    using difference_type = common_type_t&lt;range_difference_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt;;
+
+  private:
+    <ins>static constexpr bool <i>concat-is-homogeneous</i> = <i>see below</i>;                // <i>exposition only</i></ins>
+    using <i>base-iter</i> =                                                       // <i>exposition only</i>
+      variant&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt;;
+    
+    [&hellip;]
+
+    <ins>friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y) noexcept(<i>see below</i>)
+      requires <i>concat-is-homogeneous</i> &amp;&amp; 
+               indirectly_swappable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views...[0]&gt;&gt;&gt;;</ins>
+    friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y) noexcept(<i>see below</i>)
+      requires <del><i>see below</i></del><ins>(!<i>concat-is-homogeneous</i>) &amp;&amp;
+               swappable_with&lt;iter_reference_t&lt;<i>iterator</i>&gt;, iter_reference_t&lt;<i>iterator</i>&gt;&gt; &amp;&amp;
+               (... &amp;&amp; indirectly_swappable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;)</ins>;
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<p>
+<ins>-?- <tt><i>concat-is-homogeneous</i></tt> is <tt>true</tt> if and only if the pack of types
+<tt>iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...</tt> are all the same.</ins>
+<p/>
+-1- <tt>iterator::<i>iterator_concept</i></tt> is defined as follows:
+<p/>
+[&hellip;]
+</p>
+<pre>
+<ins>friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y) noexcept(<i>see below</i>)
+  requires <i>concat-is-homogeneous</i> &amp;&amp;
+           indirectly_swappable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views...[0]&gt;&gt;&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions</i>: <tt>x.<i>it_</i>.valueless_by_exception()</tt> and
+<tt>y.<i>it_</i>.valueless_by_exception()</tt> are each <tt>false</tt>.</ins>
+<p/>
+<ins>-?- <i>Effects</i>: Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>std::visit(ranges::iter_swap, x.<i>it_</i>, y.<i>it_</i>);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks</i>: The exception specification is equivalent to</ins>
+</p>
+<blockquote><pre>
+<ins>noexcept(ranges::iter_swap(std::get&lt;0&gt;(x.<i>it_</i>), std::get&lt;0&gt;(y.<i>it_</i>)))</ins>
+</pre></blockquote>
+</blockquote>
+<pre>
+friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y) noexcept(<i>see below</i>)
+  requires <del><i>see below</i></del><ins>(!<i>concat-is-homogeneous</i>) &amp;&amp;
+           swappable_with&lt;iter_reference_t&lt;<i>iterator</i>&gt;, iter_reference_t&lt;<i>iterator</i>&gt;&gt; &amp;&amp;
+           (... &amp;&amp; indirectly_swappable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;)</ins>;
+</pre>
+<blockquote>
+<p>
+-42- <i>Preconditions</i>: <tt>x.<i>it_</i>.valueless_by_exception()</tt> and
+<tt>y.<i>it_</i>.valueless_by_exception()</tt> are each <tt>false</tt>.
+<p/>
+-43- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote>
+<pre>
+std::visit([&amp;](const auto&amp; it1, const auto&amp; it2) {
+    if constexpr (is_same_v&lt;decltype(it1), decltype(it2)&gt;) {
+      ranges::iter_swap(it1, it2);
+    } else {
+      ranges::swap(*x, *y);
+    }
+  },
+  x.<i>it_</i>, y.<i>it_</i>);
+</pre>
+</blockquote>
+<p>
+-44- <i>Remarks</i>: The exception specification is equivalent to
+</p>
+<blockquote><pre>
+(noexcept(ranges::swap(*x, *y)) &amp;&amp; ... &amp;&amp; noexcept(ranges::iter_swap(its, its)))
+</pre></blockquote>
+<p>
+where <tt>its</tt> is a pack of lvalues of type <tt>const iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;</tt> 
+respectively.
+</p>
+<p>
+<del>The expression in the <i>requires-clause</i> is equivalent to</del>
+</p>
+<blockquote><pre>
+<del>swappable_with&lt;iter_reference_t&lt;<i>iterator</i>&gt;, iter_reference_t&lt;<i>iterator</i>&gt;&gt; &amp;&amp;
+(... &amp;&amp; indirectly_swappable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;)</del>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
