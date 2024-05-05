@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4093" status="New">
+<title><tt>ranges::fold_left_first_with_iter</tt> incorrectly constructs <tt>optional&lt;U&gt;</tt></title>
+<section><sref ref="[alg.fold]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>03 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>ranges::fold_left_first_with_iter</tt> constructs the initial value through 
+<tt>optional&lt;U&gt;(in_place, *first)</tt> which is not quite right, because the exposure 
+constraint only ensures that <tt>U</tt> can be constructed from the value type of the iterator 
+rather than its reference (<a href="https://godbolt.org/z/xbEqdxoK8">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;algorithm&gt;
+
+struct Op {
+  Op() = default;
+  Op(std::tuple&lt;int&gt;);
+  Op(std::tuple&lt;int&amp;&gt;) = delete;
+  Op operator()(Op, std::tuple&lt;int&amp;&gt;) const;
+};
+
+int main() {
+  std::ranges::fold_left_first_with_iter(
+    std::views::zip(std::views::single(0)), 
+    Op{}
+  ); // <span style="color:red;font-weight:bolder">hard error in libstdc++ and MSVC-STL</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[alg.fold]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S
+         <i>indirectly-binary-left-foldable</i>&lt;iter_value_t&lt;I&gt;, I&gt; F&gt;
+  requires constructible_from&lt;iter_value_t&lt;I&gt;, iter_reference_t&lt;I&gt;&gt;
+  constexpr <i>see below</i> ranges::fold_left_first_with_iter(I first, S last, F f);
+template&lt;input_range R, <i>indirectly-binary-left-foldable</i>&lt;range_value_t&lt;R&gt;, iterator_t&lt;R&gt;&gt; F&gt;
+  requires constructible_from&lt;range_value_t&lt;R&gt;, range_reference_t&lt;R&gt;&gt;
+  constexpr <i>see below</i> ranges::fold_left_first_with_iter(R&amp;&amp; r, F f);
+</pre>
+<blockquote>
+<p>
+-9- Let <tt>U</tt> be
+</p>
+<blockquote><pre>
+decltype(ranges::fold_left(std::move(first), last, iter_value_t&lt;I&gt;(*first), f))
+</pre></blockquote>
+<p>
+-10- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+if (first == last)
+  return {std::move(first), optional&lt;U&gt;()};
+optional&lt;U&gt; init(in_place, <ins>iter_value_t&lt;I&gt;(</ins>*first<ins>)</ins>);
+for (++first; first != last; ++first)
+  *init = invoke(f, std::move(*init), *first);
+return {std::move(first), std::move(init)};
+</pre></blockquote>
+<p>
+-11- <i>Remarks</i>: The return type is <tt>fold_left_first_with_iter_result&lt;I, optional&lt;U&gt;&gt;</tt>
+for the first overload and <tt>fold_left_first_with_iter_result&lt;borrowed_iterator_t&lt;R&gt;, optional&lt;U&gt;&gt;</tt> 
+for the second overload.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
