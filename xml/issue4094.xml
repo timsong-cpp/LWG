@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4094" status="New">
+<title><tt>ranges::fold_<i>meow</i></tt> is overconstrained</title>
+<section><sref ref="[alg.fold]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>03 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The two <tt>convertible_to</tt> constraints required by <tt>ranges::fold_<i>meow</i></tt> mainly 
+check whether the decayed result type of the binary operator can be constructed by both the invoke type 
+and the initial value type.
+<p/>
+However, using <tt>constructible_from</tt> seems more appropriate here because we don't need to care whether 
+the two types can be converted implicitly and explicitly.
+Taking <tt>string</tt> and <tt>string_view</tt> as examples, the former can only be explicitly constructed by 
+the latter and can be assigned by the latter, which makes <tt>ranges::fold_<i>meow</i></tt> unable to fold 
+ranges whose elements are of type <tt>string</tt> with an initial value of type <tt>string_view</tt>:
+</p>
+<blockquote><pre>
+vector&lt;string&gt; vs{"a", "b", "c"};
+string_view init{"d"};
+auto result = ranges::fold_right(vs, init, plus{}); // <span style="color:red;font-weight:bolder">still ill-formed after <paper num="P2591R5"/> as the constraint is not satisfied</span>
+</pre></blockquote>
+<p>
+In addition, the two <tt>movable</tt> constraints in the function signature seem to be too strict as well since we 
+only need to check that the decayed result type and the initial type can be move-constructible (one for returned by 
+elidable move and one for move into other overloads) instead of whether they can be move-assignable.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[algorithm.syn]"/>, header <tt>&lt;algorithm&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+
+namespace std {
+  [&hellip;]
+  namespace ranges {
+    [&hellip;]
+    template&lt;class F, class T, class I, class U&gt;
+      concept <i>indirectly-binary-left-foldable-impl</i> =  // <i>exposition only</i>
+        <del>movable</del><ins>move_constructible</ins>&lt;T&gt; &amp;&amp; <del>movable</del><ins>move_constructible</ins>&lt;U&gt; &amp;&amp;
+        <del>convertible_to</del><ins>constructible_from</ins>&lt;<del>T, </del>U<ins>, T</ins>&gt; &amp;&amp; invocable&lt;F&amp;, U, iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+        assignable_from&lt;U&amp;, invoke_result_t&lt;F&amp;, U, iter_reference_t&lt;I&gt;&gt;&gt;;
+
+    template&lt;class F, class T, class I&gt;
+      concept <i>indirectly-binary-left-foldable</i> =      // <i>exposition only</i>
+        copy_constructible&lt;F&gt; &amp;&amp; indirectly_readable&lt;I&gt; &amp;&amp;
+        invocable&lt;F&amp;, T, iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+        <del>convertible_to</del><ins>constructible_from&lt;decay_t</ins>&lt;invoke_result_t&lt;F&amp;, T, iter_reference_t&lt;I&gt;&gt;<ins>&gt;</ins>,
+               <del>decay_t&lt;</del>invoke_result_t&lt;F&amp;, T, iter_reference_t&lt;I&gt;&gt;&gt;<del>&gt;</del> &amp;&amp;
+        <i>indirectly-binary-left-foldable-impl</i>&lt;F, T, I,
+                        decay_t&lt;invoke_result_t&lt;F&amp;, T, iter_reference_t&lt;I&gt;&gt;&gt;&gt;;
+    [&hellip;]
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.fold]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;bidirectional_iterator I, sentinel_for&lt;I&gt; S, class T = iter_value_t&lt;I&gt;,
+         <i>indirectly-binary-right-foldable</i>&lt;T, I&gt; F&gt;
+  constexpr auto ranges::fold_right(I first, S last, T init, F f);
+template&lt;bidirectional_range R, class T = range_value_t&lt;R&gt;,
+         <i>indirectly-binary-right-foldable</i>&lt;T, iterator_t&lt;R&gt;&gt; F&gt;
+  constexpr auto ranges::fold_right(R&amp;&amp; r, T init, F f);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+using U = decay_t&lt;invoke_result_t&lt;F&amp;, iter_reference_t&lt;I&gt;, T&gt;&gt;;
+if (first == last)
+  return U(std::move(init));
+I tail = ranges::next(first, last);
+U accum<del> =</del><ins>(</ins>invoke(f, *--tail, std::move(init))<ins>)</ins>;
+while (first != tail)
+  accum = invoke(f, *--tail, std::move(accum));
+return accum;
+</pre></blockquote>
+[&hellip;]
+</blockquote>
+<pre>
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S, class T = iter_value_t&lt;I&gt;,
+         <i>indirectly-binary-left-foldable</i>&lt;T, I&gt; F&gt;
+  constexpr <i>see below</i> ranges::fold_left_with_iter(I first, S last, T init, F f);
+template&lt;input_range R, class T = range_value_t&lt;R&gt;,
+         <i>indirectly-binary-left-foldable</i>&lt;T, iterator_t&lt;R&gt;&gt; F&gt;
+  constexpr <i>see below</i> ranges::fold_left_with_iter(R&amp;&amp; r, T init, F f);
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>U</tt> be <tt>decay_t&lt;invoke_result_t&lt;F&amp;, T, iter_reference_t&lt;I&gt;&gt;&gt;</tt>.
+<p/>
+-7- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+if (first == last)
+  return {std::move(first), U(std::move(init))};
+U accum<del> =</del><ins>(</ins>invoke(f, std::move(init), *first)<ins>)</ins>;
+for (++first; first != last; ++first)
+  accum = invoke(f, std::move(accum), *first);
+return {std::move(first), std::move(accum)};
+</pre></blockquote>
+<p>
+-8- <i>Remarks</i>: The return type is <tt>fold_left_with_iter_result&lt;I, U&gt;</tt>
+for the first overload and <tt>fold_left_with_iter_result&lt;borrowed_iterator_t&lt;R&gt;, U&gt;</tt> 
+for the second overload.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
