@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4092" status="New">
+<title>The monotonic version of <tt>common_iterator::operator==</tt> is underconstrained</title>
+<section><sref ref="[common.iterator]"/><sref ref="[common.iter.cmp]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>01 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>common_iterator</tt> has the following equality operator:
+</p>
+<blockquote><pre>
+template&lt;class I2, sentinel_for&lt;I&gt; S2&gt;
+    requires sentinel_for&lt;S, I2&gt;
+  friend constexpr bool operator==(
+    const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre></blockquote>
+<p>
+which is quite useful when wrapping a C++20 <tt>input_iterator</tt> that does not model <tt>equality_comparable</tt> 
+so that the quality operator required by the <i>Cpp17InputIterator</i> can still be synthesized.
+<p/>
+However, the function signature does not check the correlation between <tt>I2</tt> and <tt>I</tt>, 
+which allows a <tt>common_iterator</tt> wrapping two completely unrelated iterators to validly compare 
+(<a href="https://godbolt.org/z/Erce8dETT">demo</a>):
+</p>
+<blockquote><pre>
+common_iterator&lt;string::iterator, unreachable_sentinel_t&gt; i1;
+common_iterator&lt;list&lt;int&gt;::iterator, unreachable_sentinel_t&gt; i2;
+i1 == i2; // <span style="color:red;font-weight:bolder">unfortunately compile</span>
+</pre></blockquote>
+<p>
+The proposed resolution requires <tt>common_with&lt;I, I2&gt;</tt> to be satisfied to enhance semantics, 
+which is also consistent with the signature of <tt>counted_iterator::operator==</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[common.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+    requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
+  class common_iterator {
+  public:
+    [&hellip;]
+    template&lt;<del>class</del><ins>common_with&lt;I&gt;</ins> I2, sentinel_for&lt;I&gt; S2&gt;
+      requires sentinel_for&lt;S, I2&gt;
+    friend constexpr bool operator==(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<del>class</del><ins>common_with&lt;I&gt;</ins> I2, sentinel_for&lt;I&gt; S2&gt;
+  requires sentinel_for&lt;S, I2&gt;
+friend constexpr bool operator==(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
+are each <tt>false</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
