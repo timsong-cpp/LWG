@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4097" status="New">
+<title><code>views::reverse</code> should be specialized for some view types</title>
+<section><sref ref="[range.reverse.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>09 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, when <code>views::reverse</code> is applied to <code>empty_view</code>, <code>single_view</code>, or 
+<code>repeat_view</code>, a <code>reverse_view</code> with the iterator type <code>reverse_iterator</code> will 
+be produced.
+<p/>
+Such an amount of instantiation seems less necessary for these three simple view types, since returning a copy 
+of them is sufficient.
+<p/>
+Note that this also makes <code>views::repeat(0) | views::reverse | views::take(5)</code> no longer timeout, 
+which seems to be an improvement.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.reverse.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <code>reverse_view</code> takes a bidirectional view and produces another view that 
+iterates the same elements in reverse order.
+<p/>
+-2- The name <code>views::reverse</code> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+Given a subexpression <code>E</code>, the expression <code>views::reverse(E)</code>
+is expression-equivalent to:</p>
+<ol style="list-style-type: none">
+<li>
+<p>(2.1) &mdash; If the type of <code>E</code> is a (possibly cv-qualified) specialization of
+<code>reverse_view</code>, equivalent to <code>E.base()</code>.</p></li>
+<li><p><ins>(2.?) &mdash; If the type of <code>E</code> is a (possibly cv-qualified) specialization of 
+<code>empty_view</code> (<sref ref="[range.empty.view]"/>), <code>single_view</code> 
+(<sref ref="[range.single.view]"/>), or <code>repeat_view</code> (<sref ref="[range.repeat.view]"/>),
+equivalent to <code><i>decay-copy</i>(E)</code>.</ins></p></li>
+<li><p>(2.2) &mdash; Otherwise, if the type of <code>E</code> is <i>cv</i> 
+<code>subrange&lt;reverse_iterator&lt;I&gt;, reverse_iterator&lt;I&gt;, K&gt;</code> for some iterator 
+type <code>I</code> and value <code>K</code> of type <code>subrange_kind</code>,</p>
+<ol style="list-style-type: none">
+<li>
+<p>(2.2.1) &mdash; if <code>K</code> is <code>subrange_kind::sized</code>, equivalent to:</p>
+<blockquote>
+<pre>subrange&lt;I, I, K&gt;(E.end().base(), E.begin().base(), E.size())</pre>
+</blockquote>
+</li>
+<li>
+<p>(2.2.2) &mdash; otherwise, equivalent to:</p>
+<blockquote>
+<pre>subrange&lt;I, I, K&gt;(E.end().base(), E.begin().base())</pre>
+</blockquote>
+</li>
+</ol>
+<p>However, in either case <code>E</code> is evaluated only once.</p>
+</li>
+<li>
+<p>(2.3) &mdash; Otherwise, equivalent to <code>reverse_view{E}</code>.</p>
+</li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
