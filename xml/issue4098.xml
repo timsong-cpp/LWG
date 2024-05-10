@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4098" status="New">
+<title><code>views::adjacent&lt;0&gt;</code> should reject non-forward ranges</title>
+<section><sref ref="[range.adjacent.overview]"/><sref ref="[range.adjacent.transform.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>10 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Following-up LWG <iref ref="4082"/> and LWG <iref ref="4083"/>, the current wording makes
+<code>views::adjacent&lt;0&gt;(r)</code> and <code>views::adjacent_transform&lt;0&gt;(r, [] { return 0; })</code>
+well-formed even when <code>r</code> is just an input range or an output range, which seems to be an oversight.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.adjacent.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <code>views::adjacent&lt;N&gt;</code> denotes a range adaptor object
+(<sref ref="[range.adaptor.object]"/>). Given a subexpression <code>E</code> and a constant expression
+<code>N</code>, the expression <code>views::adjacent&lt;N&gt;(E)</code> is expression-equivalent to
+</p>
+<ol style="list-style-type:none">
+<li>
+<p>(2.1) &mdash; <code>((void)E, auto(views::empty&lt;tuple&lt;&gt;&gt;))</code> if
+  <code>N</code> is equal to <code>0</code> <ins>and <code>decltype((E))</code> models <code>forward_range</code></ins>,
+</p>
+</li>
+<li>
+<p>(2.2) &mdash; otherwise, <code>adjacent_view&lt;views::all_t&lt;decltype((E))&gt;, N&gt;(E)</code>.</p>
+</li>
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.adjacent.transform.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <code>views::adjacent_transform&lt;N&gt;</code> denotes a range adaptor object
+(<sref ref="[range.adaptor.object]"/>). Given subexpressions <code>E</code> and <code>F</code> 
+and a constant expression <code>N</code>:
+</p>
+<ol style="list-style-type:none">
+<li>
+<p>(2.1) &mdash; If <code>N</code> is equal to <code>0</code> <ins>and <code>decltype((E))</code> 
+models <code>forward_range</code></ins>, <code>views::adjacent_transform&lt;N&gt;(E, F)</code>
+is expression-equivalent to <code>((void)E, views::zip_transform(F))</code>, except that
+the evaluations of <code>E</code> and <code>F</code> are indeterminately sequenced.
+</p>
+</li>
+<li>
+<p>(2.2) &mdash; Otherwise, the expression <code>views::adjacent_transform&lt;N&gt;(E, F)</code> is
+expression-equivalent to <code>adjacent_transform_view&lt;views::all_t&lt;decltype((E))&gt;, 
+decay_t&lt;decltype((F))&gt;, N&gt;(E, F)</code>.
+</p>
+</li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
