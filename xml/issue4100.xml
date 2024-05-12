@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4100" status="New">
+<title>Default arguments and signatures of standard library non-member functions</title>
+<section><sref ref="[global.functions]"/></section>
+<submitter>Jiang An</submitter>
+<date>11 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <tt>std::from_chars</tt> and <tt>std::to_chars</tt> are specified with default arguments. 
+Some implementors want to split them into more overloads to determine the base 10 at compile time 
+(LLVM issue <a href="https://github.com/llvm/llvm-project/issues/91268">#91268</a>). However, the 
+current standard wording doesn't clearly allow such technique.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[global.functions]"/> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-2- A call to a non-member function signature described in <sref ref="[support]"/> through 
+<sref ref="[thread]"/> and <sref ref="[depr]"/> shall behave as if the implementation declared 
+no additional non-member function signatures. <ins>However, for each non-member function specified 
+with at least one default argument, an implementation may declare additional function signatures 
+with one or more trailing parameters that have default arguments removed.</ins>
+<p/>
+<ins>[<i>Example</i> 1: The following program is possibly ill-formed because of ambiguity in overload 
+resolution.</ins>
+</p>
+<blockquote><pre>
+<ins>#include &lt;cstddef&gt;
+#include &lt;string&gt;
+
+// One overload of std::stoi ([string.conversions]) is specified as
+// int stoi(const string&amp; str, size_t* idx = nullptr, int base = 10);
+// An implementation can declare these overloads instead of using default arguments:
+// int stoi(const string&amp; str, size_t* idx, int base);
+// int stoi(const string&amp; str, size_t* idx);
+// int stoi(const string&amp; str);
+
+namespace usr {
+  int stoi(const std::string&amp;);
+  int stoi(const std::string&amp;, std::size_t*);
+}
+
+int main() {
+  using std::stoi;
+  using usr::stoi;
+  int (*p1)(const std::string&amp;) = stoi;                 // possibly ill-formed
+  int (*p2)(const std::string&amp;, std::size_t*) = stoi;   // possibly ill-formed
+}</ins>
+</pre></blockquote>
+<p>
+<ins>&mdash; end example]</ins>
+</p>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
