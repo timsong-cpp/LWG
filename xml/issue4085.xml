@@ -16,9 +16,8 @@ However, the lambda does not explicitly specify the return type, which leads
 to a hard error when <tt>invoke</tt> returns a reference to the object that is not copyable or
 <tt>R</tt> is not the <tt>output_range</tt> for <tt>decay_t&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt;</tt>.
 </p>
-</discussion>
 
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4981"/>.
 </p>
@@ -48,6 +47,77 @@ ranges::generate(std::forward&lt;R&gt;(r), [&amp;d, &amp;g] <ins>-&gt; decltype(
 <blockquote><pre>
 ranges::generate(std::forward&lt;R&gt;(r), [&amp;d, &amp;g] <ins>-&gt; decltype(auto)</ins> { return invoke(d, g); })
 </pre></blockquote>
+</blockquote>
+
+</li>
+</ol>
+</superseded>
+
+<note>2024-05-12, Hewill Kang provides improved wording</note>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[rand.synopsis]"/>, header <tt>&lt;random&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;initializer_list&gt;     // <i>see <sref ref="[initializer.list.syn]"/></i>
+
+namespace std {
+  [&hellip;]
+  namespace ranges {
+    [&hellip;]
+    template&lt;class R, class G, class D&gt;
+      requires output_range&lt;R, invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; &amp;&amp; invocable&lt;D&amp;, G&amp;&gt; &amp;&amp;
+               uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt; <ins>&amp;&amp;
+               is_arithmetic_v&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt;</ins>
+    constexpr borrowed_iterator_t&lt;R&gt; generate_random(R&amp;&amp; r, G&amp;&amp; g, D&amp;&amp; d);
+
+    template&lt;class G, class D, output_iterator&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; O, sentinel_for&lt;O&gt; S&gt;
+      requires invocable&lt;D&amp;, G&amp;&gt; &amp;&amp; uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt; <ins>&amp;&amp;
+               is_arithmetic_v&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt;</ins>
+    constexpr O generate_random(O first, S last, G&amp;&amp; g, D&amp;&amp; d);
+  }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.rand.generate]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class G, class D&gt;
+  requires output_range&lt;R, invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; &amp;&amp; invocable&lt;D&amp;, G&amp;&gt; &amp;&amp;
+           uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt; <ins>&amp;&amp;
+           is_arithmetic_v&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt;</ins>
+constexpr borrowed_iterator_t&lt;R&gt; ranges::generate_random(R&amp;&amp; r, G&amp;&amp; g, D&amp;&amp; d);
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>:
+</p>
+[&hellip;]
+</blockquote>
+<pre>
+template&lt;class G, class D, output_iterator&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt; O, sentinel_for&lt;O&gt; S&gt;
+  requires invocable&lt;D&amp;, G&amp;&gt; &amp;&amp; uniform_random_bit_generator&lt;remove_cvref_t&lt;G&gt;&gt; <ins>&amp;&amp;
+           is_arithmetic_v&lt;invoke_result_t&lt;D&amp;, G&amp;&gt;&gt;</ins>
+constexpr O ranges::generate_random(O first, S last, G&amp;&amp; g, D&amp;&amp; d);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects</i>: Equivalent to:
+</p>
+[&hellip;]
+</blockquote>
 </blockquote>
 
 </li>
