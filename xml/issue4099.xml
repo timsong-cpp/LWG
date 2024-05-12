@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4099" status="New">
+<title>The simple case of <tt>views::as_rvalue</tt> and <tt>views::common</tt> are not strictly correct</title>
+<section><sref ref="[range.as.rvalue.overview]"/><sref ref="[range.common.overview]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>10 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, these two adaptors return <code>views::all(E)</code> when the type of subexpression <code>E</code> 
+models <code>common_range</code> or its reference is the same as the rvalue reference.
+<p/>
+However, the current wording does not require that a <tt>const</tt>-qualified object of a <code>range</code> 
+type must have the same non-commonality or value category of the reference as the non-<code>const</code> one,
+this makes it theoretically possible for these two to still return non-common ranges or ranges whose reference 
+are lvalue when acting on a <code>const</code>-qualified lvalue <code>view</code> object, because 
+<code>views::all(E)</code> will remove the <code>const</code>-qualifier.
+<p/>
+The proposed wording pedantically checks <code>views::all_t&lt;decltype((E))&gt;</code> instead of <tt>decltype((E))</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.as.rvalue.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <tt>views::as_rvalue</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+Let <tt>E</tt> be an expression and let <tt>T</tt> be <tt>decltype((E))</tt>. The expression
+<tt>views::as_rvalue(E)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(2.1) &mdash; <tt>views::all(E)</tt> if <tt>same_as&lt;range_rvalue_reference_t&lt;<ins>views::all_t&lt;</ins>T<ins>&gt;</ins>&gt;,
+range_reference_t&lt;<ins>views::all_t&lt;</ins>T<ins>&gt;</ins>&gt;&gt;</tt> is <tt>true</tt>.
+</p></li>
+<li><p>
+(2.2) &mdash; Otherwise, <tt>as_rvalue_view(E)</tt>.
+</p></li>
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.common.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- The name <tt>views::common</tt> denotes a range adaptor object (<sref ref="[range.adaptor.object]"/>).
+Given a subexpression <tt>E</tt>, the expression
+<tt>views::common(E)</tt> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(3.1) &mdash; <tt>views::all(E)</tt>, if <del><tt>decltype((E))</tt></del><ins><code>views::all_t&lt;T&gt;</code></ins> 
+models <tt>common_range</tt> <del>and <tt>views::all(E)</tt> is a well-formed expression</del>.
+</p></li>
+<li><p>
+(3.2) &mdash; Otherwise, <tt>common_view{E}</tt>.
+</p></li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
