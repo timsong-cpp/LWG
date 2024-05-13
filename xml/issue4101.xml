@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4098" status="New">
+<title>LWG 117 loses the sign for negative NaN on some architectures</title>
+<section><sref ref="[ostream.inserters.arithmetic]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>10 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LWG <iref ref="117"/> fixed insertion of a `float` into an ostream by
+requiring a cast to `double`. This gives a surprising result on RISC-V when
+inserting a negative NaN, because RISC-V floating-point instructions do
+not preserve the sign or payload of NaN values. This means that
+<code>std::cout &lt;&lt; -std::numeric_limits&lt;float&gt;::quiet_NaN()</code>
+prints `"nan"` rather than `"-nan"` as most users probably expect.
+</p>
+<p>
+11.3 section of the RISC-V ISA manual (20191213): 
+</p>
+<blockquote>
+Except when otherwise stated, if the result of a floating-point operation
+is NaN, it is the canonical NaN. The canonical NaN has a positive sign
+and all significand bits clear except the MSB, a.k.a. the quiet bit.
+For single-precision floating-point, this corresponds to the pattern
+0x7fc00000.
+</blockquote>
+<p>
+This is allowed by IEEE 754 (2019), as per section 6.3:
+</p>
+<blockquote>
+When either an input or result is a NaN, this standard does not interpret
+the sign of a NaN.
+</blockquote>
+
+<p>
+So it is standard-conforming for <code>static_cast&lt;double&gt;(val)</code>
+to lose the sign (and payload) of a NaN.
+This might also affect Apple M1 chips, if they use the ARMv8 default-NaN mode.
+</p>
+<p>
+The current wording does not permit an implementation to use something like
+<code>std::copysign(static_cast&lt;double&gt;(val), std::signbit(val) ? -1.0 : +1.0)</code>
+to restore the sign bit. Should this be allowed? Maybe we should say that it's
+unspecified whether the cast to `double` preserves the sign of a NaN?
+If not, should we add a note about the surprising behaviour?
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+<ol>
+<li>
+<p>Modify <sref ref="[ostream.inserters.arithmetic]"/> as indicated:</p>
+<blockquote>
+-3-
+When `val` is of type `float` the formatting conversion occurs as if
+it performed the following code fragment:
+<pre><code>
+  bool failed = use_facet&lt;
+    num_put&lt;charT, ostreambuf_iterator&lt;charT, traits&gt;&gt;
+      >(getloc()).put(*this, *this, fill(),
+        static_cast&lt;double&gt;(val)).failed();
+</code></pre>
+<ins>
+[<i>Note ?</i>: When `val` is a NaN value, the conversion to `double`
+can alter the sign and payload. &mdash; <i>end note</i>]
+</ins>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
