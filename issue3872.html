@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3872: basic_const_iterator should have custom iter_move</title>
+<meta property="og:title" content="Issue 3872: basic_const_iterator should have custom iter_move">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3872.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3872"><a href="lwg-defects.html#3872">3872</a>. <code>basic_const_iterator</code> should have custom <code>iter_move</code></h3>
+<p><b>Section:</b> 25.5.3 <a href="https://wg21.link/const.iterators">[const.iterators]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-01-31 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#const.iterators">active issues</a> in [const.iterators].</p>
+<p><b>View all other</b> <a href="lwg-index.html#const.iterators">issues</a> in [const.iterators].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The standard does not currently customize <code>iter_move</code> for <code>basic_const_iterator</code>, 
+which means that applying <code>iter_move</code> to <code>basic_const_iterator</code> will invoke the default behavior.
+Although the intent of such an operation is unpredictable, it does introduce some inconsistencies:
+</p>
+<blockquote><pre>
+int x[] = {1, 2, 3};
+using R1 = decltype(           x  | views::as_rvalue | views::as_const);
+using R2 = decltype(           x  | views::as_const  | views::as_rvalue);
+using Z1 = decltype(views::zip(x) | views::as_rvalue | views::as_const);
+using Z2 = decltype(views::zip(x) | views::as_const  | views::as_rvalue);
+
+static_assert(same_as&lt;ranges::range_reference_t&lt;R1&gt;,       const int&amp;&amp;&gt;);
+static_assert(same_as&lt;ranges::range_reference_t&lt;R2&gt;,       const int&amp;&amp;&gt;);
+static_assert(same_as&lt;ranges::range_reference_t&lt;Z1&gt;, tuple&lt;const int&amp;&amp;&gt;&gt;);
+static_assert(same_as&lt;ranges::range_reference_t&lt;Z2&gt;, tuple&lt;const int&amp;&amp;&gt;&gt;); // <span style="color:red;font-weight:bolder">failed</span>
+</pre></blockquote>
+<p>
+In the above example, <code>views::zip(x) | views::as_const</code> will produce a range whose iterator type is 
+<code>basic_const_iterator</code> with reference of <code>tuple&lt;const int&amp;&gt;</code>.
+Since <code>iter_move</code> adopts the default behavior, its rvalue reference will also be 
+<code>tuple&lt;const int&amp;&gt;</code>, so applying <code>views::as_rvalue</code> to it won't have any effect.
+<p/>
+Such an inconsistency seems undesirable.
+<p/>
+The proposed resolution adds an <code>iter_move</code> specialization for <code>basic_const_iterator</code> and specifies 
+the return type as 
+<code>common_reference_t&lt;const iter_value_t&lt;It&gt;&amp;&amp;, iter_rvalue_reference_t&lt;It&gt;&gt;</code>, 
+which is the type that <code>input_iterator</code> is guaranteed to be valid. This is also in sync with the behavior 
+of range-v3.
+</p>
+
+<p><i>[Issaquah 2023-02-10; LWG issue processing]</i></p>
+
+<p>Move to Immediate for C++23</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Immediate &rarr; WP.]</i></p>
+
+
+
+<p id="res-3872"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li>
+<p>Modify 25.5.3 <a href="https://wg21.link/const.iterators">[const.iterators]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class I&gt;
+    concept <i>not-a-const-iterator</i> = <i>see below</i>;
+
+<ins>  template&lt;indirectly_readable I&gt;
+    using <i>iter-const-rvalue-reference-t</i> =  // <i>exposition only</i>
+      common_reference_t&lt;const iter_value_t&lt;I&gt;&amp;&amp;, iter_rvalue_reference_t&lt;I&gt;&gt;;</ins>
+
+  template&lt;input_iterator Iterator&gt;
+  class basic_const_iterator {
+    Iterator <i>current_</i> = Iterator();                             // <i>exposition only</i>
+    using <i>reference</i> = iter_const_reference_t&lt;Iterator&gt;;         // <i>exposition only</i>
+    <ins>using <i>rvalue-reference</i> = <i>iter-const-rvalue-reference-t</i>&lt;Iterator&gt;;  // <i>exposition only</i></ins>
+
+  public:
+    [&hellip;]
+    template&lt;sized_sentinel_for&lt;Iterator&gt; S&gt;
+      requires different-from&lt;S, basic_const_iterator&gt;
+      friend constexpr difference_type operator-(const S&amp; x, const basic_const_iterator&amp; y);
+      <ins>friend constexpr <i>rvalue-reference</i> iter_move(const basic_const_iterator&amp; i)
+        noexcept(noexcept(static_cast&lt;<i>rvalue-reference</i>&gt;(ranges::iter_move(i.<i>current_</i>)))) 
+      {
+        return static_cast&lt;<i>rvalue-reference</i>&gt;(ranges::iter_move(i.<i>current_</i>));
+      }</ins>
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

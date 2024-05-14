@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Issue 1246: vector::resize() missing efficiency guarantee</title>
-<style type="text/css">
+<meta property="og:title" content="Issue 1246: vector::resize() missing efficiency guarantee">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue1246.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,14 +24,47 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="1246" href="lwg-closed.html#1246">1246</a>. <tt>vector::resize()</tt> missing efficiency guarantee</h3>
-<p><b>Section:</b> 26.3.11.3 <a href="https://wg21.link/vector.capacity">[vector.capacity]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
- <b>Submitter:</b> David Abrahams <b>Opened:</b> 2009-10-24 <b>Last modified:</b> 2017-09-13</p>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="1246"><a href="lwg-closed.html#1246">1246</a>. <code>vector::resize()</code> missing efficiency guarantee</h3>
+<p><b>Section:</b> 24.3.11.3 <a href="https://wg21.link/vector.capacity">[vector.capacity]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> David Abrahams <b>Opened:</b> 2009-10-24 <b>Last modified:</b> 2016-01-28</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#vector.capacity">active issues</a> in [vector.capacity].</p>
@@ -32,8 +72,8 @@
 <p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-If <tt>v</tt> is a <tt>vector</tt>, I think repeated calls to
-<tt>v.resize( v.size() + 1 )</tt> should be amortized O(1), but it's not
+If <code>v</code> is a <code>vector</code>, I think repeated calls to
+<code>v.resize( v.size() + 1 )</code> should be amortized O(1), but it's not
 clear that's true from the text of the standard:
 </p>
 
@@ -41,14 +81,14 @@ clear that's true from the text of the standard:
 void resize(size_type sz);
 </pre>
 <blockquote><p>
-<i>Effects:</i> If <tt>sz &lt; size()</tt>, equivalent to <tt>erase(begin() + sz, end());</tt>. If
-<tt>size() &lt; sz</tt>, appends <tt>sz - size()</tt> default constructed elements to the
+<i>Effects:</i> If <code>sz &lt; size()</code>, equivalent to <code>erase(begin() + sz, end());</code>. If
+<code>size() &lt; sz</code>, appends <code>sz - size()</code> default constructed elements to the
 sequence.
 </p></blockquote>
 </blockquote>
 
 <p>
-Seems to me if we used <tt>push_back</tt> instead of appends, we might be giving
+Seems to me if we used <code>push_back</code> instead of appends, we might be giving
 the guarantee I'd like.  Thoughts?
 </p>
 
@@ -64,19 +104,19 @@ below.
 
 
 
-<p><b>Proposed resolution:</b></p>
+<p id="res-1246"><b>Proposed resolution:</b></p>
 <p>
-In 26.3.11.3 <a href="https://wg21.link/vector.capacity">[vector.capacity]</a>/10, change
+In 24.3.11.3 <a href="https://wg21.link/vector.capacity">[vector.capacity]</a>/10, change
 </p>
 
 <blockquote><pre>
 void resize(size_type sz);
 </pre>
 <blockquote><p>
-<i>Effects:</i> If <tt>sz &lt; size()</tt>, equivalent to <tt>erase(begin() + sz, end());</tt>. If
-<tt>size() &lt; sz</tt>, <del>appends <tt>sz - size()</tt> default constructed elements to the
+<i>Effects:</i> If <code>sz &lt; size()</code>, equivalent to <code>erase(begin() + sz, end());</code>. If
+<code>size() &lt; sz</code>, <del>appends <code>sz - size()</code> default constructed elements to the
 sequence</del>
-<ins>equivalent to <tt>sz - size()</tt> consecutive evaluations of <tt>push_back(T())</tt></ins>.
+<ins>equivalent to <code>sz - size()</code> consecutive evaluations of <code>push_back(T())</code></ins>.
 </p></blockquote>
 </blockquote>
 
@@ -84,10 +124,10 @@ sequence</del>
 
 <p><b>Rationale:</b></p>
 <p>
-The description in terms of <tt>push_back</tt> led some to believe that
-one could expect the exact same growth pattern from both <tt>resize</tt> and
-<tt>push_back</tt> (e.g.) which could lead to sub-optimal implementations.
-Additionally, 26.3.11 <a href="https://wg21.link/vector">[vector]</a>, p1 includes a statement that this container
+The description in terms of <code>push_back</code> led some to believe that
+one could expect the exact same growth pattern from both <code>resize</code> and
+<code>push_back</code> (e.g.) which could lead to sub-optimal implementations.
+Additionally, 24.3.11 <a href="https://wg21.link/vector">[vector]</a>, p1 includes a statement that this container
 "supports (amortized) constant time insert and erase operations at the end;",
 therefore addressing the concern of this issue.
 </p>

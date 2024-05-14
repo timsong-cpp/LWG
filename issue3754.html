@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3754: Class template expected synopsis contains declarations that do not match the detailed description</title>
+<meta property="og:title" content="Issue 3754: Class template expected synopsis contains declarations that do not match the detailed description">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3754.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3754"><a href="lwg-defects.html#3754">3754</a>. Class template <code>expected</code> synopsis contains declarations that do not match the detailed description</h3>
+<p><b>Section:</b> 22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2022-08-23 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#expected.object.general">issues</a> in [expected.object.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a> declares the following constructors:
+</p>
+
+<blockquote><pre>
+template&lt;class G&gt;
+  constexpr expected(const unexpected&lt;G&gt;&amp;);
+template&lt;class G&gt;
+  constexpr expected(unexpected&lt;G&gt;&amp;&amp;);
+</pre></blockquote>
+
+<p>
+But in  [expected.object.ctor], these constructors are declared as:
+</p>
+
+<blockquote><pre>
+template&lt;class G&gt;
+  constexpr explicit(!is_convertible_v&lt;const G&amp;, E&gt;) expected(const unexpected&lt;G&gt;&amp; e);
+template&lt;class G&gt;
+  constexpr explicit(!is_convertible_v&lt;G, E&gt;) expected(unexpected&lt;G&gt;&amp;&amp; e);
+</pre></blockquote>
+
+<p>
+Note that they have no explicit-specifiers in 22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a>,
+but are conditionally explicit in  [expected.object.ctor].
+</p>
+
+<p>
+I presume that 22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a>
+is missing a few <code>explicit(<i>see below</i>)</code>.
+</p>
+
+<p>
+The same inconsistency exists in 22.8.7 <a href="https://wg21.link/expected.void">[expected.void]</a>.
+</p>
+
+<p><i>[2022-09-05; Jonathan Wakely provides wording]</i></p>
+
+
+<p>
+In <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a> the <code>expected</code> synopses had
+<code>explicit(<i>see below</i>)</code> on the copy and move constructors.
+That was fixed editorially, but this other inconsistency was not noticed.
+</p>
+
+<p><i>[2022-09-07; Moved to "Ready" at LWG telecon]</i></p>
+
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3754"><b>Proposed resolution:</b></p>
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Change 22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a> as indicated:</p>
+
+<blockquote><pre>
+<i>// 22.8.6.2, constructors</i>
+constexpr expected();
+constexpr expected(const expected&amp;);
+constexpr expected(expected&amp;&amp;) noexcept(<i>see below</i>);
+template&lt;class U, class G&gt;
+  constexpr explicit(<i>see below</i>) expected(const expected&lt;U, G&gt;&amp;);
+template&lt;class U, class G&gt;
+  constexpr explicit(<i>see below</i>) expected(expected&lt;U, G&gt;&amp;&amp;);
+
+template&lt;class U = T&gt;
+  constexpr explicit(<i>see below</i>) expected(U&amp;&amp; v);
+
+template&lt;class G&gt;
+  constexpr <ins>explicit(<i>see below</i>)</ins> expected(const unexpected&lt;G&gt;&amp;);
+template&lt;class G&gt;
+  constexpr <ins>explicit(<i>see below</i>)</ins> expected(unexpected&lt;G&gt;&amp;&amp;);
+
+template&lt;class... Args&gt;
+  constexpr explicit expected(in_place_t, Args&amp;&amp;...);
+</pre> </blockquote>
+</li>
+
+<li><p>Change 22.8.7.1 <a href="https://wg21.link/expected.void.general">[expected.void.general]</a> as indicated:</p>
+
+<blockquote><pre>
+<i>// 22.8.7.2, constructors</i>
+constexpr expected() noexcept;
+constexpr expected(const expected&amp;);
+constexpr expected(expected&amp;&amp;) noexcept(<i>see below</i>);
+template&lt;class U, class G&gt;
+  constexpr explicit(<i>see below</i>) expected(const expected&lt;U, G&gt;&amp;&amp;);
+
+template&lt;class G&gt;
+  constexpr <ins>explicit(<i>see below</i>)</ins> expected(const unexpected&lt;G&gt;&amp;);
+template&lt;class G&gt;
+  constexpr <ins>explicit(<i>see below</i>)</ins> expected(unexpected&lt;G&gt;&amp;&amp;);
+
+constexpr explicit expected(in_place_t) noexcept;
+</pre> </blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+
+</body>
+</html>

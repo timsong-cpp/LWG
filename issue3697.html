@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3697: Preconditions of reference_constructs_from_temporary/reference_converts_from_temporary seem wrong</title>
+<meta property="og:title" content="Issue 3697: Preconditions of reference_constructs_from_temporary/reference_converts_from_temporary seem wrong">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3697.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3697"><a href="lwg-active.html#3697">3697</a>. Preconditions of <code>reference_constructs_from_temporary/reference_converts_from_temporary</code> seem wrong</h3>
+<p><b>Section:</b> 21.3.5.4 <a href="https://wg21.link/meta.unary.prop">[meta.unary.prop]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2022-05-10 <b>Last modified:</b> 2022-05-17</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.unary.prop">active issues</a> in [meta.unary.prop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.unary.prop">issues</a> in [meta.unary.prop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>std::reference_constructs_from_temporary</code> and <code>std::reference_converts_from_temporary</code> are only 
+useful when <code>T</code> is a reference type, and a reference type is always complete. Whenever <code>T</code> is an 
+incomplete object type, it's clear that these traits inherit from <code>std::false_type</code>, without any further 
+detection which may result in UB. However, when <code>T</code> is <code>X&amp;</code> or <code>X&amp;&amp;</code> where 
+<code>X</code> is an incomplete object type, UB may be needed because of the potentially problematic detection in 
+<code>std::is_constructible</code> or <code>std::is_convertible</code>.
+<p/>
+I'm not sure whether the general rule in 21.3.2 <a href="https://wg21.link/meta.rqmts">[meta.rqmts]</a>/5 affects these cases.
+</p>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3697"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 21.3.3 <a href="https://wg21.link/meta.type.synop">[meta.type.synop]</a>, Table 46 ([tab:meta.unary.prop]) &mdash; 
+"Type property predicates" &mdash; as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 46: Type property predicates [tab:meta.unary.prop]</caption>
+<tr>
+<th align="center">Template</th>
+<th align="center">Condition</th>
+<th align="center">Preconditions</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+<tr>
+<td>
+<code>template&lt;class T, class U&gt;<br/>
+struct reference_constructs_from_temporary;</code>
+</td>
+
+<td>
+<code>conjunction_v&lt;is_reference&lt;T&gt;, is_constructible&lt;T, U&gt;&gt;</code> is<br/> 
+<code>true</code>, and the initialization <code>T t(<i>VAL</i>&lt;U&gt;);</code> binds <code>t</code> to a<br/> 
+temporary object whose lifetime is extended (6.7.7 <a href="https://wg21.link/class.temporary">[class.temporary]</a>).
+</td>
+
+<td>
+<ins>If <code>T</code> is a reference type, <code>remove_reference_t&lt;T&gt;</code><br/> 
+and <code>U</code></ins><del><code>T</code></del> shall be <del>a</del> complete type<ins>s</ins>,<br/>
+<i>cv</i> <code>void</code>, or <del>an</del> array<ins>s</ins> of unknown bound.
+</td>
+</tr>
+
+<tr>
+<td>
+<code>template&lt;class T, class U&gt;<br/>
+struct reference_converts_from_temporary;</code>
+</td>
+
+<td>
+<code>conjunction_v&lt;is_reference&lt;T&gt;, is_convertible&lt;U, T&gt;&gt;</code> is<br/> 
+<code>true</code>, and the initialization <code>T t = <i>VAL</i>&lt;U&gt;;</code> binds <code>t</code> to a<br/> 
+temporary object whose lifetime is extended (6.7.7 <a href="https://wg21.link/class.temporary">[class.temporary]</a>).
+</td>
+
+<td>
+<ins>If</ins> <code>T</code> <ins>is a reference type, <code>remove_reference_t&lt;T&gt;</code></ins><br/> 
+and <code>U</code> shall be complete types,<br/>
+<i>cv</i> <code>void</code>, or arrays of unknown bound.
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

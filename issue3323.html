@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3323: has-tuple-element helper concept needs convertible_to</title>
+<meta property="og:title" content="Issue 3323: has-tuple-element helper concept needs convertible_to">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3323.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3323"><a href="lwg-defects.html#3323">3323</a>. <code><i>has-tuple-element</i></code> helper concept needs <code>convertible_to</code></h3>
+<p><b>Section:</b> 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Great Britain <b>Opened:</b> 2019-11-06 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.elements.view">issues</a> in [range.elements.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/295">GB 299</a></b></p>
+
+<p>
+<code><i>has-tuple-element</i></code> helper concept needs <code>convertible_to</code>
+<p/>
+The exposition-only <code><i>has-tuple-element</i></code> concept (for <code>elements_view</code>) is defined as
+</p>
+<blockquote><pre>
+template&lt;class T, size_t N&gt;
+concept <i>has-tuple-element</i> = <i>exposition only</i>
+  requires(T t) {
+    typename tuple_size&lt;T&gt;::type;
+    requires N &lt; tuple_size_v&lt;T&gt;;
+    typename tuple_element_t&lt;N, T&gt;;
+    { get&lt;N&gt;(t) } -&gt; const tuple_element_t&lt;N, T&gt;&amp;;
+  };
+</pre></blockquote>
+<p>
+However, the return type constraint for <code>{ get&lt;N&gt;(t) }</code> is no longer valid 
+under the latest concepts changes
+<p/>
+Proposed change:
+</p>
+<p>
+Change to:
+</p>
+<blockquote><pre>
+template&lt;class T, size_t N&gt;
+concept <i>has-tuple-element</i> = <i>exposition only</i>
+  requires(T t) {
+    typename tuple_size&lt;T&gt;::type;
+    requires N &lt; tuple_size_v&lt;T&gt;;
+    typename tuple_element_t&lt;N, T&gt;;
+    { get&lt;N&gt;(t) } -&gt; convertible_to&lt;const tuple_element_t&lt;N, T&gt;&amp;&gt;;
+  };
+</pre></blockquote>
+<p>
+<b>Jonathan Wakely:</b>
+<p/>
+The NB comment says "The return type constraint for <code>{ get(t) }</code> is no longer valid under 
+the latest concepts changes." The changes referred to are those in <a href="https://wg21.link/p1452r2">P1452R2</a>. 
+</p>
+
+<p><i>[2019-11 Status to Ready during Wednesday night issue processing in Belfast.]</i></p>
+
+
+
+<p id="res-3323"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a>, class template <code>elements_view</code> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class T, size_t N&gt;
+  concept <i>has-tuple-element</i> = <i>// exposition only</i>
+    requires(T t) {
+      typename tuple_size&lt;T&gt;::type;
+      requires N &lt; tuple_size_v&lt;T&gt;;
+      typename tuple_element_t&lt;N, T&gt;;
+      { get&lt;N&gt;(t) } -&gt; <ins>convertible_to&lt;</ins>const tuple_element_t&lt;N, T&gt;&amp;<ins>&gt;</ins>;
+    };
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

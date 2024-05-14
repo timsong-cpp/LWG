@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3226: zoned_time constructor from string_view should accept
+zoned_time&lt;Duration2, TimeZonePtr2&gt;</title>
+<meta property="og:title" content="Issue 3226: zoned_time constructor from string_view should accept
+zoned_time&lt;Duration2, TimeZonePtr2&gt;">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3226.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3226"><a href="lwg-defects.html#3226">3226</a>. <code>zoned_time</code> constructor from <code>string_view</code> should accept
+<code>zoned_time&lt;Duration2, TimeZonePtr2&gt;</code></h3>
+<p><b>Section:</b> 29.11.7.2 <a href="https://wg21.link/time.zone.zonedtime.ctor">[time.zone.zonedtime.ctor]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2019-06-23 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.zone.zonedtime.ctor">issues</a> in [time.zone.zonedtime.ctor].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>zoned_time</code> constructors with <code>string_view</code> and
+another <code>zoned_time</code> are not accepting <code>zoned_time</code>
+instances that use a different time zone representation (<code>TimeZonePtr</code> parameter):
+</p>
+<blockquote><pre>
+zoned_time(string_view name, const zoned_time&lt;Duration&gt;&amp; zt);
+zoned_time(string_view name, const zoned_time&lt;Duration&gt;&amp; zt, choose);
+</pre></blockquote>
+<p>
+This makes them inconsistent with the constructors from <code>TimeZonePtr</code> 
+and <code>zoned_time</code>, that they delegate to: 
+</p>
+<blockquote><pre>
+template&lt;class Duration2, class TimeZonePtr2&gt;
+  zoned_time(TimeZonePtr z, const zoned_time&lt;Duration2, TimeZonePtr2&gt;&amp; zt);
+template&lt;class Duration2, class TimeZonePtr2&gt;
+  zoned_time(TimeZonePtr z, const zoned_time&lt;Duration2, TimeZonePtr2&gt;&amp; zt, choose);
+</pre></blockquote>
+<p>
+Furthermore it forces the creation of a temporary <code>zoned_time</code> object in 
+case when the source uses the same <code>TimeZonePtr</code>, but different <code>Duration</code>.
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4820">N4820</a>.</p>
+
+<ol>
+<li><p>Modify 29.11.7.1 <a href="https://wg21.link/time.zone.zonedtime.overview">[time.zone.zonedtime.overview]</a>, class template <code>zoned_time</code> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; zt);
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; zt, choose);</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 29.11.7.2 <a href="https://wg21.link/time.zone.zonedtime.ctor">[time.zone.zonedtime.ctor]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-32- <i>Remarks:</i> This constructor does not participate in overload resolution unless 
+<code>zoned_time</code> is constructible from the return type of <code>traits::locate_zone(name)</code> 
+and <code>zoned_time<ins>&lt;Duration2, TimeZonePtr2&gt;</ins></code>.
+<p/>
+-33- <i>Effects:</i> Equivalent to construction with <code>{traits::locate_zone(name), y}</code>.
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; y, choose c););
+</pre>
+<blockquote>
+<p>
+-34- <i>Remarks:</i> This constructor does not participate in overload resolution unless 
+<code>zoned_time</code> is constructible from the return type of <code>traits::locate_zone(name)</code>, 
+<code>zoned_time<ins>&lt;Duration2, TimeZonePtr2&gt;</ins></code>, and <code>choose</code>.
+<p/>
+-35- <i>Effects:</i> Equivalent to construction with <code>{traits::locate_zone(name), y, c}</code>.
+<p/>
+-36- [<i>Note:</i> The <code>choose</code> parameter has no effect. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[2020-02-13, Prague]</i></p>
+
+<p>
+During LWG discussions it was suggested to rebase the wording to reduce the chances for confusion.
+</p>
+<p><i>[2020-02 Status to Immediate on Thursday morning in Prague.]</i></p>
+
+
+
+<p id="res-3226"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 29.11.7.1 <a href="https://wg21.link/time.zone.zonedtime.overview">[time.zone.zonedtime.overview]</a>, class template <code>zoned_time</code> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; zt);
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; zt, choose);</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 29.11.7.2 <a href="https://wg21.link/time.zone.zonedtime.ctor">[time.zone.zonedtime.ctor]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-32- <i>Constraints:</i> <code>zoned_time</code> is constructible from the return type of <code>traits::locate_zone(name)</code> 
+and <code>zoned_time<ins>&lt;Duration2, TimeZonePtr2&gt;</ins></code>.
+<p/>
+-33- <i>Effects:</i> Equivalent to construction with <code>{traits::locate_zone(name), y}</code>.
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;class Duration2, class TimeZonePtr2&gt;</ins>
+zoned_time(string_view name, const zoned_time&lt;Duration<ins>2, TimeZonePtr2</ins>&gt;&amp; y, choose c););
+</pre>
+<blockquote>
+<p>
+-34- <i>Constraints:</i> <code>zoned_time</code> is constructible from the return type of <code>traits::locate_zone(name)</code>, 
+<code>zoned_time<ins>&lt;Duration2, TimeZonePtr2&gt;</ins></code>, and <code>choose</code>.
+<p/>
+-35- <i>Effects:</i> Equivalent to construction with <code>{traits::locate_zone(name), y, c}</code>.
+<p/>
+-36- [<i>Note:</i> The <code>choose</code> parameter has no effect. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

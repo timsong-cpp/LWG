@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 4041: The requirements on literal type in [concept.swappable] should be removed</title>
+<meta property="og:title" content="Issue 4041: The requirements on literal type in [concept.swappable] should be removed">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue4041.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="4041"><a href="lwg-active.html#4041">4041</a>. The requirements on literal type in [concept.swappable] should be removed</h3>
+<p><b>Section:</b> 18.4.9 <a href="https://wg21.link/concept.swappable">[concept.swappable]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2024-01-20 <b>Last modified:</b> 2024-03-15</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#concept.swappable">issues</a> in [concept.swappable].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+18.4.9 <a href="https://wg21.link/concept.swappable">[concept.swappable]</a> bullet (2.3.1) currently requires <code>T</code> to be a literal type in order 
+to make the swapping expression a constant expression in that case. The requirement was likely automatically 
+enforced by the core language rules in C++20 and thus essentially redundant.
+<p/>
+However, as <a href="https://wg21.link/P2448R2" title=" Relaxing some constexpr restrictions">P2448R2</a> relaxed the restrictions on constexpr functions, it seems that the 
+swapping expression can be a constant expression even if <code>T</code> is not a literal type.
+<p/>
+E.g. the following program is accepted by GCC/libstdc++ in C++23 mode 
+(<a href="https://godbolt.org/z/dWeb3xTxd">demo</a>).
+</p>
+<blockquote><pre>
+#include &lt;concepts&gt;
+
+struct NonLiteral {
+  NonLiteral() {} // <span style="color:red;font-weight:bolder">non-constexpr</span>
+  constexpr NonLiteral(const NonLiteral&amp;) noexcept {};
+  constexpr NonLiteral&amp; operator=(const NonLiteral&amp;) noexcept { return *this; };
+};
+
+int main()
+{
+  NonLiteral x;
+  static_assert((std::ranges::swap(x, x), true));
+}
+</pre></blockquote>
+<p>
+IMO there's no good reason to additionally require literal types since C++23, which would complicate implementations.
+</p>
+
+<p><i>[2024-03-15; Reflector poll]</i></p>
+
+<p>
+Set priority to 4 after reflector poll.
+</p>
+<p>
+Concerned about 7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>/5.16 (can only modify non-volatile
+lvalues of literal type in constant expressions).
+Unable see a non-contrived case where this issue matters.
+</p>
+<p>
+N.B. <code>ranges::swap</code> needs the "reified object" treatment;
+the repetitions of <code class='backtick'>E1</code> and <code class='backtick'>E2</code> are not pure textual repetitions of the
+argument expressions.
+</p>
+<p>
+Can we just eliminate all uses of "literal type"?
+</p>
+<p>
+Wouldn't we still require a constexpr destructor?
+</p>
+
+
+
+<p id="res-4041"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4971" title=" Working Draft, Programming Languages — C++">N4971</a>.
+</p>
+
+<ol>
+<li><p>Modify 18.4.9 <a href="https://wg21.link/concept.swappable">[concept.swappable]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <code>ranges::swap</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). 
+The expression <code>ranges::swap(E1, E2)</code> for subexpressions <code>E1</code> and <code>E2</code> is expression-equivalent 
+to an expression <code>S</code> determined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; [&hellip;]</p></li>
+<li><p>(2.2) &mdash; [&hellip;]</p></li>
+<li><p>(2.3) &mdash; Otherwise, if <code>E1</code> and <code>E2</code> are lvalues of the same type <code>T</code> that 
+models <code>move_constructible&lt;T&gt;</code> and <code>assignable_from&lt;T&amp;, T&gt;</code>, <code>S</code> is an 
+expression that exchanges the denoted values. <code>S</code> is a constant expression if</p>
+<ol style="list-style-type: none">
+<li><p><del>(2.3.1) &mdash; <code>T</code> is a literal type (6.8.1 <a href="https://wg21.link/basic.types.general">[basic.types.general]</a>),</del></p></li>
+<li><p>(2.3.2) &mdash; both <code>E1 = std::move(E2)</code> and <code>E2 = std::move(E1)</code> are constant subexpressions 
+(3.14 <a href="https://wg21.link/defns.const.subexpr">[defns.const.subexpr]</a>), and</p></li>
+<li><p>(2.3.3) &mdash; the full-expressions of the initializers in the declarations</p>
+<blockquote><pre>
+T t1(std::move(E1));
+T t2(std::move(E2));
+</pre></blockquote>
+<p>
+are constant subexpressions.
+</p></li>
+</ol>
+<p>
+<code>noexcept(S)</code> is equal to <code>is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; is_nothrow_move_assignable_v&lt;T&gt;</code>.
+</p>
+</li>
+<li><p>(2.4) &mdash; Otherwise, <code>ranges::swap(E1, E2)</code> is ill-formed.</p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

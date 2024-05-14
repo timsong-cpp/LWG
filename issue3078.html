@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3078: directory_entry, directory_iterator and recursive_directory_iterator perform needless path copies</title>
+<meta property="og:title" content="Issue 3078: directory_entry, directory_iterator and recursive_directory_iterator perform needless path copies">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3078.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3078"><a href="lwg-active.html#3078">3078</a>. <code>directory_entry</code>, <code>directory_iterator</code> and <code>recursive_directory_iterator</code> perform needless path copies</h3>
+<p><b>Section:</b> 31.12.10 <a href="https://wg21.link/fs.class.directory.entry">[fs.class.directory.entry]</a>, 31.12.11 <a href="https://wg21.link/fs.class.directory.iterator">[fs.class.directory.iterator]</a>, 31.12.12 <a href="https://wg21.link/fs.class.rec.dir.itr">[fs.class.rec.dir.itr]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Gor Nishanov <b>Opened:</b> 2018-03-05 <b>Last modified:</b> 2019-04-02</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#fs.class.directory.entry">issues</a> in [fs.class.directory.entry].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+An implementation of <code>directory_entry</code> class is likely to store a <code>filesystem::path</code> as a member.
+Constructors and assign member functions take <code>filesystem::path</code> by <code>const&amp;</code> thus forcing 
+creation of a copy.
+<p/>
+An implementation of <code>directory_iterator</code> class is likely to store a <code>directory_entry</code> or a 
+<code>path</code> as a part of its state. Constructors take <code>filesystem::path</code> by <code>const&amp;</code> 
+thus forcing creation of a copy.
+<p/>
+An implementation of <code>recursive_directory_iterator</code> class is likely to store a <code>directory_entry</code> 
+or a <code>path</code> as a part of its state. Constructors take <code>filesystem::path</code> by <code>const&amp;</code> 
+thus forcing creation of a copy. 
+<p/>
+Suggested resolution:
+<p/>
+Add overloads to <code>directory_entry</code>, <code>directory_iterator</code>, and <code>recursive_directory_iterator</code>
+that take <code>filesystem::path</code> by <code>&amp;&amp;</code>.
+<p/>
+Make it unspecified in case an exception is thrown from those new members where an argument was moved from or not.
+</p>
+<blockquote><pre>
+explicit directory_entry(const filesystem::path&amp; p);
+<ins>explicit directory_entry(filesystem::path&amp;&amp; p);</ins>
+directory_entry(const filesystem::path&amp; p, error_code&amp; ec);
+<ins>directory_entry(filesystem::path&amp;&amp; p, error_code&amp; ec);</ins>
+
+void directory_entry::assign(const filesystem::path&amp; p);
+<ins>void directory_entry::assign(filesystem::path&amp;&amp; p);</ins>
+void directory_entry::assign(const filesystem::path&amp; p, error_code&amp; ec);
+<ins>void directory_entry::assign(filesystem::path&amp;&amp; p, error_code&amp; ec);</ins>
+
+explicit directory_iterator(const path&amp; p);
+<ins>explicit directory_iterator(path&amp;&amp; p);</ins>
+directory_iterator(const path&amp; p, directory_options options);
+<ins>directory_iterator(path&amp;&amp; p, directory_options options);</ins>
+directory_iterator(const path&amp; p, error_code&amp; ec) noexcept;
+<ins>directory_iterator(path&amp;&amp; p, error_code&amp; ec) noexcept;</ins>
+directory_iterator(const path&amp; p, directory_options options, error_code&amp; ec) noexcept;
+<ins>directory_iterator(path&amp;&amp; p, directory_options options, error_code&amp; ec) noexcept;</ins>
+
+explicit recursive_directory_iterator(const path&amp; p);
+<ins>explicit recursive_directory_iterator(path&amp;&amp; p);</ins>
+recursive_directory_iterator(const path&amp; p, directory_options options);
+<ins>recursive_directory_iterator(path&amp;&amp; p, directory_options options);</ins>
+recursive_directory_iterator(const path&amp; p, directory_options options, error_code&amp; ec) noexcept;
+<ins>recursive_directory_iterator(path&amp;&amp; p, directory_options options, error_code&amp; ec) noexcept;</ins>
+recursive_directory_iterator(const path&amp; p, error_code&amp; ec) noexcept;
+<ins>recursive_directory_iterator(path&amp;&amp; p, error_code&amp; ec) noexcept;</ins>
+</pre></blockquote>
+
+<p><i>[2018-03-20 Priority set to 3 after discussion on the reflector.]</i></p>
+
+
+
+<p id="res-3078"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

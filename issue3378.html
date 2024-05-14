@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3378: tuple_size_v/tuple_element_t should be available when tuple_size/tuple_element are</title>
+<meta property="og:title" content="Issue 3378: tuple_size_v/tuple_element_t should be available when tuple_size/tuple_element are">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3378.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3378"><a href="lwg-active.html#3378">3378</a>. <code>tuple_size_v/tuple_element_t</code> should be available when <code>tuple_size/tuple_element</code> are</h3>
+<p><b>Section:</b> 22.4.2 <a href="https://wg21.link/tuple.syn">[tuple.syn]</a>, 22.4.7 <a href="https://wg21.link/tuple.helper">[tuple.helper]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2020-01-17 <b>Last modified:</b> 2021-11-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+22.4.7 <a href="https://wg21.link/tuple.helper">[tuple.helper]</a>/6 makes the <code>const</code>/<code>volatile</code>/<code>const volatile</code> partial 
+specializations of <code>tuple_size</code> available when any of <code>&lt;array&gt;</code>, <code>&lt;ranges&gt;</code>, 
+<code>&lt;span&gt;</code>, or <code>&lt;utility&gt;</code> is included. 22.4.7 <a href="https://wg21.link/tuple.helper">[tuple.helper]</a>/8 makes the 
+<code>const</code>/<code>volatile</code>/<code>const volatile</code> partial specializations of <code>tuple_element</code> 
+available when any of those same headers is included. This leads to a couple of problems:
+</p>
+<ol>
+<li><p>For users of the Standard Library, it's not helpful to have these partial specializations of class 
+templates available when the preferred interface &mdash; the variable template <code>tuple_size_v</code> and 
+alias template <code>tuple_element_t</code> &mdash; are not.</p></li>
+<li><p>For specifiers of the Standard Library, we must update two distinct yet identical lists of headers 
+that make this same set of templates available when adding another header.</p></li></ol>
+<p>
+We could solve both of these problems by coalescing the two paragraphs into one and including the variable 
+and alias template in the set of declarations made available by the pertinent (now single) list of headers.
+</p>
+
+<p><i>[2020-02-08 Issue Prioritization]</i></p>
+
+<p>
+Priority to 3 after reflector discussion.
+Tim Song said: It’s not clear that entities only mentioned in the synopsis are "defined in this subclause".
+</p>
+
+<p><i>[2021-11-04; Jonathan Wakely adds note]</i></p>
+
+<p>
+The <code>__cpp_lib_tuple_element_t</code> macro in
+17.3.2 <a href="https://wg21.link/version.syn">[version.syn]</a> should be updated too.
+</p>
+
+
+
+<p id="res-3378"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify 22.4.2 <a href="https://wg21.link/tuple.syn">[tuple.syn]</a>, header <code>&lt;tuple&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+
+  <i>// 22.4.7 <a href="https://wg21.link/tuple.helper">[tuple.helper]</a>, tuple helper classes</i>
+  template&lt;class T&gt; struct tuple_size; // not defined
+  template&lt;class T&gt; struct tuple_size&lt;const T&gt;;
+  template&lt;class T&gt; struct tuple_size&lt;volatile T&gt;;
+  template&lt;class T&gt; struct tuple_size&lt;const volatile T&gt;;
+  
+  <ins>template&lt;class T&gt;
+    inline constexpr size_t tuple_size_v = tuple_size&lt;T&gt;::value;</ins>
+  <del>template&lt;class... Types&gt; struct tuple_size&lt;tuple&lt;Types...&gt;&gt;;</del>
+  
+  template&lt;size_t I, class T&gt; struct tuple_element; <i>// not defined</i>
+  template&lt;size_t I, class T&gt; struct tuple_element&lt;I, const T&gt;;
+  template&lt;size_t I, class T&gt; struct tuple_element&lt;I, volatile T&gt;;
+  template&lt;size_t I, class T&gt; struct tuple_element&lt;I, const volatile T&gt;;
+  
+  <del>template&lt;size_t I, class... Types&gt;
+    struct tuple_element&lt;I, tuple&lt;Types...&gt;&gt;;</del>
+  
+  template&lt;size_t I, class T&gt;
+    using tuple_element_t = typename tuple_element&lt;I, T&gt;::type;
+    
+  <i>// 22.4.8 <a href="https://wg21.link/tuple.elem">[tuple.elem]</a>, element access</i>
+  <ins>template&lt;class... Types&gt; struct tuple_size&lt;tuple&lt;Types...&gt;&gt;;</ins>
+  
+  <ins>template&lt;size_t I, class... Types&gt;
+    struct tuple_element&lt;I, tuple&lt;Types...&gt;&gt;;</ins>
+  
+  template&lt;size_t I, class... Types&gt;
+    constexpr tuple_element_t&lt;I, tuple&lt;Types...&gt;&gt;&amp; get(tuple&lt;Types...&gt;&amp;) noexcept;
+  template&lt;size_t I, class... Types&gt;
+    constexpr tuple_element_t&lt;I, tuple&lt;Types...&gt;&gt;&amp;&amp; get(tuple&lt;Types...&gt;&amp;&amp;) noexcept;
+  [&hellip;]
+  
+  <del><i>// 22.4.7 <a href="https://wg21.link/tuple.helper">[tuple.helper]</a>, tuple helper classes</i></del>
+  <del>template&lt;class T&gt;
+    inline constexpr size_t tuple_size_v = tuple_size&lt;T&gt;::value;</del>
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 22.4.7 <a href="https://wg21.link/tuple.helper">[tuple.helper]</a> as indicated:</p>
+
+<blockquote>
+<p>
+<b>20.5.6 Tuple helper classes [tuple.helper]</b>
+<p/>
+<ins>-?- In addition to being available via inclusion of the <code>&lt;tuple&gt;</code> header, the entities 
+defined in this subclause [tuple.helper] are available when any of the headers <code>&lt;array&gt;</code> 
+(24.3.2 <a href="https://wg21.link/array.syn">[array.syn]</a>), <code>&lt;ranges&gt;</code> (26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a>), <code>&lt;span&gt;</code> 
+(24.7.2.1 <a href="https://wg21.link/span.syn">[span.syn]</a>), or <code>&lt;utility&gt;</code> (22.2.1 <a href="https://wg21.link/utility.syn">[utility.syn]</a>) are included.</ins>
+</p>
+<pre>
+template&lt;class T&gt; struct tuple_size;
+</pre>
+<blockquote>
+<p>
+-1- <i>Remarks:</i> All specializations of <code>tuple_size</code> shall meet the <i>Cpp17UnaryTypeTrait</i> 
+requirements (21.3.2 <a href="https://wg21.link/meta.rqmts">[meta.rqmts]</a>) with a base characteristic of <code>integral_constant&lt;size_t, N&gt;</code> 
+for some <code>N</code>.
+</p>
+</blockquote>
+<pre>
+<del>template&lt;class... Types&gt;
+  struct tuple_size&lt;tuple&lt;Types...&gt;&gt; : public integral_constant&lt;size_t, sizeof...(Types)&gt; { };
+
+template&lt;size_t I, class... Types&gt;
+  struct tuple_element&lt;I, tuple&lt;Types...&gt;&gt; {
+    using type = TI;
+  };</del>
+</pre>
+<blockquote>
+<p>
+<del>-2- <i>Requires:</i> <code>I &lt; sizeof...(Types)</code>. The program is ill-formed if <code>I</code> is out of bounds.</del>
+<p/>
+<del>-3- <i>Type:</i> <code>TI</code> is the type of the <code>I<sup>th</sup></code> element of <code>Types</code>, where 
+indexing is zero-based.</del>
+</p>
+</blockquote>
+<pre>
+template&lt;class T&gt; struct tuple_size&lt;const T&gt;;
+template&lt;class T&gt; struct tuple_size&lt;volatile T&gt;;
+template&lt;class T&gt; struct tuple_size&lt;const volatile T&gt;;
+</pre>
+<blockquote>
+<p>
+-4- Let <code>TS</code> denote <code>tuple_size&lt;T&gt;</code> of the <i>cv</i>-unqualified type <code>T</code>. 
+If the expression <code>TS::value</code> is well-formed when treated as an unevaluated operand, then each 
+of the three templates shall meet the <i>Cpp17UnaryTypeTrait</i> requirements (21.3.2 <a href="https://wg21.link/meta.rqmts">[meta.rqmts]</a>) 
+with a base characteristic of
+<blockquote><pre>
+integral_constant&lt;size_t, TS::value&gt;
+</pre></blockquote>
+Otherwise, they shall have no member value.
+<p/>
+-5- Access checking is performed as if in a context unrelated to <code>TS</code> and <code>T</code>. Only the 
+validity of the immediate context of the expression is considered. [<i>Note:</i> The compilation of the 
+expression can result in side effects such as the instantiation of class template specializations and 
+function template specializations, the generation of implicitly-defined functions, and so on. Such side 
+effects are not in the "immediate context" and can result in the program being ill-formed. &mdash; <i>end note</i>]
+<p/>
+<del>-6- In addition to being available via inclusion of the <code>&lt;tuple&gt;</code> header, the three 
+templates are available when any of the headers <code>&lt;array&gt;</code> (24.3.2 <a href="https://wg21.link/array.syn">[array.syn]</a>), 
+<code>&lt;ranges&gt;</code> (26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a>), <code>&lt;span&gt;</code> (24.7.2.1 <a href="https://wg21.link/span.syn">[span.syn]</a>), 
+or <code>&lt;utility&gt;</code> (22.2.1 <a href="https://wg21.link/utility.syn">[utility.syn]</a>) are included.</del>
+</p>
+</blockquote>
+<pre>
+template&lt;size_t I, class T&gt; struct tuple_element&lt;I, const T&gt;;
+template&lt;size_t I, class T&gt; struct tuple_element&lt;I, volatile T&gt;;
+template&lt;size_t I, class T&gt; struct tuple_element&lt;I, const volatile T&gt;;
+</pre>
+<blockquote>
+<p>
+-7- Let <code>TE</code> denote <code>tuple_element_t&lt;I, T&gt;</code> of the <i>cv</i>-unqualified type <code>T</code>. 
+Then each of the three templates shall meet the <i>Cpp17TransformationTrait</i> requirements 
+(21.3.2 <a href="https://wg21.link/meta.rqmts">[meta.rqmts]</a>) with a member typedef type that names the following type:
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; for the first specialization, <code>add_const_t&lt;TE&gt;</code>,</p></li>
+<li><p>(7.2) &mdash; for the second specialization, <code>add_volatile_t&lt;TE&gt;</code>, and</p></li>
+<li><p>(7.3) &mdash; for the third specialization, <code>add_cv_t&lt;TE&gt;</code>.</p></li>
+</ol>
+<del>-8- In addition to being available via inclusion of the <code>&lt;tuple&gt;</code> header, the three 
+templates are available when any of the headers <code>&lt;array&gt;</code> (24.3.2 <a href="https://wg21.link/array.syn">[array.syn]</a>), 
+<code>&lt;ranges&gt;</code> (26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a>), <code>&lt;span&gt;</code> (24.7.2.1 <a href="https://wg21.link/span.syn">[span.syn]</a>), 
+or <code>&lt;utility&gt;</code> (22.2.1 <a href="https://wg21.link/utility.syn">[utility.syn]</a>) are included.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 22.4.8 <a href="https://wg21.link/tuple.elem">[tuple.elem]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Since this issue performs colliding text changes with 
+<a href="https://wg21.link/p1460r0">P1460R0</a>, we perform similar wording changes as suggested
+on <a href="https://wg21.link/p1460r0#page=19">page 19 [tuple.helper] p2</a>.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+<b>20.5.7 Element access [tuple.elem]</b>
+</p>
+<pre>
+<ins>template&lt;class... Types&gt;</ins>
+  <ins>struct tuple_size&lt;tuple&lt;Types...&gt;&gt; : public integral_constant&lt;size_t, sizeof...(Types)&gt; { };</ins>
+
+<ins>template&lt;size_t I, class... Types&gt;</ins>
+  <ins>struct tuple_element&lt;I, tuple&lt;Types...&gt;&gt; {</ins>
+    <ins>using type = TI;</ins>
+  <ins>};</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Mandates:</i> <code>I &lt; sizeof...(Types)</code>.</ins>
+<p/>
+<ins>-?- Type: <code>TI</code> is the type of the <code>I<sup>th</sup></code> element of <code>Types</code>, where 
+indexing is zero-based.</ins>
+</p>
+</blockquote>
+<pre>
+template&lt;size_t I, class... Types&gt;
+  constexpr tuple_element_t&lt;I, tuple&lt;Types...&gt;&gt;&amp;
+    get(tuple&lt;Types...&gt;&amp; t) noexcept;
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

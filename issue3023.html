@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3023: Clarify unspecified call wrappers</title>
+<meta property="og:title" content="Issue 3023: Clarify unspecified call wrappers">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3023.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3023"><a href="lwg-defects.html#3023">3023</a>. Clarify <i>unspecified</i> call wrappers</h3>
+<p><b>Section:</b> 22.10.16 <a href="https://wg21.link/func.memfn">[func.memfn]</a>, 22.10.13 <a href="https://wg21.link/func.not.fn">[func.not.fn]</a>, 22.10.15 <a href="https://wg21.link/func.bind">[func.bind]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Detlef Vollmann <b>Opened:</b> 2017-10-07 <b>Last modified:</b> 2021-06-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#func.memfn">issues</a> in [func.memfn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Even after the discussion on the reflector, starting with
+<a href="http://lists.isocpp.org/lib-ext/2017/09/4880.php">this reflector message</a>
+it's not completely clear that <i>unspecified</i> as return type
+of <code>mem_fn</code> really means 'unspecified, but always the same'.
+The same problem exists for <code>bind()</code> and <code>not_fn()</code>.
+<p/>
+Possible solution:
+<p/>
+Specify in 22.10.3 <a href="https://wg21.link/func.def">[func.def]</a> or 22.10.4 <a href="https://wg21.link/func.require">[func.require]</a> that a call wrapper type
+is always the same for forwarding call wrappers if the object is returned by a function with
+the same parameter types.
+And also put into  [func.not_fn] that a <code>call_wrapper</code> object is a
+simple call wrapper.
+</p>
+
+<p><i>[2017-11 Albuquerque Wednesday night issues processing]</i></p>
+
+<p>Priority set to 3. Tomasz to write a paper that will address this issue. See also <a href="lwg-defects.html#3015" title="copy_options::unspecified underspecified (Status: C++20)">3015</a></p>
+
+<p><i>[2017-11-10, Tomasz comments and provides wording together with STL]</i></p>
+
+<p>
+From the core language rules it is already required that same function
+template specialization have the same return type. Given that the
+invocation of <code>mem_fn</code>/<code>bind</code>/<code>not_fn</code> will always return
+the same wrapper type, if they are instantiated (called with) same parameters type.
+However, the existence of this issue, shows that some library-wide
+clarification note would be welcomed.
+</p>
+
+<p><i>[2019-05-12; Tomasz comments]</i></p>
+
+<p>
+I have realized that this issue indicates an real problem with the
+usability of <code>bind</code> as the replacement of the <code>binder1st/binder2nd</code>.
+Currently it is not required that a binding functor of the same type with
+same argument, produces the same result, as the type of the call wrapper
+may depend on the <i>cv</i> ref qualifiers of arguments. For example we are
+not requiring that the types of <code>f1, f2, f3, f4</code> are the same (and actually
+they are not for clang):
+</p>
+<blockquote><pre>
+auto func = [](std::string) {};
+std::string s("foo");
+auto f1 = std::bind(func, s);
+auto f2 = std::bind(std::as_const(func), std::as_const(s));
+auto f3 = std::bind(func, std::string("bar"));
+auto f4 = std::bind(std::move(func), std::move(s));
+// online link: https://wandbox.org/permlink/dcXJaITMJCnBWt7R
+</pre></blockquote>
+<p>
+As a consequence, if the user creates a <code>std::vector&lt;decltype(std::bind(func,
+std::string(), _2))&gt;</code> (instead of <code>std::vector&lt;std::binder1st&lt;FuncType,
+std::string&gt;&gt;</code>) he may not be able to store the result of the binding <code>func</code>
+with <code>std::string</code> instance, if an copy of <code>std::string</code> is made. That leads me
+to conclusion that this issue actually require wording change, to provide such
+guarantee, and is materially different from LWG <a href="lwg-defects.html#3015" title="copy_options::unspecified underspecified (Status: C++20)">3015</a>.
+<p/>
+During migration from <code>std::bind1st/std::bind2nd</code> (removed in C++17) to
+<code>std::bind</code>, the user may need to replace <code>std::binder1st/std::binder2nd</code>
+with an appropriate <code>decltype</code> of <code>std::bind</code> invocation. For example:
+</p>
+<blockquote><pre>
+FuncType func; std::string s;
+
+std::vector&lt;std::binder1st&lt;FuncType&gt;&gt; v;
+v.push_back(std::bind1st(func, s));
+v.push_back(std::bind1st(func, std::string("text")));
+needs to be replaced with:
+std::vector&lt;decltype(std::bind(func, s, _1))&gt; v;
+v.push_back(std::bind(func, s, _1));
+v.push_back(std::bind(func, std::string("text"), _1));
+</pre></blockquote>
+<p>
+but the last statement is not guaranteed to be well-formed.
+<p/>
+Therefore I would like to withdraw my previously suggested wording change.
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4700">N4700</a>.</p>
+
+<ol>
+<li><p>After section  [expos.only.types] "Exposition-only types" add the
+following new section:</p>
+
+<blockquote>
+<p>
+<ins><b>?.?.?.?.? <em>unspecified</em> types [unspecified.types]</b></ins>
+<p/>
+<ins>[<i>Note:</i> Whenever the return type of a function template is declared as <em>unspecified</em>,
+the return type depends only on the template arguments of the specialization. Given the example:</ins>
+</p>
+<blockquote><pre>
+<ins>template&lt;class T&gt; <em>unspecified</em> f(T);</ins>
+</pre></blockquote>
+<p>
+<ins>the expressions <code>f(0)</code> and <code>f(1)</code> have the same type. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[2020-01 Resolved by the adoption of <a href="https://wg21.link/P1065">P1065</a> in Cologne.]</i></p>
+
+
+
+<p id="res-3023"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

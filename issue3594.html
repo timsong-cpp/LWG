@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3594: inout_ptr &mdash; inconsistent release() in destructor</title>
+<meta property="og:title" content="Issue 3594: inout_ptr &mdash; inconsistent release() in destructor">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3594.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3594"><a href="lwg-defects.html#3594">3594</a>. <code>inout_ptr</code> &mdash; inconsistent <code>release()</code> in destructor</h3>
+<p><b>Section:</b> 20.3.4.3 <a href="https://wg21.link/inout.ptr.t">[inout.ptr.t]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> JeanHeyd Meneide <b>Opened:</b> 2021-09-16 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#inout.ptr.t">issues</a> in [inout.ptr.t].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+More succinctly, the model for <code>std::out_ptr_t</code> and <code>std::inout_ptr_t</code>
+both have a conditional release in their destructors as part of their
+specification (20.3.4.1 <a href="https://wg21.link/out.ptr.t">[out.ptr.t]</a> p8) (Option #2 below).
+But, if the wording is followed, they have an unconditional release in
+their constructor (Option #1 below). This is not exactly correct and
+can cause issues with double-free in <code>inout_ptr</code> in particular.
+<p/>
+Consider a function <code>MyFunc</code> that sets <code>rawPtr</code> to <code>nullptr</code> when freeing
+an old value and deciding not to produce a new value, as shown below:
+</p>
+<blockquote><pre>
+// Option #1:
+auto uptr = std::make_unique&lt;BYTE[]&gt;(25);
+auto rawPtr = uptr.get();
+uptr.release(); // UNCONDITIONAL
+MyFunc(&amp;rawPtr);
+If (rawPtr)
+{
+  uptr.reset(rawPtr);
+}
+
+// Option #2:
+auto uptr = std::make_unique&lt;BYTE[]&gt;(25);
+auto rawPtr = uptr.get();
+MyFunc(&amp;rawPtr);
+If (rawPtr)
+{
+  uptr.release(); // CONDITIONAL
+  uptr.reset(rawPtr);
+}
+</pre></blockquote>
+<p>
+This is no problem if the implementation selected Option #1 (release
+in the constructor), but results in double-free if the implementation
+selected option #2 (release in the destructor).
+<p/>
+As the paper author and after conferring with others, the intent was
+that the behavior was identical and whether a choice between the
+constructor or destructor is made. The reset should be unconditional,
+at least for <code>inout_ptr_t</code>. Suggested change for the <code>~inout_ptr_t</code>
+destructor text is to remove the "<code>if (p) { ... }</code>" wrapper from around
+the code in 20.3.4.3 <a href="https://wg21.link/inout.ptr.t">[inout.ptr.t]</a> p11.
+</p>
+
+<p><i>[2021-09-24; Reflector poll]</i></p>
+
+<p>
+Set priority to 1 after reflector poll.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify 20.3.4.3 <a href="https://wg21.link/inout.ptr.t">[inout.ptr.t]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+~inout_ptr_t();
+</pre>
+<blockquote>
+<p>
+-9- Let <code>SP</code> be <code><i>POINTER_OF_OR</i>(Smart, Pointer)</code> (20.2.1 <a href="https://wg21.link/memory.general">[memory.general]</a>).
+<p/>
+-10- Let <code><i>release-statement</i></code> be <code>s.release()</code>; if an implementation does not call <code>s.release()</code> in the
+constructor. Otherwise, it is empty.
+<p/>
+-11- <i>Effects:</i> Equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(11.1) &mdash; </p>
+<blockquote><pre>
+<del>if (p) {</del>
+  apply([&amp;](auto&amp;&amp;... args) {
+  s = Smart( static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+<del>}</del>
+</pre></blockquote>
+<p>
+if <code>is_pointer_v&lt;Smart&gt;</code> is <code>true</code>;
+</p></li>
+<li><p>(11.2) &mdash; otherwise,</p>
+<blockquote><pre>
+<del>if (p) {</del>
+  apply([&amp;](auto&amp;&amp;... args) {
+  <i>release-statement</i>;
+  s.reset(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+<del>}</del>
+</pre></blockquote>
+<p>
+if the expression <code>s.reset(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...)</code> is well-formed;
+</p>
+</li>
+<li><p>(11.3) &mdash; otherwise,</p>
+<blockquote><pre>
+<del>if (p) {</del>
+  apply([&amp;](auto&amp;&amp;... args) {
+  <i>release-statement</i>;
+  s = Smart(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+<del>}</del>
+</pre></blockquote>
+<p>
+if <code>is_constructible_v&lt;Smart, SP, Args...&gt;</code> is <code>true</code>;
+</p>
+</li>
+<li><p>(11.4) &mdash; otherwise, the program is ill-formed.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2021-10-28; JeanHeyd Meneide provides improved wording]</i></p>
+
+
+<p><i>[2022-08-24 Approved unanimously in LWG telecon.]</i></p>
+
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3594"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>.
+</p>
+
+<ol>
+<li><p>Modify 20.3.4.3 <a href="https://wg21.link/inout.ptr.t">[inout.ptr.t]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+~inout_ptr_t();
+</pre>
+<blockquote>
+<p>
+-9- Let <code>SP</code> be <code><i>POINTER_OF_OR</i>(Smart, Pointer)</code> (20.2.1 <a href="https://wg21.link/memory.general">[memory.general]</a>).
+<p/>
+-10- Let <code><i>release-statement</i></code> be <code>s.release()</code>; if an implementation does not call <code>s.release()</code> in the
+constructor. Otherwise, it is empty.
+<p/>
+-11- <i>Effects:</i> Equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(11.1) &mdash; </p>
+<blockquote><pre>
+if (p) {
+  apply([&amp;](auto&amp;&amp;... args) {
+  s = Smart( static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+}
+</pre></blockquote>
+<p>
+if <code>is_pointer_v&lt;Smart&gt;</code> is <code>true</code>;
+</p></li>
+<li><p>(11.2) &mdash; otherwise,</p>
+<blockquote><pre>
+<ins><i>release-statement</i>;</ins>
+if (p) {
+  apply([&amp;](auto&amp;&amp;... args) {
+  <del><i>release-statement</i>;</del>
+  s.reset(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+}
+</pre></blockquote>
+<p>
+if the expression <code>s.reset(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...)</code> is well-formed;
+</p>
+</li>
+<li><p>(11.3) &mdash; otherwise,</p>
+<blockquote><pre>
+<ins><i>release-statement</i>;</ins>
+if (p) {
+  apply([&amp;](auto&amp;&amp;... args) {
+  <del><i>release-statement</i>;</del>
+  s = Smart(static_cast&lt;SP&gt;(p), std::forward&lt;Args&gt;(args)...); }, std::move(a));
+}
+</pre></blockquote>
+<p>
+if <code>is_constructible_v&lt;Smart, SP, Args...&gt;</code> is <code>true</code>;
+</p>
+</li>
+<li><p>(11.4) &mdash; otherwise, the program is ill-formed.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3800: No deduction guide for std::match_results</title>
+<meta property="og:title" content="Issue 3800: No deduction guide for std::match_results">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3800.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3800"><a href="lwg-closed.html#3800">3800</a>. No deduction guide for <code>std::match_results</code></h3>
+<p><b>Section:</b> 32.9.1 <a href="https://wg21.link/re.results.general">[re.results.general]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2022-10-25 <b>Last modified:</b> 2022-11-30</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>std::match_results</code> meets some of the requirements for an allocator-aware container, which means 
+that its <code>allocator_type</code> must have the same <code>value_type</code> as the container. This means that 
+class template argument deduction should work for:
+</p>
+<blockquote><pre>
+std::match_results mr(alloc);
+</pre></blockquote>
+<p>
+The allocator's <code>value_type</code> will be the <code>sub_match&lt;Iter&gt;</code> type stored in the 
+<code>match_results</code> object, and so the first template argument for the <code>match_results</code> type will 
+be <code>value_type::iterator</code>.
+<p/>
+<a href="https://wg21.link/P0433R2" title=" Toward a resolution of US7 and US14: Integrating template deduction for class templates into the standard library">P0433R2</a> added a deduction guide for <code>std::basic_regex</code>, but I see no rationale for 
+not adding one for <code>std::match_results</code>. This seems like a defect, because all other allocator-aware 
+containers support deduction from an allocator argument.
+</p>
+
+<p><i>[2022-11-01; reflector poll]</i></p>
+
+<p>Status changed to Tentatively NAD. The issue is wrong: other containers
+do not support deduction from an allocator type.</p>
+
+<p><i>[2022-11-30 LWG telecon. Status changed: Tentatively NAD &rarr; NAD.]</i></p>
+
+
+
+<p id="res-3800"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 32.9.1 <a href="https://wg21.link/re.results.general">[re.results.general]</a>, class template <code>match_results</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class BidirectionalIterator,
+           class Allocator = allocator&lt;sub_match&lt;BidirectionalIterator&gt;&gt;&gt;
+    class match_results {
+      [&hellip;]
+      void swap(match_results&amp; that);
+    };
+    
+  <ins>template&lt;class Allocator&gt;
+    match_results(Allocator) -&gt; match_results&lt;typename Allocator::value_type::iterator, Allocator&gt;;</ins>
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

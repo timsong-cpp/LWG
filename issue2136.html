@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Issue 2136: Postconditions vs. exceptions</title>
-<style type="text/css">
+<meta property="og:title" content="Issue 2136: Postconditions vs. exceptions">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue2136.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,14 +24,47 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="2136" href="lwg-active.html#2136">2136</a>. Postconditions vs. exceptions</h3>
-<p><b>Section:</b> 20.4.1 <a href="https://wg21.link/structure">[structure]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
- <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2017-09-13</p>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="2136"><a href="lwg-active.html#2136">2136</a>. Postconditions vs. exceptions</h3>
+<p><b>Section:</b> 16.3.2 <a href="https://wg21.link/structure">[structure]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2012-03-08 <b>Last modified:</b> 2021-06-25</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
@@ -45,13 +85,13 @@ apply when an exception is thrown (beyond the basic guarantee) are described in 
 <p>
 Consensus that we do not clearly say this, and that we probably should.  A likely
 location to describe the guarantees of <i>postconditions</i> could well be a new
-sub-clause following 20.5.4.11 <a href="https://wg21.link/res.on.required">[res.on.required]</a> which serves the same purpose
-for <i>requires</i> clauses.  However, we need such wording before we can make
+sub-clause following 99 [res.on.required] which serves the same purpose
+for <i>requires</i> clauses. However, we need such wording before we can make
 progress.
 </p>
 
 <p>
-Also, see <a href="lwg-active.html#2137">2137</a> for a suggestion that we want to see a paper resolving
+Also, see <a href="lwg-active.html#2137" title="Misleadingly constrained post-condition in the presence of exceptions (Status: Open)">2137</a> for a suggestion that we want to see a paper resolving
 both issues together.
 </p>
 
@@ -59,8 +99,27 @@ both issues together.
 
 <p>MC: Idea is to replace all such "If no exception" postconditions with "Exception safety" sections.</p>
 
+<p><i>[2021-06-20; Daniel comments]</i></p>
 
-<p><b>Proposed resolution:</b></p>
+<p>
+An informal <a href="https://github.com/cplusplus/draft/issues/3612">editorial change suggestion</a> has 
+recently been made whose editorial implementation would promote the idea that the default assumption is 
+that <i>Postconditions:</i> are only met if the function doesn't exit with an exception.
+<p/>
+After analyzing all current existing <i>Postconditions:</i> elements the following seems to hold: Affected
+by this issue are only non-<code>noexcept</code> functions and mostly non-constructor functions (unless the 
+<i>Postconditions:</i> element says something about the value of its arguments). Most existing
+<i>Postconditions</i> seem to be intended to apply only in non-exceptional cases. I found some where
+this is presumably not intended, namely those of the expressions <code>os &lt;&lt; x</code> and
+<code>is &gt;&gt; v</code> in Tables [tab:rand.req.eng] and [tab:rand.req.dist], maybe also 
+29.11.2.4 <a href="https://wg21.link/time.zone.db.remote">[time.zone.db.remote]</a> p4.
+<p/>
+Nonetheless, the editorial change seems to be applicable even without having this issue resolved, because 
+it doesn't actually change the normative state by itself.
+</p>
+
+
+<p id="res-2136"><b>Proposed resolution:</b></p>
 
 
 

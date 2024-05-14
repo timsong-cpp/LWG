@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3126: There's no std::sub_match::compare(string_view) overload</title>
+<meta property="og:title" content="Issue 3126: There's no std::sub_match::compare(string_view) overload">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3126.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3126"><a href="lwg-active.html#3126">3126</a>. There's no <code>std::sub_match::compare(string_view)</code> overload</h3>
+<p><b>Section:</b> 32.8 <a href="https://wg21.link/re.submatch">[re.submatch]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2018-06-26 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.submatch">issues</a> in [re.submatch].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>std::sub_match::compare</code> can be called with a <code>basic_string</code> or a pointer to a null-terminated 
+character sequence, but can't be called with a <code>basic_string_view</code>. To compare to a <code>string_view</code> 
+requires either conversion to <code>basic_string</code> (with a potential allocation) or a redundant call to 
+<code>traits_type::length</code> to calculate a length that is already known.
+</p>
+
+<p><i>[2018-07-02, Jonathan comments and completes proposed wording]</i></p>
+
+<p>
+To make the relational and equality operators for <code>sub_match</code> support string views I propose specifying 
+the semantics, not adding another 12 overloaded operators to namespace <code>std</code>, in addition to the 42 
+already there. This allows them to be implemented as "hidden friends" if the implementation so desires, or to 
+retain namespace-scope declaration if backwards compatibility with C++11 - C++17 is preferred.
+</p>
+
+<p><i>[2018-07-20 Priority set to 3 after reflector discussion]</i></p>
+
+
+
+<p id="res-3126"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4750">N4750</a>.
+</p>
+
+<ol>
+<li>
+<p>Change 32.3 <a href="https://wg21.link/re.syn">[re.syn]</a>, header <code>&lt;regex&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+#include &lt;initializer_list&gt;
+
+namespace std {
+  [&hellip;]
+  using csub_match = sub_match&lt;const char*&gt;;
+  using wcsub_match = sub_match&lt;const wchar_t*&gt;;
+  using ssub_match = sub_match&lt;string::const_iterator&gt;;
+  using wssub_match = sub_match&lt;wstring::const_iterator&gt;;
+
+  <del><i>// 32.8.3 <a href="https://wg21.link/re.submatch.op">[re.submatch.op]</a>, sub_match non-member operators</i>
+  template&lt;class BiIter&gt;
+  bool operator==(const sub_match&lt;BiIter&gt;&amp; lhs, const sub_match&lt;BiIter&gt;&amp; rhs);
+  [&hellip;]
+  template&lt;class BiIter&gt;
+    bool operator&gt;=(const sub_match&lt;BiIter&gt;&amp; lhs,
+                   const typename iterator_traits&lt;BiIter&gt;::value_type&amp; rhs);</del>
+
+  template&lt;class charT, class ST, class BiIter&gt;
+  basic_ostream&lt;charT, ST&gt;&amp;
+  operator&lt;&lt;(basic_ostream&lt;charT, ST&gt;&amp; os, const sub_match&lt;BiIter&gt;&amp; m);
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Change 32.8 <a href="https://wg21.link/re.submatch">[re.submatch]</a>, class template <code>sub_match</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class BidirectionalIterator&gt;
+  class sub_match : public pair&lt;BidirectionalIterator, BidirectionalIterator&gt; {
+  public:
+    using value_type =
+      typename iterator_traits&lt;BidirectionalIterator&gt;::value_type;
+    [&hellip;]
+    int compare(const sub_match&amp; s) const;
+    int compare(const string_type&amp; s) const;
+    int compare(const value_type* s) const;
+    <ins>int compare(basic_string_view&lt;value_type&gt; s) const;</ins>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Change 32.8.2 <a href="https://wg21.link/re.submatch.members">[re.submatch.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+int compare(const value_type* s) const;
+</pre>
+<blockquote>
+<p>
+-7- <i>Returns:</i> <code>str().compare(s)</code>.
+</p>
+</blockquote>
+<pre>
+<ins>int compare(basic_string_view&lt;value_type&gt; s) const;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Returns:</i> <code>str().compare(s)</code>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Change sub-clause 32.8.3 <a href="https://wg21.link/re.submatch.op">[re.submatch.op]</a> as indicated:</p>
+
+<blockquote>
+<p>
+<b>31.9.2 <code>sub_match</code> non-member operators [re.submatch.op]</b>
+</p>
+<pre><del>template&lt;class BiIter&gt;
+bool operator==(const sub_match&lt;BiIter&gt;&amp; lhs, const sub_match&lt;BiIter&gt;&amp; rhs);</del></pre>
+<blockquote>
+<p>
+<del>-1- <i>Returns:</i> <code>lhs.compare(rhs) == 0</code>.</del>
+</p>
+</blockquote>
+<del>[&hellip;]</del>
+<pre>
+<del>template&lt;class BiIter&gt;
+  bool operator&gt;=(const sub_match&lt;BiIter&gt;&amp; lhs,
+    const typename iterator_traits&lt;BiIter&gt;::value_type&amp; rhs);</del></pre>
+<blockquote>
+<p>
+<del>-42- <i>Returns:</i> <code>!(lhs &lt; rhs)</code>.</del>
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class ST, class BiIter&gt;
+  basic_ostream&lt;charT, ST&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, ST&gt;&amp; os, const sub_match&lt;BiIter&gt;&amp; m);</pre>
+<blockquote>
+<p>
+-43- <i>Returns:</i> <code>os &lt;&lt; m.str()</code>.
+</p>
+</blockquote>
+<p>
+<ins>Class template <code>sub_match</code> provides overloaded relational operators (7.6.9 <a href="https://wg21.link/expr.rel">[expr.rel]</a>) and 
+equality operators (7.6.10 <a href="https://wg21.link/expr.eq">[expr.eq]</a>) for comparisons with another <code>sub_match</code>, with a <code>string</code>, 
+or with a single character. The expressions shown in Table ?? are valid when one of the operands is a type <code>S</code>, 
+that is a specialization of <code>sub_match</code>, and the other expression is one of:</ins>
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.?) &mdash; a value <code>x</code> of a type <code>S</code>, in which case <code><i>STR</i>(x)</code> is 
+<code>x.str()</code>;</ins></p></li>
+<li><p><ins>(?.?) &mdash; a value <code>x</code> of type <code>basic_string&lt;S::value_type, T, A&gt;</code> for any types 
+<code>T</code> and <code>A</code>, in which case <code><i>STR</i>(x)</code> is 
+<code>basic_string_view&lt;S::value_type&gt;(x.data(), x.length())</code>;</ins></p></li>
+<li><p><ins>(?.?) &mdash; a value <code>x</code> of type <code>basic_string_view&lt;S::value_type, T&gt;</code> for 
+any type <code>T</code>, in which case <code><i>STR</i>(x)</code> is 
+<code>basic_string_view&lt;S::value_type&gt;(x.data(), x.length())</code>;</ins></p></li>
+<li><p><ins>(?.?) &mdash; a value <code>x</code> of a type convertible to <code>const S::value_type*</code>, in which 
+case <code><i>STR</i>(x)</code> is <code>basic_string_view&lt;S::value_type&gt;(x)</code>;</ins></p></li>
+<li><p><ins>(?.?) &mdash; a value <code>x</code> of type convertible to <code>S::value_type</code>, in which case 
+<code><i>STR</i>(x)</code> is <code>basic_string_view&lt;S::value_type&gt;(&amp;x, 1)</code>.</ins></p></li>
+</ol>
+<table border="1">
+<caption><ins>Table ?? &mdash; <code>sub_match</code> comparisons</ins></caption>
+<tr style="text-align:center">
+<th><ins>Expression</ins></th>
+<th><ins>Return type</ins></th>
+<th><ins>Operational<br/>semantics</ins></th>
+</tr>
+<tr>
+<td>
+<ins><code>s == t</code></ins>
+</td>
+<td>
+<ins><code>bool</code></ins>
+</td>
+<td>
+<ins><code><i>STR</i>(s).compare(<i>STR</i>(t)) == 0</code></ins>
+</td>
+</tr>
+<tr>
+<td>
+<ins><code>s != t</code></ins>
+</td>
+<td>
+<ins><code>bool</code></ins>
+</td>
+<td>
+<ins><code><i>STR</i>(s).compare(<i>STR</i>(t)) != 0</code></ins>
+</td>
+</tr>
+<tr>
+<td>
+<ins><code>s &lt; t</code></ins>
+</td>
+<td>
+<ins><code>bool</code></ins>
+</td>
+<td>
+<ins><code><i>STR</i>(s).compare(<i>STR</i>(t)) &lt; 0</code></ins>
+</td>
+</tr>
+<tr>
+<td>
+<ins><code>s &gt; t</code></ins>
+</td>
+<td>
+<ins><code>bool</code></ins>
+</td>
+<td>
+<ins><code><i>STR</i>(s).compare(<i>STR</i>(t)) &gt; 0</code></ins>
+</td>
+</tr>
+<tr>
+<td>
+<ins><code>s &lt;= t</code></ins>
+</td>
+<td>
+<ins><code>bool</code></ins>
+</td>
+<td>
+<ins><code><i>STR</i>(s).compare(<i>STR</i>(t)) &lt;= 0</code></ins>
+</td>
+</tr>
+<tr>
+<td>
+<ins><code>s &gt;= t</code></ins>
+</td>
+<td>
+<ins><code>bool</code></ins>
+</td>
+<td>
+<ins><code><i>STR</i>(s).compare(<i>STR</i>(t)) &gt;= 0</code></ins>
+</td>
+</tr>
+</table>
+
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

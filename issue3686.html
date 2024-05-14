@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3686: In lazy_split_view, comparing a default-constructed outer-iterator or 
+inner-iterator with std::default_sentinel results in null pointer dereference</title>
+<meta property="og:title" content="Issue 3686: In lazy_split_view, comparing a default-constructed outer-iterator or 
+inner-iterator with std::default_sentinel results in null pointer dereference">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3686.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3686"><a href="lwg-active.html#3686">3686</a>. In <code>lazy_split_view</code>, comparing a default-constructed <code><i>outer-iterator</i></code> or 
+<code><i>inner-iterator</i></code> with <code>std::default_sentinel</code> results in null pointer dereference</h3>
+<p><b>Section:</b> 26.7.16.3 <a href="https://wg21.link/range.lazy.split.outer">[range.lazy.split.outer]</a>, 26.7.16.5 <a href="https://wg21.link/range.lazy.split.inner">[range.lazy.split.inner]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Konstantin Varlamov <b>Opened:</b> 2022-03-23 <b>Last modified:</b> 2022-05-17</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.lazy.split.outer">issues</a> in [range.lazy.split.outer].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The internal iterator types <code><i>outer-iterator</i></code> and <code><i>inner-iterator</i></code> of 
+<code>lazy_split_view</code> are default-constructible, but trying to compare a default-constructed 
+instance of either of these classes to <code>std::default_sentinel</code> results in null pointer 
+dereference (and, in all likelihood, a crash), as demonstrated in this 
+<a href="https://godbolt.org/z/cGs9jW1c6">demo link</a>:
+</p>
+<blockquote><pre>
+// Assuming <code class='backtick'>OuterIter</code> is an alias for <code class='backtick'>outer-iterator</code> of
+// some <code class='backtick'>lazy_split_view</code> instantiation.
+OuterIter o;
+o == std::default_sentinel; // Null pointer dereference
+
+InnerIter i; // Similar to <code class='backtick'>OuterIter</code> above.
+i == std::default_sentinel; // Null pointer dereference
+</pre></blockquote>
+<p>
+This is due to unchecked pointer access in the implementation of <code><i>outer-iterator</i></code> 
+(26.7.16.3 <a href="https://wg21.link/range.lazy.split.outer">[range.lazy.split.outer]</a> p8):
+</p>
+<blockquote><pre>
+return x.<i>current</i> == ranges::end(x.<i>parent_</i>-&gt;<i>base_</i>) &amp;&amp; !x.<i>trailing_empty_</i>;
+</pre></blockquote>
+<p>
+(<code><i>parent_</i></code> is null for a default-constructed iterator <code>x</code>, making the access 
+to <code><i>base_</i></code> invalid)
+<p/>
+And similarly for <code><i>inner-iterator</i></code> (26.7.16.5 <a href="https://wg21.link/range.lazy.split.inner">[range.lazy.split.inner]</a> p7):
+</p>
+<blockquote><pre>
+auto [pcur, pend] = subrange{x.<i>i_</i>.<i>parent_</i>-&gt;<i>pattern_</i>};
+</pre></blockquote>
+<p>
+(For a default-constructed <code><i>inner-iterator</i> x</code>, <code><i>i_</i></code> is a default-constructed 
+<code><i>outer-iterator</i></code> member variable and <code><i>i_</i>.<i>parent_</i></code> is null, making the 
+access to <code><i>pattern_</i></code> invalid)
+<p/>
+It seems a reasonable expectation for users to expect comparing a default-constructed iterator to 
+<code>std::default_sentinel</code> to be a well-defined operation that returns <code>true</code>. Alternatively, 
+the corresponding <code>operator==</code> functions should add a non-normative note stating that the 
+iterator cannot be default-constructed.
+</p>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll. Three votes for NAD.
+</p>
+
+
+
+<p id="res-3686"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.16.3 <a href="https://wg21.link/range.lazy.split.outer">[range.lazy.split.outer]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+friend constexpr bool operator==(const <i>outer-iterator</i>&amp; x, default_sentinel_t);
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<ins>if (!x.<i>parent_</i>) return true;</ins>
+return x.<i>current</i> == ranges::end(x.<i>parent_</i>-&gt;<i>base_</i>) &amp;&amp; !x.<i>trailing_empty_</i>;
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+
+<li><p>Modify 26.7.16.5 <a href="https://wg21.link/range.lazy.split.inner">[range.lazy.split.inner]</a>, as indicated:</p>
+
+<blockquote>
+<pre>
+friend constexpr bool operator==(const <i>inner-iterator</i>&amp; x, default_sentinel_t);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<ins>if (!x.<i>i_</i>.<i>parent_</i>) return true;</ins>
+auto [pcur, pend] = subrange{x.<i>i_</i>.<i>parent_</i>-&gt;<i>pattern_</i>};
+[&hellip;]
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

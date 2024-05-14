@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3773: views::zip_transform still requires F to be copy_constructible when empty pack</title>
+<meta property="og:title" content="Issue 3773: views::zip_transform still requires F to be copy_constructible when empty pack">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3773.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3773"><a href="lwg-defects.html#3773">3773</a>. <code>views::zip_transform</code> still requires <code>F</code> to be <code>copy_constructible</code> when empty pack</h3>
+<p><b>Section:</b> 26.7.26.1 <a href="https://wg21.link/range.zip.transform.overview">[range.zip.transform.overview]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-09-12 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+After <a href="https://wg21.link/P2494R2" title=" Relaxing range adaptors to allow for move only types">P2494R2</a>, range adaptors only require callable to be
+<code>move_constructible</code>, however, for <code>views::zip_transform</code>,
+when empty pack, it still requires callable to be <code>copy_constructible</code>.
+We should relax this requirement, too.
+</p>
+
+<p><i>[2022-09-23; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3773"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li>
+<p>Modify 26.7.26.1 <a href="https://wg21.link/range.zip.transform.overview">[range.zip.transform.overview]</a> as indicated:</p>
+<blockquote>
+<p>
+-2- The name <code>views::zip_transform</code> denotes a customization point object
+(16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). 
+Let <code>F</code> be a subexpression,
+and let <code>Es...</code> be a pack of subexpressions.
+</p>
+<ol style="list-style-type:none">
+<li><p>(2.1) — If <code>Es</code> is an empty pack, let <code>FD</code> be <code>decay_t&lt;decltype((F))&gt;</code>.</p>
+<ol style="list-style-type:none">
+<li><p>(2.1.1) — If <code><ins>move_constructible</ins><del>copy_constructible</del>&lt;FD&gt; &amp;&amp; regular_invocable&lt;FD&amp;&gt;</code> is <code>false</code>, or if <code>decay_t&lt;invoke_result_t&lt;FD&amp;&gt;&gt;</code> is not an object type, <code>views::zip_transform(F, Es...)</code> is ill-formed.</p></li>
+<li><p>(2.1.2) — Otherwise, the expression <code>views::zip_transform(F, Es...)</code> is expression-equivalent to</p>
+<pre>
+      ((void)F, auto(views::empty&lt;decay_t&lt;invoke_result_t&lt;FD&amp;&gt;&gt;&gt;))</pre>
+</li>
+</ol>
+</li>
+<li><p>(2.2) — Otherwise, the expression <code>views::zip_transform(F, Es...)</code> is expression-equivalent to <code>zip_transform_view(F, Es...)</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

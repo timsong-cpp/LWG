@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3359: &lt;chrono&gt; leap second support should allow for negative leap seconds</title>
+<meta property="og:title" content="Issue 3359: &lt;chrono&gt; leap second support should allow for negative leap seconds">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3359.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3359"><a href="lwg-defects.html#3359">3359</a>. <code>&lt;chrono&gt;</code> leap second support should allow for negative leap seconds</h3>
+<p><b>Section:</b> 29.11.8 <a href="https://wg21.link/time.zone.leap">[time.zone.leap]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Asher Dunn <b>Opened:</b> 2019-12-16 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>class leap</code> (which is expected to be renamed by <a href="https://wg21.link/p1981r0">P1981R0</a> to
+<code>leap_second</code>) defined in 29.11.8 <a href="https://wg21.link/time.zone.leap">[time.zone.leap]</a> should include support for both
+positive leap seconds (<code>23:59:60</code> added to UTC at a specified time) and negative leap seconds
+(<code>23:59:59</code> removed from UTC at a specified time). While only positive leap seconds have been
+inserted to date, the definition of UTC allows for both.
+<p/>
+Update 29.11.8 <a href="https://wg21.link/time.zone.leap">[time.zone.leap]</a> to specify the value of leap seconds in addition to
+their insertion date, and update wording and examples in 29.7 <a href="https://wg21.link/time.clock">[time.clock]</a> and
+29.12 <a href="https://wg21.link/time.format">[time.format]</a> that involve leap seconds to account for both types of leap second.
+</p>
+
+<p><i>[2020-01 Priority set to 3 after review on the reflector.]</i></p>
+
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify 29.7.3.2 <a href="https://wg21.link/time.clock.utc.members">[time.clock.utc.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration&gt;
+  static sys_time&lt;common_type_t&lt;Duration, seconds&gt;&gt;
+    to_sys(const utc_time&lt;Duration&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-2- <i>Returns:</i> A <code>sys_time t</code>, such that <code>from_sys(t) == u</code> if such a mapping exists.
+Otherwise <code>u</code> represents a <code>time_point</code> during a <ins>positive</ins> leap second
+insertion<ins>, the conversion counts that leap second as not inserted,</ins> and the last
+representable value of <code>sys_time</code> prior to the insertion of the leap second is returned.
+</p>
+</blockquote>
+<pre>
+template&lt;class Duration&gt;
+  static utc_time&lt;common_type_t&lt;Duration, seconds&gt;&gt;
+    from_sys(const sys_time&lt;Duration&gt;&amp; t);
+</pre>
+<blockquote>
+<p>
+-3- <i>Returns:</i> A <code>utc_time u</code>, such that <code>u.time_since_epoch() - t.time_since_epoch()</code>
+is equal to the <del>number</del><ins>sum</ins> of leap seconds that were inserted between <code>t</code>
+and 1970-01-01. If <code>t</code> is exactly the date of leap second insertion, then the conversion counts
+that leap second as inserted.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.7.3.3 <a href="https://wg21.link/time.clock.utc.nonmembers">[time.clock.utc.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration&gt;
+  leap_second_info get_leap_second_info(const utc_time&lt;Duration&gt;&amp; ut);
+</pre>
+<blockquote>
+<p>
+-6- <i>Returns:</i> A <code>leap_second_info</code> where <code>is_leap_second</code> is <code>true</code> if
+<code>ut</code> is during a <ins>positive</ins> leap second insertion, and otherwise <code>false</code>.
+<code>elapsed</code> is the <del>number</del><ins>sum</ins> of leap seconds between 1970-01-01 and
+<code>ut</code>. If <code>is_leap_second</code> is <code>true</code>, the leap second referred to by <code>ut</code>
+is included in the count.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.7.4.1 <a href="https://wg21.link/time.clock.tai.overview">[time.clock.tai.overview]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The clock <code>tai_clock</code> measures seconds since 1958-01-01 00:00:00 and is offset 10s ahead of
+UTC at this date. That is, 1958-01-01 00:00:00 TAI is equivalent to 1957-12-31 23:59:50 UTC. Leap seconds
+are not inserted into TAI. Therefore every time a leap second is inserted into UTC, UTC <del>falls another
+second behind</del><ins>shifts another second with respect to</ins> TAI. For example by 2000-01-01 there
+had been 22 <ins>positive and 0 negative</ins> leap seconds inserted so 2000-01-01 00:00:00 UTC is
+equivalent to 2000-01-01 00:00:32 TAI (22s plus the initial 10s offset).
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.7.5.1 <a href="https://wg21.link/time.clock.gps.overview">[time.clock.gps.overview]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The clock <code>gps_clock</code> measures seconds since the first Sunday of January, 1980 00:00:00 UTC.
+Leap seconds are not inserted into GPS. Therefore every time a leap second is inserted into UTC, UTC
+<del>falls another second behind</del><ins>shifts another second with respect to</ins> GPS. Aside from
+the offset from <code>1958y/January/1</code> to <code>1980y/January/Sunday[1]</code>, GPS is behind TAI by 19s
+due to the 10s offset between 1958 and 1970 and the additional 9 leap seconds inserted between 1970 and 1980.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.11.8.1 <a href="https://wg21.link/time.zone.leap.overview">[time.zone.leap.overview]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::chrono {
+  class leap {
+  public:
+    leap(const leap&amp;) = default;
+    leap&amp; operator=(const leap&amp;) = default;
+
+    <i>// unspecified additional constructors</i>
+
+    constexpr sys_seconds date() const noexcept;
+    <ins>constexpr seconds value() const noexcept;</ins>
+  };
+}
+</pre>
+<p>
+-1- Objects of type <code>leap</code> representing the date <ins>and value</ins> of the leap second
+insertions are constructed and stored in the time zone database when initialized.
+<p/>
+-2- [<i>Example:</i>
+</p>
+<blockquote><pre>
+for (auto&amp; l : get_tzdb().leaps)
+  if (l &lt;= 2018y/March/17d)
+    cout &lt;&lt; l.date() &lt;&lt; <ins>": " &lt;&lt; l.value() &lt;&lt;</ins> '\n';
+</pre></blockquote>
+<p>
+Produces the output:
+</p>
+<blockquote><pre>
+1972-07-01 00:00:00<ins>: 1s</ins>
+1973-01-01 00:00:00<ins>: 1s</ins>
+1974-01-01 00:00:00<ins>: 1s</ins>
+1975-01-01 00:00:00<ins>: 1s</ins>
+1976-01-01 00:00:00<ins>: 1s</ins>
+1977-01-01 00:00:00<ins>: 1s</ins>
+1978-01-01 00:00:00<ins>: 1s</ins>
+1979-01-01 00:00:00<ins>: 1s</ins>
+1980-01-01 00:00:00<ins>: 1s</ins>
+1981-07-01 00:00:00<ins>: 1s</ins>
+1982-07-01 00:00:00<ins>: 1s</ins>
+1983-07-01 00:00:00<ins>: 1s</ins>
+1985-07-01 00:00:00<ins>: 1s</ins>
+1988-01-01 00:00:00<ins>: 1s</ins>
+1990-01-01 00:00:00<ins>: 1s</ins>
+1991-01-01 00:00:00<ins>: 1s</ins>
+1992-07-01 00:00:00<ins>: 1s</ins>
+1993-07-01 00:00:00<ins>: 1s</ins>
+1994-07-01 00:00:00<ins>: 1s</ins>
+1996-01-01 00:00:00<ins>: 1s</ins>
+1997-07-01 00:00:00<ins>: 1s</ins>
+1999-01-01 00:00:00<ins>: 1s</ins>
+2006-01-01 00:00:00<ins>: 1s</ins>
+2009-01-01 00:00:00<ins>: 1s</ins>
+2012-07-01 00:00:00<ins>: 1s</ins>
+2015-07-01 00:00:00<ins>: 1s</ins>
+2017-01-01 00:00:00<ins>: 1s</ins>
+</pre></blockquote>
+<p>
+&mdash; <i>end example</i>]
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.11.8.2 <a href="https://wg21.link/time.zone.leap.members">[time.zone.leap.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr sys_seconds date() const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> The date and time at which the leap second was inserted.
+</p>
+</blockquote>
+<pre>
+<ins>constexpr seconds value() const noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Returns:</i> The value of the leap second. Always <code>+1s</code> to indicate a positive
+leap second or <code>-1s</code> to indicate a negative leap second. All leap seconds inserted up
+through 2017 were positive leap seconds.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.12 <a href="https://wg21.link/time.format">[time.format]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration, class charT&gt;
+  struct formatter&lt;chrono::utc_time&lt;Duration&gt;, charT&gt;;
+</pre>
+<blockquote>
+<p>
+-7- <i>Remarks:</i> If <code>%Z</code> is used, it is replaced with
+<code><i>STATICALLY-WIDEN</i>&lt;charT&gt;("UTC")</code>. If <code>%z</code> (or a modified
+variant of <code>%z</code>) is used, an offset of <code>0min</code> is formatted. If the argument represents
+a time during a <ins>positive</ins> leap second insertion, and if a seconds field is formatted,
+the integral portion of that format is <code><i>STATICALLY-WIDEN</i>&lt;charT&gt;("60")</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-02-14; Prague]</i></p>
+
+<p>
+LWG Review. Some wording improvements have been made and lead to revised wording.
+</p>
+
+
+<p id="res-3359"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 29.7.3.2 <a href="https://wg21.link/time.clock.utc.members">[time.clock.utc.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration&gt;
+  static sys_time&lt;common_type_t&lt;Duration, seconds&gt;&gt;
+    to_sys(const utc_time&lt;Duration&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-2- <i>Returns:</i> A <code>sys_time t</code>, such that <code>from_sys(t) == u</code> if such a mapping exists.
+Otherwise <code>u</code> represents a <code>time_point</code> during a <ins>positive</ins> leap second
+insertion<ins>, the conversion counts that leap second as not inserted,</ins> and the last
+representable value of <code>sys_time</code> prior to the insertion of the leap second is returned.
+</p>
+</blockquote>
+<pre>
+template&lt;class Duration&gt;
+  static utc_time&lt;common_type_t&lt;Duration, seconds&gt;&gt;
+    from_sys(const sys_time&lt;Duration&gt;&amp; t);
+</pre>
+<blockquote>
+<p>
+-3- <i>Returns:</i> A <code>utc_time u</code>, such that <code>u.time_since_epoch() - t.time_since_epoch()</code>
+is equal to the <del>number</del><ins>sum</ins> of leap seconds that were inserted between <code>t</code>
+and 1970-01-01. If <code>t</code> is exactly the date of leap second insertion, then the conversion counts
+that leap second as inserted.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.7.3.3 <a href="https://wg21.link/time.clock.utc.nonmembers">[time.clock.utc.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration&gt;
+  leap_second_info get_leap_second_info(const utc_time&lt;Duration&gt;&amp; ut);
+</pre>
+<blockquote>
+<p>
+-6- <i>Returns:</i> A <code>leap_second_info</code><ins>, <code>lsi</code>,</ins> where <code><ins>lsi.</ins>is_leap_second</code> 
+is <code>true</code> if <code>ut</code> is during a <ins>positive</ins> leap second insertion, and otherwise <code>false</code>.
+<code><ins>lsi.</ins>elapsed</code> is the <del>number</del><ins>sum</ins> of leap seconds between 1970-01-01 and
+<code>ut</code>. If <code><ins>lsi.</ins>is_leap_second</code> is <code>true</code>, the leap second referred to by <code>ut</code>
+is included in the <del>count</del><ins>sum</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.7.4.1 <a href="https://wg21.link/time.clock.tai.overview">[time.clock.tai.overview]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The clock <code>tai_clock</code> measures seconds since 1958-01-01 00:00:00 and is offset 10s ahead of
+UTC at this date. That is, 1958-01-01 00:00:00 TAI is equivalent to 1957-12-31 23:59:50 UTC. Leap seconds
+are not inserted into TAI. Therefore every time a leap second is inserted into UTC, UTC <del>falls another
+second behind</del><ins>shifts another second with respect to</ins> TAI. For example by 2000-01-01 there
+had been 22 <ins>positive and 0 negative</ins> leap seconds inserted so 2000-01-01 00:00:00 UTC is
+equivalent to 2000-01-01 00:00:32 TAI (22s plus the initial 10s offset).
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.7.5.1 <a href="https://wg21.link/time.clock.gps.overview">[time.clock.gps.overview]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The clock <code>gps_clock</code> measures seconds since the first Sunday of January, 1980 00:00:00 UTC.
+Leap seconds are not inserted into GPS. Therefore every time a leap second is inserted into UTC, UTC
+<del>falls another second behind</del><ins>shifts another second with respect to</ins> GPS. Aside from
+the offset from <code>1958y/January/1</code> to <code>1980y/January/Sunday[1]</code>, GPS is behind TAI by 19s
+due to the 10s offset between 1958 and 1970 and the additional 9 leap seconds inserted between 1970 and 1980.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.11.8.1 <a href="https://wg21.link/time.zone.leap.overview">[time.zone.leap.overview]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::chrono {
+  class leap {
+  public:
+    leap(const leap&amp;) = default;
+    leap&amp; operator=(const leap&amp;) = default;
+
+    <i>// unspecified additional constructors</i>
+
+    constexpr sys_seconds date() const noexcept;
+    <ins>constexpr seconds value() const noexcept;</ins>
+  };
+}
+</pre>
+<p>
+-1- Objects of type <code>leap</code> representing the date <ins>and value</ins> of the leap second
+insertions are constructed and stored in the time zone database when initialized.
+<p/>
+-2- [<i>Example:</i>
+</p>
+<blockquote><pre>
+for (auto&amp; l : get_tzdb().leaps)
+  if (l &lt;= 2018y/March/17d)
+    cout &lt;&lt; l.date() &lt;&lt; <ins>": " &lt;&lt; l.value() &lt;&lt;</ins> '\n';
+</pre></blockquote>
+<p>
+Produces the output:
+</p>
+<blockquote><pre>
+1972-07-01 00:00:00<ins>: 1s</ins>
+1973-01-01 00:00:00<ins>: 1s</ins>
+1974-01-01 00:00:00<ins>: 1s</ins>
+1975-01-01 00:00:00<ins>: 1s</ins>
+1976-01-01 00:00:00<ins>: 1s</ins>
+1977-01-01 00:00:00<ins>: 1s</ins>
+1978-01-01 00:00:00<ins>: 1s</ins>
+1979-01-01 00:00:00<ins>: 1s</ins>
+1980-01-01 00:00:00<ins>: 1s</ins>
+1981-07-01 00:00:00<ins>: 1s</ins>
+1982-07-01 00:00:00<ins>: 1s</ins>
+1983-07-01 00:00:00<ins>: 1s</ins>
+1985-07-01 00:00:00<ins>: 1s</ins>
+1988-01-01 00:00:00<ins>: 1s</ins>
+1990-01-01 00:00:00<ins>: 1s</ins>
+1991-01-01 00:00:00<ins>: 1s</ins>
+1992-07-01 00:00:00<ins>: 1s</ins>
+1993-07-01 00:00:00<ins>: 1s</ins>
+1994-07-01 00:00:00<ins>: 1s</ins>
+1996-01-01 00:00:00<ins>: 1s</ins>
+1997-07-01 00:00:00<ins>: 1s</ins>
+1999-01-01 00:00:00<ins>: 1s</ins>
+2006-01-01 00:00:00<ins>: 1s</ins>
+2009-01-01 00:00:00<ins>: 1s</ins>
+2012-07-01 00:00:00<ins>: 1s</ins>
+2015-07-01 00:00:00<ins>: 1s</ins>
+2017-01-01 00:00:00<ins>: 1s</ins>
+</pre></blockquote>
+<p>
+&mdash; <i>end example</i>]
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.11.8.2 <a href="https://wg21.link/time.zone.leap.members">[time.zone.leap.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr sys_seconds date() const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> The date and time at which the leap second was inserted.
+</p>
+</blockquote>
+<pre>
+<ins>constexpr seconds value() const noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Returns:</i> <code>+1s</code> to indicate a positive leap second or <code>-1s</code> to indicate a negative leap second. 
+[<i>Note:</i> All leap seconds inserted up through 2019 were positive leap seconds. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.12 <a href="https://wg21.link/time.format">[time.format]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Duration, class charT&gt;
+  struct formatter&lt;chrono::utc_time&lt;Duration&gt;, charT&gt;;
+</pre>
+<blockquote>
+<p>
+-7- <i>Remarks:</i> If <code>%Z</code> is used, it is replaced with
+<code><i>STATICALLY-WIDEN</i>&lt;charT&gt;("UTC")</code>. If <code>%z</code> (or a modified
+variant of <code>%z</code>) is used, an offset of <code>0min</code> is formatted. If the argument represents
+a time during a <ins>positive</ins> leap second insertion, and if a seconds field is formatted,
+the integral portion of that format is <code><i>STATICALLY-WIDEN</i>&lt;charT&gt;("60")</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

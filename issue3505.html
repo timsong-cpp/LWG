@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3505: split_view::outer-iterator::operator++ misspecified</title>
+<meta property="og:title" content="Issue 3505: split_view::outer-iterator::operator++ misspecified">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3505.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3505"><a href="lwg-defects.html#3505">3505</a>. <code>split_view::<i>outer-iterator</i>::operator++</code> misspecified</h3>
+<p><b>Section:</b> 26.7.16.3 <a href="https://wg21.link/range.lazy.split.outer">[range.lazy.split.outer]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2020-11-20 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.lazy.split.outer">issues</a> in [range.lazy.split.outer].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Prior to the application of <a href="https://wg21.link/p1862r1">P1862R1</a>, the part of
+<code>split_view::<i>outer-iterator</i>::operator++</code> that searches for the pattern
+is specified as:
+</p>
+<blockquote><pre>
+do {
+  const auto [b, p] = ranges::mismatch(<i>current</i>, end, pbegin, pend);
+  if (p == pend) {
+    <i>current</i> = b; // The pattern matched; skip it
+    break;
+  }
+} while (++<i>current</i> != end);
+</pre></blockquote>
+<p>
+<a href="https://wg21.link/p1862r1">P1862R1</a>, trying to accommodate move-only iterators, respecified this as
+</p>
+<blockquote><pre>
+do {
+  auto [b, p] = ranges::mismatch(std::move(<i>current</i>), end, pbegin, pend);
+  <i>current</i> = std::move(b);
+  if (p == pend) {
+    break; // The pattern matched; skip it
+  }
+} while (++<i>current</i> != end);
+</pre></blockquote>
+<p>
+but this is not correct, because if the pattern didn't match, it advances <code><i>current</i></code> 
+to the point of first mismatch, skipping elements before that point. This is totally wrong if the 
+pattern contains more than one element. 
+<p/>
+Consider <code>std::views::split("xxyx"sv, "xy"sv)</code>:
+</p>
+<ul>
+<li><p>at the beginning, <code><i>current</i></code> points to the first <code>'x'</code></p></li>
+<li><p><code>ranges::mismatch</code> produces <code>[</code>iterator to second <code>'x'</code>, 
+iterator to <code>'y'</code> in pattern<code>]</code></p></li>
+<li><p><code><i>current</i></code> now points to second <code>'x'</code></p></li>
+<li><p>we increment <code><i>current</i></code> in the condition, so it now points to <code>'y'</code></p></li>
+</ul>
+<p>
+At this point there's no way we can find the <code>"xy"</code> in the middle. In fact, 
+in this particular example, we'll increment past the end of the source range at the 
+end of the third iteration.
+</p>
+
+<p><i>[2020-11-29; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 2 during reflector discussions.
+</p>
+
+<p><i>[2021-02-08; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-02-26 Approved at February 2021 virtual plenary. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3505"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4868">N4868</a>. 
+</p>
+
+<ol>
+<li>
+<p>
+Modify  [range.split.outer] as indicated:
+</p>
+
+<blockquote>
+<pre>
+constexpr <i>outer-iterator</i>&amp; operator++();
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote>
+<pre>
+const auto end = ranges::end(<i>parent_</i>-&gt;<i>base_</i>);
+if (<i>current</i> == end) return <code>*this</code>;
+const auto [pbegin, pend] = subrange{<i>parent_</i>-&gt;<i>pattern_</i>};
+if (pbegin == pend) ++<i>current</i>;
+<ins>else if constexpr (<i>tiny-range</i>&lt;Pattern&gt;) {
+  <i>current</i> = ranges::find(std::move(<i>current</i>), end, *pbegin);
+  if (<i>current</i> != end) {
+    ++<i>current</i>;
+  }
+}</ins>
+else {
+  do {
+    auto [b, p] = ranges::mismatch(<del>std::move(</del><i>current</i><del>)</del>, end, pbegin, pend);
+    <del><i>current</i> = std::move(b);</del>
+    if (p == pend) {
+      <ins><i>current</i> = b;</ins>
+      break; <i>// The pattern matched; skip it</i>
+    }
+  } while (++<i>current</i> != end);
+}
+return *this;
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

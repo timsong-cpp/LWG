@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3509: Range adaptor objects are underspecified</title>
+<meta property="og:title" content="Issue 3509: Range adaptor objects are underspecified">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3509.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3509"><a href="lwg-defects.html#3509">3509</a>. Range adaptor objects are underspecified</h3>
+<p><b>Section:</b> 26.7.2 <a href="https://wg21.link/range.adaptor.object">[range.adaptor.object]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2020-12-15 <b>Last modified:</b> 2021-06-14</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#range.adaptor.object">active issues</a> in [range.adaptor.object].</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.adaptor.object">issues</a> in [range.adaptor.object].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+There is implementation divergence in the handling of this example:
+</p>
+<blockquote><pre>
+template&lt;class F&gt;
+auto filter(F f) {
+  return std::views::filter(f);
+}
+std::vector&lt;int&gt; v = {1, 2, 3, 4};
+auto f = filter([i = std::vector{4}] (auto x) { return x == i[0]; });
+auto x = v | f;
+</pre></blockquote>
+<p>
+libstdc++'s <code>views::filter</code> stores a reference to the argument if it is
+passed as an lvalue, so <code>f</code> contains a dangling reference in the above
+example. MSVC's <code>views::filter</code> always stores a copy, and forwards that
+as either an lvalue or an rvalue depending on the range adaptor closure object's 
+value category.
+<p/>
+MSVC's behavior here seems desirable and is consistent with range-v3's
+behavior as well: the ability to form range adapter pipelines like
+this is an important feature, and there's nothing in the above example
+that even hints at a dangling reference problem.
+<p/>
+However, the wording in 26.7.2 <a href="https://wg21.link/range.adaptor.object">[range.adaptor.object]</a> is unclear at best
+about exactly how the arguments are stored in the <code>adaptor(args...)</code>
+case; arguably, the requirement that <code>adaptor(range, args...)</code> be
+equivalent to <code>adaptor(args...)(range)</code> may even rule out the ability to
+make an extra copy. Certainly nothing in the wording guarantees that
+it is safe to reuse lvalue range pipelines (that is, <code>v | f</code> doesn't
+move from <code>f</code>).
+</p>
+
+<p><i>[2021-01-15; Telecon prioritization]</i></p>
+
+<p>
+Set priority to 2 following reflector and telecon discussions.
+</p>
+<p><i>[2021-06-13 Resolved by the adoption of <a href="https://wg21.link/P2281R1" title=" Clarifying range adaptor objects">P2281R1</a> at the June 2021 plenary. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3509"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

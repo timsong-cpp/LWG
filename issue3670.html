@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3670: Cpp17InputIterators don't have integer-class difference types</title>
+<meta property="og:title" content="Issue 3670: Cpp17InputIterators don't have integer-class difference types">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3670.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3670"><a href="lwg-defects.html#3670">3670</a>. <i>Cpp17InputIterator</i>s don't have integer-class difference types</h3>
+<p><b>Section:</b> 26.6.4.3 <a href="https://wg21.link/range.iota.iterator">[range.iota.iterator]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2022-02-04 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#range.iota.iterator">active issues</a> in [range.iota.iterator].</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.iota.iterator">issues</a> in [range.iota.iterator].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+26.6.4.3 <a href="https://wg21.link/range.iota.iterator">[range.iota.iterator]</a> defines 
+</p>
+<blockquote><pre>
+using iterator_category = input_iterator_tag; <i>// present only if W models incrementable</i>
+</pre></blockquote>
+<p>
+but when <code>difference_type</code> is an integer-class type the iterator does not meet the 
+<i>Cpp17InputIterator</i> requirements.
+</p>
+
+<p><i>[2022-02-07; Daniel comments]</i></p>
+
+<p>
+As requested by LWG <a href="lwg-defects.html#3376" title="&quot;integer-like class type&quot; is too restrictive (Status: Resolved)">3376</a> and wording implemented by <a href="https://wg21.link/P2393R1" title=" Cleaning up integer-class types">P2393R1</a>,
+integer-class types are no longer required to have class type.
+</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.6.4.3 <a href="https://wg21.link/range.iota.iterator">[range.iota.iterator]</a>, class <code>iota_view::<i>iterator</i></code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;weakly_incrementable W, semiregular Bound&gt;
+    requires <i>weakly-equality-comparable-with</i>&lt;W, Bound&gt; &amp;&amp; copyable&lt;W&gt;
+  struct iota_view&lt;W, Bound&gt;::<i>iterator</i> {
+    [&hellip;]
+    using iterator_category = input_iterator_tag; <i>// present only if W models incrementable <ins>and</ins></i> 
+                                                  <i><ins>// IOTA-DIFF-T(W) is not a class type</ins></i>
+    using value_type = W;
+    using difference_type = <i>IOTA-DIFF-T</i>(W);
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-02-07; Casey Carter provides improved wording]</i></p>
+
+
+<p><i>[2022-03-04; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3670"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.6.4.3 <a href="https://wg21.link/range.iota.iterator">[range.iota.iterator]</a>, class <code>iota_view::<i>iterator</i></code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;weakly_incrementable W, semiregular Bound&gt;
+    requires <i>weakly-equality-comparable-with</i>&lt;W, Bound&gt; &amp;&amp; copyable&lt;W&gt;
+  struct iota_view&lt;W, Bound&gt;::<i>iterator</i> {
+    [&hellip;]
+    using iterator_category = input_iterator_tag; <i>// present only if W models incrementable <ins>and</ins></i> 
+                                                  <i><ins>// IOTA-DIFF-T(W) is an integral type</ins></i>
+    using value_type = W;
+    using difference_type = <i>IOTA-DIFF-T</i>(W);
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

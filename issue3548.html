@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3548: shared_ptr construction from unique_ptr should move (not copy) the deleter</title>
+<meta property="og:title" content="Issue 3548: shared_ptr construction from unique_ptr should move (not copy) the deleter">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3548.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3548"><a href="lwg-defects.html#3548">3548</a>. <code>shared_ptr</code> construction from <code>unique_ptr</code> should move (not copy) the deleter</h3>
+<p><b>Section:</b> 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Thomas K&ouml;ppe <b>Opened:</b> 2021-05-04 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.const">active issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.const">issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The construction of a <code>shared_ptr</code> from a suitable <code>unique_ptr</code> rvalue <code>r</code> 
+(which was last modified by LWG <a href="lwg-defects.html#2415" title="Inconsistency between unique_ptr and shared_ptr (Status: C++17)">2415</a>, but not in ways relevant to this issue) calls 
+for <code>shared_ptr(r.release(), r.get_deleter())</code> in the case where the deleter is not a reference.
+<p/>
+This specification requires the deleter to be copyable, which seems like an unnecessary restriction. 
+Note that the constructor <code>unique_ptr(unique_ptr&amp;&amp; u)</code> only requires <code>u</code>'s deleter 
+to be <i>Cpp17MoveConstructible</i>. By analogy, the constructor <code>shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp;)</code> 
+should also require <code>D</code> to be only move-, not copy-constructible.
+</p>
+
+<p><i>[2021-05-17; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after eight votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-06-07 Approved at June 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3548"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+-28- <i>Constraints:</i> <code>Y*</code> is compatible with <code>T*</code> and <code>unique_ptr&lt;Y, D&gt;::pointer</code> 
+is convertible to <code>element_type*</code>.
+<p/>
+-29- <i>Effects:</i> If <code>r.get() == nullptr</code>, equivalent to <code>shared_ptr()</code>. Otherwise, if <code>D</code> 
+is not a reference type, equivalent to <code>shared_ptr(r.release(), <ins>std::move(</ins>r.get_deleter()<ins>)</ins>)</code>. 
+Otherwise, equivalent to <code>shared_ptr(r.release(), ref(r.get_deleter()))</code>. If an exception is thrown, 
+the constructor has no effect.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

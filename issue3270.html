@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3270: Parsing and formatting %j with durations</title>
+<meta property="og:title" content="Issue 3270: Parsing and formatting %j with durations">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3270.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3270"><a href="lwg-defects.html#3270">3270</a>. Parsing and formatting <code>%j</code> with <code>duration</code>s</h3>
+<p><b>Section:</b> 29.12 <a href="https://wg21.link/time.format">[time.format]</a>, 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2019-09-02 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#time.format">active issues</a> in [time.format].</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.format">issues</a> in [time.format].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>%j</code> represents the day number of the year when formatting and parsing <code>time_point</code>s. 
+It is also handy to interpret this flag consistently when formatting and parsing durations. That 
+is if there is not enough information in the stream to represent a <code>time_point</code>, and if the 
+target of the format/parse is a <code>duration</code>, <code>%j</code> represents a number of days.
+</p>
+<blockquote>
+<pre>
+#include &lt;chrono&gt;
+#include &lt;iostream&gt;
+#include &lt;sstream&gt;
+#include &lt;string&gt;
+
+int main()
+{
+  using namespace std;
+  using namespace std::chrono;
+  <i>// Parse %j as number of days into a duration</i>
+  istringstream in{"222"};
+  hours d;
+  in &gt;&gt; parse("%j", d);
+  cout &lt;&lt; d &lt;&lt; '\n';
+  cout &lt;&lt; format("{:%j}", d) &lt;&lt; '\n';
+}
+</pre>
+</blockquote>
+<p>
+Output:
+</p>
+<blockquote>
+<pre>
+5328h
+222
+</pre>
+</blockquote>
+<p><i>[2019-10 Priority set to 2 after reflector discussion]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify "Table 98 &mdash; Meaning of conversion specifiers"
+ [tab:time.format.spec] as indicated:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 98 &mdash; Meaning of conversion specifiers  [tab:time.format.spec]</caption>
+<tr style="text-align:center">
+<th>Specifier</th>
+<th>Replacement</th>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+<tr>
+<td><code>%j</code></td>
+<td>The day of the year as a decimal number. Jan 1 is <code>001</code>. If the result is less than three<br/>
+digits, it is left-padded with <code>0</code> to three digits. <ins>If the type being formatted is a<br/> 
+specialization of <code>duration</code>, it is formatted as a decimal number of <code>days</code>.</ins></td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+</table>
+
+</blockquote>
+
+</li>
+
+<li><p>Modify "Table 99 &mdash; Meaning of <code>parse</code> flags"
+ [tab:time.parse.spec] as indicated:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 99 &mdash; Meaning of <code>parse</code> flags  [tab:time.parse.spec]</caption>
+<tr style="text-align:center">
+<th>Flag</th>
+<th>Parsed value</th>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+<tr>
+<td><code>%j</code></td>
+<td>The day of the year as a decimal number. Jan 1 is <code>1</code>. The modified command <code>%<i>N</i>j</code><br/>
+specifies the maximum number of characters to read. If <code><i>N</i></code> is not specified, the default<br/>
+is <code>3</code>. Leading zeroes are permitted but not required. <ins>If the type being parsed is a<br/> 
+specialization of <code>duration</code>, it is parsed as a decimal number of <code>days</code>.</ins></td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+</table>
+
+</blockquote>
+
+</li>
+</ol></blockquote>
+
+<p><i>[2020-02-13 After Thursday afternoon discussion in Prague, Marshall provides updated wording.]</i></p>
+
+<p><i>[2020-02 Status to Immediate on Thursday night in Prague.]</i></p>
+
+
+
+<p id="res-3270"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify "Table 98 &mdash; Meaning of conversion specifiers"
+ [tab:time.format.spec] as indicated:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 98 &mdash; Meaning of conversion specifiers  [tab:time.format.spec]</caption>
+<tr style="text-align:center">
+<th>Specifier</th>
+<th>Replacement</th>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+<tr>
+<td><code>%j</code></td>
+<td><ins>If the type being formatted is a specialization of <code>duration</code>, 
+the decimal number of <code>days</code><br/>without padding. Otherwise, the</ins><del>The</del> 
+day of the year as a decimal number.<br/>Jan 1 is <code>001</code>. If the result 
+is less than three digits, it is left-padded with <code>0</code> to three digits. </td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+</table>
+
+</blockquote>
+
+</li>
+
+<li><p>Modify "Table 99 &mdash; Meaning of <code>parse</code> flags"
+ [tab:time.parse.spec] as indicated:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 99 &mdash; Meaning of <code>parse</code> flags  [tab:time.parse.spec]</caption>
+<tr style="text-align:center">
+<th>Flag</th>
+<th>Parsed value</th>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+<tr>
+<td><code>%j</code></td>
+<td><ins>If the type being parsed is a specialization of <code>duration</code>,<br/>
+a decimal number of <code>days</code>. Otherwise, the</ins><del>The</del> 
+day of the year as a decimal number. Jan 1 is <code>1</code>.<br/>
+<ins>In either case, the</ins><del>The</del> modified command <code>%<i>N</i>j</code> specifies the maximum number of characters to read.<br/>
+If <code><i>N</i></code> is not specified, the default is <code>3</code>. Leading zeroes are permitted but not required.</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+</table>
+
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

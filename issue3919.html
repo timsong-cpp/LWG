@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3919: enumerate_view may invoke UB for sized common non-forward underlying ranges</title>
+<meta property="og:title" content="Issue 3919: enumerate_view may invoke UB for sized common non-forward underlying ranges">
+<meta property="og:description" content="C++ library issue. Status: WP">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3919.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#WP">WP</a> status.</em></p>
+<h3 id="3919"><a href="lwg-defects.html#3919">3919</a>. <code>enumerate_view</code> may invoke UB for sized common non-forward underlying ranges</h3>
+<p><b>Section:</b> 26.7.24 <a href="https://wg21.link/range.enumerate">[range.enumerate]</a> <b>Status:</b> <a href="lwg-active.html#WP">WP</a>
+ <b>Submitter:</b> Patrick Palka <b>Opened:</b> 2023-04-07 <b>Last modified:</b> 2024-04-02</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#WP">WP</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+For a sized common range, <code>enumerate_view::end()</code> is specified to call
+<code>ranges::distance</code>. But <code>ranges::distance</code> is not necessarily well-defined
+for a sized non-forward range after calling <code>ranges::begin</code> (according to
+26.4.3 <a href="https://wg21.link/range.sized">[range.sized]</a>).
+<p/>
+So for a sized common non-forward underlying range, it seems calling
+<code>enumerate_view::begin()</code> followed by <code>enumerate_view::end()</code> may invoke UB
+and thus make <code>enumerate_view</code> potentially unusable for such ranges.
+<p/>
+I suppose we might need to instead call and cache the result of
+<code>ranges::distance</code> from <code>enumerate_view::begin()</code> for such ranges.
+</p>
+
+<p><i>[2022-04-12; Patrick Palka provides wording]</i></p>
+
+<p>
+The proposed wording follows the suggestion provided by Tim Song, to simply make <code>enumerate</code> non-common for this case.
+</p>
+
+<p><i>[2023-05-24; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<p><i>[Kona 2023-11-10; move to Ready]</i></p>
+
+
+<p><i>[Tokyo 2024-03-23; Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3919"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4944" title=" Working Draft, Standard for Programming Language C++">N4944</a>.
+</p>
+
+<ol>
+<li>
+<p>Modify 26.7.24.2 <a href="https://wg21.link/range.enumerate.view">[range.enumerate.view]</a>, class template class <code>enumerate_view</code> synopsis, as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+[&hellip;]
+constexpr auto end() requires (!<i>simple-view</i>&lt;V&gt;) {
+  if constexpr (<ins>forward_range&lt;V&gt; &amp;&amp;</ins> common_range&lt;V&gt; &amp;&amp; sized_range&lt;V&gt;)
+    return <i>iterator</i>&lt;false&gt;(ranges::end(<i>base_</i>), ranges::distance(<i>base_</i>));
+  else
+    return <i>sentinel</i>&lt;false&gt;(ranges::end(<i>base_</i>));
+}
+constexpr auto end() const requires <i>range-with-movable-references</i>&lt;const V&gt; {
+  if constexpr (<ins>forward_range&lt;const V&gt; &amp;&amp;</ins> common_range&lt;const V&gt; &amp;&amp; sized_range&lt;const V&gt;)
+    return <i>iterator</i>&lt;true&gt;(ranges::end(<i>base_</i>), ranges::distance(<i>base_</i>));
+  else
+    return <i>sentinel</i>&lt;true&gt;(ranges::end(<i>base_</i>));
+}
+[&hellip;]
+</pre></blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

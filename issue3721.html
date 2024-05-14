@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3721: Allow an arg-id with a value of zero for width in std-format-spec</title>
+<meta property="og:title" content="Issue 3721: Allow an arg-id with a value of zero for width in std-format-spec">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3721.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3721"><a href="lwg-defects.html#3721">3721</a>. Allow an <i>arg-id</i> with a value of zero for <i>width</i> in <i>std-format-spec</i></h3>
+<p><b>Section:</b> 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Mark de Wever <b>Opened:</b> 2022-06-19 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#format.string.std">active issues</a> in [format.string.std].</p>
+<p><b>View all other</b> <a href="lwg-index.html#format.string.std">issues</a> in [format.string.std].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Per 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a>/7
+</p>
+<blockquote><p>
+If <code>{ <i>arg-id<sub>opt</sub></i> }</code> is used in a <i>width</i> or <i>precision</i>, 
+the value of the corresponding formatting argument is used in its place. If the
+corresponding formatting argument is not of integral type, or its value is negative for 
+<i>precision</i> or non-positive for <i>width</i>, an exception of type <code>format_error</code> 
+is thrown.
+</p></blockquote>
+<p>
+During a libc++ code review Victor mentioned it would be nice to allow zero as a valid value 
+for the <i>arg-id</i> when used for the <i>width</i>. This would simplify the code by having 
+the same requirements for the <i>arg-id</i> for the <i>width</i> and <i>precision</i> fields. 
+A <i>width</i> of zero has no effect on the output.
+<p/>
+In the <i>std-format-spec</i> the <i>width</i> is restricted to a positive-integer to
+avoid parsing ambiguity with the zero-padding option. This ambiguity doesn't happen using an 
+<i>arg-id</i> with the value zero. Therefore I only propose to change the <i>arg-id</i>'s requirement.
+<p/>
+Note the Standard doesn't specify the <i>width</i> field's effect on the
+output. Specifically  [tab:format.align] doesn't refer to the <i>width</i>
+field. This is one of the items addressed by <a href="https://wg21.link/P2572" title=" std::format() fill character allowances">P2572</a>. The proposed resolution
+works in combination with the wording of that paper.
+</p>
+
+<p><i>[2022-07-08; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+<p><i>[2022-07-11; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3721"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-7- If <code>{ <i>arg-id<sub>opt</sub></i> }</code> is used in a <i>width</i> or <i>precision</i>, 
+the value of the corresponding formatting argument is used in its place. If the corresponding 
+formatting argument is not of integral type, or its value is negative <del>for <i>precision</i> 
+or non-positive for <i>width</i></del>, an exception of type <code>format_error</code> is thrown.
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

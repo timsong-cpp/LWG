@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3825: Missing compile-time argument id check in basic_format_parse_context::next_arg_id</title>
+<meta property="og:title" content="Issue 3825: Missing compile-time argument id check in basic_format_parse_context::next_arg_id">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3825.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3825"><a href="lwg-defects.html#3825">3825</a>. Missing compile-time argument <code>id</code> check in <code>basic_format_parse_context::next_arg_id</code></h3>
+<p><b>Section:</b> 22.14.6.6 <a href="https://wg21.link/format.parse.ctx">[format.parse.ctx]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Victor Zverovich <b>Opened:</b> 2022-11-09 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The definition of <code>check_arg_id</code> in 22.14.6.6 <a href="https://wg21.link/format.parse.ctx">[format.parse.ctx]</a> includes a (compile-time) 
+argument <code>id</code> check in the <i>Remarks</i> element:
+</p>
+<blockquote>
+<pre>
+constexpr void check_arg_id(size_t id);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+<i>Remarks</i>: Call expressions where <code>id &gt;= num_args_</code> are not core constant expressions (7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>).
+</p>
+</blockquote>
+</blockquote>
+<p>
+However, a similar check is missing from <code>next_arg_id</code> which means that there is no argument id validation 
+in user-defined format specification parsing code that invokes this function (e.g. when parsing automatically 
+indexed dynamic width).
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 22.14.6.6 <a href="https://wg21.link/format.parse.ctx">[format.parse.ctx]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr size_t next_arg_id();
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <code>indexing_ != manual</code>, equivalent to:
+</p>
+<blockquote><pre>
+if (indexing_ == unknown)
+  indexing_ = automatic;
+return next_arg_id_++;
+</pre></blockquote>
+<p>
+-8- <i>Throws</i>: <code>format_error</code> if <code>indexing_ == manual</code> which indicates mixing of automatic and manual
+argument indexing.
+<p/>
+<ins>-?- <i>Remarks</i>: Call expressions where <code>next_arg_id_ &gt;= num_args_</code> are not core constant expressions 
+(7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>).</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-11-11; Tomasz provide improved wording; Move to Open]</i></p>
+
+
+<p>
+Clarify that the value of <code>next_arg_id_</code> is used, and add missing "is <code>true</code>."
+</p>
+
+<p><i>[Kona 2022-11-11; move to Ready]</i></p>
+
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+<p id="res-3825"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 22.14.6.6 <a href="https://wg21.link/format.parse.ctx">[format.parse.ctx]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr size_t next_arg_id();
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects</i>: If <code>indexing_ != manual</code> <ins>is <code>true</code></ins>, equivalent to:
+</p>
+<blockquote><pre>
+if (indexing_ == unknown)
+  indexing_ = automatic;
+return next_arg_id_++;
+</pre></blockquote>
+<p>
+-8- <i>Throws</i>: <code>format_error</code> if <code>indexing_ == manual</code> <ins>is <code>true</code></ins> which indicates mixing
+of automatic and manual argument indexing.
+<p/>
+<ins>-?- <i>Remarks</i>: Let <i>cur-arg-id</i> be the value of <code>next_arg_id_</code> prior to this call.
+Call expressions where <code><i>cur-arg-id</i> &gt;= num_args_</code> is <code>true</code> are not core constant expressions 
+(7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>).</ins>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote>
+<pre>
+constexpr size_t check_arg_id(size_t id);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects</i>: If <code>indexing_ != automatic</code> <ins>is <code>true</code></ins>, equivalent to:
+</p>
+<blockquote><pre>
+if (indexing_ == unknown)
+  indexing_ = manual;
+</pre></blockquote>
+<p>
+-10- <i>Throws</i>: <code>format_error</code> if <code>indexing_ == automatic</code> <ins>is <code>true</code></ins> which indicates mixing 
+of automatic and manual argument indexing.
+<p/>
+-11- <i>Remarks</i>: Call expressions where <code>id &gt;= num_args_</code> <ins>is <code>true</code></ins> are not core constant
+expressions (7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>).
+</p>
+</blockquote>
+</blockquote>
+
+
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

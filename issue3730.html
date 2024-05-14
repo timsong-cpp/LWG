@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3730: std::ranges::drop_view may have different size type from its underlying view</title>
+<meta property="og:title" content="Issue 3730: std::ranges::drop_view may have different size type from its underlying view">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3730.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3730"><a href="lwg-active.html#3730">3730</a>. <code>std::ranges::drop_view</code> may have different size type from its underlying view</h3>
+<p><b>Section:</b> 26.7.12.2 <a href="https://wg21.link/range.drop.view">[range.drop.view]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2022-07-03 <b>Last modified:</b> 2022-07-17</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#range.drop.view">active issues</a> in [range.drop.view].</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.drop.view">issues</a> in [range.drop.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The bodies of both overloads of <code>drop_view&lt;V&gt;::size</code> are specified as:
+</p>
+<blockquote><pre>
+const auto s = ranges::size(<i>base_</i>);
+const auto c = static_cast&lt;decltype(s)&gt;(<i>count_</i>);
+return s &lt; c ? 0 : s - c;
+</pre></blockquote>
+<p>
+Given the return type is specified with <code>auto</code>, the actual return type 
+is the <em>promoted type</em> of the size type of the underlying view, which may be 
+different from the underlying size type (e.g. if the underlying size is <code>unsigned short</code>).
+<p/>
+Note that <code>take_view</code> always has the same size type as its underlying view. 
+So I think the difference on the size types is an oversight. On the other hand, the 
+<code>const</code> used here seems redundant and inconsistent with other parts of the 
+standard wording, although implementations may tend to use it.
+</p>
+
+<p><i>[2022-07-08; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+<p>
+"The PR is incorrect - integer-class types do not support mixed-signedess operations, so you 
+have to cast one of the two first."
+</p>
+
+<p><i>[2022-07-17; Daniel comments]</i></p>
+
+<p>
+This issue should be resolved by keeping LWG <a href="lwg-closed.html#3739" title="chunk_view::size should preserve the signedness of the size of the underlying range (Status: NAD)">3739</a> and <a href="lwg-closed.html#3740" title="slide_view::size should preserve the signedness of underlying range's size (Status: NAD)">3740</a> in mind.
+</p>
+
+
+<p id="res-3730"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.12.2 <a href="https://wg21.link/range.drop.view">[range.drop.view]</a>, class template <code>drop_view</code> synopsis, as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <code>s</code> and <code><i>count_</i></code> usually have different types, but I think 
+it's safe to perform comparison and subtraction, as <code><i>count_</i></code> is non-negative as long as 
+the behavior is well-defined.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+[&hellip;]
+constexpr auto size() requires sized_range&lt;V&gt; {
+  <del>const</del> auto s = ranges::size(<i>base_</i>);
+  <del>const auto c = static_cast&lt;decltype(s)&gt;(<i>count_</i>);</del>
+  return <ins>static_cast&lt;decltype(s)&gt;(</ins>s &lt; <del>c</del><ins><i>count_</i></ins> ? 0 : s - <del>c</del><ins><i>count_</i>)</ins>;
+}
+
+constexpr auto size() const requires sized_range&lt;const V&gt; {
+  <del>const</del> auto s = ranges::size(<i>base_</i>);
+  <del>const auto c = static_cast&lt;decltype(s)&gt;(<i>count_</i>);</del>
+  return <ins>static_cast&lt;decltype(s)&gt;(</ins>s &lt; <del>c</del><ins><i>count_</i></ins> ? 0 : s - <del>c</del><ins><i>count_</i>)</ins>;
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

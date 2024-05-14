@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3204: sub_match::swap only swaps the base class</title>
+<meta property="og:title" content="Issue 3204: sub_match::swap only swaps the base class">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3204.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3204"><a href="lwg-defects.html#3204">3204</a>. <code>sub_match::swap</code> only swaps the base class</h3>
+<p><b>Section:</b> 32.8 <a href="https://wg21.link/re.submatch">[re.submatch]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2019-05-07 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.submatch">issues</a> in [re.submatch].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>sub_match&lt;I&gt;</code> derives publicly from <code>pair&lt;I,I&gt;</code>, and so inherits 
+<code>pair::swap(pair&amp;)</code>. This means that the following program fails:
+</p>
+<blockquote><pre>
+#include &lt;regex&gt;
+#include &lt;cassert&gt;
+
+int main()
+{
+  std::sub_match&lt;const char*&gt; a, b;
+  a.matched = true;
+  a.swap(b);
+  assert(b.matched);
+}
+</pre></blockquote>
+<p>
+The <code>pair::swap(pair&amp;)</code> member should be hidden by a <code>sub_match::swap(sub_match&amp;)</code> 
+member that does the right thing.
+</p>
+
+<p><i>[2019-06-12 Priority set to 3 after reflector discussion]</i></p>
+
+
+<p><i>[2020-05-01; Daniel adjusts wording to recent working draft]</i></p>
+
+
+<p><i>[2022-04-25; Daniel adjusts wording to recent working draft]</i></p>
+
+<p>
+In addition the revised wording uses the new standard phrase "The exception specification is equivalent to"
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 32.8 <a href="https://wg21.link/re.submatch">[re.submatch]</a>, class template <code>sub_match</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+class sub_match : public pair&lt;BidirectionalIterator, BidirectionalIterator&gt; {
+public:
+  [&hellip;]
+  int compare(const sub_match&amp; s) const;
+  int compare(const string_type&amp; s) const;
+  int compare(const value_type* s) const;
+  
+  <ins>void swap(sub_match&amp; s) noexcept(<i>see below</i>);</ins>
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 32.8.2 <a href="https://wg21.link/re.submatch.members">[re.submatch.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+int compare(const value_type* s) const;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>void swap(sub_match&amp; s) noexcept(<i>see below</i>);</ins>
+</pre>
+<blockquote class="note">
+[<i>Drafting note:</i> The swappable requirement should really be unnecessary because <i>Cpp17Iterator</i> 
+requires it, but there is no wording that requires <code>BidirectionalIterator</code> in Clause
+99 [re] in general meets the bidirectional iterator requirements. Note that the definition found
+in 27.2 <a href="https://wg21.link/algorithms.requirements">[algorithms.requirements]</a> does not extend to 99 [re] normatively. &mdash; 
+<i>end drafting note</i>]
+</blockquote>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions:</i> Lvalues of type <code>BidirectionalIterator</code> are swappable 
+(16.4.4.3 <a href="https://wg21.link/swappable.requirements">[swappable.requirements]</a>).</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>this-&gt;pair&lt;BidirectionalIterator, BidirectionalIterator&gt;::swap(s);
+std::swap(matched, s.matched);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks:</i> The exception specification is equivalent to 
+<code>is_nothrow_swappable_v&lt;BidirectionalIterator&gt;</code>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-11-06; Daniel comments and improves wording]</i></p>
+
+<p>
+With the informal acceptance of <a href="https://isocpp.org/files/papers/P2696R0.html">P2696R0</a> by 
+LWG during a pre-Kona telecon, we should use the new requirement set <i>Cpp17Swappable</i> instead of 
+the "LValues are swappable" requirements.
+</p>
+
+
+<p><i>[2022-11-30; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3204"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a> <b>and assumes the acceptance of <a href="https://isocpp.org/files/papers/P2696R0.html">P2696R0</a></b>.
+</p>
+
+<ol>
+<li><p>Modify 32.8 <a href="https://wg21.link/re.submatch">[re.submatch]</a>, class template <code>sub_match</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+class sub_match : public pair&lt;BidirectionalIterator, BidirectionalIterator&gt; {
+public:
+  [&hellip;]
+  int compare(const sub_match&amp; s) const;
+  int compare(const string_type&amp; s) const;
+  int compare(const value_type* s) const;
+  
+  <ins>void swap(sub_match&amp; s) noexcept(<i>see below</i>);</ins>
+};
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 32.8.2 <a href="https://wg21.link/re.submatch.members">[re.submatch.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+int compare(const value_type* s) const;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>void swap(sub_match&amp; s) noexcept(<i>see below</i>);</ins>
+</pre>
+<blockquote class="note">
+[<i>Drafting note:</i> The <i>Cpp17Swappable</i> requirement should really be unnecessary because <i>Cpp17Iterator</i> 
+requires it, but there is no wording that requires <code>BidirectionalIterator</code> in Clause
+99 [re] in general meets the bidirectional iterator requirements. Note that the definition found
+in 27.2 <a href="https://wg21.link/algorithms.requirements">[algorithms.requirements]</a> does not extend to 99 [re] normatively. &mdash; 
+<i>end drafting note</i>]
+</blockquote>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions:</i> <code>BidirectionalIterator</code> meets the <i>Cpp17Swappable</i> requirements 
+(16.4.4.3 <a href="https://wg21.link/swappable.requirements">[swappable.requirements]</a>).</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>this-&gt;pair&lt;BidirectionalIterator, BidirectionalIterator&gt;::swap(s);
+std::swap(matched, s.matched);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks:</i> The exception specification is equivalent to 
+<code>is_nothrow_swappable_v&lt;BidirectionalIterator&gt;</code>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

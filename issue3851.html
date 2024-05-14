@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3851: chunk_view::inner-iterator missing custom iter_move and iter_swap</title>
+<meta property="og:title" content="Issue 3851: chunk_view::inner-iterator missing custom iter_move and iter_swap">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3851.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3851"><a href="lwg-defects.html#3851">3851</a>. <code>chunk_view::<i>inner-iterator</i></code> missing custom <code>iter_move</code> and <code>iter_swap</code></h3>
+<p><b>Section:</b> 26.7.29.5 <a href="https://wg21.link/range.chunk.inner.iter">[range.chunk.inner.iter]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-01-06 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+For the input version of <code>chunk_view</code>,
+its <code><i>inner-iterator</i>::operator*()</code> simply 
+dereferences the underlying input iterator.
+However, there are no customized <code>iter_move</code> and <code>iter_swap</code>
+overloads for the <code><i>inner-iterator</i></code>,
+which prevents customized behavior when applying <code>views::chunk</code>
+to a range whose iterator type is a proxy iterator,
+<a href="https://godbolt.org/z/ETh5o6GYj">for example</a>:
+</p>
+<pre>
+    #include &lt;algorithm&gt;
+    #include &lt;cassert&gt;
+    #include &lt;ranges&gt;
+    #include &lt;sstream&gt;
+    #include &lt;vector&gt;
+
+    int main() {
+      auto ints = std::istringstream{"0 1 2 3 4"};
+      std::vector&lt;std::string&gt; vs{"the", "quick", "brown", "fox"};
+      auto r = std::views::zip(vs, std::views::istream&lt;int&gt;(ints))
+              | std::views::chunk(2)
+              | std::views::join;
+      std::vector&lt;std::tuple&lt;std::string, int&gt;&gt; res;
+      std::ranges::copy(std::move_iterator(r.begin()), std::move_sentinel(r.end()), 
+                        std::back_inserter(res));
+      assert(vs.front().empty()); // <span style="color:red;font-weight:bolder">assertion failed</span>
+    }
+</pre>
+<p>
+<code>zip</code> iterator has a customized <code>iter_move</code> behavior,
+but since there is no <code>iter_move</code> specialization for
+<code><i>inner-iterator</i></code>,
+when we try to move elements in <code>chunk_view</code>,
+<code>move_iterator</code> will fallback to use the default implementation of
+<code>iter_move</code>, making <code>string</code>s not moved as expected
+from the original <code>vector</code> but copied instead.
+</p>
+
+<p><i>[2023-02-01; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3851"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.29.5 <a href="https://wg21.link/range.chunk.inner.iter">[range.chunk.inner.iter]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+    requires input_range&lt;V&gt;
+  class chunk_view&lt;V&gt;::<i>inner-iterator</i> {
+    chunk_view* <i>parent_</i>;                                                <i>// exposition only</i>
+
+    constexpr explicit <i>inner-iterator</i>(chunk_view&amp; parent) noexcept;     <i>// exposition only</i>
+
+  public:
+    [&hellip;]
+    friend constexpr difference_type operator-(default_sentinel_t y, const <i>inner-iterator</i>&amp; x)
+      requires sized_sentinel_for&lt;sentinel_t&lt;V&gt;, iterator_t&lt;V&gt;&gt;;
+    friend constexpr difference_type operator-(const <i>inner-iterator</i>&amp; x, default_sentinel_t y)
+      requires sized_sentinel_for&lt;sentinel_t&lt;V&gt;, iterator_t&lt;V&gt;&gt;;
+
+<ins>    friend constexpr range_rvalue_reference_t&lt;V&gt; iter_move(const <i>inner-iterator</i>&amp; i)
+      noexcept(noexcept(ranges::iter_move(*i.<i>parent_</i>-><i>current_</i>)));
+
+    friend constexpr void iter_swap(const <i>inner-iterator</i>&amp; x, const <i>inner-iterator</i>&amp; y)
+      noexcept(noexcept(ranges::iter_swap(*x.<i>parent_</i>-><i>current_</i>, *y.<i>parent_</i>-><i>current_</i>)))
+      requires indirectly_swappable&lt;iterator_t&lt;V&gt;&gt;;</ins>
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre><ins>friend constexpr range_rvalue_reference_t&lt;V&gt; iter_move(const <i>inner-iterator</i>&amp; i)
+  noexcept(noexcept(ranges::iter_move(*i.<i>parent_</i>-><i>current_</i>)));</ins>
+</pre>
+<blockquote>
+<p>
+<ins>
+-?- <i>Effects:</i> Equivalent to: <code>return ranges::iter_move(*i.<i>parent_</i>-><i>current_</i>);</code>
+</ins>
+</p>
+</blockquote>
+<pre><ins>friend constexpr void iter_swap(const <i>inner-iterator</i>&amp; x, const <i>inner-iterator</i>&amp; y)
+  noexcept(noexcept(ranges::iter_swap(*x.<i>parent_</i>-><i>current_</i>, *y.<i>parent_</i>-><i>current_</i>)))
+  requires indirectly_swappable&lt;iterator_t&lt;V&gt;&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>
+-?- <i>Effects:</i> Equivalent to: <code>ranges::iter_swap(*x.<i>parent_</i>-><i>current_</i>, *y.<i>parent_</i>-><i>current_</i>)</code>.
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

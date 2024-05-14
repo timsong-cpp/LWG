@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3169: ranges permutation generators discard useful information</title>
+<meta property="og:title" content="Issue 3169: ranges permutation generators discard useful information">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3169.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3169"><a href="lwg-defects.html#3169">3169</a>. <code>ranges</code> permutation generators discard useful information</h3>
+<p><b>Section:</b> 27.8.13 <a href="https://wg21.link/alg.permutation.generators">[alg.permutation.generators]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2018-11-26 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In the Ranges design, algorithms that necessarily traverse an entire range -
+consequently discovering the end iterator value - return that iterator value
+unless the algorithm's sole purpose is to return a derived value,
+for example, <code>ranges::count</code>.
+<code>ranges::next_permutation</code> and <code>ranges::prev_permutation</code>
+necessarily traverse the entirety of their range argument, but are currently
+specified to discard the end iterator value and return only a <code>bool</code>
+indicating whether they found a next (respectively previous) permutation or
+"reset" the range to the first (respectively last) permutation.
+They should instead return an aggregate composed of both
+that <code>bool</code> and the end iterator value to be consistent with the other
+<code>range</code> algorithms.
+</p>
+
+<p><i>[2019-01-22; Daniel comments and updates wording]</i></p>
+
+<p>
+During the reflector discussion it had been noticed that an additional update of
+27.2 <a href="https://wg21.link/algorithms.requirements">[algorithms.requirements]</a> p.16 is necessary for the new type
+<code>next_permutation_result</code> and two missing occurrences of <code>iterator_t&lt;&gt;</code> where
+added. The proposed wording has been updated.
+</p>
+
+<p><i>[2019-02-02 Priority to 0 and Status to Tentatively Ready after five positive votes on the reflector.]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<ol>
+<li><p>Modify 27.2 <a href="https://wg21.link/algorithms.requirements">[algorithms.requirements]</a> as follows:</p>
+
+<blockquote>
+<p>
+-16- The class templates <code>binary_transform_result</code>, <code>for_each_result</code>,
+<code>minmax_result</code>, <code>mismatch_result</code><ins>, <code>next_permutation_result</code></ins>,
+<code>copy_result</code>, and <code>partition_copy_result</code> have the template parameters, data members,
+and special members specified above. They have no base classes or members other than those specified.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 27.4 <a href="https://wg21.link/algorithm.syn">[algorithm.syn]</a> as follows:</p>
+
+<blockquote>
+<pre>
+  // 27.8.13 <a href="https://wg21.link/alg.permutation.generators">[alg.permutation.generators]</a>, permutations
+  template&lt;class BidirectionalIterator&gt;
+    constexpr bool next_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last);
+  template&lt;class BidirectionalIterator, class Compare&gt;
+    constexpr bool next_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last, Compare comp);
+
+  namespace ranges {
+    <ins>template&lt;class I&gt;</ins>
+    <ins>struct next_permutation_result {</ins>
+      <ins>bool found;</ins>
+      <ins>I in;</ins>
+    <ins>};</ins>
+
+    template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;I, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+        next_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+    template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>next_permutation_result&lt;iterator_t&lt;R&gt;&gt;</ins>
+        next_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+  }
+
+  template&lt;class BidirectionalIterator&gt;
+    constexpr bool prev_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last);
+  template&lt;class BidirectionalIterator, class Compare&gt;
+    constexpr bool prev_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last, Compare comp);
+
+  namespace ranges {
+    <ins>template&lt;class I&gt;</ins>
+    <ins>using prev_permutation_result = next_permutation_result&lt;I&gt;;</ins>
+
+    template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;I, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+        prev_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+    template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>prev_permutation_result&lt;iterator_t&lt;R&gt;&gt;</ins>
+        prev_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+  }
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 27.8.13 <a href="https://wg21.link/alg.permutation.generators">[alg.permutation.generators]</a> as follows:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator>
+  constexpr bool next_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare>
+  constexpr bool next_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last, Compare comp);
+
+namespace ranges {
+  template&lt;BidirectionalIterator I, Sentinel&lt;I> S, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;I, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+      next_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>next_permutation_result&lt;iterator_t&lt;R&gt;&gt;</ins>
+      next_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+</pre>
+</blockquote>
+[&hellip;]
+<p>-4- <i>Returns:</i> <ins>Let <code>B</code> be</ins> <code>true</code>
+  if <del>and only if</del> a next permutation was found
+  <ins>and otherwise <code>false</code></ins>. <ins>Returns:</ins></p>
+<ul>
+<li><p><ins><code>B</code> for the overloads in namespace <code>std</code>,
+  or</ins></p></li>
+<li><p><ins><code>{ B, last }</code> for the overloads
+  in namespace <code>ranges</code>.</ins></p></li>
+</ul>
+<p>-5- <i>Complexity:</i> [&hellip;]</p>
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+  constexpr bool prev_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare&gt;
+  constexpr bool prev_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last, Compare comp);
+
+namespace ranges {
+  template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;I, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+      prev_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>prev_permutation_result&lt;iterator_t&lt;R&gt;&gt;</ins>
+      prev_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+</pre>
+</blockquote>
+[&hellip;]
+<p>-9- <i>Returns:</i> <ins>Let <code>B</code> be</ins> <code>true</code>
+  if <del>and only if</del> a previous permutation was found
+  <ins>and otherwise <code>false</code></ins>. Returns:</p>
+<ul>
+<li><p><ins><code>B</code> for the overloads in namespace <code>std</code>, or</ins></p></li>
+<li><p><ins><code>{ B, last }</code> for the overloads in namespace <code>ranges</code>.</ins></p></li>
+</ul>
+<p>-10- <i>Complexity:</i> [&hellip;]</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2019-02-10 Tomasz comments; Casey updates the P/R and resets status to "Review."]</i></p>
+
+Shouldn't the range overloads for an algorithms return
+<code>safe_iterator_t&lt;R&gt;</code> instead of <code>iterator_t&lt;R&gt;</code>?
+Other algorithms are consistently returning the
+<code>safe_iterator_t</code>/<code>safe_subrange_t</code> in situation, when range
+argument is an rvalue (temporary) and returned iterator may  be dangling.
+
+<p><i>[2019-02; Kona Wednesday night issue processing]</i></p>
+
+<p>Status to Ready</p>
+
+
+<p id="res-3169"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4800">N4800</a>.</p>
+
+<ol>
+<li><p>Modify 27.2 <a href="https://wg21.link/algorithms.requirements">[algorithms.requirements]</a> as follows:</p>
+
+<blockquote>
+<p>
+-16- The class templates <code>binary_transform_result</code>, <code>for_each_result</code>,
+<code>minmax_result</code>, <code>mismatch_result</code><ins>, <code>next_permutation_result</code></ins>,
+<code>copy_result</code>, and <code>partition_copy_result</code> have the template parameters, data members,
+and special members specified above. They have no base classes or members other than those specified.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 27.4 <a href="https://wg21.link/algorithm.syn">[algorithm.syn]</a> as follows:</p>
+
+<blockquote>
+<pre>
+  // 27.8.13 <a href="https://wg21.link/alg.permutation.generators">[alg.permutation.generators]</a>, permutations
+  template&lt;class BidirectionalIterator&gt;
+    constexpr bool next_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last);
+  template&lt;class BidirectionalIterator, class Compare&gt;
+    constexpr bool next_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last, Compare comp);
+
+  namespace ranges {
+    <ins>template&lt;class I&gt;</ins>
+    <ins>struct next_permutation_result {</ins>
+      <ins>bool found;</ins>
+      <ins>I in;</ins>
+    <ins>};</ins>
+
+    template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;I, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+        next_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+    template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>next_permutation_result&lt;safe_iterator_t&lt;R&gt;&gt;</ins>
+        next_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+  }
+
+  template&lt;class BidirectionalIterator&gt;
+    constexpr bool prev_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last);
+  template&lt;class BidirectionalIterator, class Compare&gt;
+    constexpr bool prev_permutation(BidirectionalIterator first,
+                                    BidirectionalIterator last, Compare comp);
+
+  namespace ranges {
+    <ins>template&lt;class I&gt;</ins>
+    <ins>using prev_permutation_result = next_permutation_result&lt;I&gt;;</ins>
+
+    template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;I, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+        prev_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+    template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+             class Proj = identity&gt;
+      requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+      constexpr <del>bool</del><ins>prev_permutation_result&lt;safe_iterator_t&lt;R&gt;&gt;</ins>
+        prev_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+  }
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 27.8.13 <a href="https://wg21.link/alg.permutation.generators">[alg.permutation.generators]</a> as follows:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator>
+  constexpr bool next_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare>
+  constexpr bool next_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last, Compare comp);
+
+namespace ranges {
+  template&lt;BidirectionalIterator I, Sentinel&lt;I> S, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;I, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>next_permutation_result&lt;I&gt;</ins>
+      next_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>next_permutation_result&lt;safe_iterator_t&lt;R&gt;&gt;</ins>
+      next_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+</pre>
+</blockquote>
+[&hellip;]
+<p>-4- <i>Returns:</i> <ins>Let <code>B</code> be</ins> <code>true</code>
+  if <del>and only if</del> a next permutation was found
+  <ins>and otherwise <code>false</code></ins>. <ins>Returns:</ins></p>
+<ul>
+<li><p><ins><code>B</code> for the overloads in namespace <code>std</code>,
+  or</ins></p></li>
+<li><p><ins><code>{ B, last }</code> for the overloads
+  in namespace <code>ranges</code>.</ins></p></li>
+</ul>
+<p>-5- <i>Complexity:</i> [&hellip;]</p>
+<blockquote>
+<pre>
+template&lt;class BidirectionalIterator&gt;
+  constexpr bool prev_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last);
+template&lt;class BidirectionalIterator, class Compare&gt;
+  constexpr bool prev_permutation(BidirectionalIterator first,
+                                  BidirectionalIterator last, Compare comp);
+
+namespace ranges {
+  template&lt;BidirectionalIterator I, Sentinel&lt;I&gt; S, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;I, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>prev_permutation_result&lt;I&gt;</ins>
+      prev_permutation(I first, S last, Comp comp = {}, Proj proj = {});
+  template&lt;BidirectionalRange R, class Comp = ranges::less&lt;&gt;,
+           class Proj = identity&gt;
+    requires Sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+    constexpr <del>bool</del><ins>prev_permutation_result&lt;safe_iterator_t&lt;R&gt;&gt;</ins>
+      prev_permutation(R&amp;&amp; r, Comp comp = {}, Proj proj = {});
+}
+</pre>
+</blockquote>
+[&hellip;]
+<p>-9- <i>Returns:</i> <ins>Let <code>B</code> be</ins> <code>true</code>
+  if <del>and only if</del> a previous permutation was found
+  <ins>and otherwise <code>false</code></ins>. Returns:</p>
+<ul>
+<li><p><ins><code>B</code> for the overloads in namespace <code>std</code>, or</ins></p></li>
+<li><p><ins><code>{ B, last }</code> for the overloads in namespace <code>ranges</code>.</ins></p></li>
+</ul>
+<p>-10- <i>Complexity:</i> [&hellip;]</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

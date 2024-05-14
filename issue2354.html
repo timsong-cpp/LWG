@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Issue 2354: Unnecessary copying when inserting into maps with braced-init syntax</title>
-<style type="text/css">
+<meta property="og:title" content="Issue 2354: Unnecessary copying when inserting into maps with braced-init syntax">
+<meta property="og:description" content="C++ library issue. Status: C++17">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue2354.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,23 +24,57 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="2354" href="lwg-defects.html#2354">2354</a>. Unnecessary copying when inserting into maps with braced-init syntax</h3>
-<p><b>Section:</b> 26.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, 26.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, 26.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, 26.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a> <b>Status:</b> <a href="lwg-active.html#C++17">C++17</a>
- <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2014-01-08 <b>Last modified:</b> 2017-09-13</p>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++17">C++17</a> status.</em></p>
+<h3 id="2354"><a href="lwg-defects.html#2354">2354</a>. Unnecessary copying when inserting into maps with braced-init syntax</h3>
+<p><b>Section:</b> 24.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, 24.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, 24.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, 24.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a> <b>Status:</b> <a href="lwg-active.html#C++17">C++17</a>
+ <b>Submitter:</b> Geoffrey Romer <b>Opened:</b> 2014-01-08 <b>Last modified:</b> 2017-10-13</p>
 <p><b>Priority: </b>2
 </p>
+<p><b>View all other</b> <a href="lwg-index.html#map.overview">issues</a> in [map.overview].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#C++17">C++17</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-The rvalue-reference <tt>insert()</tt> members of <tt>map</tt>, <tt>multimap</tt>, <tt>unordered_map</tt>, and 
-<tt>unordered_multimap</tt> are specified as function templates, where the rvalue-reference parameter type 
+The rvalue-reference <code>insert()</code> members of <code>map</code>, <code>multimap</code>, <code>unordered_map</code>, and 
+<code>unordered_multimap</code> are specified as function templates, where the rvalue-reference parameter type 
 depends on the template parameter. 
-As a consequence, these overloads cannot be invoked via braced-initializer syntax (e.g. <tt>my_map.insert({key, value})</tt>), 
+As a consequence, these overloads cannot be invoked via braced-initializer syntax (e.g. <code>my_map.insert({key, value})</code>), 
 because the template argument cannot be deduced from a braced-init-list. Such calls instead resolve to the 
 const lvalue reference overload, which forces a non-elidable copy of the argument, despite the fact that the 
 argument is an rvalue, and so should be eligible for moving and copy elision.
@@ -42,29 +83,29 @@ This leads to sub-optimal performance for copyable values, and makes this syntax
 values. This is particularly problematic because sources such as Josuttis's "C++ Standard Library" recommend 
 this syntax as the preferred way to insert into a map in C++11.
 <p/>
-I think this can be fixed by adding an equivalent non-template <tt>value_type&amp;&amp;</tt> overload for each affected 
+I think this can be fixed by adding an equivalent non-template <code>value_type&amp;&amp;</code> overload for each affected 
 member template. Simply declaring these members in the class synopses should be sufficient; their semantics are 
 already dictated by the container concepts (c.f. the corresponding lvalue-reference overloads, which have no 
 additional discussion beyond being listed in the synopsis).
 </p>
 
-<p><i>[2012-02-13 Issaquah]</i></p>
+<p><i>[2014-02-13 Issaquah]</i></p>
 
 <p>
-AJM: Is this not better solved by <tt>emplace</tt>?
+AJM: Is this not better solved by <code>emplace</code>?
 </p>
 
 <p>
-Nico: <tt>emplace</tt> was a mistake, it breaks a uniform pattern designed into the STL.
+Nico: <code>emplace</code> was a mistake, it breaks a uniform pattern designed into the STL.
 Hence, this fix is important, it should be the preferred way to do this.
 </p>
 
 <p>
-JonW: <tt>emplace</tt> is still more efficient, as this form must make a non-elidable copy.
+JonW: <code>emplace</code> is still more efficient, as this form must make a non-elidable copy.
 </p>
 
 <p>
-GeoffR: Also, cannot move from a <tt>const</tt> key, must always make a copy.
+GeoffR: Also, cannot move from a <code>const</code> key, must always make a copy.
 </p>
 
 <p>
@@ -79,11 +120,11 @@ Move to Ready, pending implementation experience.
 
 
 
-<p><b>Proposed resolution:</b></p>
+<p id="res-2354"><b>Proposed resolution:</b></p>
 <p>This wording is relative to N3797.</p>
 
 <ol>
-<li><p>Change 26.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, class template <tt>map</tt> synopsis, as indicated:</p>
+<li><p>Change 24.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, class template <code>map</code> synopsis, as indicated:</p>
 
 <blockquote><pre>
 [&hellip;]
@@ -98,7 +139,7 @@ template &lt;class P&gt;
 </pre></blockquote>
 </li>
 
-<li><p>Change 26.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, class template <tt>multimap</tt> synopsis, as indicated:</p>
+<li><p>Change 24.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, class template <code>multimap</code> synopsis, as indicated:</p>
 
 <blockquote><pre>
 [&hellip;]
@@ -112,7 +153,7 @@ template &lt;class P&gt; iterator insert(const_iterator position, P&amp;&amp; x)
 </pre></blockquote>
 </li>
 
-<li><p>Change 26.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, class template <tt>unordered_map</tt> synopsis, as indicated:</p>
+<li><p>Change 24.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, class template <code>unordered_map</code> synopsis, as indicated:</p>
 
 <blockquote><pre>
 [&hellip;]
@@ -126,7 +167,7 @@ template &lt;class P&gt; iterator insert(const_iterator hint, P&amp;&amp; obj);
 </pre></blockquote>
 </li>
 
-<li><p>Change 26.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a>, class template <tt>unordered_multimap</tt> synopsis, as indicated:</p>
+<li><p>Change 24.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a>, class template <code>unordered_multimap</code> synopsis, as indicated:</p>
 
 <blockquote><pre>
 [&hellip;]

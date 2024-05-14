@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 4019: Reversing an infinite range leads to an infinite loop</title>
+<meta property="og:title" content="Issue 4019: Reversing an infinite range leads to an infinite loop">
+<meta property="og:description" content="C++ library issue. Status: SG9">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue4019.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#SG9">SG9</a> status.</em></p>
+<h3 id="4019"><a href="lwg-active.html#4019">4019</a>. Reversing an infinite range leads to an infinite loop</h3>
+<p><b>Section:</b> 26.7.21 <a href="https://wg21.link/range.reverse">[range.reverse]</a> <b>Status:</b> <a href="lwg-active.html#SG9">SG9</a>
+ <b>Submitter:</b> Barry Revzin <b>Opened:</b> 2023-11-25 <b>Last modified:</b> 2024-03-11</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.reverse">issues</a> in [range.reverse].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#SG9">SG9</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Consider the following:
+</p>
+<blockquote><pre>
+auto a = views::iota(0) | views::reverse;
+auto b = views::repeat(42) | views::reverse;
+</pre></blockquote>
+<p>
+Here, <code>views::iota(0)</code> and <code>views::repeat(42)</code> are both non-common bidirectional (even random-access) ranges. 
+They are also infinite ranges, even if the standard doesn't really recognize that. 
+<p/>
+<code>views::reverse</code> on a non-common range will actually compute the end iterator for you. So while both declarations 
+of <code>a</code> and <code>b</code> above compile, attempting to use either in any way will lead to an infinite loop when you 
+<code>try a.begin()</code> or <code>b.begin()</code>.
+<p/>
+A reddit post suggested disallowing reversing a non-common range but that likely breaks reasonable use-cases. We could at
+the very least recognize ranges whose sentinel is <code>unreachable_t</code> and reject those from consideration. For instance, 
+we could change 25.4.4.4 <a href="https://wg21.link/range.iter.op.next">[range.iter.op.next]</a>/3 to <i>Mandate</i> that <code>S</code> is not <code>unreachable_t</code>.
+</p>
+
+<p><i>[2024-03-11; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll. Ask SG9 to look. Probably needs a paper.
+</p>
+<p>
+Infinite ranges are invalid and giving an invalid range to the library is
+undefined. But this is not a particularly satisfactory answer given that
+we provide such ranges ourselves...
+</p>
+
+
+
+<p id="res-4019"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

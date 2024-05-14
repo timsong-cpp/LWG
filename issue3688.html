@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3688: Exception specifications of copy/move member functions of std::bad_expected_access</title>
+<meta property="og:title" content="Issue 3688: Exception specifications of copy/move member functions of std::bad_expected_access">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3688.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3688"><a href="lwg-active.html#3688">3688</a>. Exception specifications of copy/move member functions of <code>std::bad_expected_access</code></h3>
+<p><b>Section:</b> 22.8.4 <a href="https://wg21.link/expected.bad">[expected.bad]</a>, 22.8.5 <a href="https://wg21.link/expected.bad.void">[expected.bad.void]</a>, 22.8.6.6 <a href="https://wg21.link/expected.object.obs">[expected.object.obs]</a>, 22.8.7.6 <a href="https://wg21.link/expected.void.obs">[expected.void.obs]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2022-03-24 <b>Last modified:</b> 2023-05-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The move constructor and the move assignment operator of standard exception types are not covered by 
+17.9.3 <a href="https://wg21.link/exception">[exception]</a>/2, and thus it is currently effectively unspecified whether these move 
+functions of <code>std::bad_expected_access&lt;void&gt;</code> are <code>noexcept</code>. Furthermore, 
+<code>std::bad_expected_access&lt;void&gt;</code> has protected special member functions, which overrides 
+(or conflicts with?) the general rule in 17.9.3 <a href="https://wg21.link/exception">[exception]</a>/2.
+<p/>
+The primary template <code>std::bad_expected_access&lt;E&gt;</code> stores an <code>E</code> object, and copying 
+the stored object may throw an exception. Is it intended that the copy functions of 
+<code>std::bad_expected_access&lt;E&gt;</code> are <code>noexcept</code> while those of <code>E</code> are not? 
+When the copy happens because a <code>std::bad_expected_access&lt;E&gt;</code> is caught by value, if the 
+copy constructor of <code>E</code> throws, <code>std::terminate</code> is called no matter whether that of 
+<code>std::bad_expected_access&lt;E&gt;</code> is <code>noexcept</code>. But 
+<code>std::bad_expected_access&lt;E&gt;</code> may be copied/moved in other circumstances.
+<p/>
+I think the move constructor and the move assignment operator of a standard exception type should be 
+specified to be public and <code>noexcept</code> when they exist, although sometimes whether they exist may be 
+unspecified. And the move functions should also propagate the result of <code>what()</code> when the source 
+and target have the same dynamic type, except that they can leave the result of <code>what()</code> from 
+the source valid but unspecified.
+<p/>
+Related to this, <code>std::expected&lt;T, E&gt;::value</code> overloads are specified to throw 
+<code>std::bad_expected_access&lt;std::decay_t&lt;E&gt;&gt;</code> when an <code>E</code> is contained. 
+However, it seems that the copy constructor of <code>std::bad_expected_access</code> is implicitly 
+deleted if <code>E</code> is move-only, so the <i>throw-expression</i> is ill-formed.
+<p/>
+Is it intended that <code>std::expected&lt;T, E&gt;::value</code> is ill-formed in such cases?
+</p>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 after reflector poll.
+</p>
+
+<p><i>[2023-05-25; Jonathan comments]</i></p>
+
+<p>
+The last part was clarified by LWG <a href="lwg-defects.html#3843" title="std::expected&lt;T,E&gt;::value() &amp; assumes E is copy constructible (Status: C++23)">3843</a>, confirming that
+<code>value()</code> is ill-formed for move-only <code>E</code>.
+</p>
+
+
+
+<p id="res-3688"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

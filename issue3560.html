@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3560: ranges::equal and ranges::is_permutation should short-circuit for sized_ranges</title>
+<meta property="og:title" content="Issue 3560: ranges::equal and ranges::is_permutation should short-circuit for sized_ranges">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3560.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3560"><a href="lwg-defects.html#3560">3560</a>. <code>ranges::equal</code> and <code>ranges::is_permutation</code> should short-circuit for <code>sized_ranges</code></h3>
+<p><b>Section:</b> 27.6.13 <a href="https://wg21.link/alg.equal">[alg.equal]</a>, 27.6.14 <a href="https://wg21.link/alg.is.permutation">[alg.is.permutation]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2021-06-03 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.equal">issues</a> in [alg.equal].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>ranges::equal</code> and <code>ranges::is_permutation</code> are currently only required
+to short-circuit on different sizes if the iterator and sentinel of the two ranges
+pairwise model <code>sized_sentinel_for</code>. They should also short-circuit if the ranges are sized.
+</p>
+
+<p><i>[2021-06-23; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-10-14 Approved at October 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3560"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify 27.6.13 <a href="https://wg21.link/alg.equal">[alg.equal]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator1, class InputIterator2&gt;
+  constexpr bool equal(InputIterator1 first1, InputIterator1 last1,
+                       InputIterator2 first2);
+[&hellip;]
+template&lt;class InputIterator1, class InputIterator2,
+         class BinaryPredicate&gt;
+  constexpr bool equal(InputIterator1 first1, InputIterator1 last1,
+                       InputIterator2 first2, InputIterator2 last2,
+                       BinaryPredicate pred);
+[&hellip;]
+template&lt;input_iterator I1, sentinel_for&lt;I1&gt; S1, input_iterator I2, sentinel_for&lt;I2&gt; S2,
+         class Pred = ranges::equal_to, class Proj1 = identity, class Proj2 = identity&gt;
+  requires indirectly_comparable&lt;I1, I2, Pred, Proj1, Proj2&gt;
+  constexpr bool ranges::equal(I1 first1, S1 last1, I2 first2, S2 last2,
+                               Pred pred = {},
+                               Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;input_range R1, input_range R2, class Pred = ranges::equal_to,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires indirectly_comparable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, Pred, Proj1, Proj2&gt;
+  constexpr bool ranges::equal(R1&amp;&amp; r1, R2&amp;&amp; r2, Pred pred = {},
+                               Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- <i>Complexity:</i> If <del>the types of <code>first1</code>, <code>last1</code>, <code>first2</code>, and <code>last2</code></del>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; <ins>the types of <code>first1</code>, <code>last1</code>, <code>first2</code>, and <code>last2</code></ins> 
+meet the <i>Cpp17RandomAccessIterator</i> requirements (25.3.5.7 <a href="https://wg21.link/random.access.iterators">[random.access.iterators]</a>) <ins>and 
+<code>last1 - first1 != last2 - first2</code></ins> for the overloads in namespace <code>std</code>;</p></li>
+<li><p>(3.2) &mdash; <ins>the types of <code>first1</code>, <code>last1</code>, <code>first2</code>, and <code>last2</code></ins> 
+pairwise model <code>sized_sentinel_for</code> (25.3.4.8 <a href="https://wg21.link/iterator.concept.sizedsentinel">[iterator.concept.sizedsentinel]</a>) <ins>and 
+<code>last1 - first1 != last2 - first2</code></ins> for the <ins>first</ins> overload<del>s</del> in namespace 
+<code>ranges</code>,</p></li>
+<li><p><ins>(3.3) &mdash; <code>R1</code> and <code>R2</code> each model <code>sized_range</code> and <code>ranges::distance(r1)
+!= ranges::distance(r2)</code> for the second overload in namespace <code>ranges</code>,</ins></p></li>
+</ol>
+<p>
+<del>and <code>last1 - first1 != last2 - first2</code>,</del> then no applications of the corresponding predicate and
+each projection; otherwise, [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 27.6.14 <a href="https://wg21.link/alg.is.permutation">[alg.is.permutation]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;forward_iterator I1, sentinel_for&lt;I1&gt; S1, forward_iterator I2,
+         sentinel_for&lt;I2&gt; S2, class Proj1 = identity, class Proj2 = identity,
+         indirect_equivalence_relation&lt;projected&lt;I1, Proj1&gt;,
+                                       projected&lt;I2, Proj2&gt;&gt; Pred = ranges::equal_to&gt;
+  constexpr bool ranges::is_permutation(I1 first1, S1 last1, I2 first2, S2 last2,
+                                        Pred pred = {},
+                                        Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;forward_range R1, forward_range R2,
+         class Proj1 = identity, class Proj2 = identity,
+         indirect_equivalence_relation&lt;projected&lt;iterator_t&lt;R1&gt;, Proj1&gt;,
+                                       projected&lt;iterator_t&lt;R2&gt;, Proj2&gt;&gt; Pred = ranges::equal_to&gt;
+  constexpr bool ranges::is_permutation(R1&amp;&amp; r1, R2&amp;&amp; r2, Pred pred = {},
+                                        Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Complexity:</i> No applications of the corresponding predicate and projections if:
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(7.1) &mdash; for the first overload,</ins></p>
+<ol style="list-style-type: none">
+<li><p>(7.<ins>1.</ins>1) &mdash; <code>S1</code> and <code>I1</code> model <code>sized_sentinel_for&lt;S1, I1&gt;</code>,</p></li>
+<li><p>(7.<ins>1.</ins>2) &mdash; <code>S2</code> and <code>I2</code> model <code>sized_sentinel_for&lt;S2, I2&gt;</code>, and</p></li>
+<li><p>(7.<ins>1.</ins>3) &mdash; <code>last1 - first1 != last2 - first2</code><del>.</del><ins>;</ins></p></li>
+</ol>
+</li>
+<li><p><ins>(7.2) &mdash; for the second overload, <code>R1</code> and <code>R2</code> each model <code>sized_range</code>, 
+and <code>ranges::distance(r1) != ranges::distance(r2)</code>.</ins></p></li>
+</ol>
+<p>
+Otherwise, exactly <code>last1 - first1</code> applications of the corresponding predicate and projections if
+<code>ranges::equal(first1, last1, first2, last2, pred, proj1, proj2)</code> would return <code>true</code>; otherwise,
+at worst &#x1d4aa;(<code><i>N</i><sup>2</sup></code>), where <code><i>N</i></code> has the value <code>last1 - first1</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

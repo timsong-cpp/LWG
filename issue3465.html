@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3465: compare_partial_order_fallback requires F &lt; E</title>
+<meta property="og:title" content="Issue 3465: compare_partial_order_fallback requires F &lt; E">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3465.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3465"><a href="lwg-defects.html#3465">3465</a>. <code>compare_partial_order_fallback</code> requires <code>F &lt; E</code></h3>
+<p><b>Section:</b> 17.11.6 <a href="https://wg21.link/cmp.alg">[cmp.alg]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2020-07-18 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#cmp.alg">active issues</a> in [cmp.alg].</p>
+<p><b>View all other</b> <a href="lwg-index.html#cmp.alg">issues</a> in [cmp.alg].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>compare_partial_order_fallback</code> uses three expressions, but requires only two. The decayed types 
+of <code>E</code> and <code>F</code> are required to be identical, but variations in constness might make a difference.
+</p>
+
+<p><i>[2020-07-26; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 0 and status to Tentatively Ready after seven votes in favour during reflector discussions.
+</p>
+<p><i>[2020-11-09 Approved In November virtual meeting. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3465"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>. 
+</p>
+
+<ol>
+<li><p>Modify 17.11.6 <a href="https://wg21.link/cmp.alg">[cmp.alg]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-6- The name <code>compare_partial_order_fallback</code> denotes a customization point object 
+(16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). Given subexpressions <code>E</code> and <code>F</code>, 
+the expression <code>compare_partial_order_fallback(E, F)</code> is expression-equivalent
+( [defns.expression-equivalent]) to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(6.1) &mdash; If the decayed types of <code>E</code> and <code>F</code> differ, 
+<code>compare_partial_order_fallback(E, F)</code> is ill-formed.</p></li>
+<li><p>(6.2) &mdash; Otherwise, <code>partial_order(E, F)</code> if it is a well-formed expression.</p></li>
+<li><p>(6.3) &mdash; Otherwise, if the expressions <code>E == F</code><ins>,</ins> <del>and</del> 
+<code>E &lt; F</code><ins>, and <code>F &lt; E</code></ins> are <ins>all</ins><del>both</del> well-formed 
+and convertible to <code>bool</code>,</p>
+<blockquote>
+<pre>
+E == F ? partial_ordering::equivalent :
+E &lt; F  ? partial_ordering::less :
+F &lt; E  ? partial_ordering::greater :
+         partial_ordering::unordered
+</pre>
+</blockquote>
+<p>
+except that <code>E</code> and <code>F</code> are evaluated only once.
+</p>
+</li>
+<li><p>(6.4) &mdash; Otherwise, <code>compare_partial_order_fallback(E, F)</code> is ill-formed.</p></li></ol>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3785: ranges::to is over-constrained on the destination type being a range</title>
+<meta property="og:title" content="Issue 3785: ranges::to is over-constrained on the destination type being a range">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3785.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3785"><a href="lwg-defects.html#3785">3785</a>. <code>ranges::to</code> is over-constrained on the destination type being a range</h3>
+<p><b>Section:</b> 26.5.7.2 <a href="https://wg21.link/range.utility.conv.to">[range.utility.conv.to]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Barry Revzin <b>Opened:</b> 2022-09-19 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#range.utility.conv.to">active issues</a> in [range.utility.conv.to].</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.utility.conv.to">issues</a> in [range.utility.conv.to].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The current wording in 26.5.7.2 <a href="https://wg21.link/range.utility.conv.to">[range.utility.conv.to]</a> starts:
+</p>
+<blockquote><p>
+If <code>convertible_to&lt;range_reference_t&lt;R&gt;, range_value_t&lt;C&gt;&gt;</code> is <code>true</code>
+</p></blockquote>
+<p>
+and then tries to do <code>C(r, args...)</code> and then <code>C(from_range, r, args...)</code>. The problem 
+is that <code>C</code> might not be a range &mdash; indeed we explicitly removed that requirement from an 
+earlier revision of the paper &mdash; which makes this check ill-formed. One example use-case is using 
+<code>ranges::to</code> to convert a range of <code>expected&lt;T, E&gt;</code> into a 
+<code>expected&lt;vector&lt;T&gt;, E&gt;</code> &mdash; <code>expected</code> isn't any kind of range, but it 
+could support this operation, which is quite useful. Unfortunately, the wording explicitly rejects that. 
+This change happened between R6 and R7 of the paper and seems to have unintentionally rejected this use-case.
+</p>
+
+<p><i>[2022-09-28; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll.
+During telecon review we agreed that supporting non-ranges was an intended
+part of the original design, but was inadvertently broken when adding
+<code>range_value_t</code> for other reasons.
+</p>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3785"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 26.5.7.2 <a href="https://wg21.link/range.utility.conv.to">[range.utility.conv.to]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> We need to be careful that this short-circuits, since if <code>C</code> does 
+not satisfy <code>input_range</code>, then <code>range_value_t&lt;C&gt;</code> will be ill-formed.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class C, input_range R, class... Args&gt; requires (!view&lt;C&gt;)
+  constexpr C to(R&amp;&amp; r, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns</i>: An object of type <code>C</code> constructed from the elements of <code>r</code> in the following manner:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; If <ins><code>C</code> does not satisfy <code>input_range</code> or</ins> 
+<code>convertible_to&lt;range_reference_t&lt;R&gt;, range_value_t&lt;C&gt;&gt;</code> is <code>true</code>:</p>
+<ol style="list-style-type: none">
+<li><p>(1.1.1) &mdash; If <code>constructible_from&lt;C, R, Args...&gt;</code> is <code>true</code>:</p>
+<blockquote><code>C(std::forward&lt;R&gt;(r), std::forward&lt;Args&gt;(args)...)</code></blockquote></li>
+<li><p>(1.1.2) &mdash; Otherwise, if <code>constructible_from&lt;C, from_range_t, R, Args...&gt;</code> is <code>true</code>:</p>
+<blockquote><code>C(from_range, std::forward&lt;R&gt;(r), std::forward&lt;Args&gt;(args)...)</code></blockquote></li>
+<li><p>(1.1.3) &mdash; Otherwise, if</p>
+<ol style="list-style-type: none">
+<li><p>(1.1.3.1) &mdash; <code>common_range&lt;R&gt;</code> is <code>true</code>,</p></li>
+<li><p>(1.1.3.2) &mdash; <code><i>cpp17-input-iterator</i>&lt;iterator_t&lt;R&gt;&gt;</code> is <code>true</code>, and</p></li>
+<li><p>(1.1.3.3) &mdash; <code>constructible_from&lt;C, iterator_t&lt;R&gt;, sentinel_t&lt;R&gt;, Args...&gt;</code> is <code>true</code>:</p>
+<blockquote><code>C(ranges::begin(r), ranges::end(r), std::forward&lt;Args&gt;(args)...)</code></blockquote></li>
+</ol>
+</li>
+<li><p>(1.1.4) &mdash; Otherwise, if</p>
+<ol style="list-style-type: none">
+<li><p>(1.1.4.1) &mdash; <code>constructible_from&lt;C, Args...&gt;</code> is <code>true</code>, and</p></li>
+<li><p>(1.1.4.2) &mdash; <code><i>container-insertable</i>&lt;C, range_reference_t&lt;R&gt;&gt;</code> is <code>true</code>:</p>
+<blockquote><pre>
+C c(std::forward&lt;Args&gt;(args)...);
+if constexpr (sized_range&lt;R&gt; &amp;&amp; <i>reservable-container</i>&lt;C&gt;)
+  c.reserve(ranges::size(r));
+ranges::copy(r, <i>container-inserter</i>&lt;range_reference_t&lt;R&gt;&gt;(c));
+</pre></blockquote></li>
+</ol>
+</li>
+</ol>
+</li>
+<li><p>(1.2) &mdash; Otherwise, if <code>input_range&lt;range_reference_t&lt;R&gt;&gt;</code> is <code>true</code>:</p>
+<blockquote><pre>
+to&lt;C&gt;(r | views::transform([](auto&amp;&amp; elem) {
+  return to&lt;range_value_t&lt;C&gt;&gt;(std::forward&lt;decltype(elem)&gt;(elem));
+}), std::forward&lt;Args&gt;(args)...);
+</pre></blockquote></li>
+<li><p>(1.3) &mdash; Otherwise, the program is ill-formed.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

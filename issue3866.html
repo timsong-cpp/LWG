@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3866: Bad Mandates for expected::transform_error overloads</title>
+<meta property="og:title" content="Issue 3866: Bad Mandates for expected::transform_error overloads">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3866.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3866"><a href="lwg-defects.html#3866">3866</a>. Bad <i>Mandates</i> for <code>expected::transform_error</code> overloads</h3>
+<p><b>Section:</b> 22.8.6.7 <a href="https://wg21.link/expected.object.monadic">[expected.object.monadic]</a>, 22.8.7.7 <a href="https://wg21.link/expected.void.monadic">[expected.void.monadic]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2023-01-29 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#expected.object.monadic">issues</a> in [expected.object.monadic].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The overloads of <code>expected::transform_error</code> mandate that "[type] <code>G</code> is a valid value type for <code>expected</code>" 
+(22.8.6.7 <a href="https://wg21.link/expected.object.monadic">[expected.object.monadic]</a>/27 and 31 as well as 22.8.7.7 <a href="https://wg21.link/expected.void.monadic">[expected.void.monadic]</a>/24 and 27)). 
+<p/>
+All of these overloads then instantiate <code>expected&lt;T, G&gt;</code> (for some type <code>T</code>) which doesn't require 
+<code>G</code> to be a valid value type for <code>expected</code> (22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a>/2) but instead requires 
+that <code>G</code> is "a valid template argument for <code>unexpected</code>" (22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a>/2). 
+Comparing 22.8.6.1 <a href="https://wg21.link/expected.object.general">[expected.object.general]</a>/2 with 22.8.3.1 <a href="https://wg21.link/expected.un.general">[expected.un.general]</a>/2 it's clear that there are 
+types &mdash; <code>const int</code>, for example &mdash; which are valid value types for <code>expected</code> but not valid 
+template arguments for <code>unexpected</code>. Presumably this unimplementable requirement is a typo, and the subject 
+paragraphs intended to require that <code>G</code> be a valid template argument for <code>unexpected</code>. 
+</p>
+
+<p><i>[2023-02-06; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3866"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li><p>Modify 22.8.6.7 <a href="https://wg21.link/expected.object.monadic">[expected.object.monadic]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-27- <i>Mandates</i>: <code>G</code> is a valid <del>value type for <code>expected</code></del><ins>template argument for 
+<code>unexpected</code> (22.8.3.1 <a href="https://wg21.link/expected.un.general">[expected.un.general]</a>)</ins> and the declaration
+</p>
+<blockquote><pre>
+G g(invoke(std::forward&lt;F&gt;(f), error()));
+</pre></blockquote>
+<p>
+is well-formed.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-31- <i>Mandates</i>: <code>G</code> is a valid <del>value type for <code>expected</code></del><ins>template argument for 
+<code>unexpected</code> (22.8.3.1 <a href="https://wg21.link/expected.un.general">[expected.un.general]</a>)</ins> and the declaration
+</p>
+<blockquote><pre>
+G g(invoke(std::forward&lt;F&gt;(f), std::move(error())));
+</pre></blockquote>
+<p>
+is well-formed.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+<li><p>Modify 22.8.7.7 <a href="https://wg21.link/expected.void.monadic">[expected.void.monadic]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) &amp;;
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) const &amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-24- <i>Mandates</i>: <code>G</code> is a valid <del>value type for <code>expected</code></del><ins>template argument for 
+<code>unexpected</code> (22.8.3.1 <a href="https://wg21.link/expected.un.general">[expected.un.general]</a>)</ins> and the declaration
+</p>
+<blockquote><pre>
+G g(invoke(std::forward&lt;F&gt;(f), error()));
+</pre></blockquote>
+<p>
+is well-formed.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) &amp;&amp;;
+template&lt;class F&gt; constexpr auto transform_error(F&amp;&amp; f) const &amp;&amp;;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-27- <i>Mandates</i>: <code>G</code> is a valid <del>value type for <code>expected</code></del><ins>template argument for 
+<code>unexpected</code> (22.8.3.1 <a href="https://wg21.link/expected.un.general">[expected.un.general]</a>)</ins> and the declaration
+</p>
+<blockquote><pre>
+G g(invoke(std::forward&lt;F&gt;(f), std::move(error())));
+</pre></blockquote>
+<p>
+is well-formed.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+</body>
+</html>

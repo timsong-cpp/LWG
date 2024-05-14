@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3478: views::split drops trailing empty range</title>
+<meta property="og:title" content="Issue 3478: views::split drops trailing empty range">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3478.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3478"><a href="lwg-defects.html#3478">3478</a>. <code>views::split</code> drops trailing empty range</h3>
+<p><b>Section:</b> 26.7.17 <a href="https://wg21.link/range.split">[range.split]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Barry Revzin <b>Opened:</b> 2020-08-20 <b>Last modified:</b> 2021-06-14</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+From <a href="https://stackoverflow.com/q/63497978/2069064">StackOverflow</a>, the program:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;ranges&gt;
+
+int main()
+{
+  std::string s = " text ";
+  auto sv = std::ranges::views::split(s, ' ');
+  std::cout &lt;&lt; std::ranges::distance(sv.begin(), sv.end());
+}
+</pre></blockquote>
+<p>
+prints 2 (as specified), but it really should print 3. If a range has <code>N</code> delimiters in it,
+splitting should produce <code>N+1</code> pieces. If the <code>N</code><sup>th</sup> delimiter is the last
+element in the input range, <code>views::split</code> produces only <code>N</code> pieces &mdash; it doesn't
+emit a trailing empty range.
+<p/>
+Going through a bunch of languages gets a sense of what they all do here. There are basically two
+groups (and Haskell goes in both because it has several different split functions)
+</p>
+<ol>
+<li><p>Rust, Python, Javascript, Go, Kotlin, Haskell's <code>"splitOn"</code> all provide <code>N+1</code> parts
+if there were <code>N</code> delimiters.</p></li>
+<li><p>APL, D, Elixir, Haskell's <code>"words"</code>, Ruby, and Clojure all compress all empty words.
+Splitting <code>" x "</code> on <code>" "</code> would give <code>["x"]</code> here, whereas the languages in the
+above group would give <code>["", "x", ""]</code></p></li>
+</ol>
+<p>
+Java is distinct from both groups in that it is mostly a first category language, except that by default
+it removes all trailing empty strings (but it keeps all leading and intermediate empty strings, unlike
+the second category languages) &mdash; although it has a parameter that lets you keep the trailing ones too.
+<p/>
+C++20's behavior is closest to Java's default, except that it only removes one trailing empty string
+instead of every trailing empty string &mdash; and this behavior is not parameterizeable. But I think the
+intent is to be squarely in the first category, so I think the current behavior is just a specification error.
+<p/>
+Many of these languages also provide an additional extra parameter to limit how many splits happen (e.g.
+Java, Kotlin, Python, Rust, JavaScript), but that's a separate design question.
+</p>
+
+<p><i>[2020-09-02; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 2 as result of reflector discussions.
+</p>
+<p><i>[2021-06-13 Resolved by the adoption of <a href="https://wg21.link/P2210R2" title=" Superior String Splitting">P2210R2</a> at the June 2021 plenary. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3478"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

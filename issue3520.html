@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3520: iter_move and iter_swap are inconsistent for transform_view::iterator</title>
+<meta property="og:title" content="Issue 3520: iter_move and iter_swap are inconsistent for transform_view::iterator">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3520.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3520"><a href="lwg-defects.html#3520">3520</a>. <code>iter_move</code> and <code>iter_swap</code> are inconsistent for <code>transform_view::<i>iterator</i></code></h3>
+<p><b>Section:</b> 26.7.9.3 <a href="https://wg21.link/range.transform.iterator">[range.transform.iterator]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2021-02-03 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.transform.iterator">issues</a> in [range.transform.iterator].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+For <code>transform_view::<i>iterator</i></code>, <code>iter_move</code> is specified to operate on the
+transformed value but <code>iter_swap</code> is specified to operate on the underlying iterator.
+<p/>
+Consider the following test case:
+</p>
+<blockquote><pre>
+struct X { int x; int y; };
+std::vector&lt;X&gt; v = {...};
+auto t = v | views::transform(&amp;X::x);
+ranges::sort(t);
+</pre></blockquote>
+<p>
+<code>iter_swap</code> on <code>t</code>'s iterators would swap the whole <code>X</code>, including the 
+<code>y</code> part, but <code>iter_move</code> will only move the <code>x</code> data member and leave 
+the <code>y</code> part intact. Meanwhile, <code>ranges::sort</code> can use both <code>iter_move</code> and
+<code>iter_swap</code>, and does so in at least one implementation. The mixed behavior means that we 
+get neither "sort <code>X</code>s by their <code>x</code> data member" (as <code>ranges::sort(v, {}, &amp;X::x)</code> 
+would do), nor "sort the <code>x</code> data member of these <code>X</code>s and leave the rest unchanged", 
+as one might expect, but instead some arbitrary permutation of <code>y</code>. This seems like a
+questionable state of affairs.
+</p>
+
+<p><i>[2021-03-12; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 following reflector poll.
+</p>
+
+
+<p><i>[2021-03-12; LWG telecon]</i></p>
+
+<p>
+Set status to Tentatively Ready after discussion and poll.
+<table>
+<tr><th>F</th><th>A</th><th>N</th></tr>
+<tr><td>9</td><td>0</td><td>0</td></tr>
+</table>
+</p>
+
+<p><i>[2021-06-07 Approved at June 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3520"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>. 
+</p>
+
+<ol>
+<li><p>Modify 26.7.9.3 <a href="https://wg21.link/range.transform.iterator">[range.transform.iterator]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, copy_constructible F&gt;
+    requires view&lt;V&gt; &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+             regular_invocable&lt;F&amp;, range_reference_t&lt;V&gt;&gt; &amp;&amp;
+             <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;V&gt;&gt;&gt;
+  template&lt;bool Const&gt;
+  class transform_view&lt;V, F&gt;::<i>iterator</i> {
+    [&hellip;]
+    <del>friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      noexcept(noexcept(ranges::iter_swap(x.<i>current_</i>, y.<i>current_</i>)))
+      requires indirectly_swappable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;;</del>
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+<del>friend constexpr void iter_swap(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  noexcept(noexcept(ranges::iter_swap(x.<i>current_</i>, y.<i>current_</i>)))
+  requires indirectly_swappable&lt;iterator_t&lt;<i>Base</i>&gt;&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-23- <i>Effects:</i> Equivalent to <code>ranges::iter_swap(x.<i>current_</i>, y.<i>current_</i>)</code>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

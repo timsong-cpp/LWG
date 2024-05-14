@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3798: Rvalue reference and iterator_category</title>
+<meta property="og:title" content="Issue 3798: Rvalue reference and iterator_category">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3798.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3798"><a href="lwg-defects.html#3798">3798</a>. Rvalue reference and <code>iterator_category</code></h3>
+<p><b>Section:</b> 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2022-10-22 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#iterator.traits">issues</a> in [iterator.traits].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Since C++11, a forward iterator may have an rvalue reference as its <code>reference</code> type. 
+I think this is an intentional change made by <a href="https://wg21.link/N3066" title=" Iterators in C++0x">N3066</a>. However, several components 
+added (or changed) in C++20/23 recognize an iterator as a <i>Cpp17ForwardIterator</i> (by using 
+<code>forward_iterator_tag</code> or a stronger iterator category tag type as the <code>iterator_category</code> 
+type) only if the <code>reference</code> type would be an lvalue reference type, which seems a regression.
+</p>
+
+<p><i>[2022-11-01; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after eight votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3798"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The definitions in this subclause make use of the following exposition-only concepts:
+</p>
+<blockquote><pre>
+[&hellip;]
+template&lt;class I&gt;
+concept <i>cpp17-forward-iterator</i> =
+  <i>cpp17-input-iterator</i>&lt;I&gt; &amp;&amp; constructible_from&lt;I&gt; &amp;&amp;
+  is_<del>lvalue_</del>reference_v&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+  same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;,
+          typename indirectly_readable_traits&lt;I&gt;::value_type&gt; &amp;&amp;
+  requires(I i) {
+    {  i++ } -&gt; convertible_to&lt;const I&amp;&gt;;
+    { *i++ } -&gt; same_as&lt;iter_reference_t&lt;I&gt;&gt;;
+  };
+[&hellip;]
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.9.3 <a href="https://wg21.link/range.transform.iterator">[range.transform.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The member <i>typedef-name</i> <code>iterator_category</code> is defined if and only if <i>Base</i> 
+models <code>forward_range</code>. In that case, <code><i>iterator</i>::iterator_category</code> is defined 
+as follows: Let <code>C</code> denote the type <code>iterator_traits&lt;iterator_t&lt;<i>Base</i>&gt;&gt;::iterator_category</code>.
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; If <code>is_<del>lvalue_</del>reference_v&lt;invoke_result_t&lt;<i>maybe-const</i>&lt;Const, F&gt;&amp;, 
+range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;</code> is <code>true</code>, then</p>
+<ol style="list-style-type: none">
+<li><p>(2.1.1) &mdash; if <code>C</code> models <code>derived_from&lt;contiguous_iterator_tag&gt;</code>, 
+<code>iterator_category denotes random_access_iterator_tag</code>;</p></li>
+<li><p>(2.1.2) &mdash; otherwise, <code>iterator_category</code> denotes <code>C</code>.</p></li>
+</ol>
+</li>
+<li><p>(2.2) &mdash; Otherwise, <code>iterator_category</code> denotes <code>input_iterator_tag</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.15.3 <a href="https://wg21.link/range.join.with.iterator">[range.join.with.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The member <i>typedef-name</i> <code>iterator_category</code> is defined if and only if <code><i>ref-is-glvalue</i></code> 
+is <code>true</code>, and <code><i>Base</i></code> and <code><i>InnerBase</i></code> each model <code>forward_range</code>. In that case, 
+<code><i>iterator</i>::iterator_category</code> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; [&hellip;]</p></li>
+<li><p>(2.2) &mdash; If</p>
+<blockquote><pre>
+is_<del>lvalue_</del>reference_v&lt;common_reference_t&lt;iter_reference_t&lt;<i>InnerIter</i>&gt;,
+                      iter_reference_t&lt;<i>PatternIter</i>&gt;&gt;&gt;
+</pre></blockquote>
+<p>
+is <code>false</code>, <code>iterator_category</code> denotes <code>input_iterator_tag</code>.
+</p>
+</li>
+<li><p>(2.3) &mdash; [&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.26.3 <a href="https://wg21.link/range.zip.transform.iterator">[range.zip.transform.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The member <i>typedef-name</i> <code><i>iterator</i>::iterator_category</code> is defined if and only if 
+<code><i>Base</i></code> models <code>forward_range</code>. In that case, <code><i>iterator</i>::iterator_category</code> 
+is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; If</p>
+<blockquote><pre>
+invoke_result_t&lt;<i>maybe-const</i>&lt;Const, F&gt;&amp;, range_reference_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt;
+</pre></blockquote>
+<p>
+is not a<del>n lvalue</del> reference, <code>iterator_category</code> denotes <code>input_iterator_tag</code>.
+</p>
+</li>
+<li><p>(1.2) &mdash; [&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.28.3 <a href="https://wg21.link/range.adjacent.transform.iterator">[range.adjacent.transform.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The member <i>typedef-name</i> <code><i>iterator</i>::iterator_category</code> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; If 
+<code>invoke_result_t&lt;<i>maybe-const</i>&lt;Const, F&gt;&amp;, <i>REPEAT</i>(range_reference_t&lt;<i>Base</i>&gt;, N)...&gt;</code>
+is not a<del>n lvalue</del> reference, <code>iterator_category</code> denotes <code>input_iterator_tag</code>.
+</p>
+</li>
+<li><p>(1.2) &mdash; [&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+</body>
+</html>

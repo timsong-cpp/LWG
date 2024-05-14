@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3121: tuple constructor constraints for UTypes&amp;&amp;... overloads</title>
+<meta property="og:title" content="Issue 3121: tuple constructor constraints for UTypes&amp;&amp;... overloads">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3121.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3121"><a href="lwg-defects.html#3121">3121</a>. <code>tuple</code> constructor constraints for <code>UTypes&amp;&amp;...</code> overloads</h3>
+<p><b>Section:</b> 22.4.4.2 <a href="https://wg21.link/tuple.cnstr">[tuple.cnstr]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Matt Calabrese <b>Opened:</b> 2018-06-12 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#tuple.cnstr">active issues</a> in [tuple.cnstr].</p>
+<p><b>View all other</b> <a href="lwg-index.html#tuple.cnstr">issues</a> in [tuple.cnstr].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently the <code>tuple</code> constructors of the form:
+</p>
+<blockquote>
+<pre>
+template&lt;class... UTypes&gt;
+<i>EXPLICIT</i> constexpr tuple(UTypes&amp;&amp;...);
+</pre>
+</blockquote>
+<p>
+are not properly constrained in that in the 1-element <code>tuple</code> case, the constraints do no short-circuit when
+the constructor would be (incorrectly) considered as a possible copy/move constructor candidate. libc++ has a
+workaround for this, but the additional short-circuiting does not actually appear in the working draft.
+<p/>
+As an example of why this lack of short circuiting is a problem in practice, consider the following line:
+</p>
+<blockquote>
+<pre>
+bool a = std::is_copy_constructible_v&lt;std::tuple&lt;any&gt;&gt;;
+</pre>
+</blockquote>
+<p>
+The above code will cause a compile error because of a recursive trait definition. The copy constructibility
+check implies doing substitution into the <code>UTypes&amp;&amp;...</code> constructor overloads, which in turn
+will check if <code>tuple&lt;any&gt;</code> is convertible to any, which in turn will check if <code>tuple&lt;any&gt;</code>
+is copy constructible (and so the trait is dependent on itself).
+<p/>
+I do not provide wording for the proposed fix in anticipation of requires clauses potentially changing how we
+do the specification, however, the basic solution should be similar to what we've done for other standard library
+types, which is to say that the very first constraint should be to check that if <code>sizeof...(UTypes) == 1</code>
+and the type, after applying <code>remove_cvref_t</code>, is the <code>tuple</code> type itself, then we should force
+substitution failure rather than checking any further constraints.
+</p>
+
+<p><i>[2018-06-23 after reflector discussion]</i></p>
+
+<p>Priority set to 3</p>
+
+<p><i>[2018-08-20, Jonathan provides wording]</i></p>
+
+
+<p><i>[2018-08-20, Daniel comments]</i></p>
+
+<p>
+The wording changes by this issue are very near to those suggested for LWG <a href="lwg-defects.html#3155" title="tuple&lt;any, any&gt;{allocator_arg_t, an_allocator} (Status: Resolved)">3155</a>.
+</p>
+
+<p><i>[2018-11 San Diego Thursday night issue processing]</i></p>
+
+<p>Jonathan to update wording - using conjunction. Priority set to 2</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+<ul>
+<li><p>Modify 22.4.4.2 <a href="https://wg21.link/tuple.cnstr">[tuple.cnstr]</a> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class... UTypes&gt; explicit(<i>see below</i>) constexpr tuple(UTypes&amp;&amp;... u);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Initializes the elements in the tuple with the corresponding value in
+<code>std::forward&lt;UTypes&gt;(u)</code>.
+<p/>
+-10- <i>Remarks:</i> This constructor shall not participate in overload resolution unless
+<code>sizeof...(Types) == sizeof...(UTypes)</code> and <code>sizeof...(Types) &gt;= 1</code> <ins>and <code>(sizeof...(Types)
+&gt; 1 || !is_same_v&lt;remove_cvref_t&lt;U<sub>0</sub>&gt;, tuple&gt;)</code></ins> and
+<code>is_constructible_v&lt;T<sub><i>i</i></sub>, U<sub><i>i</i></sub>&amp;&amp;&gt;</code> is <code>true</code>
+for all <code><i>i</i></code>. The expression inside <code>explicit</code> is equivalent to:
+<p/>
+<code>!conjunction_v&lt;is_convertible&lt;UTypes, Types&gt;...&gt;</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ul>
+</blockquote>
+<p><i>[2021-05-20 Tim updates wording]</i></p>
+
+<p>
+The new wording below also resolves LWG <a href="lwg-defects.html#3155" title="tuple&lt;any, any&gt;{allocator_arg_t, an_allocator} (Status: Resolved)">3155</a>, relating to an
+<code>allocator_arg_t</code> tag argument being treated by this constructor template
+as converting to the first tuple element instead of as a tag. To minimize
+collateral damage, this wording takes this constructor out of overload resolution
+only if the tuple is of size 2 or 3, the first argument is an <code>allocator_arg_t</code>,
+but the first tuple element isn't of type <code>allocator_arg_t</code> (in both cases
+after removing cv/ref qualifiers). This avoids damaging tuples that actually
+contain an <code>allocator_arg_t</code> as the first element (which can be formed
+during uses-allocator construction, thanks to <code>uses_allocator_construction_args</code>).
+<p/>
+The proposed wording has been implemented and tested on top of libstdc++.
+</p>
+
+<p><i>[2021-08-20; LWG telecon]</i></p>
+
+<p>
+Set status to Tentatively Ready after telecon review.
+</p>
+
+<p><i>[2021-10-14 Approved at October 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3121"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4885">N4885</a>, and also resolves LWG <a href="lwg-defects.html#3155" title="tuple&lt;any, any&gt;{allocator_arg_t, an_allocator} (Status: Resolved)">3155</a>.</p>
+<ol>
+<li><p>Modify 22.4.4.2 <a href="https://wg21.link/tuple.cnstr">[tuple.cnstr]</a> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class... UTypes&gt; explicit(<i>see below</i>) constexpr tuple(UTypes&amp;&amp;... u);
+</pre>
+<blockquote>
+<p>
+<ins>
+-?- Let <i><code>disambiguating-constraint</code></i> be:
+</ins>
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; <code>negation&lt;is_same&lt;remove_cvref_t&lt;U<sub>0</sub>&gt;, tuple&gt;&gt;</code> if <code>sizeof...(Types)</code> is 1;</ins></p></li>
+<li><p><ins>(?.2) &mdash; otherwise, <code>bool_constant&lt;!is_same_v&lt;remove_cvref_t&lt;U<sub>0</sub>&gt;, allocator_arg_t&gt; || is_same_v&lt;remove_cvref_t&lt;T<sub>0</sub>&gt;, allocator_arg_t&gt;&gt;</code> if <code>sizeof...(Types)</code> is 2 or 3;</ins></p></li>
+<li><p><ins>(?.3) &mdash; otherwise, <code>true_type</code>.</ins></p></li>
+</ol>
+<p>
+-12- <i>Constraints:</i></p>
+<ol style="list-style-type: none">
+<li><p><ins>(12.1) &mdash;</ins> <code>sizeof...(Types)</code> equals <code>sizeof...(UTypes)</code><ins>,</ins> <del>and</del></p></li>
+<li><p><ins>(12.2) &mdash;</ins> <code>sizeof...(Types)</code> &ge; 1<ins>,</ins> and</p></li>
+<li><p><ins>(12.3) &mdash; <code>conjunction_v&lt;<i>disambiguating-constraint</i>, is_constructible&lt;Types, UTypes&gt;...&gt;</code> is <code>true</code></ins> <del><code>is_constructible_v&lt;T<sub>i</sub>, U<sub>i</sub>&gt;</code>
+is <code>true</code> for all <i>i</i></del>.</p></li>
+</ol>
+<p>
+-13- <i>Effects:</i> Initializes the elements in the tuple with the corresponding value in
+<code>std::forward&lt;UTypes&gt;(u)</code>.
+<p/>
+-14- <i>Remarks:</i> The expression inside <code>explicit</code> is equivalent to:
+<p/>
+<code>!conjunction_v&lt;is_convertible&lt;UTypes, Types&gt;...&gt;</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

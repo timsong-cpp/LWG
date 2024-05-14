@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3152: common_type and common_reference have flaws in common</title>
+<meta property="og:title" content="Issue 3152: common_type and common_reference have flaws in common">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3152.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3152"><a href="lwg-defects.html#3152">3152</a>. <code>common_type</code> and <code>common_reference</code> have flaws in common</h3>
+<p><b>Section:</b> 21.3.8.7 <a href="https://wg21.link/meta.trans.other">[meta.trans.other]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2018-08-10 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.trans.other">issues</a> in [meta.trans.other].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+21.3.8.7 <a href="https://wg21.link/meta.trans.other">[meta.trans.other]</a> p5 characterizes the requirements for
+program-defined specializations of <code>common_type</code> with the sentence:
+</p>
+<blockquote>
+Such a specialization need not have a member named <code>type</code>, but if it does,
+that member shall be a <i>typedef-name</i> for an accessible and unambiguous
+cv-unqualified non-reference type <code>C</code> to which each of the types
+<code>T1</code> and <code>T2</code> is explicitly convertible.
+</blockquote>
+<p>
+This sentence - which 21.3.8.7 <a href="https://wg21.link/meta.trans.other">[meta.trans.other]</a> p7 largely duplicates to
+specify requirements on program-defined specializations of
+<code>basic_common_reference</code> - has two problems:
+</p><ol>
+<li><p>The grammar term "<i>typedef-name</i>" is overconstraining; there's no
+reason to prefer a <i>typedef-name</i> here to an actual type, and</p>
+</li>
+<li><p>"accessible" and "unambiguous" are not properties of <em>types</em>, they
+are properties of names and base classes.</p>
+</li>
+<li><p>While we're here, we may as well strike the unused name <code>C</code> which
+both Note B and Note D define for the type denoted by <code>type</code>.</p>
+</li></ol>
+
+<p><i>[2018-08 Batavia Monday issue prioritization]</i></p>
+
+<p>Priority set to 3</p>
+
+<p><i>[2021-06-23; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-10-14 Approved at October 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3152"><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+
+<ol>
+<li><p>Modify 21.3.8.7 <a href="https://wg21.link/meta.trans.other">[meta.trans.other]</a> p5 as follows:</p>
+<blockquote>
+<p>
+-5- Note B: Notwithstanding the provisions of 21.3.3 <a href="https://wg21.link/meta.type.synop">[meta.type.synop]</a>,
+and pursuant to 16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a>, a program may specialize
+<code>common_type&lt;T1, T2&gt;</code> for types <code>T1</code> and <code>T2</code> such
+that <code>is_same_v&lt;T1, decay_t&lt;T1&gt;&gt;</code> and <code>is_same_v&lt;T2,
+decay_t&lt;T2&gt;&gt;</code> are each true. [<i>Note:</i> &hellip;] Such a
+specialization need not have a member named <code>type</code>, but if it does,
+<del>that member shall be a <i>typedef-name</i> for an accessible and
+unambiguous</del> <ins>the <i>qualified-id</i>
+<code>common_type&lt;T1, T2&gt;::type</code> shall denote a</ins> cv-unqualified
+non-reference type <del><code>C</code></del> to which each of the types <code>T1</code>
+and <code>T2</code> is explicitly convertible. Moreover, [&hellip;]
+</p>
+</blockquote>
+</li>
+<li><p>Modify 21.3.8.7 <a href="https://wg21.link/meta.trans.other">[meta.trans.other]</a> p7 similarly:</p>
+<blockquote>
+<p>
+-7- Note D: Notwithstanding  the provisions of 21.3.3 <a href="https://wg21.link/meta.type.synop">[meta.type.synop]</a>,
+and pursuant to 16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a>, a program may partially
+specialize <code>basic_common_reference&lt;T, U, TQual, UQual&gt;</code> for types
+<code>T</code> and <code>U</code> such that <code>is_same_v&lt;T, decay_t&lt;T&gt;&gt;</code>
+and <code>is_same_v&lt;U, decay_t&lt;U&gt;&gt;</code> are each true. [<i>Note:</i>
+&hellip;] Such a specialization need not have a member named <code>type</code>, but
+if it does, <del>that member shall be a <i>typedef-name</i> for an accessible
+and unambiguous</del> <ins>the <i>qualified-id</i>
+<code>basic_common_reference&lt;T, U, TQual, UQual&gt;::type</code> shall denote
+a</ins> type <del><code>C</code></del> to which each of the types <code>TQual&lt;T&gt;</code> 
+and <code>UQual&lt;U&gt;</code> is convertible. Moreover, [&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

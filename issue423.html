@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Issue 423: effects of negative streamsize in iostreams</title>
-<style type="text/css">
+<title>Issue 423: Effects of negative streamsize in iostreams</title>
+<meta property="og:title" content="Issue 423: Effects of negative streamsize in iostreams">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue423.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,32 +24,63 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="423" href="lwg-active.html#423">423</a>. effects of negative streamsize in iostreams</h3>
-<p><b>Section:</b> 30 <a href="https://wg21.link/input.output">[input.output]</a> <b>Status:</b> <a href="lwg-active.html#LEWG">LEWG</a>
- <b>Submitter:</b> Martin Sebor <b>Opened:</b> 2003-09-18 <b>Last modified:</b> 2017-09-13</p>
-<p><b>Priority: </b>Not Prioritized
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="423"><a href="lwg-active.html#423">423</a>. Effects of negative <code>streamsize</code> in iostreams</h3>
+<p><b>Section:</b> 99 [input.output] <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Martin Sebor <b>Opened:</b> 2003-09-18 <b>Last modified:</b> 2018-12-09</p>
+<p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#input.output">issues</a> in [input.output].</p>
-<p><b>View all issues with</b> <a href="lwg-status.html#LEWG">LEWG</a> status.</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
 <p><b>Discussion:</b></p>
-
 <p>
-A third party test suite tries to exercise istream::ignore(N) with
-a negative value of N and expects that the implementation will treat
-N as if it were 0. Our implementation asserts that (N >= 0) holds and
-aborts the test.
+A third party test suite tries to exercise <code>istream::ignore(N)</code> with a negative value of 
+<code>N</code> and expects that the implementation will treat <code>N</code> as if it were <code>0</code>. Our 
+implementation asserts that (<code>N &gt;= 0</code>) holds and aborts the test.
 </p>
 
 <p>
 I can't find anything in section 27 that prohibits such values but I don't
 see what the effects of such calls should be, either (this applies to
 a number of unformatted input functions as well as some member functions
-of the basic_streambuf template).
+of the <code>basic_streambuf</code> template).
 </p>
 
 <p><i>[
@@ -52,28 +90,34 @@ of the basic_streambuf template).
 
 <blockquote>
 <p>
-This is related to LWG <a href="lwg-closed.html#255">255</a>.
+This is related to LWG <a href="lwg-closed.html#255" title="Why do basic_streambuf&lt;&gt;::pbump() and gbump() take an int? (Status: NAD)">255</a>.
 </p>
 <p>
 Move to NAD Future.
 </p>
 </blockquote>
 
+<p><i>[LEWG Kona 2017]</i></p>
+
+<p>Recommend Open: We agree that we should require <code>N &gt;= 0</code> for the selected functions</p>
+
+<p><i>[2018-12-04 Reflector prioritization]</i></p>
+
+<p>Set Priority to 3</p>
 
 
-<p><b>Proposed resolution:</b></p>
+<p id="res-423"><b>Proposed resolution:</b></p>
 <p>
-I propose that we add to each function in clause 27 that takes an argument,
-say N, of type streamsize a Requires clause saying that "N >= 0." The intent
-is to allow negative streamsize values in calls to precision() and width()
-but disallow it in calls to streambuf::sgetn(), istream::ignore(), or
-ostream::write().
+I propose that we add to each function in clause 27 that takes an argument, say <code>N</code>, of type 
+<code>streamsize</code> a <i>Requires</i> clause saying that "<code>N &gt;= 0</code>." The intent is to allow 
+negative streamsize values in calls to <code>precision()</code> and <code>width()</code> but disallow it in 
+calls to <code>streambuf::sgetn()</code>, <code>istream::ignore()</code>, or <code>ostream::write()</code>.
 </p>
 
-<p><i>[Kona: The LWG agreed that this is probably what we want.  However, we
+<p><i>[Kona: The LWG agreed that this is probably what we want. However, we
   need a review to find all places where functions in clause 27 take
-  arguments of type streamsize that shouldn't be allowed to go
-  negative.  Martin will do that review.]</i></p>
+  arguments of type <code>streamsize</code> that shouldn't be allowed to go
+  negative. Martin will do that review.]</i></p>
 
 
 

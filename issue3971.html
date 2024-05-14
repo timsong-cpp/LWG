@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3971: Join ranges of rvalue references with ranges of prvalues</title>
+<meta property="og:title" content="Issue 3971: Join ranges of rvalue references with ranges of prvalues">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3971.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="3971"><a href="lwg-active.html#3971">3971</a>. Join ranges of rvalue references with ranges of prvalues</h3>
+<p><b>Section:</b> 26.7.15.2 <a href="https://wg21.link/range.join.with.view">[range.join.with.view]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-08-21 <b>Last modified:</b> 2024-03-19</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#range.join.with.view">active issues</a> in [range.join.with.view].</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.join.with.view">issues</a> in [range.join.with.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The issue that <code>concat_view</code> implicitly breaks equality-preserving by concatenating range of references with range 
+of prvalues seems to be reflected in <code>join_view</code> as well.
+<p/>
+When the reference of the inner range is <code>string&amp;&amp;</code> and the reference of the pattern range is prvalue 
+<code>string</code>, dereferencing its iterator will move the elements of the inner range to the returned <code>string</code>, 
+which makes the second dereference get an empty <code>string</code> (<a href="https://godbolt.org/z/5YYzK5qsr">demo</a>):
+</p>
+<blockquote>
+<pre>
+vector v1{"hello"s};
+vector v2{"world"s};
+vector v{v1 | views::as_rvalue, v2 | views::as_rvalue};
+auto pattern = views::iota(0, 1) | views::transform([](int) { return ", "s; });
+ranges::forward_range auto joined = v | views::join_with(pattern);
+fmt::print("{}\n", joined); // ["hello", ", ", "world"]
+fmt::print("{}\n", joined); // <span style="color:red;font-weight:bolder">["", ", ", ""]</span>
+</pre>
+</blockquote>
+
+<p>Not sure if we should ban such less common case.</p>
+
+<p><i>[2023-10-30; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll. Send to SG9.
+</p>
+
+<p><i>[2024-03-19; Tokyo: feedback from SG9]</i></p>
+
+<p>
+SG9 believe that LWG3971 is a use-after-move and is working as intended.
+We further believe that matching the behavior of <code class='backtick'>concat_view</code>
+(which is the current behavior) is important. This is not a defect.
+</p>
+
+
+
+<p id="res-3971"><b>Proposed resolution:</b></p>
+
+
+
+
+
+
+</body>
+</html>

@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Issue 2647: [filesys.ts] [PDTS] last_write_time() uses ill-formed cast</title>
-<style type="text/css">
+<meta property="og:title" content="Issue 2647: [filesys.ts] [PDTS] last_write_time() uses ill-formed cast">
+<meta property="og:description" content="C++ library issue. Status: TS">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue2647.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,14 +24,47 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="2647" href="lwg-defects.html#2647">2647</a>. [filesys.ts] [PDTS] <tt>last_write_time()</tt> uses ill-formed cast</h3>
-<p><b>Section:</b> 99 [filesys.ts::fs.op.last_write_time] <b>Status:</b> <a href="lwg-active.html#TS">TS</a>
- <b>Submitter:</b> P.J. Plauger <b>Opened:</b> 2014-01-30 <b>Last modified:</b> 2017-09-13</p>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#TS">TS</a> status.</em></p>
+<h3 id="2647"><a href="lwg-defects.html#2647">2647</a>. [filesys.ts] [PDTS] <code>last_write_time()</code> uses ill-formed cast</h3>
+<p><b>Section:</b> 15.25 [filesys.ts::fs.op.last_write_time] <b>Status:</b> <a href="lwg-active.html#TS">TS</a>
+ <b>Submitter:</b> P.J. Plauger <b>Opened:</b> 2014-01-30 <b>Last modified:</b> 2017-07-30</p>
 <p><b>Priority: </b>Not Prioritized
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#filesys.ts::fs.op.last_write_time">issues</a> in [filesys.ts::fs.op.last_write_time].</p>
@@ -32,8 +72,8 @@
 <p><b>Discussion:</b></p>
 <p><b>Addresses: filesys.ts</b></p>
 <p>
-In <tt>last_write_time</tt>, <tt>static_cast&lt;file_time_type&gt;(-1)</tt> is ill formed,
-(possibly should be <tt>chrono&lt;<i>unspecified-trivial-clock</i>&gt;::from_time_t(-1))</tt>.
+In <code>last_write_time</code>, <code>static_cast&lt;file_time_type&gt;(-1)</code> is ill formed,
+(possibly should be <code>chrono&lt;<i>unspecified-trivial-clock</i>&gt;::from_time_t(-1))</code>.
 </p>
 
 <p><i>[2014-02-08 Daniel comments and provides wording]</i></p>
@@ -41,17 +81,17 @@ In <tt>last_write_time</tt>, <tt>static_cast&lt;file_time_type&gt;(-1)</tt> is i
 
 <p>
 I agree that the current wording needs to be fixed, but it is unclear to me whether invoking
-<tt>from_time_t</tt> (which is only guaranteed to exist for <tt>std::chrono::system_clock</tt>)
-with a value of <tt>time_t(-1)</tt> is a well-defined operation. Reason is that the C Standard
-makes a difference between a <i>calendar time</i> and the value <tt>time_t(-1)</tt> as an error 
-indication. But the specification of <tt>system_clock::from_time_t</tt> only says "A <tt>time_point</tt> 
-object that represents the same point in time as <tt>t</tt> [&hellip;]" and it is not clear whether
-<tt>time_t(-1)</tt> can be considered as a "point in time". Instead of relying on such a potentially
-subtle semantics of the conversion result of <tt>time_t(-1)</tt> to <tt>std::chrono::system_clock::time_point</tt>
-with a further conversion to <tt>file_time_type</tt> (which in theory could led to overflow or underflow and
+<code>from_time_t</code> (which is only guaranteed to exist for <code>std::chrono::system_clock</code>)
+with a value of <code>time_t(-1)</code> is a well-defined operation. Reason is that the C Standard
+makes a difference between a <i>calendar time</i> and the value <code>time_t(-1)</code> as an error 
+indication. But the specification of <code>system_clock::from_time_t</code> only says "A <code>time_point</code> 
+object that represents the same point in time as <code>t</code> [&hellip;]" and it is not clear whether
+<code>time_t(-1)</code> can be considered as a "point in time". Instead of relying on such a potentially
+subtle semantics of the conversion result of <code>time_t(-1)</code> to <code>std::chrono::system_clock::time_point</code>
+with a further conversion to <code>file_time_type</code> (which in theory could led to overflow or underflow and
 thus another potential source of undefined behaviour), I suggest to change the current error value of
-<tt>last_write_time</tt> to one of the well-define limiting values of <tt>file_time_type</tt>, e.g.
-<tt>file_time_type::min()</tt>.
+<code>last_write_time</code> to one of the well-define limiting values of <code>file_time_type</code>, e.g.
+<code>file_time_type::min()</code>.
 </p>
 
 <p><i>[2014-02-13 LWG/SG-3 Issaquah: Proposed wording accepted.]</i></p>
@@ -59,7 +99,7 @@ thus another potential source of undefined behaviour), I suggest to change the c
 
 
 
-<p><b>Proposed resolution:</b></p>
+<p id="res-2647"><b>Proposed resolution:</b></p>
 <p>This wording is relative to <a href="http://wiki.edg.com/twiki/pub/Wg21issaquah/SG3/working-draft.html">SG3 working draft</a>.</p>
 
 <ol>
@@ -70,9 +110,9 @@ file_time_type last_write_time(const path&amp; p, error_code&amp; ec) noexcept;
 </pre>
 <blockquote>
 <p>
-<i>Returns</i>: The time of last data modification of <tt>p</tt>, determined as if by the value of the POSIX <tt>stat</tt> 
-structure member <tt>st_mtime</tt> obtained as if by POSIX <tt>stat()</tt>. The signature with argument <tt>ec</tt> returns 
-<tt><del>static_cast&lt;file_time_type&gt;(-1)</del><ins>file_time_type::min()</ins></tt> if an error occurs.
+<i>Returns</i>: The time of last data modification of <code>p</code>, determined as if by the value of the POSIX <code>stat</code> 
+structure member <code>st_mtime</code> obtained as if by POSIX <code>stat()</code>. The signature with argument <code>ec</code> returns 
+<code><del>static_cast&lt;file_time_type&gt;(-1)</del><ins>file_time_type::min()</ins></code> if an error occurs.
 </p>
 </blockquote></blockquote>
 </li>

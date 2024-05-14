@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3161: Container adapters mandate use of emplace_back but don't require it</title>
+<meta property="og:title" content="Issue 3161: Container adapters mandate use of emplace_back but don't require it">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3161.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="3161"><a href="lwg-active.html#3161">3161</a>. Container adapters mandate use of <code>emplace_back</code> but don't require it</h3>
+<p><b>Section:</b> 24.6.8 <a href="https://wg21.link/stack">[stack]</a>, 24.6.6 <a href="https://wg21.link/queue">[queue]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2018-10-02 <b>Last modified:</b> 2020-05-09</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#stack">issues</a> in [stack].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+24.6.8 <a href="https://wg21.link/stack">[stack]</a> p1 says:
+</p>
+<blockquote>
+Any sequence container supporting operations <code>back()</code>, <code>push_back()</code> and <code>pop_back()</code> can be used to
+instantiate <code>stack</code>.
+</blockquote>
+
+<p>but then in 24.6.8.2 <a href="https://wg21.link/stack.defn">[stack.defn]</a> we have the following code:</p>
+<pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args)
+    { return c.emplace_back(std::forward&lt;Args&gt;(args)...); }
+</pre>
+
+<p>The same pattern appears in 24.6.6 <a href="https://wg21.link/queue">[queue]</a>.</p>
+
+<p>I see two ways to resolve this:</p>
+<p>The first is to add <code>emplace_back()</code> to the list of requirements for underlying containers for <code>stack</code> and <code>queue</code></p>
+
+<p>The second is to replace the calls to <code>c.emplace_back(std::forward&lt;Args&gt;(args)...)</code> with <code>c.emplace(c.end(), std::forward&lt;Args&gt;(args)...)</code>. We can do this w/o messing with the list above because <code>emplace</code> is part of the sequence container requirements, while <code>emplace_back</code> is not. I checked the libc++ implementation of <code>vector</code>, <code>deque</code>, and <code>list</code>, and they all do the same thing for <code>emplace(end(), ...)</code> and <code>emplace_back(...)</code>.</p>
+
+<p><i>[2019-02; Kona Wednesday night issue processing]</i></p>
+
+<p>Status to Open; Casey to provide updated wording, and re-vote on reflector.</p>
+<p>Polls were: NAD - 5-1-3; "Option B" - 2-5-2 and "Probe the container" - 7-2-0</p>
+
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4762">N4762</a>.</p>
+
+<blockquote class="note">
+I have prepared two mutually exclusive options.
+<br/>Option A a requirement for <code>emplace_back</code> to the underlying container.
+<br/>Option B one replaces the calls to <code>emplace_back</code> with calls to <code>emplace</code>.
+</blockquote>
+
+<p><b>Option A</b></p>
+<ol>
+<li><p>Edit 24.6.8 <a href="https://wg21.link/stack">[stack]</a>, as indicated:</p>
+<p>Any sequence container supporting operations <code>back()</code>, <code>push_back()</code>,  <ins><code>emplace_back()</code></ins> and <code>pop_back()</code> can be used to instantiate <code>stack</code>. </p>
+</li>
+
+<li><p>Edit 24.6.6.1 <a href="https://wg21.link/queue.defn">[queue.defn]</a>, as indicated:</p>
+<p>Any sequence container supporting operations <code>front()</code>, <code>back()</code>, <code>push_back()</code>,  <ins><code>emplace_back()</code></ins> and <code>pop_front()</code> can be used to instantiate <code>queue</code>. </p>
+</li>
+</ol>
+
+<p><b>Option B</b></p>
+<ol>
+<li><p>Edit 24.6.8.2 <a href="https://wg21.link/stack.defn">[stack.defn]</a>, class template <code>stack</code> definition, as indicated:</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args)
+    { return c.emplace<del>_back</del>(<ins>c.end(), </ins>std::forward&lt;Args&gt;(args)...); }
+</pre></blockquote>
+</li>
+
+<li><p>Edit 24.6.6.1 <a href="https://wg21.link/queue.defn">[queue.defn]</a>, class template <code>queue</code> definition, as indicated:</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args)
+    { return c.emplace<del>_back</del>(<ins>c.end(), </ins>std::forward&lt;Args&gt;(args)...); }
+</pre></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-05 Casey provides new wording]</i></p>
+
+<p>
+This is the "probe for <code>emplace_back</code> with fallback to <code>emplace</code>" approach that LWG
+wanted to see wording for in Kona.
+</p>
+
+<p><i>[2020-05-09; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 3 after reflector discussions.
+</p>
+
+
+<p id="res-3161"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.</p>
+
+<ol>
+<li><p>Edit 24.6.8.2 <a href="https://wg21.link/stack.defn">[stack.defn]</a>, class template <code>stack</code> definition, as indicated:</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args) {
+    <ins>if constexpr (requires { c.emplace_back(std::forward&lt;Args&gt;(args)...); }) {</ins>
+      return c.emplace_back(std::forward&lt;Args&gt;(args)...);
+    <ins>} else {</ins>
+      <ins>return c.emplace(c.end(), std::forward&lt;Args&gt;(args)...);</ins>
+    <ins>}</ins>
+  }
+</pre></blockquote>
+</li>
+
+<li><p>Edit 24.6.6.1 <a href="https://wg21.link/queue.defn">[queue.defn]</a>, class template <code>queue</code> definition, as indicated:</p>
+<blockquote><pre>
+template&lt;class... Args&gt;
+  decltype(auto) emplace(Args&amp;&amp;... args) {
+    <ins>if constexpr (requires { c.emplace_back(std::forward&lt;Args&gt;(args)...); }) {</ins>
+      return c.emplace_back(std::forward&lt;Args&gt;(args)...);
+    <ins>} else {</ins>
+      <ins>return c.emplace(c.end(), std::forward&lt;Args&gt;(args)...);</ins>
+    <ins>}</ins>
+  }
+</pre></blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

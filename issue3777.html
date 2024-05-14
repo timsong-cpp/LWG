@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3777: Common cartesian_product_view produces an invalid range if the first range is input and one of the ranges is empty</title>
+<meta property="og:title" content="Issue 3777: Common cartesian_product_view produces an invalid range if the first range is input and one of the ranges is empty">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3777.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="3777"><a href="lwg-active.html#3777">3777</a>. Common <code>cartesian_product_view</code> produces an invalid range if the first range is input and one of the ranges is empty</h3>
+<p><b>Section:</b> 26.7.33.2 <a href="https://wg21.link/range.cartesian.view">[range.cartesian.view]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2022-09-12 <b>Last modified:</b> 2023-02-07</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In case when <code>cartesian_product_view</code> is common and one of the inner ranges is empty, 
+it needs to produce equal iterators from <code>begin</code>/<code>end</code>. We currently create a 
+sequence of <code>begin</code> iterators as both <code>begin</code> and <code>end</code> iterators. This 
+assumes that <code>begin</code> iterator is copyable, which may not be the case with the input range, 
+even in the case if that range is common &mdash; in such case, we require that only sentinel 
+is semantically copy-constructible, not begin even if they are the same type.
+<p/>
+To illustrate, C++98 input iterators (like <code>directory_iterator</code>) are syntactically 
+copy-constructible, but only default constructed object, that corresponds to sentinels are 
+semantically copyable &mdash; the copy produces an equivalent result. As a consequence for 
+<code>directory_iterator d</code>, and empty <code>std::string_view sv</code>, the 
+<code>view::cartesian_product(d, sv)</code> produces an invalid range.
+<p/>
+To fix the problem, we need to move the logic of adjusting the first range iterator to return 
+<code>[end, begin, ..., begin]</code> for <code>begin</code>. This is safe, as we require the end 
+to be always semantically copy-constructible. This again can be done only if computing the end 
+can be done in <code>&#x1d4aa;(1)</code> i.e. the first range is common.
+</p>
+
+<p><i>[2022-09-28; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 after reflector poll.
+</p>
+
+<p><i>[2022-09-28; LWG telecon]</i></p>
+
+<p>
+Discussed issue. Tim suggested to add a new semantic requirement to
+<code>sentinel_for</code> that when <code>S</code> and <code>I</code> are the same type
+then <code>i == i</code> is true for any non-singular <code>i</code> of type <code>I</code>.
+</p>
+
+
+
+<p id="res-3777"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 26.7.33.2 <a href="https://wg21.link/range.cartesian.view">[range.cartesian.view]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: We can optimize the comparison with <code>default_sentinel_t</code> to compare only the iterator
+to the first range if the range is common. This is observable, as we call comparison of user-provided iterators.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+constexpr <i>iterator</i>&lt;false&gt; begin()
+  requires (!<i>simple-view</i>&lt;First&gt; || ... || !<i>simple-view</i>&lt;Vs&gt;);
+</pre>
+<blockquote>
+<p>
+<del>-2- <i>Effects</i>: Equivalent to: <code>return <i>iterator</i>&lt;false&gt;(<i>tuple-transform</i>(ranges::begin, <i>bases_</i>));</code></del>
+</p>
+</blockquote>
+<pre>
+constexpr <i>iterator</i>&lt;true&gt; begin() const
+  requires (range&lt;const First&gt; &amp;&amp; ... &amp;&amp; range&lt;const Vs&gt;);
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Effects</i>: Equivalent to: <code>return <i>iterator</i>&lt;true&gt;(<i>tuple-transform</i>(ranges::begin, <i>bases_</i>));</code></del>
+</p>
+</blockquote>
+<pre>
+constexpr <i>iterator</i>&lt;false&gt; end()
+  requires ((!<i>simple-view</i>&lt;First&gt; || ... || !<i>simple-view</i>&lt;Vs&gt;)
+    &amp;&amp; <i>cartesian-product-is-common</i>&lt;First, Vs...&gt;);
+constexpr <i>iterator</i>&lt;true&gt; end() const
+  requires <i>cartesian-product-is-common</i>&lt;const First, const Vs...&gt;;
+</pre>
+<blockquote>
+<p>
+-4- Let:
+</p>
+<ol style="list-style-type: none">
+<li><p>(4.1) &mdash; <code><i>is-const</i></code> be <code>true</code> for the const-qualified overload<ins>s</ins>, and <code>false</code> otherwise;</p></li>
+<li><p><ins>(4.?) &mdash; <code><i>is-end</i></code> be <code>true</code> for the <code>end</code> overloads, and <code>false</code> otherwise;</ins></p></li>
+<li><p>(4.2) &mdash; <code><i>is-empty</i></code> be <code>true</code> if the expression <code>ranges::empty(rng)</code> is <code>true</code> 
+for any <code>rng</code> among the underlying ranges except the first one and <code>false</code> otherwise; and</p></li>
+<li><p>(4.3) &mdash; <code><i>begin-or-first-end</i>(rng)</code> be expression-equivalent to 
+<code><ins><i>is-end</i> || <i>is-empty</i> ? <i>cartesian-common-arg-end</i>(rng) : 
+ranges::begin(rng)</ins><del><i>is-empty</i> ? ranges::begin(rng) : <i>cartesian-common-arg-end</i>(rng)</del></code> 
+if <ins><code><i>cartesian-product-common-arg</i>&lt;<i>maybe-const</i>&lt;<i>is-const</i>, First&gt;&gt;</code> is <code>true</code> and</ins> 
+<code>rng</code> is the first underlying range<ins>,</ins> and <code>ranges::begin(rng)</code>
+otherwise.</p></li>
+</ol>
+<p>
+-5- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+iterator&lt;<i>is-const</i>&gt; it(<i>tuple-transform</i>(
+  [](auto&amp; rng){ return <i>begin-or-first-end</i>(rng); }, <i>bases_</i>));
+return it;
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.33.3 <a href="https://wg21.link/range.cartesian.iterator">[range.cartesian.iterator]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+friend constexpr bool operator==(const <i>iterator</i>&amp; x, default_sentinel_t);
+</pre>
+<blockquote>
+<p>
+-26- <i>Returns</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; If <code><i>cartesian-product-common-arg</i>&lt;<i>maybe-const</i>&lt;Const, First&gt;&gt;</code> 
+is <code>true</code>, returns <code>std::get&lt;0&gt;(x.<i>current_</i>) == 
+ranges::end(std::get&lt;0&gt;(x.<i>parent_</i>-&gt;<i>bases_</i>))</code>.</ins></p></li>
+<li><p><ins>(?.2) &mdash; Otherwise, </ins> <del><code>true</code></del> if <code>std::get&lt;<i>i</i>&gt;(x.<i>current_</i>) == 
+ranges::end(std::get&lt;<i>i</i>&gt;(x.<i>parent_</i>-&gt;<i>bases_</i>))</code> is <code>true</code> 
+for any integer <code>0 &le; <i>i</i> &le; sizeof...(Vs)</code><ins>,</ins><del>; otherwise, <code>false</code></del> 
+<ins>returns <code>true</code>.</ins></p></li>
+<li><p><ins>(?.3) &mdash; Otherwise, returns <code>false</code></ins>.</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

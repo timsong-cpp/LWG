@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3399: basic_syncbuf::emit() + Qt's #define emit = Big Bada-Boom</title>
+<meta property="og:title" content="Issue 3399: basic_syncbuf::emit() + Qt's #define emit = Big Bada-Boom">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3399.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3399"><a href="lwg-closed.html#3399">3399</a>. <code>basic_syncbuf::emit()</code> + Qt's <code>#define emit</code> = Big Bada-Boom</h3>
+<p><b>Section:</b> 31.11.2.1 <a href="https://wg21.link/syncstream.syncbuf.overview">[syncstream.syncbuf.overview]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Marc Mutz <b>Opened:</b> 2019-02-14 <b>Last modified:</b> 2020-11-09</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#syncstream.syncbuf.overview">issues</a> in [syncstream.syncbuf.overview].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The current IS contains a function called <code>emit()</code> (in <code>basic_syncbuf</code>, added by <a href="https://wg21.link/p0053">P0053</a>).
+<p/>
+<code>emit</code> is a macro in pervasive use in every <a href="https://doc.qt.io/qt-5/signalsandslots.html#a-small-example">Qt program</a>. 
+<code>#include</code>'ing <code>&lt;osyncstream&gt;</code> after any Qt header would break, because <code>emit</code> was <code>#define</code>'d 
+to nothing by the Qt headers.
+<p/>
+It is understood that the committee cannot check every 3rd-party library out there that chooses (badly, as I’d readily concur) to 
+<code>#define</code> a macro of all-lowercase letters, but the <code>min</code>/<code>max</code> issue in the Windows headers caused so much 
+pain for our users, that we probably should avoid a breakage here, for the benefit of our users that have to work Qt.
+<p/>
+It also doesn’t seem like <code>emit()</code> is a particularly mandatory name for the syncbuf function. Since it returns <code>bool</code>, 
+it could just as easily be called <code>try_emit()</code> and the issue would be solved.
+<p/>
+Suggested approach:
+<p/>
+In <code>basic_syncbuf</code>, rename <code>bool emit()</code> to <code>bool try_emit()</code>. In <code>basic_osyncstream</code>, where the function 
+doesn't return <code>bool</code>, but sets the stream's <code>failbit</code>, rename <code>void emit()</code> to <code>void emit_or_fail()</code>.
+</p>
+
+<p><i>[2020-02-14, Prague]</i></p>
+
+<p>
+The issue was send to LEWG, who made the following poll:
+</p>
+<blockquote>
+<p>
+We're open to renaming <code>osyncstream::emit()</code> (and related).
+</p>
+<blockquote><pre>
+SF F N A SA
+1  1 5 8 20
+</pre></blockquote>
+</blockquote>
+<p><i>[2020-11-09 Status changed: Tentatively NAD &rarr; NAD.]</i></p>
+
+
+
+<p id="res-3399"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 31.7.6.5 <a href="https://wg21.link/ostream.manip">[ostream.manip]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; flush_emit(basic_ostream&lt;charT, traits&gt;&amp; os);
+</pre>
+<blockquote>
+<p>
+-12- <i>Effects:</i> Calls <code>os.flush()</code>. Then, if <code>os.rdbuf()</code> is a <code>basic_syncbuf&lt;charT, traits, Allocator&gt;*</code>,
+called <code>buf</code> for the purpose of exposition, calls <code>buf-&gt;<ins>try_</ins>emit()</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 31.11.2.1 <a href="https://wg21.link/syncstream.syncbuf.overview">[syncstream.syncbuf.overview]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 31.11.2.4 <a href="https://wg21.link/syncstream.syncbuf.members">[syncstream.syncbuf.members]</a>, member functions</i>
+bool <ins>try_</ins>emit();
+streambuf_type* get_wrapped() const noexcept;
+[&hellip;]
+</pre>
+<blockquote>
+<p>
+-1- Class template <code>basic_syncbuf</code> stores character data written to it, known as the associated output, into
+internal buffers allocated using the object's allocator. The associated output is transferred to the wrapped
+stream buffer object <code>*wrapped</code> when <code><ins>try_</ins>emit()</code> is called or when the <code>basic_syncbuf</code> 
+object is destroyed. Such transfers are atomic with respect to transfers by other <code>basic_syncbuf</code> objects 
+with the same wrapped stream buffer object.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 31.11.2.2 <a href="https://wg21.link/syncstream.syncbuf.cons">[syncstream.syncbuf.cons]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+~basic_syncbuf();
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Calls <code><ins>try_</ins>emit()</code>.
+<p/>
+-8- <i>Throws:</i> Nothing. If an exception is thrown from <code><ins>try_</ins>emit()</code>, the destructor catches and ignores that
+exception.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 31.11.2.3 <a href="https://wg21.link/syncstream.syncbuf.assign">[syncstream.syncbuf.assign]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+basic_syncbuf&amp; operator=(basic_syncbuf&amp;&amp; rhs) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Calls <code><ins>try_</ins>emit()</code> then move assigns from <code>rhs</code>. After the move assignment <code>*this</code> 
+has the observable state it would have had if it had been move constructed from <code>rhs</code> (31.11.2.2 <a href="https://wg21.link/syncstream.syncbuf.cons">[syncstream.syncbuf.cons]</a>).
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Replace in 31.11.2.4 <a href="https://wg21.link/syncstream.syncbuf.members">[syncstream.syncbuf.members]</a> all occurrences of <code>emit()</code> by <code>try_emit()</code> (five occurrences)</p>
+</li>
+
+<li><p>Replace in 31.11.2.5 <a href="https://wg21.link/syncstream.syncbuf.virtuals">[syncstream.syncbuf.virtuals]</a> all occurrences of <code>emit()</code> by <code>try_emit()</code> (three occurrences)</p>
+</li>
+
+<li><p>Modify 31.11.3.1 <a href="https://wg21.link/syncstream.osyncstream.overview">[syncstream.osyncstream.overview]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 31.11.3.3 <a href="https://wg21.link/syncstream.osyncstream.members">[syncstream.osyncstream.members]</a>, member functions</i>
+void emit<ins>_or_fail</ins>();
+streambuf_type* get_wrapped() const noexcept;
+[&hellip;]
+</pre>
+<blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Replace in 31.11.3.2 <a href="https://wg21.link/syncstream.osyncstream.cons">[syncstream.osyncstream.cons]</a> all occurrences of <code>emit()</code> by <code>emit_or_fail()</code> (three occurrences)</p>
+</li>
+
+<li><p>Replace in  [syncstream.osyncstream.assign] all occurrences of <code>emit()</code> by <code>emit_or_fail()</code> (two occurrences)</p>
+</li>
+
+<li><p>Replace in 31.11.3.3 <a href="https://wg21.link/syncstream.osyncstream.members">[syncstream.osyncstream.members]</a> all occurrences of <code>emit()</code> by <code>emit_or_fail()</code> (six occurrences)</p>
+</li>
+
+</ol>
+
+
+
+
+</body>
+</html>

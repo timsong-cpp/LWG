@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3859: std::projected cannot handle proxy iterator</title>
+<meta property="og:title" content="Issue 3859: std::projected cannot handle proxy iterator">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3859.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3859"><a href="lwg-defects.html#3859">3859</a>. <code>std::projected</code> cannot handle proxy iterator</h3>
+<p><b>Section:</b> 25.3.6.4 <a href="https://wg21.link/projected">[projected]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-01-24 <b>Last modified:</b> 2023-03-23</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#projected">issues</a> in [projected].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, <code>std::projected</code> is heavily used in <code>&lt;algorithm&gt;</code> to transform the original iterator into
+a new readable type for concept checking, which has the following definition:
+</p>
+<blockquote><pre>
+template&lt;indirectly_readable I, indirectly_regular_unary_invocable&lt;I&gt; Proj&gt;
+struct projected {
+  using value_type = remove_cvref_t&lt;indirect_result_t&lt;Proj&amp;, I&gt;&gt;;
+  indirect_result_t&lt;Proj&amp;, I&gt; operator*() const;              // <i>not defined</i>
+};
+</pre></blockquote>
+<p>
+It provides the member type <code>value_type</code>, which is defined as the cvref-unqualified of a projection function
+applied to the reference of the iterator, this seems reasonable since this is how iterators are usually defined for
+the value type.
+<p/>
+However, this does not apply to C++20 proxy iterators such as <code>zip_view::<i>iterator</i></code>, we cannot obtain
+the <code>tuple</code> of value by simply removing the <i>cvref</i>-qualifier of the <code>tuple</code> of reference.<br/>
+This incorrect definition allows us to unethically bypass the constraint checking of the constraint algorithm,
+<a href="https://godbolt.org/z/98h36M4d8">for example</a>:
+</p>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+struct Cmp {
+  bool operator()(std::tuple&lt;int&amp;&gt;, std::tuple&lt;int&amp;&gt;) const;
+  bool operator()(auto, auto) const = delete;
+};
+
+int main() {
+  std::vector&lt;int&gt; v;
+  std::ranges::sort(std::views::zip(v), Cmp{}); // <span style="color:red;font-weight:bolder">hard error</span>
+}
+</pre></blockquote>
+<p>
+In the above example, the value type and reference of the original iterator <code>I</code> are <code>tuple&lt;int&gt;</code>
+and <code>tuple&lt;int&amp;&gt;</code> respectively, however, the value type and reference of <code>projected&lt;I, identity&gt;</code>
+will be <code>tuple&lt;int&amp;&gt;</code> and <code>tuple&lt;int&amp;&gt;&amp;&amp;</code>, which makes the constraint only
+require that the comparator can compare two <code>tuple&lt;int&amp;&gt;</code>s, resulting in a hard error in the implementation.
+</p>
+
+<p><i>[2023-02-06; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The proposed resolution is to alias <code>projected</code> as <code>I</code> when the projection function
+is exactly <code>identity</code>. This form of type aliasing has similarities to the proposed wording of
+<a href="https://wg21.link/P2538R1" title=" ADL-proof std::projected">P2538R1</a>, except for the nested <code>struct type</code>. &mdash; <i>end drafting note</i>]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 25.2 <a href="https://wg21.link/iterator.synopsis">[iterator.synopsis]</a>, header <code>&lt;iterator&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  // <i>25.3.6.4 <a href="https://wg21.link/projected">[projected]</a>, projected</i>
+  template&lt;indirectly_readable I, indirectly_regular_unary_invocable&lt;I&gt; Proj&gt;
+    <ins>using</ins><del>struct</del> projected <ins>= see <i>below</i></ins>;                         // <i>freestanding</i>
+
+  <del>template&lt;weakly_incrementable I, class Proj&gt;</del>
+    <del>struct incrementable_traits&lt;projected&lt;I, Proj&gt;&gt;;           // <i>freestanding</i></del>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 25.3.6.4 <a href="https://wg21.link/projected">[projected]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Class template <code>projected</code> is used to constrain algorithms that accept callable objects and projections
+(3.43 <a href="https://wg21.link/defns.projection">[defns.projection]</a>). It combines a <code>indirectly_readable</code> type <code>I</code> and a callable object
+type <code>Proj</code> into a new <code>indirectly_readable</code> type whose <code>reference</code> type is the result of applying
+<code>Proj</code> to the <code>iter_reference_t</code> of <code>I</code>.
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;<ins>class</ins><del>indirectly_readable</del> I, <ins>class</ins><del>indirectly_regular_unary_invocable&lt;I&gt;</del> Proj&gt;
+  struct <ins><i>projected-impl</i></ins><del>projected</del> { <ins>// <i>exposition only</i></ins>
+    using value_type = remove_cvref_t&lt;indirect_result_t&lt;Proj&amp;, I&gt;&gt;;
+    <ins>using difference_type = iter_difference_t&lt;I&gt;;               // <i>present only if I models weakly_incrementable</i></ins>
+    indirect_result_t&lt;Proj&amp;, I&gt; operator*() const;              // <i>not defined</i>
+  };
+
+  <del>template&lt;weakly_incrementable I, class Proj&gt;</del>
+  <del>struct incrementable_traits&lt;projected&lt;I, Proj&gt;&gt; {</del>
+  <del>  using difference_type = iter_difference_t&lt;I&gt;;</del>
+  <del>};</del>
+
+  <ins>template&lt;indirectly_readable I, indirectly_regular_unary_invocable&lt;I&gt; Proj&gt;</ins>
+    <ins>using projected = conditional_t&lt;same_as&lt;Proj, identity&gt;, I, <i>projected-impl</i>&lt;I, Proj&gt;&gt;</ins>;
+}
+</pre></blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2023-03-22 Resolved by the adoption of <a href="https://wg21.link/P2609R3" title=" Relaxing Ranges Just A Smidge">P2609R3</a> in Issaquah. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3859"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

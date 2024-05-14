@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3962: What is the "decimal precision of the input"?</title>
+<meta property="og:title" content="Issue 3962: What is the &quot;decimal precision of the input&quot;?">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3962.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3962"><a href="lwg-active.html#3962">3962</a>. What is the "decimal precision of the input"?</h3>
+<p><b>Section:</b> 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2023-07-28 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#time.parse">active issues</a> in [time.parse].</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.parse">issues</a> in [time.parse].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <code>%j</code> flag talks about "the type being parsed" and <code>%S</code> talks about
+"the input time" and "the input", but doesn't really define which types
+those are.
+</p>
+
+<p><i>[2023-11-02; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3962"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4950" title=" Working Draft, Standard for Programming Language C++">N4950</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> as indicated:</p>
+
+<blockquote>
+<p>
+<ins>
+-?-
+In Table 102 the type <code>Parsable</code> denotes the type of the second
+argument to <code>from_stream</code>.
+</ins>
+</p>
+
+<table>
+<tr><td><code style="padding:3em; text-align: center">%j</code></td>
+<td>
+If <del>the type being parsed</del> <ins><code>Parsable</code></ins>
+is a specialization of <code>duration</code>, a decimal number of days.
+</td></tr>
+<tr><td>&nbsp;</td><td></td></tr>
+<tr><td><code style="padding:3em; text-align: center">%S</code></td>
+<td>
+The seconds as a decimal number.
+The modified command <code>%<i>N</i>S</code> specifies the maximum number of
+characters to read.
+If <code><i>N</i></code> is not specified, the default is 2
+<ins>if <code>Parsable</code> is a calendrical type (29.8 <a href="https://wg21.link/time.cal">[time.cal]</a>)</ins>
+<del>if the input time has a precision convertible to seconds</del>.
+Otherwise the default width is determined by the decimal precision of
+<del>the input</del> <ins><code>Parsable</code>,
+determined in the same manner as <code>hh_mm_ss::fractional_width</code>
+(29.9 <a href="https://wg21.link/time.hms">[time.hms]</a>). If the number of fractional decimal digits for
+the type is zero, then the default for <code><i>N</i></code> is 2. Otherwise, it is
+3 + W, where W is the number of fractional decimal digits.
+If <code><i>N</i></code> is less than 3, the field is interpreted as a decimal integer, 
+otherwise </ins><del>and</del>
+the field is interpreted as a <code>long double</code> in a fixed format.
+If encountered, the locale determines the decimal point character.
+Leading zeroes are permitted but not required.
+The modified command <code>%OS</code> interprets the locale's alternative
+representation.
+</td></tr>
+</table>
+
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

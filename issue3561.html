@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3561: Issue with internal counter in discard_block_engine</title>
+<meta property="og:title" content="Issue 3561: Issue with internal counter in discard_block_engine">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3561.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3561"><a href="lwg-defects.html#3561">3561</a>. Issue with internal counter in <code>discard_block_engine</code></h3>
+<p><b>Section:</b> 28.5.5.2 <a href="https://wg21.link/rand.adapt.disc">[rand.adapt.disc]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Ilya Burylov <b>Opened:</b> 2021-06-03 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#rand.adapt.disc">issues</a> in [rand.adapt.disc].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+A <code>discard_block_engine</code> engine adaptor is described in 28.5.5.2 <a href="https://wg21.link/rand.adapt.disc">[rand.adapt.disc]</a>. It produces 
+random numbers from the underlying engine discarding <code>(p - r)</code> last values of <code>p - size</code> block, 
+where <code>r</code> and <code>p</code> are template parameters of <code>std::size_t</code> type:
+</p>
+<blockquote><pre>
+template&lt;class Engine, size_t p, size_t r&gt;
+class discard_block_engine;
+</pre></blockquote>
+<p>
+The transition algorithm for <code>discard_block_engine</code> is described as follows (paragraph 2):
+</p>
+<blockquote><p>
+The transition algorithm discards all but <code><i>r</i> &gt; 0</code> values from each block of <code><i>p</i> = <i>r</i></code> 
+values delivered by <code>&escr;</code>. The state transition is performed as follows: If <code><i>n</i> = <i>r</i></code>, 
+advance the state of <code>e</code> from <code>e<sub>i</sub></code> to <code>e<sub>i</sub>+<i>p</i>-<i>r</i></code> and set 
+<code><i>n</i></code> to <code>0</code>. In any case, then increment <code><i>n</i></code> and advance <code>e</code>'s then-current state 
+<code>e<sub>j</sub></code> to <code>e<sub>j+1</sub></code>.
+</p></blockquote>
+<p>
+Where <code><i>n</i></code> is of integer type. In the API of discard block engine, <code><i>n</i></code> is represented 
+in the following way:
+</p>
+<blockquote><pre>
+[&hellip;]
+int n; <i>// exposition only</i>
+</pre></blockquote>
+<p>
+In cases where <code>int</code> is equal to <code>int32_t</code>, overflow is possible for <code><i>n</i></code> that leads 
+to undefined behavior. Such situation can happen when the <code>p</code> and <code>r</code> template parameters exceed 
+<code>INT_MAX</code>.
+<p/>
+This misleading exposition block leads to differences in implementations:
+</p>
+<ul>
+<li><p>GNU Libstdc++ uses <code>size_t</code> for <code>n</code> &mdash; in this case no overflow happened even if template 
+parameters exceed <code>INT_MAX</code></p></li>
+<li><p>LLVM Libcxx uses <code>int</code> for <code>n</code> together with a <code>static_assert</code> that is checking that 
+<code>p</code> and <code>r</code> values are <code>&lt;= INT_MAX</code></p></li> 
+</ul>
+<p>
+Such difference in implementation makes code not portable and may potentially breaks random number sequence consistency 
+between different implementors of C++ std lib.
+<p/>
+The problematic use case is the following one:
+</p>
+<blockquote><pre>
+#include &lt;iostream&gt;
+#include &lt;random&gt;
+#include &lt;limits&gt;
+
+int main() {
+  std::minstd_rand0 generator;
+
+  constexpr std::size_t skipped_size = static_cast&lt;std::size_t&gt;(std::numeric_limits&lt;int&gt;::max());
+  constexpr std::size_t block_size = skipped_size + 5;
+  constexpr std::size_t used_block = skipped_size;
+
+  std::cout &lt;&lt; "block_size = " &lt;&lt; block_size &lt;&lt; std::endl;
+  std::cout &lt;&lt; "used_block = " &lt;&lt; used_block &lt;&lt; "\n" &lt;&lt; std::endl;
+
+  std::discard_block_engine&lt;std::minstd_rand0, block_size, used_block&gt; discard_generator;
+
+  <i>// Call discard procedures</i>
+  discard_generator.discard(used_block);
+  generator.discard(block_size);
+
+  <i>// Call generation. Results should be equal</i>
+  for (std::int32_t i = 0; i &lt; 10; ++i)
+  {
+    std::cout &lt;&lt; discard_generator() &lt;&lt; " should be equal " &lt;&lt; generator() &lt;&lt; std::endl;
+  }
+}
+</pre></blockquote> 
+<p>
+We see no solid reason for <code>n</code> to be an <code>int</code>, given that the relevant template parameters are 
+<code>std::size_t</code>. It seems like a perfectly fine use case to generate random numbers in amounts larger than 
+<code>INT_MAX</code>.
+<p/>
+The proposal is to change exposition text to <code>std::size_t</code>:
+</p>
+<blockquote><pre>
+size_t n; <i>// exposition only</i>
+</pre></blockquote>
+<p>
+It will not mandate the existing libraries to break ABI, but at least guide for better implementation.
+</p>
+
+<p><i>[2021-06-14; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-10-14 Approved at October 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3561"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify 28.5.5.2 <a href="https://wg21.link/rand.adapt.disc">[rand.adapt.disc]</a>, class template <code>discard_block_engine</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+  [&hellip;]
+  <i>// generating functions</i>
+  result_type operator()();
+  void discard(unsigned long long z);
+  
+  <i>// property functions</i>
+  const Engine&amp; base() const noexcept { return e; };
+  
+private:
+  Engine e; <i>// exposition only</i>
+  <del>int</del><ins>size_t</ins> n; <i>// exposition only</i>
+};
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+</body>
+</html>

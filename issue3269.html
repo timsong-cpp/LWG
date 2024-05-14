@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3269: Parse manipulators do not specify the result of the extraction from stream</title>
+<meta property="og:title" content="Issue 3269: Parse manipulators do not specify the result of the extraction from stream">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3269.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3269"><a href="lwg-defects.html#3269">3269</a>. Parse manipulators do not specify the result of the extraction from stream</h3>
+<p><b>Section:</b> 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2019-09-01 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#time.parse">active issues</a> in [time.parse].</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.parse">issues</a> in [time.parse].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+None of the <code>parse</code> manipulators for the <code>chrono</code> types
+specifies the result of the extraction from the stream, as consequence 
+they cannot be chained with the other read operations (at least portably). 
+For example the following code is not required to work:
+</p>
+<blockquote>
+<pre>
+std::chrono::sys_stime s; 
+int x;
+std::cin &gt;&gt; std::chrono::parse("%X", s) &gt;&gt; x;
+</pre>
+</blockquote>
+
+<p><i>[2019-10 Priority set to 2 after reflector discussion]</i></p>
+
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As a drive-by fix the <i>Remarks</i> element is also 
+converted to a <i>Constraints</i> element. The wording integrates the resolution for 
+LWG <a href="lwg-defects.html#3235" title="parse manipulator without abbreviation is not callable (Status: C++20)">3235</a>.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Each parse overload specified in this subclause calls <code>from_stream</code> unqualified, 
+so as to enable argument dependent lookup (6.5.4 <a href="https://wg21.link/basic.lookup.argdep">[basic.lookup.argdep]</a>). 
+<ins>In the following paragraphs, let <code>is</code> denote an object of type 
+<code>basic_istream&lt;charT, traits&gt;</code> and let <code>I</code> be
+<code>basic_istream&lt;charT, traits&gt;&amp;</code>, where <code>charT</code> and
+<code>traits</code> are template parameters in that context.</ins>
+</p>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp);
+</pre>
+<blockquote>
+<p>
+-2- <i><del>Remarks</del><ins>Constraints</ins>:</i> <del>This function shall not participate in 
+overload resolution unless</del><ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp)
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-3- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression
+<code>is &gt;&gt; parse(fmt, tp)</code> has type <code>I</code>, value <code>is</code>, 
+and</ins> calls <code>from_stream(is, fmt.c_str(), tp)</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);
+</pre>
+<blockquote>
+<p>
+-4- <i><del>Remarks</del><ins>Constraints</ins>:</i> <del>This function shall not participate 
+in overload resolution unless</del><ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp, addressof(abbrev))
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-5- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression <code>is &gt;&gt; 
+parse(fmt, tp, abbrev)</code> has type <code>I</code>, value <code>is</code>, and</ins> calls 
+<code>from_stream(is, fmt.c_str(), tp, addressof(abbrev))</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          minutes&amp; offset);
+</pre>
+<blockquote>
+<p>
+-6- <i><del>Remarks</del><ins>Constraints</ins>:</i> <del>This function shall not participate 
+in overload resolution unless</del><ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp, 
+            <ins>declval&lt;basic_string&lt;charT, traits, Alloc&gt;*&gt;()</ins><del>nullptr</del>, &amp;offset)
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-7- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression <code>is &gt;&gt; 
+parse(fmt, tp, offset)</code> has type <code>I</code>, value <code>is</code>, and</ins> 
+calls <code>from_stream(is, fmt.c_str(), tp, <ins>static_cast&lt;basic_string&lt;charT, 
+traits, Alloc&gt;*&gt;(</ins>nullptr<ins>)</ins>, &amp;offset)</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable>
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);
+</pre>
+<blockquote>
+<p>
+-8- <i><del>Remarks</del><ins>Constraints</ins>:</i> <del>This function shall not participate 
+in overload resolution unless</del><ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(),
+            fmt.c_str(), tp, addressof(abbrev), &amp;offset)
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-9- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression <code>is &gt;&gt; 
+parse(fmt, tp, abbrev, offset)</code> has type <code>I</code>, value <code>is</code>, 
+and</ins> calls <code>from_stream(is, fmt.c_str(), tp, addressof(abbrev), &amp;offset)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-02-13, Prague]</i></p>
+
+<p>
+Issue wording has been rebased.
+</p>
+<p><i>[2020-02 Status to Immediate on Friday morning in Prague.]</i></p>
+
+
+
+<p id="res-3269"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Each <code>parse</code> overload specified in this subclause calls <code>from_stream</code> unqualified, 
+so as to enable argument dependent lookup (6.5.4 <a href="https://wg21.link/basic.lookup.argdep">[basic.lookup.argdep]</a>). In the following paragraphs, 
+let <code>is</code> denote an object of type <code>basic_istream&lt;charT, traits&gt;</code> <ins>and let <code>I</code> be 
+<code>basic_istream&lt;charT, traits&gt;&amp;</code></ins>, where <code>charT</code> and <code>traits</code> are 
+template parameters in that context.
+</p>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp);
+</pre>
+<blockquote>
+<p>
+-2- <i>Constraints:</i> <ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp)
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-3- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression
+<code>is &gt;&gt; parse(fmt, tp)</code> has type <code>I</code>, value <code>is</code>, 
+and</ins> calls <code>from_stream(is, fmt.c_str(), tp)</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev);
+</pre>
+<blockquote>
+<p>
+-4- <i>Constraints:</i> <ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), fmt.c_str(), tp, addressof(abbrev))
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-5- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression <code>is &gt;&gt; 
+parse(fmt, tp, abbrev)</code> has type <code>I</code>, value <code>is</code>, and</ins> calls 
+<code>from_stream(is, fmt.c_str(), tp, addressof(abbrev))</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable&gt;
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          minutes&amp; offset);
+</pre>
+<blockquote>
+<p>
+-6- <i>Constraints:</i> The expression
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(), 
+            fmt.c_str(), tp, 
+            declval&lt;basic_string&lt;charT, traits, Alloc&gt;*&gt;(), 
+            &amp;offset)
+</pre></blockquote>
+is well-formed when treated as an unevaluated operand.
+<p/>
+-7- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression <code>is &gt;&gt; 
+parse(fmt, tp, offset)</code> has type <code>I</code>, value <code>is</code>, and</ins> 
+calls
+</p>
+<blockquote><pre>
+from_stream(is, 
+            fmt.c_str(), tp, 
+            static_cast&lt;basic_string&lt;charT, traits, Alloc&gt;*&gt;(nullptr), 
+            &amp;offset)
+</pre></blockquote>
+</blockquote>
+<pre>
+template&lt;class charT, class traits, class Alloc, class Parsable>
+  <i>unspecified</i>
+    parse(const basic_string&lt;charT, traits, Alloc&gt;&amp; fmt, Parsable&amp; tp,
+          basic_string&lt;charT, traits, Alloc&gt;&amp; abbrev, minutes&amp; offset);
+</pre>
+<blockquote>
+<p>
+-8- <i>Constraints:</i> <ins>The expression</ins>
+<blockquote><pre>
+from_stream(declval&lt;basic_istream&lt;charT, traits&gt;&amp;&gt;(),
+            fmt.c_str(), tp, addressof(abbrev), &amp;offset)
+</pre></blockquote>
+is <del>a valid expression</del><ins>well-formed when treated as an unevaluated operand</ins>.
+<p/>
+-9- <i>Returns:</i> A manipulator <ins>such</ins> that<del>, when extracted from a 
+<code>basic_istream&lt;charT, traits&gt; is</code>,</del><ins>the expression <code>is &gt;&gt; 
+parse(fmt, tp, abbrev, offset)</code> has type <code>I</code>, value <code>is</code>, 
+and</ins> calls <code>from_stream(is, fmt.c_str(), tp, addressof(abbrev), &amp;offset)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

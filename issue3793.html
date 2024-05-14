@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3793: Requirements for some algorithms' Size template parameters are unclear</title>
+<meta property="og:title" content="Issue 3793: Requirements for some algorithms' Size template parameters are unclear">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3793.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3793"><a href="lwg-active.html#3793">3793</a>. Requirements for some algorithms' <code>Size</code> template parameters are unclear</h3>
+<p><b>Section:</b> 27.6.5 <a href="https://wg21.link/alg.foreach">[alg.foreach]</a>, 27.6.15 <a href="https://wg21.link/alg.search">[alg.search]</a>, 27.7.1 <a href="https://wg21.link/alg.copy">[alg.copy]</a>, 27.7.6 <a href="https://wg21.link/alg.fill">[alg.fill]</a>, 27.7.7 <a href="https://wg21.link/alg.generate">[alg.generate]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2022-10-05 <b>Last modified:</b> 2022-10-12</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.foreach">issues</a> in [alg.foreach].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Algorithms <code>std::for_each_n</code>, <code>std::search_n</code>, <code>std::copy_n</code>, 
+<code>std::fill_n</code>, and <code>std::generate_n</code> have similar requirements for the 
+<code>Size</code> template parameter in <i>Mandates</i>, requiring <code>Size</code> to be 
+convertible to an integral type.
+<p/>
+However, it is currently underspecified to which integral type <code>Size</code> is 
+converted before further operations. There is implementation divergence:
+</p>
+<blockquote>
+<ul>
+<li><p><a href="https://github.com/gcc-mirror/gcc/blob/df4c584c567263fdcd57d8376f24f29477a892b2/libstdc%2B%2B-v3/include/bits/stl_algobase.h#L1005-L1052">libstdc++</a> 
+and <a href="https://github.com/llvm/llvm-project/blob/3e97e9423742b8ad07358d01b63ffbedde23b2a4/libcxx/include/__utility/convert_to_integral.h#L24-L68">libc++</a> 
+use an overload set to determine the target type, and</p></li>
+<li><p><a href="https://github.com/microsoft/STL/blob/65aab97a8e75e7ba409002e518ed799006dfb285/stl/inc/xutility#L352-L353">MSVC STL</a> 
+simply chooses <code>std::ptrdiff_t</code> when <code>Size</code> is not an integral 
+type.</p></li>
+</ul>
+</blockquote>
+<p>
+It is also notable that when the conversion from the source type to integral types 
+is sufficiently ambiguous, none of these implementations accepts such a source type.
+<p/>
+For example, currently the following program <a href="https://godbolt.org/z/KdK9dqWco">is rejected by all 
+mainstream implementations</a>.
+</p>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;cstdio&gt;
+
+struct BadFrom {
+  operator short() const { return 1; }
+  operator unsigned short() const { return 1; }
+};
+
+int main()
+{
+  int arr[42]{};
+  std::for_each_n(arr, BadFrom{}, [&amp;arr](int i)
+  {
+    std::printf("%d\n", i);
+  });
+}
+</pre></blockquote>
+<p>
+I think libc++'s strategy make the most sense. But is it really intended to support using a 
+floating-point type or a class type as <code>Size</code>?
+<p/>
+<b>Daniel:</b>
+<p/>
+The conversion from class type was indeed intended, see the original wording for LWG
+<a href="lwg-defects.html#3213" title="for_each_n and copy_n missing requirements for Size (Status: Resolved)">3213</a>, which was transferred to <a href="https://wg21.link/P1718R2" title=" Mandating the Standard Library: Clause 25 - Algorithms library">P1718R2</a>.
+<p/>
+See also LWG <a href="lwg-active.html#3439" title="&quot;Distance&quot; template parameter is underspecified (Status: New)">3439</a> for a similar underspecified situation for template parameter 
+<code>Distance</code> and for the underspecified <code>Size</code> template parameter in
+various <code>uninitialized_*_n</code> and <code>destroy_n</code> algorithms in 
+27.11.2 <a href="https://wg21.link/special.mem.concepts">[special.mem.concepts]</a>.
+<p/>
+<code>ranges::destroy_n</code> has the luxury to simply require <code>iter_difference_t&lt;I&gt;</code>.
+</p>
+
+<p><i>[2022-10-12; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3793"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

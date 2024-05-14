@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3150: UniformRandomBitGenerator should validate min and max</title>
+<meta property="og:title" content="Issue 3150: UniformRandomBitGenerator should validate min and max">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3150.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3150"><a href="lwg-defects.html#3150">3150</a>. <code>UniformRandomBitGenerator</code> should validate <code>min</code> and <code>max</code></h3>
+<p><b>Section:</b> 28.5.3.3 <a href="https://wg21.link/rand.req.urng">[rand.req.urng]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2018-08-09 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#rand.req.urng">issues</a> in [rand.req.urng].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+28.5.3.3 <a href="https://wg21.link/rand.req.urng">[rand.req.urng]</a>
+<a href="https://wg21.link/rand.req.urng#2">paragraph 2</a> specifies axioms for
+the <code>UniformRandomBitGenerator</code> concept:
+</p>
+<blockquote>
+<p>
+2 Let <code>g</code> be an object of type <code>G</code>. <code>G</code> models
+<code>UniformRandomBitGenerator</code> only if
+</p><p>
+(2.1) &mdash; both <code>G::min()</code> and <code>G::max()</code> are constant
+expressions (7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>),
+</p><p>
+(2.2) &mdash; <code>G::min() &lt; G::max()</code>,
+</p><p>
+(2.3) &mdash; <code>G::min() &lt;= g()</code>,
+</p><p>
+(2.4) &mdash; <code>g() &lt;= G::max()</code>, and
+</p><p>
+(2.5) &mdash; <code>g()</code> has amortized constant complexity.
+</p>
+</blockquote>
+<p>
+Bullets 2.1 and 2.2 are both compile-time requirements that ought to be
+validated by the concept.
+</p>
+
+<p><i>[2018-08-20 Priority set to 3 after reflector discussion]</i></p>
+
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ol>
+<li><p>Modify 28.5.3.3 <a href="https://wg21.link/rand.req.urng">[rand.req.urng]</a> as follows:</p>
+
+<blockquote>
+<p>1 A <i>uniform random bit generator</i> <code>g</code> of type <code>G</code> is a
+function object returning unsigned integer values such that each value in the
+range of possible results has (ideally) equal probability of being returned.
+[<i>Note:</i> The degree to which <code>g</code>'s results approximate the ideal is
+often determined statistically.&mdash;<i>end note</i>]
+</p>
+<blockquote>
+<pre>
+<ins>template&lt;auto&gt; struct <i>require-constant</i>; // <i>exposition-only</i></ins>
+
+template&lt;class G&gt;
+  concept UniformRandomBitGenerator =
+    Invocable&lt;G&amp;&gt; &amp;&amp; UnsignedIntegral&lt;invoke_result_t&lt;G&amp;&gt;&gt; &amp;&amp;
+    requires {
+      { G::min() } -> Same&lt;invoke_result_t&lt;G&amp;&gt;&gt;;
+      { G::max() } -> Same&lt;invoke_result_t&lt;G&amp;&gt;&gt;;
+      <ins>typename <i>require-constant</i>&lt;G::min()&gt;;</ins>
+      <ins>typename <i>require-constant</i>&lt;G::max()&gt;;</ins>
+      <ins>requires G::min() &lt; G::max();</ins>
+    };
+</pre>
+</blockquote>
+<p>
+2 Let <code>g</code> be an object of type <code>G</code>. <code>G</code> models
+<code>UniformRandomBitGenerator</code> only if
+</p><p>
+<del>(2.1) &mdash; both <code>G​::​min()</code> and <code>G​::​max()</code> are constant
+expressions (7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>),</del>
+</p><p>
+<del>(2.2) &mdash; <code>G​::​min() &lt; G​::​max()</code>,</del>
+</p><p>
+(2.3) &mdash; <code>G​::​min() &lt;= g()</code>,
+</p><p>
+(2.4) &mdash; <code>g() &lt;= G​::​max()</code>, and
+</p><p>
+(2.5) &mdash; <code>g()</code> has amortized constant complexity.
+</p><p>
+3 A class <code>G</code> meets the <i>uniform random bit generator</i> requirements
+if <code>G</code> models <code>UniformRandomBitGenerator</code>,
+<code>invoke_­result_­t&lt;G&amp;&gt;</code> is an unsigned integer type
+(6.8.2 <a href="https://wg21.link/basic.fundamental">[basic.fundamental]</a>), and <code>G</code> provides a nested
+<i>typedef-name</i> <code>result_­type</code> that denotes the same type as
+<code>invoke_­result_­t&lt;G&amp;&gt;</code>.
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-02-13; Prague]</i></p>
+
+<p>
+LWG provided some improved wording.
+</p>
+<p><i>[2020-02 Status to Immediate on Thursday night in Prague.]</i></p>
+
+
+
+<p id="res-3150"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 28.5.3.3 <a href="https://wg21.link/rand.req.urng">[rand.req.urng]</a> as follows:</p>
+
+<blockquote>
+<p>1 A <i>uniform random bit generator</i> <code>g</code> of type <code>G</code> is a
+function object returning unsigned integer values such that each value in the
+range of possible results has (ideally) equal probability of being returned.
+[<i>Note:</i> The degree to which <code>g</code>'s results approximate the ideal is
+often determined statistically.&mdash;<i>end note</i>]
+</p>
+<blockquote>
+<pre>
+template&lt;class G&gt;
+  concept uniform_random_bit_generator =
+    invocable&lt;G&amp;&gt; &amp;&amp; unsigned_integral&lt;invoke_result_t&lt;G&amp;&gt;&gt; &amp;&amp;
+    requires {
+      { G::min() } -> same_as&lt;invoke_result_t&lt;G&amp;&gt;&gt;;
+      { G::max() } -> same_as&lt;invoke_result_t&lt;G&amp;&gt;&gt;;
+      <ins>requires bool_constant&lt;(G::min() &lt; G::max())&gt;::value;</ins>
+    };
+</pre>
+</blockquote>
+<p>
+-2- Let <code>g</code> be an object of type <code>G</code>. <code>G</code> models
+<code>uniform_random_bit_generator</code> only if
+</p><p>
+<del>(2.1) &mdash; both <code>G​::​min()</code> and <code>G​::​max()</code> are constant
+expressions (7.7 <a href="https://wg21.link/expr.const">[expr.const]</a>),</del>
+</p><p>
+<del>(2.2) &mdash; <code>G​::​min() &lt; G​::​max()</code>,</del>
+</p><p>
+(2.3) &mdash; <code>G​::​min() &lt;= g()</code>,
+</p><p>
+(2.4) &mdash; <code>g() &lt;= G​::​max()</code>, and
+</p><p>
+(2.5) &mdash; <code>g()</code> has amortized constant complexity.
+</p><p>
+3 A class <code>G</code> meets the <i>uniform random bit generator</i> requirements
+if <code>G</code> models <code>uniform_random_bit_generator</code>,
+<code>invoke_­result_­t&lt;G&amp;&gt;</code> is an unsigned integer type
+(6.8.2 <a href="https://wg21.link/basic.fundamental">[basic.fundamental]</a>), and <code>G</code> provides a nested
+<i>typedef-name</i> <code>result_­type</code> that denotes the same type as
+<code>invoke_­result_­t&lt;G&amp;&gt;</code>.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

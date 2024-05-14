@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3488: Is array&lt;const int, 0&gt; swappable or not?</title>
+<meta property="og:title" content="Issue 3488: Is array&lt;const int, 0&gt; swappable or not?">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3488.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="3488"><a href="lwg-active.html#3488">3488</a>. Is <code>array&lt;const int, 0&gt;</code> swappable or not?</h3>
+<p><b>Section:</b> 24.3.7.4 <a href="https://wg21.link/array.special">[array.special]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2020-10-01 <b>Last modified:</b> 2020-10-04</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Per 24.3.7.4 <a href="https://wg21.link/array.special">[array.special]</a>/1,
+<code>std::array</code>'s non-member swap participates in overload resolution
+when the array has size 0 or swappable elements.
+The effects of non-member swap are "As if by [member swap]",
+but member swap's effects are simply
+"Equivalent to swap_ranges(begin(), end(), y.begin())"
+per 24.3.7.3 <a href="https://wg21.link/array.members">[array.members]</a>/4.
+In effect, we've gone out of our way to ensure that
+<code>is_swappable_v&lt;array&lt;T, 0&gt;&gt;</code>
+and <code>swappable&lt;array&lt;T, 0&gt;&gt;</code>
+are always true
+despite that actually swapping such an array may be ill-formed.
+</p>
+
+<p>
+It seems that the wording stops half-way to making
+<code>array&lt;T, 0&gt;</code> swappable regardless of <code>T</code>.
+I personally find that design distasteful
+- it seems a gratuitous difference between
+<code>array&lt;T, N&gt;</code> and <code>array&lt;T, 0&gt;</code>
+- but I'd prefer a consistent design over the status quo
+even if it's the "wrong" design.
+</p>
+
+<p><i>[2020-10-02; Issue processing telecon]</i></p>
+
+<p>
+Preference for Option B, and successful vote to move to Tentatively Ready.
+But on the reflector Tim Song pointed out a conflict with
+<a href="lwg-active.html#2157" title="How does std::array&lt;T,0&gt; initialization work when T is not default-constructible? (Status: Open)">2157</a> and question the decision. Status to Open instead.
+Priority set to P3 in line with <a href="lwg-active.html#2157" title="How does std::array&lt;T,0&gt; initialization work when T is not default-constructible? (Status: Open)">2157</a>.
+</p>
+
+
+
+<p id="res-3488"><b>Proposed resolution:</b></p>
+<p>
+Wording relative to <a href="https://wg21.link/n4861">N4861</a>. 
+<p/>
+This resolution proposes two wording alternatives:
+Option A makes <code>array&lt;T, 0&gt;</code> swappable regardless of <code>T</code>,
+and the clearly superior Option B makes <code>array&lt;T, N&gt;</code> swappable
+only if <code>T</code> is swappable (i.e., regardless of <code>N</code>)
+removing gratuitous special-case behavior for the <code>N == 0</code> case.
+</p>
+
+<p><b>Option A:</b></p>
+<ol>
+<li>
+<p>Change 24.3.7.3 <a href="https://wg21.link/array.members">[array.members]</a> as follows:</p>
+<blockquote>
+<pre>
+constexpr void swap(array&amp; y) noexcept(<ins>N == 0 || </ins>is_nothrow_swappable_v&lt;T&gt;);
+</pre>
+</blockquote>
+<p>
+-4- <i>Effects:</i> <ins>If <code>N == 0</code>, no effects. Otherwise, equivalent</ins> <del>Equivalent</del> to <code>swap_ranges(begin(), end(), y.begin())</code>.
+</p>
+<p>-5- [&hellip;]</p>
+</li>
+<li>
+<p>
+Also remove the now-redundant paragraph four from 24.3.7.5 <a href="https://wg21.link/array.zero">[array.zero]</a> as follows:
+</p>
+<blockquote>
+<p>
+<del>-4- Member function <code>swap()</code> shall have a non-throwing exception specification.</del>
+</p>
+</blockquote>
+</li>
+</ol>
+
+<p><b>Option B:</b></p>
+<ol>
+<li>
+<p>Change 24.3.7.4 <a href="https://wg21.link/array.special">[array.special]</a> as follows:</p>
+<blockquote>
+<pre>
+template&lt;class T, size_t N&gt;
+constexpr void swap(array&lt;T, N&gt;&amp; x, array&lt;T, N&gt;&amp; y) noexcept(noexcept(x.swap(y)));
+</pre>
+</blockquote>
+<p>
+-1- <i>Constraints:</i> <del><code>N == 0</code> or</del> <code>is_swappable_v&lt;T&gt;</code> is <code>true</code>.
+</p>
+</li>
+<li>
+<p>
+Also remove paragraph four from 24.3.7.5 <a href="https://wg21.link/array.zero">[array.zero]</a> as follows:
+</p>
+<blockquote>
+<p>
+<del>-4- Member function <code>swap()</code> shall have a non-throwing exception specification.</del>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

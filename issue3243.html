@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3243: std::format and negative zeroes</title>
+<meta property="og:title" content="Issue 3243: std::format and negative zeroes">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3243.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3243"><a href="lwg-defects.html#3243">3243</a>. <code>std::format</code> and negative zeroes</h3>
+<p><b>Section:</b> 22.14.2 <a href="https://wg21.link/format.string">[format.string]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2019-07-31 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#format.string">issues</a> in [format.string].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+What are these:
+</p>
+<blockquote><pre>
+std::format("{}", -0.0);
+std::format("{:+}", -0.0);
+std::format("{:-}", -0.0);
+std::format("{: }", -0.0);
+</pre></blockquote>
+<p>
+with
+</p>
+<blockquote><pre>
+"{:{}} {}"
+</pre></blockquote>
+<p>
+A negative zero is not a negative number, so I <em>think</em> the answer for an implementation that supports 
+signed zeroes is <code>"0"</code>, <code>"-0"</code>, <code>"0"</code>, <code>" 0"</code>. Is that the intent? (Note 
+that this doesn't satisfy <code>to_chars</code>' round-trip guarantee.)
+<p/>
+Or should the behavior actually be that <code>"+"</code> means "insert a leading <code>+</code> if <code>to_chars</code>' 
+output does not start with <code>-"</code> and <code>" "</code> actually means "insert a leading space if 
+<code>to_chars</code>' output does not start with <code>-"</code> (that is, the same as <code>"%+f"</code> and <code>"% f"</code>) 
+&mdash; so that the result of all four calls is <code>"-0"</code>?
+<p/>
+<b>Victor Zverovich:</b>
+<p/>
+The latter. <code>std::format</code> is specified in terms of <code>to_chars</code> and the intent is to have similar 
+round trip guarantee here, so the result should be <code>"-0"</code>, <code>"-0"</code>, <code>"-0"</code>, <code>"-0"</code>. 
+This has also been extensively discussed in LEWG and the outcome of that discussion was to print <code>'-'</code> 
+for negative zeros.
+<p/>
+So I think it should be clarified that <code>'-'</code> and space apply to negative numbers and negative zero.
+</p>
+
+<p><i>[2019-08-17 Priority set to 2 based on reflector discussion]</i></p>
+
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify the <i>sign</i> options Table [tab:format.sign] in 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 59: Meaning of <i>sign</i> options [tab:format.sign]</caption>
+<tr align="center">
+<th>Option</th>
+<th>Meaning</th>
+</tr> 
+
+<tr>
+<td>
+<code>'+'</code>
+</td>
+<td>
+Indicates that a sign should be used for both non-negative and negative numbers.
+</td>
+</tr>
+
+<tr>
+<td>
+<code>'-'</code>
+</td>
+<td>
+Indicates that a sign should be used only for negative numbers <ins>and negative zero</ins> 
+(this is the default behavior).
+</td>
+</tr>
+
+<tr>
+<td>
+space
+</td>
+<td>
+Indicates that a leading space should be used for non-negative numbers <ins>other than negative 
+zero</ins>, and a minus sign for negative numbers <ins>and negative zero</ins>.
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2020-02-13, Prague]</i></p>
+
+<p>
+Rebased and some wording finetuning by LWG.
+</p>
+<p><i>[2020-02 Status to Immediate on Thursday night in Prague.]</i></p>
+
+
+
+<p id="res-3243"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify the <i>sign</i> options Table [tab:format.sign] in 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 58: Meaning of <i>sign</i> options [tab:format.sign]</caption>
+<tr align="center">
+<th>Option</th>
+<th>Meaning</th>
+</tr> 
+
+<tr>
+<td>
+<code>'+'</code>
+</td>
+<td>
+Indicates that a sign should be used for both non-negative and negative numbers.
+</td>
+</tr>
+
+<tr>
+<td>
+<code>'-'</code>
+</td>
+<td>
+Indicates that a sign should be used <del>only</del> for negative numbers <ins>and negative zero only</ins> 
+(this is the default behavior).
+</td>
+</tr>
+
+<tr>
+<td>
+space
+</td>
+<td>
+Indicates that a leading space should be used for non-negative numbers <ins>other than negative 
+zero</ins>, and a minus sign for negative numbers <ins>and negative zero</ins>.
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+</body>
+</html>

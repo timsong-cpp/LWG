@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3953: iter_move for common_iterator and counted_iterator should return decltype(auto)</title>
+<meta property="og:title" content="Issue 3953: iter_move for common_iterator and counted_iterator should return decltype(auto)">
+<meta property="og:description" content="C++ library issue. Status: WP">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3953.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#WP">WP</a> status.</em></p>
+<h3 id="3953"><a href="lwg-defects.html#3953">3953</a>. <code>iter_move</code> for <code>common_iterator</code> and <code>counted_iterator</code> should return <code>decltype(auto)</code></h3>
+<p><b>Section:</b> 25.5.5.7 <a href="https://wg21.link/common.iter.cust">[common.iter.cust]</a>, 25.5.7.7 <a href="https://wg21.link/counted.iter.cust">[counted.iter.cust]</a> <b>Status:</b> <a href="lwg-active.html#WP">WP</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-06-30 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#WP">WP</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Although the customized <code>iter_move</code> of both requires the underlying iterator <code>I</code> to be <code>input_iterator</code>, 
+they still explicitly specify the return type as <code>iter_rvalue_reference_t&lt;I&gt;</code>,
+which makes it always instantiated.
+</p>
+<p>
+From the point of view that its validity is only specified in the <code>input_iterator</code> concept, it would be better to remove such 
+unnecessary type instantiation, which does not make much sense for an <code>output_iterator</code> even if it is still valid.
+</p>
+
+<p><i>[2023-10-27; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-11-11 Approved at November 2023 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3953"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4950" title=" Working Draft, Standard for Programming Language C++">N4950</a>.
+</p>
+
+<ol>
+<li><p>Modify 25.5.5.1 <a href="https://wg21.link/common.iterator">[common.iterator]</a>, class template <code>common_iterator</code> synopsis, as indicated:</p>
+
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+    requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
+  class common_iterator {
+  public:
+    [&hellip;]
+    friend constexpr <del>iter_rvalue_reference_t&lt;I&gt;</del><ins>decltype(auto)</ins> iter_move(const common_iterator&amp; i)
+      noexcept(noexcept(ranges::iter_move(declval&lt;const I&amp;&gt;())))
+        requires input_iterator&lt;I&gt;;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 25.5.5.7 <a href="https://wg21.link/common.iter.cust">[common.iter.cust]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+friend constexpr <del>iter_rvalue_reference_t&lt;I&gt;</del><ins>decltype(auto)</ins> iter_move(const common_iterator&amp; i)
+  noexcept(noexcept(ranges::iter_move(declval&lt;const I&amp;&gt;())))
+    requires input_iterator&lt;I&gt;;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: [&hellip;]
+<p/>
+-2- <i>Effects</i>: Equivalent to: <code>return ranges::iter_move(get&lt;I&gt;(i.v_));</code>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify 25.5.7.1 <a href="https://wg21.link/counted.iterator">[counted.iterator]</a>, class template <code>counted_iterator</code> synopsis, as indicated:</p>
+
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I&gt;
+  class counted_iterator {
+  public:
+    [&hellip;]
+    friend constexpr <del>iter_rvalue_reference_t&lt;I&gt;</del><ins>decltype(auto)</ins> iter_move(const counted_iterator&amp; i)
+      noexcept(noexcept(ranges::iter_move(i.current)))
+        requires input_iterator&lt;I&gt;;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 25.5.7.7 <a href="https://wg21.link/counted.iter.cust">[counted.iter.cust]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+friend constexpr <del>iter_rvalue_reference_t&lt;I&gt;</del><ins>decltype(auto)</ins> 
+  iter_move(const counted_iterator&amp; i)
+    noexcept(noexcept(ranges::iter_move(i.current)))
+    requires input_iterator&lt;I&gt;;
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: [&hellip;]
+<p/>
+-2- <i>Effects</i>: Equivalent to: <code>return ranges::iter_move(i.current);</code>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

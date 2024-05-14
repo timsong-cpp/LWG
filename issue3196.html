@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3196: std::optional&lt;T&gt; is ill-formed is T is an array</title>
+<meta property="og:title" content="Issue 3196: std::optional&lt;T&gt; is ill-formed is T is an array">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3196.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3196"><a href="lwg-defects.html#3196">3196</a>. <code>std::optional&lt;T&gt;</code> is ill-formed is <code>T</code> is an array</h3>
+<p><b>Section:</b> 22.5.3 <a href="https://wg21.link/optional.optional">[optional.optional]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2019-03-18 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#optional.optional">issues</a> in [optional.optional].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+22.5.3 <a href="https://wg21.link/optional.optional">[optional.optional]</a> appears to allow arrays:
+</p>
+<blockquote><p>
+<code>T</code> shall be an object type other than <i>cv</i> <code>in_place_t</code> or <i>cv</i> <code>nullopt_t</code> and shall 
+satisfy the <i>Cpp17Destructible</i> requirements (Table 30).
+</p></blockquote>
+<p>
+But instantiating it fails, because <code>value_or</code> attempts to return <code>T</code> by value, which isn't possible for an array type.
+<p/>
+Existing practice seems to be to reject array types. Libstdc++ and libc++ give an error for the signature of <code>value_or</code>, 
+and MSVC fails a static assert saying the type needs to be destructible (which is misleading, because <code>int[2]</code> 
+is destructible, but either way it's ill-formed).
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify 22.5.3 <a href="https://wg21.link/optional.optional">[optional.optional]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <code>T</code> shall be a<del>n</del> <ins>non-array</ins> object type other than <i>cv</i> <code>in_place_t</code> 
+or <i>cv</i> <code>nullopt_t</code> and shall satisfy the <i>Cpp17Destructible</i> requirements (Table 30).
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2019-03-26 Marshall provides updated resolution based on reflector discussion]</i></p>
+
+<p><i>[2019-06-16 Moved to "Tentatively Ready" based on five positive votes on the reflector]</i></p>
+
+
+
+<p id="res-3196"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>In 16.4.4.2 <a href="https://wg21.link/utility.arg.requirements">[utility.arg.requirements]</a>, edit Table 30 &mdash; "<i>Cpp17Destructible</i> requirements" as indicated:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 30 &mdash; <i>Cpp17Destructible</i> requirements</caption>
+<tr>
+<th>Expression</th>
+<th>Post-condition</th>
+</tr>
+<tr>
+<td>
+<code>u.~T()</code>
+</td>
+<td>
+All resources owned by <code>u</code> are reclaimed, no exception is propagated.
+</td>
+</tr>
+<tr>
+<td colspan="2">
+<ins>[<i>Note:</i> Array types and non-object types are not <i>Cpp17Destructible</i>. &mdash; <i>end note</i>]</ins>
+</td>
+</tr>
+</table>
+</blockquote>
+
+</li>
+</ol>
+
+<ol>
+<li><p>Modify 22.5.3 <a href="https://wg21.link/optional.optional">[optional.optional]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <code>T</code> shall be a <del>object</del> type other than <i>cv</i> <code>in_place_t</code> 
+or <i>cv</i> <code>nullopt_t</code> <del>and shall satisfy</del><ins>that meets</ins> the 
+<i>Cpp17Destructible</i> requirements (Table 30).
+</p>
+</blockquote>
+</li>
+</ol>
+
+<ol>
+<li><p>Modify 22.6.3 <a href="https://wg21.link/variant.variant">[variant.variant]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2-All types in <code>Types</code> shall <del>be (possibly cv-qualified) object types that 
+are not arrays</del><ins>meet the <i>Cpp17Destructible</i> requirements (Table 30).</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

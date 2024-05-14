@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3840: filesystem::u8path should be undeprecated</title>
+<meta property="og:title" content="Issue 3840: filesystem::u8path should be undeprecated">
+<meta property="og:description" content="C++ library issue. Status: Open">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3840.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Open">Open</a> status.</em></p>
+<h3 id="3840"><a href="lwg-active.html#3840">3840</a>. <code>filesystem::u8path</code> should be undeprecated</h3>
+<p><b>Section:</b> D.21 <a href="https://wg21.link/depr.fs.path.factory">[depr.fs.path.factory]</a> <b>Status:</b> <a href="lwg-active.html#Open">Open</a>
+ <b>Submitter:</b> Daniel Krügler <b>Opened:</b> 2022-12-10 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#depr.fs.path.factory">issues</a> in [depr.fs.path.factory].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Open">Open</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <code>filesystem::u8path</code> function became deprecated with the adoption of
+<a href="https://wg21.link/P0482R6" title=" char8_t: A type for UTF-8 characters and strings (Revision 6)">P0482R6</a>, but the rationale for that change is rather thin:
+</p>
+<blockquote><p>
+"The C++ standard must improve support for UTF-8 by removing the existing barriers that 
+result in redundant tagging of character encodings, non-generic UTF-8 specific workarounds 
+like <code>u8path</code>."
+</p></blockquote>
+<p>
+The <code>u8path</code> function is still useful if my original string source is a <code>char</code> 
+sequence and I <em>do know</em> that the encoding of this sequence is UTF-8. 
+<p/>
+The deprecation note suggests that one should use <code>std::u8string</code> instead, which costs me 
+an additional transformation and doesn't work without <code>reinterpret_cast</code>.
+<p/>
+Even in the presence of <code>char8_t</code>, legacy code bases often are still ABI-bound to <code>char</code>. 
+In the future we may solve this problem using the tools provided by <a href="https://wg21.link/P2626" title=" charN_t incremental adoption: Casting pointers of UTF character types">P2626</a> instead, 
+but right now this is not part of the standard and it wasn't at the time when <code>u8path</code> became 
+deprecated. 
+This is in my opinion a good reason to undeprecate <code>u8path</code> <em>now</em> and decide later on the 
+appropriate time to deprecate it again (if it really turns out to be obsolete by alternative
+functionality).
+<p/>
+Billy O'Neal provides a concrete example where the current deprecation status causes pain:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Example: <a 
+href="https://github.com/microsoft/vcpkg-tool/blob/c8b580319539ded6028f09ba710db68534ab0148/src/vcpkg/base/files.cpp#L21-L45">
+vcpkg-tool files.cpp#L21-L45</a>
+<p/>
+Before p0482, we could just call <code>std::u8path</code> and it would do the right thing on both 
+POSIX and Windows. After compilers started implementing '20, we have to make assumptions about 
+the correct 'internal' <code>std::path</code> encoding because there is no longer a way to arrive to 
+<code>std::path</code> with a <code>char</code> buffer that we know is UTF-8 encoded and get the correct results.
+<p/>
+It's one of the reasons we completely ripped out use of <code>std::filesystem</code> on most platforms 
+from vcpkg, so you won't see this in current sources.
+</p>
+</blockquote>
+
+<p><i>[2023-01-06; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll. Set status to LEWG.
+</p>
+
+<p><i>[2023-05-30; status to "Open"]</i></p>
+
+<p>
+LEWG discussed this in January and had no consensus for undeprecation.
+</p>
+
+
+
+<p id="res-3840"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Restore the <code>u8path</code> declarations to 31.12.4 <a href="https://wg21.link/fs.filesystem.syn">[fs.filesystem.syn]</a>, header
+<code>&lt;filesystem&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  // <i>31.12.6 <a href="https://wg21.link/fs.class.path">[fs.class.path]</a>, paths</i>
+  class path;
+
+  // <i>31.12.6.8 <a href="https://wg21.link/fs.path.nonmember">[fs.path.nonmember]</a>, path non-member functions</i>
+  void swap(path&amp; lhs, path&amp; rhs) noexcept;
+  size_t hash_value(const path&amp; p) noexcept;
+  
+  <ins>// <i>[fs.path.factory], path factory functions</i></ins>
+  <ins>template&lt;class Source&gt;
+    path u8path(const Source&amp; source);
+  template&lt;class InputIterator&gt;
+    path u8path(InputIterator first, InputIterator last);</ins>
+
+  // <i>31.12.7 <a href="https://wg21.link/fs.class.filesystem.error">[fs.class.filesystem.error]</a>, filesystem errors</i>
+  class filesystem_error;
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Restore the previous sub-clause [fs.path.factory] by copying the contents of 
+D.21 <a href="https://wg21.link/depr.fs.path.factory">[depr.fs.path.factory]</a> to a new sub-clause [fs.path.factory] between 
+31.12.6.8 <a href="https://wg21.link/fs.path.nonmember">[fs.path.nonmember]</a> and 31.12.6.10 <a href="https://wg21.link/fs.path.hash">[fs.path.hash]</a> and without <i>Note 1</i>
+as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: As additional stylistic adaption we replace the obsolete <i>Requires</i> 
+element by a <i>Preconditions</i> element plus a <i>Mandates</i> element (similar to that of
+31.12.6.5.1 <a href="https://wg21.link/fs.path.construct">[fs.path.construct]</a> p5). 
+<p/>
+As a second stylistic improvement we convert the
+now more unusual "if [&hellip;]; otherwise" construction in bullets by "Otherwise, if [&hellip;]"
+constructions.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+<ins><b>? Factory functions [fs.path.factory]</b></ins>
+</p>
+<pre>
+<ins>template&lt;class Source&gt;
+  path u8path(const Source&amp; source);
+template&lt;class InputIterator&gt;
+  path u8path(InputIterator first, InputIterator last);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Mandates:</i> The value type of <code>Source</code> and <code>InputIterator</code> is <code>char</code>
+or <code>char8_t</code>.</ins>
+<p/>
+<ins>-?- <i>Preconditions:</i> The <code>source</code> and <code>[first, last)</code> sequences are UTF-8 encoded.</ins>
+<p/>
+<ins>-?- <i>Returns:</i></ins>
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; If <code>value_type</code> is <code>char</code> and the current native narrow encoding 
+(31.12.6.3.2 <a href="https://wg21.link/fs.path.type.cvt">[fs.path.type.cvt]</a>) is UTF-8, return <code>path(source)</code> or <code>path(first, last)</code>.</ins></p></li>
+<li><p><ins>(?.2) &mdash; Otherwise, if <code>value_type</code> is <code>wchar_t</code> and the native wide encoding is UTF-16, 
+or if <code>value_type</code> is <code>char16_t</code> or <code>char32_t</code>, convert <code>source</code> or <code>[first, last)</code> 
+to a temporary, <code>tmp</code>, of type <code>string_type</code> and return <code>path(tmp)</code>.</ins></p></li>
+<li><p><ins>(?.3) &mdash; Otherwise, convert <code>source</code> or <code>[first, last)</code> to a temporary, <code>tmp</code>, 
+of type <code>u32string</code> and return <code>path(tmp)</code>.</ins></p></li>
+</ol>
+<p>
+<ins>-?- <i>Remarks:</i> Argument format conversion (31.12.6.3.1 <a href="https://wg21.link/fs.path.fmt.cvt">[fs.path.fmt.cvt]</a>) applies to the arguments 
+for these functions. How Unicode encoding conversions are performed is unspecified.</ins>
+<p/>
+<ins>-?- [<i>Example 1</i>: A string is to be read from a database that is encoded in UTF-8, and used to create a directory
+using the native encoding for filenames:</ins>
+</p>
+<blockquote><pre>
+<ins>namespace fs = std::filesystem;
+std::string utf8_string = read_utf8_data();
+fs::create_directory(fs::u8path(utf8_string));</ins>
+</pre></blockquote>
+<p>
+<ins>For POSIX-based operating systems with the native narrow encoding set to UTF-8, no encoding or type
+conversion occurs.</ins>
+<p/>
+<ins>For POSIX-based operating systems with the native narrow encoding not set to UTF-8, a conversion to UTF-32
+occurs, followed by a conversion to the current native narrow encoding. Some Unicode characters may have no
+native character set representation.</ins>
+<p/>
+<ins>For Windows-based operating systems a conversion from UTF-8 to UTF-16 occurs. &mdash; <i>end example</i>]</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Delete sub-clause D.21 <a href="https://wg21.link/depr.fs.path.factory">[depr.fs.path.factory]</a> in its entirety.</p>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

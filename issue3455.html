@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3455: Incorrect Postconditions on unique_ptr move assignment</title>
+<meta property="og:title" content="Issue 3455: Incorrect Postconditions on unique_ptr move assignment">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3455.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3455"><a href="lwg-defects.html#3455">3455</a>. Incorrect <i>Postconditions</i> on <code>unique_ptr</code> move assignment</h3>
+<p><b>Section:</b> 20.3.1.3.4 <a href="https://wg21.link/unique.ptr.single.asgn">[unique.ptr.single.asgn]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2020-06-22 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#unique.ptr.single.asgn">issues</a> in [unique.ptr.single.asgn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+20.3.1.3.4 <a href="https://wg21.link/unique.ptr.single.asgn">[unique.ptr.single.asgn]</a>/p5 says this about the <code>unique_ptr</code> move assignment operator:
+</p>
+<blockquote>
+<p>
+<i>Postconditions:</i> <code>u.get() == nullptr</code>.
+</p>
+</blockquote>
+<p>
+But this is only true if <code>this != &amp;u</code>. For example:
+</p>
+<blockquote>
+<pre>
+#include &lt;iostream&gt;
+#include &lt;memory&gt;
+
+int main()
+{
+  auto x = std::unique_ptr&lt;int&gt;(new int{3});
+  x = std::move(x);
+  if (x)
+    std::cout &lt;&lt; *x &lt;&lt; '\n';
+  else
+    std::cout &lt;&lt; "nullptr\n";
+}
+</pre>
+</blockquote>
+<p>
+Output:
+</p>
+<blockquote>
+<pre>
+3
+</pre>
+</blockquote>
+<p>
+An alternative resolution to that proposed below is to just delete the <i>Postcondition</i> altogether as 
+the <i>Effects</i> element completely specifies everything. If we do that, then we should also remove p10, 
+the <i>Postconditions</i> element for the converting move assignment operator. I have a slight preference 
+for the proposed change below as it is more informative, at the expense of being a little more repetitive.
+</p>
+
+<p><i>[2020-06-26; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 0 and status to Tentatively Ready after seven votes in favor during reflector discussions.
+</p>
+<p><i>[2020-11-09 Approved In November virtual meeting. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3455"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>. 
+</p>
+
+<ol>
+<li><p>Modify 20.3.1.3.4 <a href="https://wg21.link/unique.ptr.single.asgn">[unique.ptr.single.asgn]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+unique_ptr&amp; operator=(unique_ptr&amp;&amp; u) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> <code>is_move_assignable_v&lt;D&gt;</code> is <code>true</code>.
+<p/>
+-2- <i>Preconditions:</i> If <code>D</code> is not a reference type, <code>D</code> meets the 
+<i>Cpp17MoveAssignable</i> requirements (Table [tab:cpp17.moveassignable]) and assignment of the 
+deleter from an rvalue of type <code>D</code> does not throw an exception. Otherwise, <code>D</code> is a
+reference type; <code>remove_reference_t&lt;D&gt;</code> meets the <i>Cpp17CopyAssignable</i> 
+requirements and assignment of the deleter from an lvalue of type <code>D</code> does not throw an exception.
+<p/>
+-3- <i>Effects:</i> Calls <code>reset(u.release())</code> followed by <code>get_deleter() = std::forward&lt;D&gt;(u.get_deleter())</code>.
+<p/>
+-4- <i>Returns:</i> <code>*this</code>.
+<p/>
+-5- <i>Postconditions:</i> <ins>If <code>this != addressof(u)</code>,</ins> <code>u.get() == nullptr</code><ins>, 
+otherwise <code>u.get()</code> is unchanged</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

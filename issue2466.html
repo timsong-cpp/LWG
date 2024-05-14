@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Issue 2466: allocator_traits::max_size() default behavior is incorrect</title>
-<style type="text/css">
+<meta property="og:title" content="Issue 2466: allocator_traits::max_size() default behavior is incorrect">
+<meta property="og:description" content="C++ library issue. Status: C++17">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue2466.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,14 +24,47 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="2466" href="lwg-defects.html#2466">2466</a>. <tt>allocator_traits::max_size()</tt> default behavior is incorrect</h3>
-<p><b>Section:</b> 20.5.3.5 <a href="https://wg21.link/allocator.requirements">[allocator.requirements]</a>, 23.10.8.2 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a> <b>Status:</b> <a href="lwg-active.html#C++17">C++17</a>
- <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2015-01-17 <b>Last modified:</b> 2017-09-13</p>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++17">C++17</a> status.</em></p>
+<h3 id="2466"><a href="lwg-defects.html#2466">2466</a>. <code>allocator_traits::max_size()</code> default behavior is incorrect</h3>
+<p><b>Section:</b> 16.4.4.6 <a href="https://wg21.link/allocator.requirements">[allocator.requirements]</a>, 20.2.9.3 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a> <b>Status:</b> <a href="lwg-active.html#C++17">C++17</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2015-01-17 <b>Last modified:</b> 2017-07-30</p>
 <p><b>Priority: </b>3
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#allocator.requirements">active issues</a> in [allocator.requirements].</p>
@@ -32,9 +72,9 @@
 <p><b>View all issues with</b> <a href="lwg-status.html#C++17">C++17</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-Table 28 &mdash; "Allocator requirements" says that default behavior for <tt>a.max_size()</tt> is 
-<tt>numeric_limits&lt;size_type&gt;::max()</tt>. And this is consistent with the matching statement 
-for <tt>allocator_traits</tt> in 23.10.8.2 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a>/p7:
+Table 28 &mdash; "Allocator requirements" says that default behavior for <code>a.max_size()</code> is 
+<code>numeric_limits&lt;size_type&gt;::max()</code>. And this is consistent with the matching statement 
+for <code>allocator_traits</code> in 20.2.9.3 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a>/p7:
 </p>
 <blockquote>
 <pre>
@@ -42,13 +82,13 @@ static size_type max_size(const Alloc&amp; a) noexcept;
 </pre>
 <blockquote>
 <p>
-<i>Returns</i>: <tt>a.max_size()</tt> if that expression is well-formed; otherwise, 
-<tt>numeric_limits&lt;size_type&gt;::max()</tt>.
+<i>Returns</i>: <code>a.max_size()</code> if that expression is well-formed; otherwise, 
+<code>numeric_limits&lt;size_type&gt;::max()</code>.
 </p>
 </blockquote>
 </blockquote>
 <p>
-However, when allocating memory, an allocator must allocate <tt>n*sizeof(value_type)</tt> bytes, for example:
+However, when allocating memory, an allocator must allocate <code>n*sizeof(value_type)</code> bytes, for example:
 </p>
 <blockquote>
 <pre>
@@ -60,10 +100,10 @@ allocate(std::size_t n)
 </pre>
 </blockquote>
 <p>
-When <tt>n == numeric_limits&lt;size_type&gt;::max(), n * sizeof(value_type)</tt> is <em>guaranteed</em> 
-to overflow except when <tt>sizeof(value_type) == 1</tt>.
+When <code>n == numeric_limits&lt;size_type&gt;::max(), n * sizeof(value_type)</code> is <em>guaranteed</em> 
+to overflow except when <code>sizeof(value_type) == 1</code>.
 <p/>
-A more useful default would be <tt>numeric_limits&lt;size_type&gt;::max() / sizeof(value_type)</tt>.
+A more useful default would be <code>numeric_limits&lt;size_type&gt;::max() / sizeof(value_type)</code>.
 </p>
 
 <p><i>[2015-05, Lenexa]</i></p>
@@ -80,11 +120,11 @@ Lots.
 </p>
 
 
-<p><b>Proposed resolution:</b></p>
+<p id="res-2466"><b>Proposed resolution:</b></p>
 <p>This wording is relative to N4296.</p>
 
 <ol>
-<li><p>Change 20.5.3.5 <a href="https://wg21.link/allocator.requirements">[allocator.requirements]</a>, Table 28 &mdash; "Allocator requirements", as indicated:</p>
+<li><p>Change 16.4.4.6 <a href="https://wg21.link/allocator.requirements">[allocator.requirements]</a>, Table 28 &mdash; "Allocator requirements", as indicated:</p>
 <blockquote>
 <table border="1">
 <caption>Table 28 &mdash; Allocator requirements</caption>
@@ -97,30 +137,30 @@ Lots.
 
 <tr>
 <td colspan="4" align="center">
-<tt>&hellip;</tt>
+<code>&hellip;</code>
 </td>
 </tr>
 
 <tr>
 <td>
-<tt>a.max_size()</tt>
+<code>a.max_size()</code>
 </td>
 <td>
-<tt>X::size_type</tt>
+<code>X::size_type</code>
 </td>
 <td>
 the largest value that can<br/>
 meaningfully be passed to<br/>
-<tt>X::allocate()</tt>
+<code>X::allocate()</code>
 </td>
 <td>
-<tt>numeric_limits&lt;size_type&gt;::max()<ins>/sizeof(value_type)</ins></tt>
+<code>numeric_limits&lt;size_type&gt;::max()<ins>/sizeof(value_type)</ins></code>
 </td>
 </tr>
 
 <tr>
 <td colspan="4" align="center">
-<tt>&hellip;</tt>
+<code>&hellip;</code>
 </td>
 </tr>
 
@@ -129,7 +169,7 @@ meaningfully be passed to<br/>
 
 </li>
 
-<li><p>Change 23.10.8.2 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a>/p7 as indicated:</p>
+<li><p>Change 20.2.9.3 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a>/p7 as indicated:</p>
 
 <blockquote>
 <pre>
@@ -137,8 +177,8 @@ static size_type max_size(const Alloc&amp; a) noexcept;
 </pre>
 <blockquote>
 <p>
-<i>Returns</i>: <tt>a.max_size()</tt> if that expression is well-formed; otherwise, 
-<tt>numeric_limits&lt;size_type&gt;::max()<ins>/sizeof(value_type)</ins></tt>.
+<i>Returns</i>: <code>a.max_size()</code> if that expression is well-formed; otherwise, 
+<code>numeric_limits&lt;size_type&gt;::max()<ins>/sizeof(value_type)</ins></code>.
 </p>
 </blockquote>
 </blockquote>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3856: Unclear which conversion specifiers are valid for each chrono type</title>
+<meta property="og:title" content="Issue 3856: Unclear which conversion specifiers are valid for each chrono type">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3856.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3856"><a href="lwg-active.html#3856">3856</a>. Unclear which conversion specifiers are valid for each chrono type</h3>
+<p><b>Section:</b> 29.12 <a href="https://wg21.link/time.format">[time.format]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tam S. B. <b>Opened:</b> 2023-01-14 <b>Last modified:</b> 2023-05-30</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#time.format">active issues</a> in [time.format].</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.format">issues</a> in [time.format].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+29.12 <a href="https://wg21.link/time.format">[time.format]</a>/3:
+<blockquote>
+If the formatted object does not contain the information the conversion
+specifier refers to, an exception of type <code>format_error</code> is thrown.
+</blockquote>
+
+29.12 <a href="https://wg21.link/time.format">[time.format]</a>/6:
+<blockquote>
+If the type being formatted does not contain the information that the format
+flag needs, an exception of type <code>format_error</code> is thrown.
+</blockquote>
+</p>
+
+<p>
+It's unclear how to determine if a type contain the needed information,
+and implementations diverge.
+</p>
+
+<p>
+For example, consider
+</p>
+<blockquote><pre>
+#include &lt;chrono&gt;
+#include &lt;format&gt;
+
+auto f(std::chrono::month_day_last mdl) {
+  return std::format("{:%j}", mdl);
+}
+</pre></blockquote>
+<p>
+Both libstdc++ and libc++ produce a compile-time error, claiming that the
+argument does not contain the information, while MSVC STL throws
+<code>format_error</code> at run time unless <code>mdl</code> is <code class='backtick'>January/last</code>,
+in which case the function returns "031".
+</p>
+<p>
+Another interesting case is <code>format("{:%d}", mdl)</code> where the value
+can be printed for all months <i>except</i> February, which requires a year
+to know how many days it has.
+</p>
+
+<p>
+A related example from Jonathan Wakely:
+</p>
+<blockquote><pre>
+std::chrono::weekday_indexed wdi(Monday, 7);  // 7th Monday in the month
+assert( ! wdi.ok() );
+assert( wdi.weekday().ok() );
+std::format("{:%a}", wdi);
+</pre></blockquote>
+<p>
+For <code>%a</code> the required information is "a valid weekday",
+and arguably this does contain a valid weekday.
+On the other hand, there's no 7th Monday, so this isn't valid.
+Should this throw or not?
+</p>
+<p>
+This was discussed by LWG and Howard Hinnant summarized the intended behaviour as:
+<blockquote>
+"The intention of 29.12 <a href="https://wg21.link/time.format">[time.format]</a>/6 is to address things like
+formatting a <code>duration</code> with <code>%F</code>. A <code>duration</code> doesn't contain
+the calendrical information that <code>%F</code> requires (year, month, day).
+Ditto for using <code>%a</code> (weekday name) with a <code>year</code>.
+It is meant to address mismatching <i>types</i> and flags,
+and not meant to address <i>values</i>."
+</blockquote>
+</p>
+<p>
+The type <code>chrono::weekday</code> does contain the information needed to print
+a weekday. A specific invalid value doesn't change that.
+The type <code>chrono::month_day_last</code> does not contain the information
+needed to print the day of the year.
+A specific value where the day can be known doesn't change that.
+The day of month is more interesting, and might need more discussion.
+</p>
+<p>
+Jonathan proposed adding more examples to clarify the intention that only the
+type matters, and not the value. There is some redundancy between p3 and p6.
+Referring to "the formatted object" in p3 seems unclear.
+Saying "type" as in p6 is better.
+But p6 refers to "format flag" which is not defined,
+whereas p3 uses "conversion specifier" (defined at the start of that paragraph).
+The two uses of "flag" in p6 look like remnants from the earlier <code>chrono::format</code> 
+feature that was replaced by integration with <code>std::format</code>.
+</p>
+
+
+<p><i>[2023-02-01; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<p><i>[2023-05-30; Jonathan adds wording]</i></p>
+
+
+
+
+<p id="res-3856"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4950" title=" Working Draft, Standard for Programming Language C++">N4950</a>.
+</p>
+
+<ol>
+<li>
+<p>Modify 29.12 <a href="https://wg21.link/time.format">[time.format]</a> as indicated:</p>
+
+<blockquote>
+<p> -3-
+Each conversion specifier <i>conversion-spec</i> is replaced by appropriate
+characters as described in Table 101 ([tab:time.format.spec]);
+the formats specified in ISO 8601:2004 shall be used where so described.
+Some of the conversion specifiers depend on the formatting locale.
+If the string literal encoding is a Unicode encoding form and
+the locale is among an implementation-defined set of locales,
+each replacement that depends on the locale is performed as if
+the replacement character sequence is converted to the string literal encoding.
+If the <del>formatted object</del><ins>type being formatted</ins>
+does not contain the information the conversion specifier refers to,
+an exception of type <code>format_error</code> is thrown.
+</p>
+<p><ins>[<i>Example ?</i>:
+A <code>duration</code> does not contain enough information to format as
+a weekday using <code>%w</code>.
+A <code>weekday_indexed</code> does contain enough information to format
+using <code>%w</code> and <code>Monday[7]</code> can be formatted as
+<code>"1"</code> even though <code>Monday[7].ok()</code> is <code>false</code>.
+A <code>month_day</code> does not contain enough information to format as
+the day of the year using <code>%j</code>, even when the <code>month()</code>
+part is <code>January</code>.
+&mdash; <i>end example</i>]</ins>
+</p>
+<p>
+<ins>
+However, if a flag refers to a "time of day"
+(e.g., <code>%H</code>, <code>%I</code>, <code>%p</code>, etc.),
+then a specialization of <code>duration</code> is interpreted as
+the time of day elapsed since midnight.
+</ins>
+</p>
+
+<p> -4-
+The result of formatting a <code>std::chrono::duration</code> instance
+holding a negative value, or an <code>hh_mm_ss</code> object <code>h</code>
+for which <code>h.is_negative()</code> is <code>true</code>,
+is equivalent to the output of the corresponding positive value,
+with a <code><i>STATICALLY-WIDEN</i>&lt;charT&gt;("-")</code>
+character sequence placed before the replacement of the initial conversion
+specifier.
+</p>
+<p>[<i>Example 1</i>:
+<pre><code>
+cout &lt;&lt; format("{:%T}", -10'000s);          // prints: -02:46:40
+cout &lt;&lt; format("{:%H:%M:%S}", -10'000s);    // prints: -02:46:40
+cout &lt;&lt; format("minutes {:%M, hours %H, seconds %S}", -10'000s);
+                                            // prints: minutes -46, hours 02, seconds 40
+</code></pre>
+&mdash; <i>end example</i>]
+</p>
+<p> -5-
+Unless explicitly requested, the result of formatting a chrono type
+does not contain time zone abbreviation and time zone offset information.
+If the information is available, the conversion specifiers <code>%Z</code> and
+<code>%z</code> will format this information (respectively).
+</p>
+<p>[<i>Note 1</i>:
+If the information is not available and a <code>%Z</code> or <code>%z</code>
+conversion specifier appears in the <i>chrono-format-spec</i>,
+an exception of type <code>format_error</code> is thrown, as described above.
+&mdash; <i>end note</i>]
+</p>
+<p> <del>-6-
+If the type being formatted does not contain the information that the format flag needs,
+an exception of type <code>format_error</code> is thrown, as described above.
+</del>
+</p>
+<p><del>[<i>Example 2</i>:
+A <code>duration</code> does not contain enough information to format as a
+<code>weekday</code>.
+&mdash; <i>end example</i>]
+</del>
+</p>
+<p>
+<del>
+However, if a flag refers to a "time of day"
+(e.g., <code>%H</code>, <code>%I</code>, <code>%p</code>, etc.),
+then a specialization of <code>duration</code> is interpreted as
+the time of day elapsed since midnight.
+</del>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3229: &sect;[res.on.exception.handling]#3 cannot apply to types with implicitly declared destructors</title>
+<meta property="og:title" content="Issue 3229: &sect;[res.on.exception.handling]#3 cannot apply to types with implicitly declared destructors">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3229.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3229"><a href="lwg-active.html#3229">3229</a>. &sect;[res.on.exception.handling]#3 cannot apply to types with implicitly declared destructors</h3>
+<p><b>Section:</b> 16.4.6.13 <a href="https://wg21.link/res.on.exception.handling">[res.on.exception.handling]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Nevin Liber <b>Opened:</b> 2019-06-28 <b>Last modified:</b> 2023-01-29</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#res.on.exception.handling">active issues</a> in [res.on.exception.handling].</p>
+<p><b>View all other</b> <a href="lwg-index.html#res.on.exception.handling">issues</a> in [res.on.exception.handling].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+16.4.6.13 <a href="https://wg21.link/res.on.exception.handling">[res.on.exception.handling]</a>#3 says:
+</p>
+<blockquote><p>
+Destructor operations defined in the C++ standard library shall not throw exceptions.
+Every destructor in the C++ standard library shall behave as if it had a non-throwing
+exception specification.
+</p></blockquote>
+<p>
+However, types like <code>pair</code> and <code>array</code> have implicitly declared destructors,
+where 14.5 <a href="https://wg21.link/except.spec">[except.spec]</a>#8 applies:
+</p>
+<blockquote><p>
+The exception specification for an implicitly-declared destructor, or a destructor without
+a <i>noexcept</i>-specifier, is potentially-throwing if and only if any of the destructors
+for any of its potentially constructed subobjects is potentially-throwing or the destructor
+is virtual and the destructor of any virtual base class is potentially throwing.
+</p></blockquote>
+<p>
+We can relax 16.4.6.13 <a href="https://wg21.link/res.on.exception.handling">[res.on.exception.handling]</a> to only cover explicitly declared
+destructors because if they hold a user type where the destructor throws then we get UB
+from 16.4.5.8 <a href="https://wg21.link/res.on.functions">[res.on.functions]</a>#2:
+</p>
+<blockquote><p>
+In particular, the effects are undefined in the following cases: [&hellip;]
+</p>
+<ol style="list-style-type:none">
+<li><p>[&hellip;]</p></li>
+<li><p>(2.4) &mdash; if any replacement function or handler function or destructor operation
+exits via an exception, unless specifically allowed in the applicable
+<i>Required behavior:</i> paragraph.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+<p>
+and the referred to UB happens before [res.on.exception.handling] could apply.
+</p>
+
+<p><i>[2019-07 Issue Prioritization]</i></p>
+
+<p>Priority to 3 after discussion on the reflector.</p>
+
+<p><i>[2023-01-29; Daniel comments]</i></p>
+
+<p>
+This issue has very much overlap with LWG <a href="lwg-active.html#3854" title="&sect;[res.on.exception.handling]/3 should not be applied to all standard library types (Status: New)">3854</a>.
+</p>
+
+
+<p id="res-3229"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4820">N4820</a>.</p>
+
+<ol>
+<li><p>Modify 16.4.6.13 <a href="https://wg21.link/res.on.exception.handling">[res.on.exception.handling]</a> as indicated:</p>
+
+<blockquote><p>
+-3- Destructor operations defined in the C++ standard library shall not throw exceptions.
+Every <ins>explicitly declared</ins> destructor in the C++ standard library shall behave
+as if it had a non-throwing exception specification.
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

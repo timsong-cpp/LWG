@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3755: tuple-for-each can call user-defined operator,</title>
+<meta property="og:title" content="Issue 3755: tuple-for-each can call user-defined operator,">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3755.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3755"><a href="lwg-defects.html#3755">3755</a>. <code><i>tuple-for-each</i></code> can call user-defined <code>operator,</code></h3>
+<p><b>Section:</b> 26.7.25.2 <a href="https://wg21.link/range.zip.view">[range.zip.view]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Nicole Mazzuca  <b>Opened:</b> 2022-08-26 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.zip.view">issues</a> in [range.zip.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The specification for <code><i>tuple-for-each</i></code> is:
+</p>
+
+<blockquote><pre>
+template&lt;class F, class Tuple&gt;
+constexpr auto <i>tuple-for-each</i>(F&amp;&amp; f, Tuple&amp;&amp; t) { <i>// exposition only</i>
+  apply([&amp;]&lt;class... Ts&gt;(Ts&amp;&amp;... elements) {
+    (invoke(f, std::forward&lt;Ts&gt;(elements)), ...);
+  }, std::forward&lt;Tuple&gt;(t));
+}
+</pre></blockquote>
+
+<p>Given</p>
+
+<blockquote><pre>
+struct Evil {
+  void operator,(Evil) {
+        abort();
+    }
+};
+</pre></blockquote>
+
+<p>
+and <code>tuple&lt;int, int&gt; t</code>, then
+<code><i>tuple-for-each</i>([](int) { return Evil{}; }, t)</code>,
+the program will (unintentionally) abort.
+</p>
+
+<p>
+It seems likely that our <code>Evil</code>'s <code>operator,</code>
+should not be called.
+</p>
+
+
+<p><i>[2022-09-23; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after nine votes in favour during reflector poll.
+</p>
+<p>
+Feedback from reviewers:
+</p>
+<blockquote>
+<p>
+"NAD. This exposition-only facility is only used with things that return <code>void</code>. 
+As far as I know, users can't define <code>operator,</code> for <code>void</code>."
+"If I see the <code>void</code> cast, I don't need to audit the uses or be concerned that 
+we'll add a broken use in the future."
+</p>
+</blockquote>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3755"><b>Proposed resolution:</b></p>
+
+<p> This wording is relative to the forthcoming C++23 CD. </p>
+
+<ul>
+<li>
+<p>
+Modify  [range.adaptor.tuple] as indicated:
+</p>
+
+<blockquote><pre>
+template&lt;class F, class Tuple&gt;
+constexpr auto <i>tuple-for-each</i>(F&amp;&amp; f, Tuple&amp;&amp; t) { <i>// exposition only</i>
+  apply([&amp;]&lt;class... Ts&gt;(Ts&amp;&amp;... elements) {
+    (<ins>static_cast&lt;void&gt;(</ins>invoke(f, std::forward&lt;Ts&gt;(elements))<ins>)</ins>, ...);
+  }, std::forward&lt;Tuple&gt;(t));
+}
+</pre></blockquote>
+
+</li>
+</ul>
+
+
+
+
+
+
+</body>
+</html>

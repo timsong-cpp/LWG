@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3501: basic_syncbuf-related manipulators refer to some Allocator without defining it</title>
+<meta property="og:title" content="Issue 3501: basic_syncbuf-related manipulators refer to some Allocator without defining it">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3501.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3501"><a href="lwg-active.html#3501">3501</a>. <code>basic_syncbuf</code>-related manipulators refer to some <code>Allocator</code> without defining it</h3>
+<p><b>Section:</b> 31.7.6.5 <a href="https://wg21.link/ostream.manip">[ostream.manip]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2020-11-15 <b>Last modified:</b> 2020-11-21</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#ostream.manip">issues</a> in [ostream.manip].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+From <a href="https://github.com/cplusplus/draft/pull/4300">this editorial issue request</a>: 
+</p>
+<p>
+The three <code>basic_syncbuf</code>-related manipulators <code>emit_on_flush</code>, <code>noemit_on_flush</code>, 
+and <code>flush_emit</code> use in their <i>Effects:</i> elements the following wording:
+</p>
+<blockquote><p>
+"If <code>os.rdbuf()</code> is a <code>basic_syncbuf&lt;charT, traits, Allocator&gt;*</code>, called <code>buf</code> 
+for the purpose of exposition, calls [&hellip;]
+</p></blockquote>
+<p>
+There are two problems with that wording (even when considering the helpful note following p8): First, 
+the type <code>Allocator</code> is not defined elsewhere (e.g. it is not part of the function signature) 
+and second, <code>os.rdbuf()</code> has type <code>basic_streambuf&lt;charT, traits&gt;*</code> and not any 
+other type.
+<p/>
+By introducing an expository <code><i>SYNCBUF</i></code> to detect <code>basic_syncbuf</code> during the work 
+on the above mentioned editorial issue to solve these problems it turned out that the suggested wording 
+fix would introduce an apparently normative change that the <code>syncbuf</code> type must not use a 
+program-defined specialization.
+</p>
+
+<p><i>[2020-11-21; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 3 during reflector discussions.
+</p>
+
+
+<p id="res-3501"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4868">N4868</a>. 
+</p>
+
+<blockquote class="note">
+<p>
+This proposed wording is known to be incorrect, but is nonetheless depicted to present the
+overall idea.
+</p>
+</blockquote>
+
+<ol>
+<li>
+<p>
+Modify 31.7.6.5 <a href="https://wg21.link/ostream.manip">[ostream.manip]</a> as indicated:
+</p>
+
+<blockquote>
+<p>
+-1- Each instantiation of any of the function templates specified in this subclause is a designated 
+addressable function (16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a>).
+<p/>
+<ins>-?- In this subclause, <code><i>SYNCBUF</i>(p)</code> for a pointer <code>p</code> of type <code>B*</code>
+is determined as follows. If <code>*p</code> is a base class subobject of an object of type <code>S</code>,
+where <code>S</code> is a specialization generated from the <code>basic_syncbuf</code> primary template,
+and <code>is_convertible_v&lt;S*, B*&gt;</code> is <code>true</code>, then <code><i>SYNCBUF</i>(p)</code> is 
+<code>dynamic_cast&lt;S*&gt;(p)</code>. Otherwise, <code><i>SYNCBUF</i>(p)</code> is 
+<code>static_cast&lt;void*&gt;(nullptr)</code>. [<i>Note ?:</i> To work around the issue that the
+<code>Allocator</code> template argument of <code>S</code> cannot be deduced, implementations can introduce an 
+intermediate base class to <code>basic_syncbuf</code> that manages its <code>emit_on_sync</code> flag. &mdash; 
+<i>end note</i>]</ins>
+<p/>
+[&hellip;]
+</p>
+<pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; emit_on_flush(basic_ostream&lt;charT, traits&gt;&amp; os);
+</pre>
+<blockquote>
+<p>
+<ins>Let <code>p</code> be <code><i>SYNCBUF</i>(os.rdbuf())</code>.</ins>
+<p/>
+-8- <i>Effects:</i> If <code><ins>p</ins><del>os.rdbuf()</del></code> is <ins>not null</ins><del>a 
+<code>basic_syncbuf&lt;charT, traits, Allocator&gt;*</code>, called <code>buf</code> for the purpose of exposition</del>, 
+calls <code><ins>p</ins><del>buf</del>-&gt;set_emit_on_sync(true)</code>. Otherwise this manipulator has no effect.
+<del>[<i>Note 1:</i> To work around the issue that the Allocator template argument cannot be deduced, 
+implementations can introduce an intermediate base class to <code>basic_syncbuf</code> that manages 
+its <code>emit_on_sync</code> flag. &mdash; <i>end note</i>]</del>
+<p/>
+-9- <i>Returns:</i> <code>os</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; noemit_on_flush(basic_ostream&lt;charT, traits&gt;&amp; os);
+</pre>
+<blockquote>
+<p>
+<ins>Let <code>p</code> be <code><i>SYNCBUF</i>(os.rdbuf())</code>.</ins>
+<p/>
+-10- <i>Effects:</i> If <code><ins>p</ins><del>os.rdbuf()</del></code> is <ins>not null</ins><del>a 
+<code>basic_syncbuf&lt;charT, traits, Allocator&gt;*</code>, called <code>buf</code> for the purpose of exposition</del>, 
+calls <code><ins>p</ins><del>buf</del>-&gt;set_emit_on_sync(false)</code>. 
+Otherwise this manipulator has no effect.
+<p/>
+-11- <i>Returns:</i> <code>os</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class charT, class traits&gt;
+  basic_ostream&lt;charT, traits&gt;&amp; flush_emit(basic_ostream&lt;charT, traits&gt;&amp; os);
+</pre>
+<blockquote>
+<p>
+<ins>Let <code>p</code> be <code><i>SYNCBUF</i>(os.rdbuf())</code>.</ins>
+<p/>
+-12- <i>Effects:</i> Calls <code>os.flush()</code>. Then, if <code><ins>p</ins><del>os.rdbuf()</del></code> is 
+<ins>not null</ins><del>a <code>basic_syncbuf&lt;charT, traits, Allocator&gt;*</code>, called <code>buf</code> 
+for the purpose of exposition</del>, calls <code><ins>p</ins><del>buf</del>-&gt;emit()</code>.
+<p/>
+-13- <i>Returns:</i> <code>os</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3600: Making istream_iterator copy constructor trivial is an ABI break</title>
+<meta property="og:title" content="Issue 3600: Making istream_iterator copy constructor trivial is an ABI break">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3600.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3600"><a href="lwg-defects.html#3600">3600</a>. Making <code>istream_iterator</code> copy constructor trivial is an ABI break</h3>
+<p><b>Section:</b> 25.6.2.2 <a href="https://wg21.link/istream.iterator.cons">[istream.iterator.cons]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2021-09-23 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#istream.iterator.cons">issues</a> in [istream.iterator.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Libstdc++ never implemented this change made between C++03 and C++11 (by <a href="https://wg21.link/n2994">N2994</a>):
+</p>
+24.6.1.1 [istream.iterator.cons] p3:
+<blockquote>
+<pre>
+istream_iterator(const istream_iterator&lt;T,charT,traits,Distance&gt;&amp; x) = default;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Constructs a copy of <code>x</code>. If <code>T</code> is a literal type, then this constructor shall 
+be a trivial copy constructor.
+</p>
+</blockquote>
+</blockquote>
+<p>
+This breaks our ABI, as it changes the argument passing convention for the type, meaning this function segfaults 
+if compiled with today's libstdc++ and called from one that makes the triviality change:
+</p>
+<blockquote><pre>
+#include &lt;iterator&gt;
+#include &lt;istream&gt;
+
+int f(std::istream_iterator&lt;int&gt; i)
+{
+  return *i++;
+}
+</pre></blockquote>
+<p>
+As a result, it's likely that libstdc++ will never implement the change.
+<p/>
+There is no reason to require this constructor to be trivial. It was required for C++0x at one point, so the type 
+could be literal, but that is not true in the current language. We should strike the requirement, to reflect reality. 
+MSVC and libc++ are free to continue to define it as defaulted (and so trivial when appropriate) but we should not 
+require it from libstdc++. The cost of an ABI break is not worth the negligible benefit from making it trivial.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify 25.6.2.2 <a href="https://wg21.link/istream.iterator.cons">[istream.iterator.cons]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+istream_iterator(const istream_iterator&amp; x) = default;
+</pre>
+<blockquote>
+<p>
+-5- <i>Postconditions:</i> <code>in_stream == x.in_stream</code> is <code>true</code>.
+<p/>
+<del>-6- <i>Remarks:</i> If <code>is_trivially_copy_constructible_v&lt;T&gt;</code> is <code>true</code>, 
+then this constructor is trivial.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2021-09-30; Jonathan revises wording after reflector discussion]</i></p>
+
+<p>
+A benefit of triviality is that it is constexpr, want to preserve that.
+</p>
+
+<p><i>[2021-10-14; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4892">N4892</a>.
+</p>
+
+<ol>
+<li><p>Modify the class synopsis in 25.6.2.1 <a href="https://wg21.link/istream.iterator.general">[istream.iterator.general]</a>
+as indicated:</p>
+<blockquote>
+<pre>
+constexpr istream_iterator();
+constexpr istream_iterator(default_sentinel_t);
+istream_iterator(istream_type&amp; s);
+<ins>constexpr</ins> istream_iterator(const istream_iterator&amp; x)<del> = default</del>;
+~istream_iterator() = default;
+istream_iterator&amp; operator=(const istream_iterator&amp;) = default;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 25.6.2.2 <a href="https://wg21.link/istream.iterator.cons">[istream.iterator.cons]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+  <ins>constexpr</ins> istream_iterator(const istream_iterator&amp; x)<del> = default</del>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Postconditions:</i> <code>in_stream == x.in_stream</code> is <code>true</code>.
+</p>
+<p>
+-6- <i>Remarks:</i> <del>If <code>is_trivially_copy_constructible_v&lt;T&gt;</code> is <code>true</code>, 
+then this constructor is trivial.</del>
+<ins>If the initializer <code>T(x.value)</code> in the declaration
+<code>auto val = T(x.value);</code>
+is a constant initializer ([expr.const]),
+  then this constructor is a constexpr constructor.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2022-10-12; Jonathan provides improved wording]</i></p>
+
+<p>
+Discussed on the reflector September 2021.
+</p>
+
+<p><i>[2022-10-13; Jonathan revises wording to add a noexcept-specifier]</i></p>
+
+
+
+<p><i>[2022-11-07; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3600"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify the class synopsis in 25.6.2.1 <a href="https://wg21.link/istream.iterator.general">[istream.iterator.general]</a>
+as indicated:</p>
+<blockquote>
+<pre>
+constexpr istream_iterator();
+constexpr istream_iterator(default_sentinel_t);
+istream_iterator(istream_type&amp; s);
+<ins>constexpr</ins> istream_iterator(const istream_iterator&amp; x) <ins>noexcept(<i>see below</i>)</ins><del> = default</del>;
+~istream_iterator() = default;
+istream_iterator&amp; operator=(const istream_iterator&amp;) = default;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 25.6.2.2 <a href="https://wg21.link/istream.iterator.cons">[istream.iterator.cons]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+  <ins>constexpr</ins> istream_iterator(const istream_iterator&amp; x) <ins>noexcept(<i>see below</i>)</ins><del> = default</del>;
+</pre>
+<blockquote>
+<p>
+<del>
+-5- <i>Postconditions:</i> <code>in_stream == x.in_stream</code> is <code>true</code>.
+</del>
+</p>
+<p>
+<ins>
+-?- <i>Effects:</i> Initializes <code>in_stream</code> with <code>x.in_stream</code>
+and initializes <code>value</code> with <code>x.value</code>.
+</ins>
+</p>
+<p>
+-6- <i>Remarks:</i> <del>If <code>is_trivially_copy_constructible_v&lt;T&gt;</code> is <code>true</code>,
+then this constructor is trivial.</del>
+<ins>
+An invocation of this constructor may be used in a core constant expression
+if and only if the initialization of <code>value</code> from <code>x.value</code>
+is a constant subexpression ([defns.const.subexpr]).
+The exception specification is equivalent to
+<code>is_nothrow_copy_constructible_v&lt;T&gt;</code>.
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

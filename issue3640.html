@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3640: Clarify which exceptions are propagated</title>
+<meta property="og:title" content="Issue 3640: Clarify which exceptions are propagated">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3640.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3640"><a href="lwg-active.html#3640">3640</a>. Clarify which exceptions are propagated</h3>
+<p><b>Section:</b> 16.4.4 <a href="https://wg21.link/utility.requirements">[utility.requirements]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Johel Ernesto Guerrero Pe&ntilde;a <b>Opened:</b> 2021-11-01 <b>Last modified:</b> 2022-10-01</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#utility.requirements">active issues</a> in [utility.requirements].</p>
+<p><b>View all other</b> <a href="lwg-index.html#utility.requirements">issues</a> in [utility.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This originated from the editorial issues <a href="https://github.com/cplusplus/draft/issues/4863">#4863</a> 
+and <a href="https://github.com/cplusplus/draft/issues/4869">#4869</a>.
+<p/>
+Some <i>Throws:</i> elements are specified to throw the exceptions an evaluation of <code><i>E</i></code> exits with. 
+This wording excludes exceptions thrown involving the initialization and destruction of parameters 
+of <code><i>E</i></code>, temporaries of <code><i>E</i></code>, and the destruction of the result of <code><i>E</i></code>.
+<p/>
+The proposed wording below fixes this with front matter. As if affects more than just <i>Throws:</i> elements, it talks 
+about requirements and guarantees when <code><i>E</i></code> exits via an exception.
+<p/>
+As noted in the originating editorial issues, some LWG members prefer fixing each individual case 
+of wording used to describe exception propagation rather than patching them up with front matter.
+</p>
+
+<p><i>[2022-01-30; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+"Any throwing destructor is library UB already, so there's no
+need to contort the wording to accommodate those."
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>.
+</p>
+
+<ol>
+
+<li><p>Add a new subclause [exception.propagation] at the end of 16.4.4 <a href="https://wg21.link/utility.requirements">[utility.requirements]</a> (after
+16.4.4.6.2 <a href="https://wg21.link/allocator.requirements.completeness">[allocator.requirements.completeness]</a>):</p>
+
+<blockquote>
+<p>
+<ins><b>16.4.4.? Exception propagation requirements [exception.propagation]</b></ins>
+<p/>
+<ins>-?- Some functions defined in the C++ standard library impose requirements and guarantees <i>R-G</i> 
+when a described evaluation <code><i>E</i></code> exits via an exception. Let <code><i>F</i></code> be an evaluation that is 
+implied by evaluating <code><i>E</i></code> up to the complete evaluation of its enclosing full-expression. Unless 
+stated otherwise, an execution of <code><i>F</i></code> that exits via an exception also has <i>R-G</i> imposed.
+[<i>Note ?</i>: This includes when initializing and destroying parameters, evaluating default arguments, 
+and destroying temporaries (including discarded-value expressions) (7.6.1.3 <a href="https://wg21.link/expr.call">[expr.call]</a>) exit via 
+an exception. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2022-09-28; Johel provides revised wording]</i></p>
+
+
+
+
+<p id="res-3640"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+
+<li><p>Add a new subclause [exception.propagation] at the end of 16.4.4 <a href="https://wg21.link/utility.requirements">[utility.requirements]</a> (after
+16.4.4.6.2 <a href="https://wg21.link/allocator.requirements.completeness">[allocator.requirements.completeness]</a>):</p>
+
+<blockquote>
+<p>
+<ins><b>16.4.4.? Exception propagation requirements [exception.propagation]</b></ins>
+<p/>
+<ins>-?- Some functions defined in the C++ standard library impose requirements and guarantees <i>R-G</i> when 
+a described evaluation <code><i>E</i></code> of a constructor or construction exits via an exception. Let 
+<code><i>F</i></code> be the initialization denoted by <code><i>E</i></code>. Unless stated otherwise, <code><i>F</i></code> 
+also has <i>R-G</i> imposed.
+[<i>Note ?</i>: This includes the initialization of parameters and the evaluation of default arguments as 
+part of <code><i>F</i></code>. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

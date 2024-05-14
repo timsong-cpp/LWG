@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3393: Missing/incorrect feature test macro for coroutines</title>
+<meta property="og:title" content="Issue 3393: Missing/incorrect feature test macro for coroutines">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3393.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3393"><a href="lwg-defects.html#3393">3393</a>. Missing/incorrect feature test macro for coroutines</h3>
+<p><b>Section:</b> 17.3.2 <a href="https://wg21.link/version.syn">[version.syn]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Barry Revzin <b>Opened:</b> 2020-01-25 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#version.syn">active issues</a> in [version.syn].</p>
+<p><b>View all other</b> <a href="lwg-index.html#version.syn">issues</a> in [version.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+We have a policy, established in <a href="https://wg21.link/p1353">P1353</a> (and needing to be added to SD-6):
+<p/>
+In some cases a feature requires two macros, one for the language and one for the library. For example, the 
+library does not want to define its three-way comparison operations unless the compiler supports the feature.
+<p/>
+For end-users, it is suggested that they test only the library macro, as that will only be true if the 
+language macro is also true. As a result, the language macros contain "impl" to distinguish them from the 
+more general version that is expected to be set by the library.
+That paper added two papers of macros: one for <code>&lt;=&gt;</code> and one for destroying <code>delete</code>. 
+We have a third such example in coroutines: there is library machinery that needs to be provided only when 
+the compiler has language support for it, and the end user should just check the library macro.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 15.11 <a href="https://wg21.link/cpp.predefined">[cpp.predefined]</a>, Table [tab:cpp.predefined.ft], as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 18: Feature-test macros [tab:cpp.predefined.ft]</caption>
+<tr align="center">
+<th>Macro name</th>
+<th>Value</th>
+</tr> 
+
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+
+<tr>
+<td>
+<code>__cpp<ins>_impl</ins>_coroutines</code>
+</td>
+<td>
+<code>201902L</code>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+
+<li><p>Modify 17.3.2 <a href="https://wg21.link/version.syn">[version.syn]</a>, header <code>&lt;version&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+#define __cpp_lib_constexpr_vector    201907L <i>// also in &lt;vector&gt;</i>
+<ins>#define __cpp_lib_coroutines          201902L <i>// also in &lt;coroutine&gt;</i></ins>
+#define __cpp_lib_destroying_delete   201806L <i>// also in &lt;new&gt;</i>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2020-02-11, Prague]</i></p>
+
+<p>
+LWG observed that the naming suggestion didn't follow naming conventions of SG-10 because of the plural form
+<code>corountines</code>. The submitter agreed with that complaint, so the revised wording uses now the singular
+form.
+</p>
+
+<p><i>[2020-02 Moved to Immediate on Tuesday in Prague.]</i></p>
+
+
+
+<p id="res-3393"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 15.11 <a href="https://wg21.link/cpp.predefined">[cpp.predefined]</a>, Table [tab:cpp.predefined.ft], as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 18: Feature-test macros [tab:cpp.predefined.ft]</caption>
+<tr align="center">
+<th>Macro name</th>
+<th>Value</th>
+</tr> 
+
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+
+<tr>
+<td>
+<code>__cpp<ins>_impl</ins>_coroutine<del>s</del></code>
+</td>
+<td>
+<code>201902L</code>
+</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+
+</table>
+</blockquote>
+
+</li>
+
+<li><p>Modify 17.3.2 <a href="https://wg21.link/version.syn">[version.syn]</a>, header <code>&lt;version&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+#define __cpp_lib_constexpr_vector    201907L <i>// also in &lt;vector&gt;</i>
+<ins>#define __cpp_lib_coroutine           201902L <i>// also in &lt;coroutine&gt;</i></ins>
+#define __cpp_lib_destroying_delete   201806L <i>// also in &lt;new&gt;</i>
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

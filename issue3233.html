@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3233: Broken requirements for shared_ptr converting constructors</title>
+<meta property="og:title" content="Issue 3233: Broken requirements for shared_ptr converting constructors">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3233.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3233"><a href="lwg-defects.html#3233">3233</a>. Broken requirements for <code>shared_ptr</code> converting constructors</h3>
+<p><b>Section:</b> 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-07-10 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.const">active issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared.const">issues</a> in [util.smartptr.shared.const].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Issue <a href="lwg-defects.html#2875" title="shared_ptr::shared_ptr(Y*, D, [&hellip;]) constructors should be constrained (Status: C++17)">2875</a> added 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> paragraph 13:
+<blockquote>
+<i>Remarks</i>: When <code>T</code> is an array type, this constructor shall not participate in overload
+resolution unless <code>is_move_constructible_v&lt;D&gt;</code> is <code>true</code>, the expression
+<code>d(p)</code> is well-formed, and either <code>T</code> is <code>U[N]</code> and <code>Y(*)[N]</code> is
+convertible to <code>T*</code>, or <code>T</code> is <code>U[]</code> and <code>Y(*)[]</code> is convertible to
+<code>T*</code>. When <code>T</code> is not an array type, this constructor shall not participate in
+overload resolution unless <code>is_move_constructible_v&lt;D&gt;</code> is <code>true</code>, the
+expression <code>d(p)</code> is well-formed, and <code>Y*</code> is convertible to <code>T*</code>.
+</blockquote>
+which pertains to the four constructor overloads:
+<blockquote><pre>
+template&lt;class Y, class D&gt; shared_ptr(Y* p, D d);
+template&lt;class Y, class D, class A&gt; shared_ptr(Y* p, D d, A a);
+template&lt;class D&gt; shared_ptr(nullptr_t p, D d);
+template&lt;class D, class A&gt; shared_ptr(nullptr_t p, D d, A a);
+</pre></blockquote>
+which is fine (ignoring for now that two occurrences of "this constructor" should read "these
+constructors") for the two overloads with a template parameter <code>Y</code>, but not so much for the
+two with no such template parameter.
+</p>
+<p>
+MSVC ignores the constraints on <code>Y</code> for the overloads with no such template parameter,
+whereas libstdc++ and libc++ seem to ignore <em>all</em> of the constraints for those overloads (See
+<a href="https://gcc.godbolt.org/z/ECdop6">Compiler Explorer</a>). We should fix the broken wording,
+ideally by requiring the MSVC interpretation - the <code>nullptr_t</code> constructors participate in
+overload resolution only when <code>is_movable_v&lt;D&gt;</code> is <code>true</code> and <code>d(p)</code> is
+well-formed - so concepts and traits that check constructibility are correct.
+</p>
+
+<p><i>[2019-11-17 Issue Prioritization]</i></p>
+
+<p>Status to Tentatively Ready and priority to 0 after six positive votes on the reflector.</p>
+
+
+<p id="res-3233"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> as indicated:</p>
+
+<blockquote>
+<blockquote><pre>
+template&lt;class Y, class D&gt; shared_ptr(Y* p, D d);
+template&lt;class Y, class D, class A&gt; shared_ptr(Y* p, D d, A a);
+template&lt;class D&gt; shared_ptr(nullptr_t p, D d);
+template&lt;class D, class A&gt; shared_ptr(nullptr_t p, D d, A a);
+</pre></blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <code>is_move_constructible_v&lt;D&gt;</code> is <code>true</code>, and
+<code>d(p)</code> is a well-formed expression. For the first two overloads:</ins>
+</p>
+<ul>
+  <li><p><ins>
+    If <code>T</code> is an array type, then either <code>T</code> is <code>U[N]</code> and <code>Y(*)[N]</code> is
+    convertible to <code>T*</code>, or <code>T</code> is <code>U[]</code> and <code>Y(*)[]</code> is convertible to
+    <code>T*</code>.
+  </ins></p></li>
+  <li><p><ins>
+    If <code>T</code> is not an array type, then <code>Y*</code> is convertible to <code>T*</code>.
+  </ins></p></li>
+</ul>
+<p>
+-9- <i><del>Requires</del><ins>Expects</ins>:</i> Construction of <code>d</code> and a deleter of type [&hellip;]
+</p>
+<p>[&hellip;]</p>
+<p>
+<del>-13- <i>Remarks:</i> When <code>T</code> is an array type, this constructor shall not participate
+in overload resolution unless <code>is_move_constructible_v&lt;D&gt;</code> is <code>true</code>, the
+expression <code>d(p)</code> is well-formed, and either <code>T</code> is <code>U[N]</code> and <code>Y(*)[N]</code>
+is convertible to <code>T*</code>, or <code>T</code> is <code>U[]</code> and <code>Y(*)[]</code> is convertible to
+<code>T*</code>. When <code>T</code> is not an array type, this constructor shall not participate in
+overload resolution unless <code>is_move_constructible_v&lt;D&gt;</code> is <code>true</code>, the
+expression <code>d(p)</code> is well-formed, and <code>Y*</code> is convertible to <code>T*</code>.</del>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

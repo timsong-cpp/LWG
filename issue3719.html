@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3719: Directory iterators should be usable with default sentinel</title>
+<meta property="og:title" content="Issue 3719: Directory iterators should be usable with default sentinel">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3719.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3719"><a href="lwg-defects.html#3719">3719</a>. Directory iterators should be usable with default sentinel</h3>
+<p><b>Section:</b> 31.12.11.1 <a href="https://wg21.link/fs.class.directory.iterator.general">[fs.class.directory.iterator.general]</a>, 31.12.12.1 <a href="https://wg21.link/fs.class.rec.dir.itr.general">[fs.class.rec.dir.itr.general]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2022-06-17 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+We added comparisons with <code>default_sentinel_t</code> to the stream and streambuf iterators, because their
+past-the-end iterator is just a default-constructed iterator. We didn't do the same for filesystem directory
+iterators, but they also use a default-constructed value as the sentinel.
+<p/>
+The proposed resolution addresses this oversight.
+</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 31.12.11.1 <a href="https://wg21.link/fs.class.directory.iterator.general">[fs.class.directory.iterator.general]</a>, class <code>directory_iterator</code> synopsis,
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class directory_iterator {
+    [&hellip;]
+
+    const directory_entry&amp; operator*() const;
+    const directory_entry* operator-&gt;() const;
+    directory_iterator&amp; operator++();
+    directory_iterator&amp; increment(error_code&amp; ec);
+
+    <ins>friend bool operator==(const directory_iterator&amp; lhs, default_sentinel_t) noexcept
+    { return lhs == end(lhs); }</ins>
+
+    <i>// other members as required by 25.3.5.3 <a href="https://wg21.link/input.iterators">[input.iterators]</a>, input iterators</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 31.12.12.1 <a href="https://wg21.link/fs.class.rec.dir.itr.general">[fs.class.rec.dir.itr.general]</a>, class <code>recursive_directory_iterator</code> synopsis,
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class recursive_directory_iterator {
+    [&hellip;]
+
+    void pop();
+    void pop(error_code&amp; ec);
+    void disable_recursion_pending();
+
+    <ins>friend bool operator==(const recursive_directory_iterator&amp; lhs, default_sentinel_t) noexcept
+    { return lhs == end(lhs); }</ins>
+
+    <i>// other members as required by 25.3.5.3 <a href="https://wg21.link/input.iterators">[input.iterators]</a>, input iterators</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2022-07-06; Jonathan Wakely revises proposed resolution and adds
+regex iterators as suggested on the reflector.]</i></p>
+
+
+
+<p><i>[2022-07-11; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3719"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 31.12.11.1 <a href="https://wg21.link/fs.class.directory.iterator.general">[fs.class.directory.iterator.general]</a>, class <code>directory_iterator</code> synopsis,
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class directory_iterator {
+    [&hellip;]
+
+    const directory_entry&amp; operator*() const;
+    const directory_entry* operator-&gt;() const;
+    directory_iterator&amp; operator++();
+    directory_iterator&amp; increment(error_code&amp; ec);
+
+    <ins>bool operator==(default_sentinel_t) const noexcept</ins>
+    <ins>{ return *this == directory_iterator(); }</ins>
+
+    <i>// other members as required by 25.3.5.3 <a href="https://wg21.link/input.iterators">[input.iterators]</a>, input iterators</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 31.12.12.1 <a href="https://wg21.link/fs.class.rec.dir.itr.general">[fs.class.rec.dir.itr.general]</a>, class <code>recursive_directory_iterator</code> synopsis,
+as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::filesystem {
+  class recursive_directory_iterator {
+    [&hellip;]
+
+    void pop();
+    void pop(error_code&amp; ec);
+    void disable_recursion_pending();
+
+    <ins>bool operator==(default_sentinel_t) const noexcept</ins>
+    <ins>{ return *this == recursive_directory_iterator(); }</ins>
+
+    <i>// other members as required by 25.3.5.3 <a href="https://wg21.link/input.iterators">[input.iterators]</a>, input iterators</i>
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 32.11.1.1 <a href="https://wg21.link/re.regiter.general">[re.regiter.general]</a>, <code>regex_iterator</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class BidirectionalIterator,
+            class charT = typename iterator_traits&lt;BidirectionalIterator&gt;::value_type,
+            class traits = regex_traits&lt;charT&gt;&gt;
+    class regex_iterator {
+      [&hellip;]
+      regex_iterator&amp; operator=(const regex_iterator&amp;);
+      bool operator==(const regex_iterator&amp;) const;
+      <ins>bool operator==(default_sentinel_t) const { return *this == regex_iterator(); }</ins>
+      const value_type&amp; operator*() const;
+      const value_type* operator-&gt;() const;
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 32.11.2.1 <a href="https://wg21.link/re.tokiter.general">[re.tokiter.general]</a>, <code>regex_token_iterator</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class BidirectionalIterator,
+            class charT = typename iterator_traits&lt;BidirectionalIterator&gt;::value_type,
+            class traits = regex_traits&lt;charT&gt;&gt;
+    class regex_token_iterator {
+      [&hellip;]
+      regex_iterator&amp; operator=(const regex_token_iterator&amp;);
+      bool operator==(const regex_token_iterator&amp;) const;
+      <ins>bool operator==(default_sentinel_t) const { return *this == regex_token_iterator(); }</ins>
+      const value_type&amp; operator*() const;
+      const value_type* operator-&gt;() const;
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

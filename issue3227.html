@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3227: Ambiguity issue for extract in ordered and unordered associative containers</title>
+<meta property="og:title" content="Issue 3227: Ambiguity issue for extract in ordered and unordered associative containers">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3227.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3227"><a href="lwg-active.html#3227">3227</a>. Ambiguity issue for <code>extract</code> in ordered and unordered associative containers</h3>
+<p><b>Section:</b> 24.2.7 <a href="https://wg21.link/associative.reqmts">[associative.reqmts]</a>, 24.2.8 <a href="https://wg21.link/unord.req">[unord.req]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Konstantin Boyarinov <b>Opened:</b> 2019-06-25 <b>Last modified:</b> 2022-04-24</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts">active issues</a> in [associative.reqmts].</p>
+<p><b>View all other</b> <a href="lwg-index.html#associative.reqmts">issues</a> in [associative.reqmts].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Ordered and unordered associative containers in C++14 contained an issue, which caused an ambiguity
+while invoking <code>std::map::erase</code> when <code>key_type</code> of the map can be constructed from
+the iterator. In this case both overloads <code>erase(const key_type&amp;)</code> and
+<code>erase(const_iterator)</code> could be chosen.
+<p/>
+The issue LWG <a href="lwg-defects.html#2059" title="C++0x ambiguity problem with map::erase (Status: C++17)">2059</a> was reported and resolved in C++17 by adding an extra overload
+for <code>erase</code> in ordered and unordered associative containers which accepts <code>iterator</code>
+as an argument.
+<p/>
+C++17 also introduced new functionality for splicing ordered and unordered maps and sets.
+One of the extensions allows to extract a node from the container by passing either
+<code>key_type&amp;</code> or <code>const_iterator</code> to the <code>extract()</code> member function:
+</p>
+<blockquote><pre>
+node_type extract(const key_type&amp; x);
+node_type extract(const_iterator position);
+</pre></blockquote>
+<p>
+Providing these two <code>extract</code> overloads causes the same problem as for <code>erase</code>.
+Consider the following example:
+</p>
+<blockquote><pre>
+#include &lt;map&gt;
+#include &lt;string&gt;
+
+struct Key
+{
+  template &lt;typename T&gt;
+  Key(const T&amp;) {}
+};
+
+bool operator&lt;(const Key&amp;, const Key&amp;) { return false; }
+
+int main()
+{
+  using map_type = std::map&lt;Key, std::string&gt;;
+
+  map_type m({ {Key(1), "a"}, {Key(2), "b"} });
+  map_type::iterator it = m.begin();
+  auto nh = m.extract(it);
+}
+</pre></blockquote>
+<p>
+In this case, call to <code>extract()</code> is ambiguous, because the overloads which accept
+<code>const_iterator</code> and <code>key_type</code> are equally good matches for the argument
+<code>it</code>.
+<p/>
+Consequently, this issue can be resolved in the same way as for <code>std::map::erase</code>
+by adding an overload for <code>extract</code> which accepts <code>iterator</code> as an argument.
+</p>
+
+<p><i>[2019-07 Issue Prioritization]</i></p>
+
+<p>Priority to 3 after discussion on the reflector.</p>
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/N4820" title=" Working Draft, Standard for Programming Language C++">N4820</a>.</p>
+
+<ol>
+<li><p>Modify  [tab:container.assoc.req], Table 69 &mdash;
+"Associative container requirements", as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 69 &mdash; Associative container requirements (in addition to container)
+ [tab:container.assoc.req]</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+<tr>
+<td>
+<code>a.extract(q)</code>
+</td>
+<td>
+<code>node_type</code>
+</td>
+<td>
+<i>Effects:</i> Removes the element<br/>
+pointed to by <code>q</code>.<br/>
+<i>Returns:</i> A <code>node_type</code> owning<br/>
+that element.
+</td>
+<td>
+amortized constant
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><code>a.extract(r)</code></ins>
+</td>
+<td>
+<ins><code>node_type</code></ins>
+</td>
+<td>
+<ins><i>Effects:</i> Removes the element<br/>
+pointed to by <code>r</code>.<br/>
+<i>Returns:</i> A <code>node_type</code> owning<br/>
+that element.</ins>
+</td>
+<td>
+<ins>amortized constant</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Modify  [tab:container.assoc.req], Table 70 &mdash;
+"Unordered associative container requirements", as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 70 &mdash; Unordered associative container requirements (in addition to container)
+ [tab:container.hash.req]</caption>
+<tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Assertion&#47;note pre-&#47;post-condition</th>
+<th>Complexity</th>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+<tr>
+<td>
+<code>a.extract(q)</code>
+</td>
+<td>
+<code>node_type</code>
+</td>
+<td>
+<i>Effects:</i> Removes the element<br/>
+pointed to by <code>q</code>.<br/>
+<i>Returns:</i> A <code>node_type</code> owning<br/>
+that element.
+</td>
+<td>
+Average case
+<code>&#x1d4aa;(1)</code>, worst case
+<code>&#x1d4aa;(a.size())</code>.
+</td>
+</tr>
+
+<tr>
+<td>
+<ins><code>a.extract(r)</code></ins>
+</td>
+<td>
+<ins><code>node_type</code></ins>
+</td>
+<td>
+<ins><i>Effects:</i> Removes the element<br/>
+pointed to by <code>r</code>.<br/>
+<i>Returns:</i> A <code>node_type</code> owning<br/>
+that element.</ins>
+</td>
+<td>
+<ins>Average case
+<code>&#x1d4aa;(1)</code>, worst case
+<code>&#x1d4aa;(a.size())</code>.</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="4" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, class template <code>map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, class template <code>multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.6.1 <a href="https://wg21.link/set.overview">[set.overview]</a>, class template <code>set</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.7.1 <a href="https://wg21.link/multiset.overview">[multiset.overview]</a>, class template <code>multiset</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, class template <code>unordered_map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a>, class template <code>unordered_multimap</code>
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.6.1 <a href="https://wg21.link/unord.set.overview">[unord.set.overview]</a>, class template <code>unordered_set</code>
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.7.1 <a href="https://wg21.link/unord.multiset.overview">[unord.multiset.overview]</a>, class template <code>unordered_multiset</code>
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-04-24; Daniel rebases wording on <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>]</i></p>
+
+
+
+<p id="res-3227"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 24.2.7.1 <a href="https://wg21.link/associative.reqmts.general">[associative.reqmts.general]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+a.extract(q)
+</pre>
+<blockquote>
+<p>
+-108- <i>Result:</i> <code>node_type</code>
+<p/>
+-109- <i>Effects:</i> Removes the element pointed to by <code>q</code>.
+<p/>
+-110- <i>Returns:</i> A <code>node_type</code> owning that element.
+<p/>
+-111- <i>Complexity:</i> Amortized constant.
+</p>
+</blockquote>
+<pre>
+<ins>a.extract(r)</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Result:</i> <code>node_type</code></ins>
+<p/>
+<ins>-?- <i>Effects:</i> Removes the element pointed to by <code>r</code>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> A <code>node_type</code> owning that element.</ins>
+<p/>
+<ins>-?- <i>Complexity:</i> Amortized constant.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 24.2.8.1 <a href="https://wg21.link/unord.req.general">[unord.req.general]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+a.extract(q)
+</pre>
+<blockquote>
+<p>
+-141- <i>Result:</i> <code>node_type</code>
+<p/>
+-142- <i>Effects:</i> Removes the element pointed to by <code>q</code>.
+<p/>
+-143- <i>Returns:</i> A <code>node_type</code> owning that element.
+<p/>
+-144- <i>Complexity:</i> Average case <code>&#x1d4aa;(1)</code>, worst case <code>&#x1d4aa;(a.size())</code>.
+</p>
+</blockquote>
+<pre>
+<ins>a.extract(r)</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Result:</i> <code>node_type</code></ins>
+<p/>
+<ins>-?- <i>Effects:</i> Removes the element pointed to by <code>r</code>.</ins>
+<p/>
+<ins>-?- <i>Returns:</i> A <code>node_type</code> owning that element.</ins>
+<p/>
+<ins>-?- <i>Complexity:</i> Average case <code>&#x1d4aa;(1)</code>, worst case <code>&#x1d4aa;(a.size())</code>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, class template <code>map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, class template <code>multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.6.1 <a href="https://wg21.link/set.overview">[set.overview]</a>, class template <code>set</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.4.7.1 <a href="https://wg21.link/multiset.overview">[multiset.overview]</a>, class template <code>multiset</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, class template <code>unordered_map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a>, class template <code>unordered_multimap</code>
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.6.1 <a href="https://wg21.link/unord.set.overview">[unord.set.overview]</a>, class template <code>unordered_set</code>
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.5.7.1 <a href="https://wg21.link/unord.multiset.overview">[unord.multiset.overview]</a>, class template <code>unordered_multiset</code>
+synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>node_type extract(iterator position);</ins>
+node_type extract(const_iterator position);
+node_type extract(const key_type&amp; x);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

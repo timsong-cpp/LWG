@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3690: std::make_from_tuple etc. should find all tuple-like std::get overloads</title>
+<meta property="og:title" content="Issue 3690: std::make_from_tuple etc. should find all tuple-like std::get overloads">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3690.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3690"><a href="lwg-active.html#3690">3690</a>. <code>std::make_from_tuple</code> etc. should find all tuple-like <code>std::get</code> overloads</h3>
+<p><b>Section:</b> 16.4.2.2 <a href="https://wg21.link/contents">[contents]</a>, 22.4.6 <a href="https://wg21.link/tuple.apply">[tuple.apply]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2022-04-06 <b>Last modified:</b> 2022-05-17</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#contents">issues</a> in [contents].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently it is not clear in 16.4.2.2 <a href="https://wg21.link/contents">[contents]</a>/3 whether all possible overloads in the 
+standard library are considered to be found "in the context of <code>D</code>". As a result, it 
+seems underspecified whether a certain <code>std::get</code> overload is found by <code>std::tuple_cat</code>, 
+<code>std::make_from_tuple</code>, <code>std::apply</code>, or exposition-only concept <code><i>pair-like</i></code> 
+or <code><i>has-tuple-element</i></code>.
+<p/>
+There is implementation divergence: MSVC STL's <code>std::make_from_tuple</code> accepts 
+<code>std::ranges::subrange</code>, but libstdc++'s doesn't, which is originally discussed in 
+<a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=102301">GCC bug #102301</a>.
+<p/>
+IMO <code>std::get</code> overloads need some special rules: when referred by tuple-like facilities, 
+overloads for <code>std::variant</code> should be excluded (or at least leave whether it's found 
+unspecified), and all other overloads should be found; and the opposite rule should be used 
+when referred in 22.6 <a href="https://wg21.link/variant">[variant]</a>.
+</p>
+
+<p><i>[2022-04-25; Jiang An comments and provides wording]</i></p>
+
+<p>
+ Currently this program is accepted when using MSVC STL and libstdc++, although the acception seems unintended and problematic.
+</p>
+<blockquote><pre>
+#include &lt;variant&gt;
+#include &lt;span&gt;
+#include &lt;ranges&gt;
+
+struct Foo : std::variant&lt;int, long&gt; {};
+
+template&lt;&gt;
+struct std::tuple_element&lt;0, Foo&gt; { using type = int; };
+
+template&lt;&gt;
+struct std::tuple_element&lt;1, Foo&gt; { using type = long; };
+
+template&lt;&gt;
+struct std::tuple_size&lt;Foo&gt; : std::integral_constant&lt;std::size_t, 2&gt; {};
+
+constexpr auto bad_keys = std::span&lt;Foo&gt;{} | std::views::values;
+
+int main() {} <i>// COMPILE-ONLY</i>
+</pre></blockquote>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3690"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 16.4.2.2 <a href="https://wg21.link/contents">[contents]</a> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-3- Whenever an unqualified name other than <code>swap</code> is used in the specification of a declaration <code>D</code> 
+in Clause 99 [support] through Clause 99 [thread] or Annex 99 [depr], 
+its meaning is established as-if by performing unqualified name lookup (6.5.3 <a href="https://wg21.link/basic.lookup.unqual">[basic.lookup.unqual]</a>)
+in the context of <code>D</code>.
+<p/>
+[<i>Note 1</i>: Argument-dependent lookup is not performed. &mdash; <i>end note</i>]
+<p/>
+Similarly, the meaning of a <i>qualified-id</i> is established as-if by performing qualified name lookup 
+(6.5.5 <a href="https://wg21.link/basic.lookup.qual">[basic.lookup.qual]</a>) in the context of <code>D</code>.
+<p/>
+[<i>Example 1</i>: The reference to <code>is_array_v</code> in the specification of <code>std::to_array</code> 
+(24.3.7.6 <a href="https://wg21.link/array.creation">[array.creation]</a>) refers to <code>::std::is_array_v</code>. &mdash; <i>end example</i>]
+<p/>
+[<i>Note 2</i>: Operators in expressions (12.2.2.3 <a href="https://wg21.link/over.match.oper">[over.match.oper]</a>) are not so constrained; see 
+16.4.6.4 <a href="https://wg21.link/global.functions">[global.functions]</a>. &mdash; <i>end note</i>]
+The meaning of the unqualified name <code>swap</code> is established in an overload resolution context for 
+swappable values (16.4.4.3 <a href="https://wg21.link/swappable.requirements">[swappable.requirements]</a>).
+<p/>
+<ins>Certain entities in the standard library are specified to select <i>tuple-like <code>get</code> function templates</i>. 
+An implementation shall behave as if every tuple-like <code>get</code> function template is found in the 
+definition of such an entity. Furthermore, an implementation shall ensure that no <code>get</code> function 
+template that is not tuple-like is found in the definition of such an entity.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Add to the end of 22.3.4 <a href="https://wg21.link/pair.astuple">[pair.astuple]</a>, 22.4.8 <a href="https://wg21.link/tuple.elem">[tuple.elem]</a>, 
+24.3.7.7 <a href="https://wg21.link/array.tuple">[array.tuple]</a>, and 26.5.4.3 <a href="https://wg21.link/range.subrange.access">[range.subrange.access]</a> as indicated:</p>
+
+<blockquote>
+<p>
+<ins>The <code>get</code> function templates specified in this section are tuple-like (16.4.2.2 <a href="https://wg21.link/contents">[contents]</a>).</ins>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify 22.4.6 <a href="https://wg21.link/tuple.apply">[tuple.apply]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class F, class Tuple&gt;
+  constexpr decltype(auto) apply(F&amp;&amp; f, Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Given the exposition-only function:
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class F, class Tuple, size_t... I&gt;
+  constexpr decltype(auto) <i>apply-impl</i>(F&amp;&amp; f, Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) { <i>// exposition only</i>
+    return <i>INVOKE</i>(std::forward&lt;F&gt;(f), get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...); <i>// see 22.10.4 <a href="https://wg21.link/func.require">[func.require]</a></i>
+  }
+}
+</pre></blockquote>
+<p>
+Equivalent to:
+</p>
+<blockquote><pre>
+return <i>apply-impl</i>(std::forward&lt;F&gt;(f), std::forward&lt;Tuple&gt;(t),
+                  make_index_sequence&lt;tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;&gt;{});
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks:</i> <code><i>apply-impl</i></code> selects tuple-like <code>get</code> function templates.</ins>
+</p>
+</blockquote>
+<pre>
+template&lt;class T, class Tuple&gt;
+  constexpr T make_from_tuple(Tuple&amp;&amp; t);
+</pre>
+<blockquote>
+<p>
+-2- <i>Mandates:</i> If <code>tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;</code> is <code>1</code>, then 
+<code>reference_constructs_from_temporary_v&lt;T, decltype(get&lt;0&gt;(declval&lt;Tuple&gt;()))&gt;</code> is 
+<code>false</code>.
+<p/>
+-3- <i>Effects:</i> Given the exposition-only function:
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class T, class Tuple, size_t... I&gt;
+    requires is_constructible_v&lt;T, decltype(get&lt;I&gt;(declval&lt;Tuple&gt;()))...&gt;
+  constexpr T <i>make-from-tuple-impl</i>(Tuple&amp;&amp; t, index_sequence&lt;I...&gt;) { <i>// exposition only</i>
+    return T(get&lt;I&gt;(std::forward&lt;Tuple&gt;(t))...);
+  }
+}
+</pre></blockquote>
+<p>
+Equivalent to:
+</p>
+<blockquote><pre>
+return <i>make-from-tuple-impl</i>&lt;T&gt;(
+          std::forward&lt;Tuple&gt;(t),
+          make_index_sequence&lt;tuple_size_v&lt;remove_reference_t&lt;Tuple&gt;&gt;&gt;{});
+</pre></blockquote>
+<p>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> <code><i>make-from-tuple-impl</i></code> selects tuple-like <code>get</code> function templates.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Add at the end of 26.5.4.1 <a href="https://wg21.link/range.subrange.general">[range.subrange.general]</a> (after the synopsis) as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Although IIUC <code><i>pair-like</i></code> is not needed to handle <code>array</code> and 
+<code>subrange</code>.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> <code><i>pair-like</i></code> selects tuple-like <code>get</code> function templates.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Add after the synopsis of 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+<ins>-?- <i>Remarks:</i> <code><i>has-tuple-element</i></code> selects tuple-like <code>get</code> function templates.</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

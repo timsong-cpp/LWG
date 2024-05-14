@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3025: Map-like container deduction guides should use pair&lt;Key, T&gt;, not pair&lt;const Key, T&gt;</title>
+<meta property="og:title" content="Issue 3025: Map-like container deduction guides should use pair&lt;Key, T&gt;, not pair&lt;const Key, T&gt;">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3025.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3025"><a href="lwg-defects.html#3025">3025</a>. Map-like container deduction guides should use <code>pair&lt;Key, T&gt;</code>, not <code>pair&lt;const Key, T&gt;</code></h3>
+<p><b>Section:</b> 24.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a>, 24.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a>, 24.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a>, 24.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Ville Voutilainen <b>Opened:</b> 2017-10-08 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#map.overview">issues</a> in [map.overview].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+With the deduction guides as specified currently, code like this doesn't work:
+</p>
+<blockquote><pre>
+map m{pair{1, 1}, {2, 2}, {3, 3}};
+</pre></blockquote>
+<p>
+Same problem occurs with <code>multimap</code>, <code>unordered_map</code> and <code>unordered_multimap</code>.
+The problem is in deduction guides like
+</p>
+<blockquote><pre>
+template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+          class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+map(initializer_list&lt;pair&lt;const Key, T&gt;&gt;, Compare = Compare(),
+    Allocator = Allocator()) -&gt; map&lt;Key, T, Compare, Allocator&gt;;
+</pre></blockquote>
+<p>
+The <code>pair&lt;const Key, T&gt;</code> is not matched by a <code>pair&lt;int, int&gt;</code>, because 
+<code>int</code> can't match a <code>const Key</code>. Dropping the <code>const</code> from the parameter of the 
+deduction guide makes it work with no loss of functionality.
+</p>
+
+<p><i>[2017-11-03, Zhihao Yuan comments]</i></p>
+
+<p>
+The fix described <a href=" https://wandbox.org/permlink/VFFelmbsAs1Zy0UB">here</a> prevents
+</p>
+<blockquote><pre>
+std::map m2{m0.begin(), m0.end()};
+</pre></blockquote>
+<p>
+from falling back to direct-non-list-initialization. Treating a uniform initialization with &gt;1 clauses
+of the same un-cvref type as <code>std::initializer_list</code> is the only consistent interpretation I found 
+so far.
+</p>
+
+<p><i>[2017-11 Albuquerque Wednesday night issues processing]</i></p>
+
+<p>Priority set to 2</p>
+
+<p><i>[2018-08-23 Batavia Issues processing]</i></p>
+
+<p>Status to Tentatively Ready</p>
+<p><i>[2018-11, Adopted in San Diego]</i></p>
+
+
+
+<p id="res-3025"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4687">N4687</a>.</p>
+
+<ol>
+<li><p>Change 24.4.4.1 <a href="https://wg21.link/map.overview">[map.overview]</a> p3, class template <code>map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+         class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Compare = Compare(), Allocator = Allocator())
+    -&gt; map&lt;Key, T, Compare, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, class Allocator&gt;
+  map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator) -&gt; map&lt;Key, T, less&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 24.4.5.1 <a href="https://wg21.link/multimap.overview">[multimap.overview]</a> p3, class template <code>multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Compare = less&lt;Key&gt;,
+         class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Compare = Compare(), Allocator = Allocator())
+    -&gt; multimap&lt;Key, T, Compare, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, class Allocator&gt;
+  multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator)
+    -&gt; multimap&lt;Key, T, less&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 24.5.4.1 <a href="https://wg21.link/unord.map.overview">[unord.map.overview]</a> p3, class template <code>unordered_map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Hash = hash&lt;Key&gt;,
+         class Pred = equal_to&lt;Key&gt;, class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type = <i>see below</i>, Hash = Hash(),
+                Pred = Pred(), Allocator = Allocator())
+    -&gt; unordered_map&lt;Key, T, Hash, Pred, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type,
+                Allocator)
+    -&gt; unordered_map&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator)
+    -&gt; unordered_map&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, class Hash, class Allocator&gt;
+  unordered_map(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type, Hash,
+                Allocator)
+    -&gt; unordered_map&lt;Key, T, Hash, equal_to&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Change 24.5.5.1 <a href="https://wg21.link/unord.multimap.overview">[unord.multimap.overview]</a> p3, class template <code>unordered_multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;class Key, class T, class Hash = hash&lt;Key&gt;,
+         class Pred = equal_to&lt;Key&gt;, class Allocator = allocator&lt;pair&lt;const Key, T&gt;&gt;&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;,
+                     typename <i>see below</i>::size_type = <i>see below</i>,
+                     Hash = Hash(), Pred = Pred(), Allocator = Allocator())
+    -&gt; unordered_multimap&lt;Key, T, Hash, Pred, Allocator&gt;;
+[&hellip;]
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type,
+                     Allocator)
+    -&gt; unordered_multimap&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, typename Allocator&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, Allocator)
+    -> unordered_multimap&lt;Key, T, hash&lt;Key&gt;, equal_to&lt;Key&gt;, Allocator&gt;;
+
+template&lt;class Key, class T, class Hash, class Allocator&gt;
+  unordered_multimap(initializer_list&lt;pair&lt;<del>const</del> Key, T&gt;&gt;, typename <i>see below</i>::size_type,
+                     Hash, Allocator)
+    -&gt; unordered_multimap&lt;Key, T, Hash, equal_to&lt;Key&gt;, Allocator&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

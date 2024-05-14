@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3994: adaptor(args...)(r) is not equivalent to std::bind_back(adaptor, args...)(r)</title>
+<meta property="og:title" content="Issue 3994: adaptor(args...)(r) is not equivalent to std::bind_back(adaptor, args...)(r)">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3994.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3994"><a href="lwg-active.html#3994">3994</a>. <code>adaptor(args...)(r)</code> is not equivalent to <code>std::bind_back(adaptor, args...)(r)</code></h3>
+<p><b>Section:</b> 26.7.2 <a href="https://wg21.link/range.adaptor.object">[range.adaptor.object]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-10-11 <b>Last modified:</b> 2023-11-03</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#range.adaptor.object">active issues</a> in [range.adaptor.object].</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.adaptor.object">issues</a> in [range.adaptor.object].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+26.7.2 <a href="https://wg21.link/range.adaptor.object">[range.adaptor.object]</a> p8 specifies that:
+</p>
+<blockquote><p> 
+The expression <code>adaptor(args...)</code> produces a range adaptor closure object <code>f</code> that is a perfect forwarding 
+call wrapper (22.10.4 <a href="https://wg21.link/func.require">[func.require]</a>) with the following properties:
+</p></blockquote>
+<p>
+According to the subsequent description, it can be inferred that the behavior is similar to 
+<code>std::bind_back(adaptor, args...)</code> which also returns a perfect forwarding call wrapper.
+<p/>
+Among them, "A <i>perfect forwarding call wrapper</i> is an argument forwarding call wrapper 
+that forwards its state entities to the underlying call expression" according to <a href="https://wg21.link/func.require">[func.require]</a>/4, and call wrapper in <a href="https://wg21.link/func.require">[func.require]</a>/3 is described as:
+</p>
+<blockquote><p>
+Every call wrapper (22.10.3 <a href="https://wg21.link/func.def">[func.def]</a>) meets the <i>Cpp17MoveConstructible</i> and <i>Cpp17Destructible</i> requirements.
+</p></blockquote>
+<p>
+In order to conform with the specification, standard functions that return perfect forwarding call wrappers such as 
+<code>std::bind_front/back</code> and <code>std::not_fn</code> all <i>Mandates</i> that 
+<code>(is_constructible_v&lt;BoundArgs, Args&gt; &amp;&amp; ...)</code> and 
+<code>(is_move_constructible_v&lt;BoundArgs&gt; &amp;&amp; ...)</code> are each <code>true</code>, 
+the former condition corresponds to 26.7.2 <a href="https://wg21.link/range.adaptor.object">[range.adaptor.object]</a> p8:
+</p>
+<blockquote><p>
+The expression <code>adaptor(args...)</code> is well-formed if and only if the initialization of the bound argument 
+entities of the result, as specified above, are all well-formed.
+</p></blockquote>
+<p>
+However, the latter does not have a corresponding description in <code>&lt;ranges&gt;</code>. In other words, range 
+adaptor objects do not explicitly indicate that the bound argument must be move-constructible.
+This results in implementation divergence for some uncommon types (<a href="https://godbolt.org/z/r6Gq8W6qe">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;string_view&gt;
+
+constexpr struct WeirdFive {
+  WeirdFive() = default;
+  WeirdFive(const WeirdFive&amp;) = default;
+  constexpr operator int() const { return 5; }
+
+  WeirdFive(WeirdFive&amp;&amp;) = delete;
+} five;
+
+constexpr std::string_view sv{"hello"};
+static_assert(sv == std::views::take(five)(sv)); // <span style="color:red;font-weight:bolder">libstdc++/libc++ reject, MSVC-STL accepts</span>
+</pre></blockquote>
+<p>
+Above, libstdc++ always moves arguments into internal members, which leads to hard errors in the member initializer list;
+libc++ uses <code>std::bind_back</code> for argument binding, which also leads to hard errors in the function body as the 
+former requires arguments to be move-constructible; MSVC-STL is the most compliant with current wording.
+</p>
+
+<p><i>[2023-11-02; Reflector poll]</i></p>
+
+<p>
+Set priority to 4 after reflector poll.
+</p>
+
+
+
+<p id="res-3994"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

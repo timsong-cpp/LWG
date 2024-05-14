@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3902: Return type of std::declval&lt;cv void&gt; should be (cv-unqualified) void</title>
+<meta property="og:title" content="Issue 3902: Return type of std::declval&lt;cv void&gt; should be (cv-unqualified) void">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3902.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3902"><a href="lwg-active.html#3902">3902</a>. Return type of <code>std::declval&lt;<i>cv</i> void&gt;</code> should be (<i>cv</i>-unqualified) <code>void</code></h3>
+<p><b>Section:</b> 22.2.6 <a href="https://wg21.link/declval">[declval]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2023-03-07 <b>Last modified:</b> 2023-03-22</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#declval">active issues</a> in [declval].</p>
+<p><b>View all other</b> <a href="lwg-index.html#declval">issues</a> in [declval].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently libc++ and libstdc++ determine the return type of <code>std::declval</code> like this:
+</p>
+<blockquote><pre>
+template&lt;class _Tp&gt;
+_Tp&amp;&amp; __declval_ret(int); // selected when _Tp is a referenceable type
+
+template&lt;class _Tp&gt;
+_Tp __declval_ret(long); // selected when _Tp is cv void
+
+template&lt;class _Tp&gt;
+decltype(__declval_ret&lt;_Tp&gt;(0)) declval() noexcept;
+</pre></blockquote>
+ <p>
+This strategy avoids instantiation of class templates. But it also drops <i>cv</i>-qualifiers of the return type 
+when the type is <i>cv</i> <code>void</code>, which is different from the standard requirements. Such difference has 
+no impact in normal use of <code>std::declval</code>, but is observable via <code>decltype(std::declval&lt;const void&gt;)</code> 
+and its friends.
+<p/>
+Given maintainers may think it's reasonable to keep the current implementation 
+(see <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109049">GCC Bugzilla #109049</a>), 
+it may be worthwhile to legitimate such strategy.
+<p/>
+Should we make such construction ill-formed?
+</p>
+
+<p><i>[2023-03-22; Reflector poll]</i></p>
+
+<p>
+Set priority to 4 after reflector poll.
+"The testcase isn't even valid with the previous 'conforming' libstdc++ implementation."
+"<code>declval</code> isn't an addressable function, so would prefer if this
+was ill-formed rather than complicating the definition for this case."
+</p>
+
+
+
+<p id="res-3902"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 22.2.1 <a href="https://wg21.link/utility.syn">[utility.syn]</a>, header <code>&lt;utility&gt;</code> synopsis, and 22.2.6 <a href="https://wg21.link/declval">[declval]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  <ins>remove_cv_t&lt;</ins>add_rvalue_reference_t&lt;T&gt;<ins>&gt;</ins> declval() noexcept; // <i>as unevaluated operand</i>
+</pre>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

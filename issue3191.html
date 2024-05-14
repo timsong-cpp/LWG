@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3191: std::ranges::shuffle synopsis does not match algorithm definition</title>
+<meta property="og:title" content="Issue 3191: std::ranges::shuffle synopsis does not match algorithm definition">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3191.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3191"><a href="lwg-defects.html#3191">3191</a>. <code>std::ranges::shuffle</code> synopsis does not match algorithm definition</h3>
+<p><b>Section:</b> 27.7.13 <a href="https://wg21.link/alg.random.shuffle">[alg.random.shuffle]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Christopher Di Bella <b>Opened:</b> 2019-03-02 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.random.shuffle">issues</a> in [alg.random.shuffle].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+27.4 <a href="https://wg21.link/algorithm.syn">[algorithm.syn]</a> declares <code>std::ranges::shuffle</code> like so:
+</p>
+<blockquote><pre>
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; &amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;I&gt;&gt;
+  I shuffle(I first, S last, Gen&amp;&amp; g);
+
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; &amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;iterator_t&lt;R&gt;&gt;&gt;
+  safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+</pre></blockquote>
+<p>
+27.7.13 <a href="https://wg21.link/alg.random.shuffle">[alg.random.shuffle]</a> defines the algorithm like so:
+</p>
+<blockquote><pre>
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt;
+  I shuffle(I first, S last, Gen&amp;&amp; g);
+
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt;&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt;
+  safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+</pre></blockquote>
+<p>
+Notice the missing <code>ConvertibleTo</code> requirements in the latter. Looking at the 
+<a href="https://wg21.link/n4685#page=157">Ranges TS</a>, [alg.random.shuffle] includes 
+this requirement, albeit in the Ranges TS-format.
+</p>
+
+<p><i>[2019-03-03; Daniel comments]</i></p>
+
+<p>
+Given that the accepted proposal <a href="https://wg21.link/p0896r4">P0896R4</a> voted in San Diego 
+did contain the same error I decided to open this issue instead of submitting an editorial change request.
+</p>
+
+<p><i>[2019-03-05 Priority set to 1 after reflector discussion]</i></p>
+
+<p>
+Casey: The correct fix here is to remove the <code>ConvertibleTo</code> requirement from the header 
+synopsis. <code>UniformRandomBitGenerator</code>s have integral result types, and the core language guarantees 
+that all integral types are convertible to all other integral types. We don't need to validate the core 
+language in the associated constraints of <code>ranges::shuffle</code>.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4800">N4800</a>.</p>
+
+<ol>
+<li><p>Change 27.7.13 <a href="https://wg21.link/alg.random.shuffle">[alg.random.shuffle]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; <ins>&amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;I&gt;&gt;</ins>
+    I shuffle(I first, S last, Gen&amp;&amp; g);
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt;&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; <ins>&amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;iterator_t&lt;R&gt;&gt;&gt;</ins>
+    safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2019-03-05 Updated proposed wording according to Casey's suggestion]</i></p>
+
+<p><i>[2019-06-16 Set to "Tentatively Ready" after five positive votes on the reflector.]</i></p>
+
+
+
+<p id="res-3191"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4800">N4800</a>.</p>
+
+<ol>
+<li><p>Change 27.4 <a href="https://wg21.link/algorithm.syn">[algorithm.syn]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<i>// 27.7.13 <a href="https://wg21.link/alg.random.shuffle">[alg.random.shuffle]</a>, shuffle</i>
+[&hellip;]
+namespace ranges {
+  template&lt;RandomAccessIterator I, Sentinel&lt;I&gt; S, class Gen&gt;
+    requires Permutable&lt;I&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; <del>&amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;I&gt;&gt;</del>
+  I shuffle(I first, S last, Gen&amp;&amp; g);
+
+  template&lt;RandomAccessRange R, class Gen&gt;
+    requires Permutable&lt;iterator_t&lt;R&gt; &amp;&amp;
+             UniformRandomBitGenerator&lt;remove_reference_t&lt;Gen&gt;&gt; <del>&amp;&amp;
+             ConvertibleTo&lt;invoke_result_t&lt;Gen&amp;&gt;, iter_difference_t&lt;iterator_t&lt;R&gt;&gt;&gt;</del>
+  safe_iterator_t&lt;R&gt; shuffle(R&amp;&amp; r, Gen&amp;&amp; g);
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

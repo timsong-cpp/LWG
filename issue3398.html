@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3398: tuple_element_t is also wrong for const subrange</title>
+<meta property="og:title" content="Issue 3398: tuple_element_t is also wrong for const subrange">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3398.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3398"><a href="lwg-defects.html#3398">3398</a>. <code>tuple_element_t</code> is also wrong for <code>const subrange</code></h3>
+<p><b>Section:</b> 26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-02-13 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#ranges.syn">active issues</a> in [ranges.syn].</p>
+<p><b>View all other</b> <a href="lwg-index.html#ranges.syn">issues</a> in [ranges.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+As currently specified, it uses the <i>cv</i>-qualified partial specialization, which incorrectly
+adds <i>cv</i>-qualification to the element type.
+</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a>, header <code>&lt;ranges&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std {
+  namespace views = ranges::views;
+
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_size&lt;ranges::subrange&lt;I, S, K&gt;&gt;
+    : integral_constant&lt;size_t, 2&gt; {};
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;0, ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = I;
+  };
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;1, ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = S;
+  };
+  <ins>template&lt;class I, class S, ranges::subrange_kind K&gt;</ins>
+  <ins>struct tuple_element&lt;0, const ranges::subrange&lt;I, S, K&gt;&gt; {</ins>
+    <ins>using type = I;</ins>
+  <ins>};</ins>
+  <ins>template&lt;class I, class S, ranges::subrange_kind K&gt;</ins>
+  <ins>struct tuple_element&lt;1, const ranges::subrange&lt;I, S, K&gt;&gt; {</ins>
+    <ins>using type = S;</ins>
+  <ins>};</ins>
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add the following wording to Annex D:</p>
+
+<blockquote>
+<p>
+<ins><b>D.? Deprecated <code>subrange</code> tuple interface [depr.ranges.syn]</b></ins>
+<p/>
+<ins>1 The header <code>&lt;ranges&gt;</code> (26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a>) has the following additions:</ins>
+</p>
+<blockquote><pre>
+<ins>namespace std {</ins>
+  <ins>template&lt;size_t X, class I, class S, ranges::subrange_kind K&gt;</ins>
+  <ins>struct tuple_element&lt;X, volatile ranges::subrange&lt;I, S, K&gt;&gt; {};</ins>
+  <ins>template&lt;size_t X, class I, class S, ranges::subrange_kind K&gt;</ins>
+  <ins>struct tuple_element&lt;X, const volatile ranges::subrange&lt;I, S, K&gt;&gt; {};</ins>
+<ins>}</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2020-02-14, Prague]</i></p>
+
+<p>
+LWG decided to remove the volatile support, we shouldn't give the impression to support an  
+idiom that wouldn't work.
+</p>
+
+
+<p id="res-3398"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 26.2 <a href="https://wg21.link/ranges.syn">[ranges.syn]</a>, header <code>&lt;ranges&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std {
+  namespace views = ranges::views;
+
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_size&lt;ranges::subrange&lt;I, S, K&gt;&gt;
+    : integral_constant&lt;size_t, 2&gt; {};
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;0, ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = I;
+  };
+  template&lt;class I, class S, ranges::subrange_kind K&gt;
+  struct tuple_element&lt;1, ranges::subrange&lt;I, S, K&gt;&gt; {
+    using type = S;
+  };
+  <ins>template&lt;class I, class S, ranges::subrange_kind K&gt;</ins>
+  <ins>struct tuple_element&lt;0, const ranges::subrange&lt;I, S, K&gt;&gt; {</ins>
+    <ins>using type = I;</ins>
+  <ins>};</ins>
+  <ins>template&lt;class I, class S, ranges::subrange_kind K&gt;</ins>
+  <ins>struct tuple_element&lt;1, const ranges::subrange&lt;I, S, K&gt;&gt; {</ins>
+    <ins>using type = S;</ins>
+  <ins>};</ins>
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+</body>
+</html>

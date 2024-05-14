@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3394: ranges::basic_istream_view::iterator has an empty iterator_traits</title>
+<meta property="og:title" content="Issue 3394: ranges::basic_istream_view::iterator has an empty iterator_traits">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3394.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3394"><a href="lwg-closed.html#3394">3394</a>. <code>ranges::basic_istream_view::<i>iterator</i></code> has an empty <code>iterator_traits</code></h3>
+<p><b>Section:</b> 26.6.6.3 <a href="https://wg21.link/range.istream.iterator">[range.istream.iterator]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Patrick Palka <b>Opened:</b> 2020-02-09 <b>Last modified:</b> 2020-11-09</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.istream.iterator">issues</a> in [range.istream.iterator].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Every instantiation of <code>ranges::basic_istream_view::<i>iterator</i></code> has an empty
+<code>iterator_traits</code>, i.e. the type
+</p>
+<blockquote><pre>
+iterator_traits&lt;ranges::basic_istream_view&lt;Val, CharT, Traits&gt;::iterator&gt;
+</pre></blockquote>
+<p>
+has no members.
+<p/>
+This happens because <code>basic_istream_view::<i>iterator</i></code> neither models
+<code><i>cpp17-iterator</i></code> (since this concept requires copyability, which this
+iterator is by design not) nor does it define all four of the member
+types <code>difference_type</code>, <code>value_type</code>, <code>reference</code>, and 
+<code>iterator_category</code> (it is missing <code>reference</code>). Therefore by 
+25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> p3, this iterator's specialization of 
+<code>iterator_traits</code> will be empty if generated from the 
+<code>iterator_traits</code> primary template.
+<p/>
+Since <code>basic_istream_view::iterator</code> is indeed an iterator, its
+<code>iterator_traits</code> should certainly not be empty. The simplest solution
+here is to define the member type <code>reference</code> in the definition of
+<code>basic_istream_view::iterator</code>, which will enable its <code>iterator_traits</code>
+specialization to be appropriately populated from the primary template.
+</p>
+
+<p><i>[2020-02-10; Jonathan comments]</i></p>
+
+<p>
+Jonathan and Casey have concerns about the proposed resolution. Casey: The wording makes it look
+as if this iterator is supposed to be an <code><i>cpp17-input-iterator</i></code>.
+<p/>
+See also LWG <a href="lwg-defects.html#3283" title="Types satisfying input_iterator but not equality_comparable look like
+C++17 output iterators (Status: Resolved)">3283</a> and  <a href="lwg-defects.html#3289" title="Cannot opt out of C++17 iterator-ness without also opting out of C++20 iterator-ness (Status: Resolved)">3289</a>.
+</p>
+
+<p><i>[2020-02 Prioritized as P2 Monday morning in Prague]</i></p>
+
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 26.6.6.3 <a href="https://wg21.link/range.istream.iterator">[range.istream.iterator]</a>, class template 
+<code>basic_istream_view::<i>iterator</i></code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class Val, class CharT, class Traits&gt;
+  class basic_istream_view&lt;Val, CharT, Traits&gt;::<i>iterator</i> { <i>// exposition only</i>
+  public:
+    using iterator_category = input_iterator_tag;
+    using difference_type = ptrdiff_t;
+    using value_type = Val;
+    <ins>using reference = Val&amp;;</ins>
+
+    <i>iterator</i>() = default;
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2020-02-13, Prague]</i></p>
+
+<p>
+LWG decided for NAD: The <code>ranges::basic_istream_view::iterator</code> is a move-only type 
+and thus cannot meet the <i>Cpp17</i> requirements (even <code>output_iterator_tag</code>), as such it should not 
+specialize <code>iterator_traits</code>, to avoid misleading results when it is passed to new algorithms.
+<p/>
+A related issue, LWG <a href="lwg-defects.html#3397" title="ranges::basic_istream_view::iterator should not provide iterator_category (Status: C++20)">3397</a>, is supposed to take care for a problem with the definition of the
+<code>iterator_category</code> member type of this template.
+</p>
+<p><i>[2020-11-09 Status changed: Tentatively NAD &rarr; NAD.]</i></p>
+
+
+
+<p id="res-3394"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3895: Various relation concepts are missing default values of the second template parameters</title>
+<meta property="og:title" content="Issue 3895: Various relation concepts are missing default values of the second template parameters">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3895.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3895"><a href="lwg-active.html#3895">3895</a>. Various relation concepts are missing default values of the second template parameters</h3>
+<p><b>Section:</b> 18.3 <a href="https://wg21.link/concepts.syn">[concepts.syn]</a>, 25.2 <a href="https://wg21.link/iterator.synopsis">[iterator.synopsis]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> blacktea hamburger <b>Opened:</b> 2023-02-25 <b>Last modified:</b> 2023-03-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>std::indirect_equivalence_relation</code> and <code>std::indirect_strict_weak_order</code> have default values 
+for the second template parameters:
+</p>
+<blockquote><pre>
+template&lt;class F, class I1, class I2 = I1&gt;
+  concept indirect_equivalence_relation = <i>see below</i>;
+
+template&lt;class F, class I1, class I2 = I1&gt;
+  concept indirect_strict_weak_order = <i>see below</i>;
+</pre></blockquote>
+<p>
+But <code>std::relation</code>, <code>std::equivalence_relation</code>, <code>std::strict_weak_order</code>, and
+<code>std::indirect_binary_predicate</code> are missing such default values:
+</p>
+<blockquote><pre>
+template&lt;class R, class T, class U&gt;
+  concept relation = <i>see below</i>;
+
+template&lt;class R, class T, class U&gt;
+  concept equivalence_relation = <i>see below</i>;
+
+template&lt;class R, class T, class U&gt;
+  concept strict_weak_order = <i>see below</i>;
+  
+template&lt;class F, class I1, class I2&gt;
+  concept indirect_binary_predicate = <i>see below</i>;
+</pre></blockquote>
+<p>
+That makes them inconsistent and it should not be expected.
+</p>
+
+<p><i>[2023-03-22; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+"Borderline design change."
+"Should not change <code>indirect_binary_predicate</code>."
+"NAD, write a paper."
+"NAD, default argument would make typos compile. Explicit is good."
+</p>
+
+
+
+<p id="res-3895"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 18.3 <a href="https://wg21.link/concepts.syn">[concepts.syn]</a>, header <code>&lt;concepts&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+// <i>all freestanding</i>
+namespace std {
+  [&hellip;]
+  
+  // <i>18.7.5 <a href="https://wg21.link/concept.relation">[concept.relation]</a>, concept relation</i>
+  template&lt;class R, class T, class U <ins>= T</ins>&gt;
+    concept relation = <i>see below</i>;
+  
+  // <i>18.7.6 <a href="https://wg21.link/concept.equiv">[concept.equiv]</a>, concept equivalence_relation</i>
+  template&lt;class R, class T, class U <ins>= T</ins>&gt;
+    concept equivalence_relation = <i>see below</i>;
+  
+  // <i>18.7.7 <a href="https://wg21.link/concept.strictweakorder">[concept.strictweakorder]</a>, concept strict_weak_order</i>
+  template&lt;class R, class T, class U <ins>= T</ins>&gt;
+    concept strict_weak_order = <i>see below</i>;
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 18.7.5 <a href="https://wg21.link/concept.relation">[concept.relation]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class T, class U <ins>= T</ins>&gt;
+  concept relation =
+    predicate&lt;R, T, T&gt; &amp;&amp; predicate&lt;R, U, U&gt; &amp;&amp;
+    predicate&lt;R, T, U&gt; &amp;&amp; predicate&lt;R, U, T&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 18.7.6 <a href="https://wg21.link/concept.equiv">[concept.equiv]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class T, class U <ins>= T</ins>&gt;
+  concept equivalence_relation = relation&lt;R, T, U&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 18.7.7 <a href="https://wg21.link/concept.strictweakorder">[concept.strictweakorder]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class R, class T, class U <ins>= T</ins>&gt;
+  concept strict_weak_order = relation&lt;R, T, U&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 25.2 <a href="https://wg21.link/iterator.synopsis">[iterator.synopsis]</a>, header <code>&lt;iterator&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace std {
+  [&hellip;]
+  // <i>25.3.6.3 <a href="https://wg21.link/indirectcallable.indirectinvocable">[indirectcallable.indirectinvocable]</a>, indirect callables</i>
+  [&hellip;]
+  template&lt;class F, class I1, class I2 <ins>= I1</ins>&gt;
+    concept indirect_binary_predicate = <i>see below</i>; // <i>freestanding</i>
+
+  template&lt;class F, class I1, class I2 = I1&gt;
+    concept indirect_equivalence_relation = <i>see below</i>; // <i>freestanding</i>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 25.3.6.3 <a href="https://wg21.link/indirectcallable.indirectinvocable">[indirectcallable.indirectinvocable]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The indirect callable concepts are used to constrain those algorithms that accept callable objects 
+(22.10.4 <a href="https://wg21.link/func.require">[func.require]</a>) as arguments.
+</p>
+<blockquote><pre>
+[&hellip;]
+template&lt;class F, class I1, class I2 <ins>= I1</ins>&gt;
+  concept indirect_binary_predicate =
+    indirectly_readable&lt;I1&gt; &amp;&amp; indirectly_readable&lt;I2&gt; &amp;&amp;
+    copy_constructible&lt;F&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_value_t&lt;I1&gt;&amp;, iter_value_t&lt;I2&gt;&amp;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_value_t&lt;I1&gt;&amp;, iter_reference_t&lt;I2&gt;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_reference_t&lt;I1&gt;, iter_value_t&lt;I2&gt;&amp;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_reference_t&lt;I1&gt;, iter_reference_t&lt;I2&gt;&gt; &amp;&amp;
+    predicate&lt;F&amp;, iter_common_reference_t&lt;I1&gt;, iter_common_reference_t&lt;I2&gt;&gt;;
+[&hellip;]
+</pre></blockquote>
+</blockquote>
+
+</li>
+
+
+</ol>
+
+
+
+
+
+</body>
+</html>

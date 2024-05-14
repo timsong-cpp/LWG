@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3724: decay-copy should be constrained</title>
+<meta property="og:title" content="Issue 3724: decay-copy should be constrained">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3724.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3724"><a href="lwg-defects.html#3724">3724</a>. <code><i>decay-copy</i></code> should be constrained</h3>
+<p><b>Section:</b> 16.3.3.2 <a href="https://wg21.link/expos.only.entity">[expos.only.entity]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hui Xie <b>Opened:</b> 2022-06-23 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#expos.only.entity">issues</a> in [expos.only.entity].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The spec of <code>views::all</code> 26.7.6.1 <a href="https://wg21.link/range.all.general">[range.all.general]</a> p2 says:
+</p>
+<blockquote><p>
+Given a subexpression <code>E</code>, the expression <code>views::all(E)</code> is expression-equivalent to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; <code><i>decay-copy</i>(E)</code> if the decayed type of E models <code>view</code>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+<p>
+If <code>E</code> is an lvalue move-only <code>view</code>, according to the spec, <code>views::all(E)</code> 
+would be expression-equivalent to <code><i>decay-copy</i>(E)</code>.
+<p/>
+However,  [expos.only.func] p2 defines <code><i>decay-copy</i></code> as follows
+</p>
+<blockquote><pre>
+template&lt;class T&gt; constexpr decay_t&lt;T&gt; <i>decay-copy</i>(T&amp;&amp; v)
+    noexcept(is_nothrow_convertible_v&lt;T, decay_t&lt;T&gt;&gt;)         <i>// exposition only</i>
+  { return std::forward&lt;T&gt;(v); }
+</pre></blockquote>
+<p>
+It is unconstrained.  As a result, for the above example, <code>views::all(E)</code> is a well-formed 
+expression and it would only error on the template instantiation of the function body of 
+<code><i>decay-copy</i></code>, because <code>E</code> is an lvalue of move-only type and not copyable.
+<p/>
+I think this behaviour is wrong, instead, we should make <code><i>decay-copy(E)</i></code> ill-formed 
+if it is not copyable, so that <code>views::all(E)</code> can be SFINAE friendly.
+</p>
+
+<p><i>[2022-07-08; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+<p><i>[2022-07-11; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3724"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify  [expos.only.func] as indicated:</p>
+
+<blockquote>
+<p>
+-2- The following are defined for exposition only to aid in the specification of the library:
+</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; 
+    <ins>requires convertible_to&lt;T, decay_t&lt;T&gt;&gt;</ins>
+      constexpr decay_t&lt;T&gt; decay-copy(T&amp;&amp; v)
+        noexcept(is_nothrow_convertible_v&lt;T, decay_t&lt;T&gt;&gt;) <i>// exposition only</i>
+      { return std::forward&lt;T&gt;(v); }
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

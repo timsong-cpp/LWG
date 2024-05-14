@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3071: [networking.ts] read_until still refers to "input sequence"</title>
+<meta property="og:title" content="Issue 3071: [networking.ts] read_until still refers to &quot;input sequence&quot;">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3071.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3071"><a href="lwg-defects.html#3071">3071</a>. [networking.ts] <code>read_until</code> still refers to "input sequence"</h3>
+<p><b>Section:</b> 17.9 [networking.ts::buffer.read.until] <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Christopher Kohlhoff <b>Opened:</b> 2018-02-26 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses: networking.ts</b>
+<p>
+When specifying <code>DynamicBuffers</code> and their related operations, early drafts of the Networking TS described the buffers in terms of their "input sequence" and "output sequence". This was changed to "readable bytes" and "writable bytes" respectively. Unfortunately, some instances of "input sequence" were missed in section 
+17.9 [networking.ts::buffer.read.until].
+</p>
+
+<p><i>[
+2018-03-06 Moved to Tentatively Ready after 5 positive votes on c++std-lib.
+]</i></p>
+
+
+<p><i>[2018-06 Rapperswil: Adopted]</i></p>
+
+
+
+<p id="res-3071"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4711">N4711</a>.
+</p>
+
+<ol>
+<li><p>Change 17.9 [networking.ts::buffer.read.until] as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class SyncReadStream, class DynamicBuffer&gt;
+  size_t read_until(SyncReadStream&amp; s, DynamicBuffer&amp;&amp; b, char delim);
+template&lt;class SyncReadStream, class DynamicBuffer&gt;
+  size_t read_until(SyncReadStream&amp; s, DynamicBuffer&amp;&amp; b,
+                    char delim, error_code&amp; ec);
+template&lt;class SyncReadStream, class DynamicBuffer&gt;
+  size_t read_until(SyncReadStream&amp; s, DynamicBuffer&amp;&amp; b, string_view delim);
+template&lt;class SyncReadStream, class DynamicBuffer&gt;
+  size_t read_until(SyncReadStream&amp; s, DynamicBuffer&amp;&amp; b,
+                    string_view delim, error_code&amp; ec);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Reads data from the buffer-oriented synchronous read stream 
+(17.1.1 [networking.ts::buffer.stream.reqmts.syncreadstream]) object stream by performing zero or more 
+calls to the stream's <code>read_some</code> member function, until the 
+<del>input sequence</del><ins>readable bytes</ins> of the dynamic buffer 
+(16.2.4 [networking.ts::buffer.reqmts.dynamicbuffer]) object <code>b</code> contain<del>s</del> the specified 
+delimiter <code>delim</code>.
+<p/>
+-2- Data is placed into the dynamic buffer object b. A mutable buffer sequence (16.2.1) is obtained 
+prior to each <code>read_some</code> call using <code>b.prepare(N)</code>, where <code>N</code> is an unspecified 
+value such that <code>N &lt;= max_size() - size()</code>. [<i>Note:</i> Implementations are encouraged to use
+<code>b.capacity()</code> when determining <code>N</code>, to minimize the number of <code>read_some</code>
+calls performed on the stream. &mdash; <i>end note</i>] After each <code>read_some</code> call, 
+the implementation performs <code>b.commit(n)</code>, where <code>n</code> is the return value from
+<code>read_some</code>.
+<p/>
+-3- The synchronous <code>read_until</code> operation continues until:
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; the <del>input sequence</del><ins>readable bytes</ins> of <code>b</code> contain<del>s</del> 
+the delimiter <code>delim</code>; or</p></li>
+<li><p>(3.2) &mdash; <code>b.size() == b.max_size()</code>; or</p></li>
+<li><p>(3.3) &mdash; an asynchronous <code>read_some</code> operation fails.</p></li>
+</ol>
+<p/>
+-4- On exit, if the <del>input sequence</del><ins>readable bytes</ins> of <code>b</code> contain<del>s</del> 
+the delimiter, <code>ec</code> is set such that <code>!ec</code> is <code>true</code>. Otherwise, if 
+<code>b.size() == b.max_size()</code>, <code>ec</code> is set such that <code>ec == stream_errc::not_found</code>. 
+If <code>b.size() &lt; b.max_size()</code>, <code>ec</code> contains the <code>error_code</code> from the most 
+recent <code>read_some</code> call.
+<p/>
+-5- <i>Returns:</i> The number of <del>bytes in the input sequence of</del><ins>readable bytes in</ins> 
+<code>b</code> up to and including the delimiter, if present. [<i>Note:</i> On completion, the buffer may 
+contain additional bytes following the delimiter. &mdash; <i>end note</i>] Otherwise returns <code>0</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

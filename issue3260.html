@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3260: year_month* arithmetic rejects durations convertible to years</title>
+<meta property="og:title" content="Issue 3260: year_month* arithmetic rejects durations convertible to years">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3260.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3260"><a href="lwg-defects.html#3260">3260</a>. <code>year_month*</code> arithmetic rejects durations convertible to years</h3>
+<p><b>Section:</b> 29.8 <a href="https://wg21.link/time.cal">[time.cal]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2019-08-15 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, the <code>year_month*</code> types (<code>year_month</code>,
+<code>year_month_day</code>) provide separate arithmetic operators with
+duration type of <code>years</code> or <code>months</code>. This is an intentional
+optimization that avoids performing modulo arithmetic in the former case.
+<p/>
+However, these make the arithmetic of <code>year_month*</code> types
+with durations that are convertible to <code>years</code> (and by
+consequence to <code>months</code>) ambiguous. For example, the following
+code is ambiguous:
+</p>
+<blockquote>
+<pre>
+using decades = duration&lt;int, ratio_multiply&lt;ratio&lt;10&gt;, years::period&gt;&gt;;
+auto ymd = 2001y/January/1d;
+ymd += decades(1); // <span style="color:#C80000;font-weight:bold">error, ambiguous</span>
+</pre>
+</blockquote>
+<p>
+while less usual durations that are only convertible to <code>months</code> work correctly:
+</p>
+<blockquote>
+<pre>
+using decamonths = duration&lt;int, ratio_multiply&lt;ratio&lt;10&gt;, months::period&gt;&gt;;
+auto ymd = 2001y/January/1d;
+ymd += decamonths(1);
+</pre>
+</blockquote>
+<p>
+The example implementation resolves the issues by making sure that the
+<code>years</code> overload will be preferred in case of ambiguity, by declaring the
+<code>months</code> overload a function template with a default argument for its parameter
+(suggested by Tim Song):
+</p>
+<blockquote>
+<pre>
+<ins>template&lt;class = <em>unspecified</em>&gt;</ins>
+constexpr year_month_weekday&amp; operator+=(const months&amp; m) noexcept;
+constexpr year_month_weekday&amp; operator+=(const years&amp; m) noexcept;
+</pre>
+</blockquote>
+
+<p><i>[2019-09-14 Priority set to 2 based on reflector discussion]</i></p>
+
+
+<p><i>[2019-09-14; Tomasz and Howard provide concrete wording]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Suggested wording below assumes that we can add a <i>Constraints:</i> to a 
+signature where the constraint does not apply to a deduced template. We have examples of such 
+constraints in other parts of the WD (e.g. 20.3.1.3.2 <a href="https://wg21.link/unique.ptr.single.ctor">[unique.ptr.single.ctor]</a>/p15, 
+20.3.1.3.4 <a href="https://wg21.link/unique.ptr.single.asgn">[unique.ptr.single.asgn]</a>/p1). And we have the old form "does not participate &hellip;" 
+being used for non-deduced templates in several places as well (e.g. 22.3.2 <a href="https://wg21.link/pairs.pair">[pairs.pair]</a>/p5).
+<p/>
+There are several ways of implementing such a constraint, such as adding a gratuitous template 
+parameter.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 29.8.13.2 <a href="https://wg21.link/time.cal.ym.members">[time.cal.ym.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month&amp; operator+=(const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-4- <i>Effects:</i> <code>*this = *this + dm</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month&amp; operator-=(const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-6- <i>Effects:</i> <code>*this = *this - dm</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.13.3 <a href="https://wg21.link/time.cal.ym.nonmembers">[time.cal.ym.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month operator+(const year_month&amp; ym, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-3- <i>Returns:</i> A <code>year_month</code> value <code>z</code> such that <code>z - ym == dm</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month operator+(const months&amp; dm, const year_month&amp; ym) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-5- <i>Returns:</i> <code>ym + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month operator-(const year_month&amp; ym, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-6- <i>Returns:</i> <code>ym + -dm</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.14.2 <a href="https://wg21.link/time.cal.ymd.members">[time.cal.ymd.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_day&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-7- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-9- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.14.3 <a href="https://wg21.link/time.cal.ymd.nonmembers">[time.cal.ymd.nonmembers]</a> as indicated:</p>
+<blockquote>
+<pre>
+constexpr year_month_day operator+(const year_month_day&amp; ymd, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-3- <i>Returns:</i> <code>(ymd.year() / ymd.month() + dm) / ymd.day()</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day operator+(const months&amp; dm, const year_month_day&amp; ymd) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-5- <i>Returns:</i> <code>ymd + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day operator+(const months&amp; dm, const year_month_day&amp; ymd) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-6- <i>Returns:</i> <code>ymd + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.15.2 <a href="https://wg21.link/time.cal.ymdlast.members">[time.cal.ymdlast.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_day_last&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-2- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day_last&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-4- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.15.3 <a href="https://wg21.link/time.cal.ymdlast.nonmembers">[time.cal.ymdlast.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_day_last
+  operator+(const year_month_day_last&amp; ymdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-3- <i>Returns:</i> <code>(ymdl.year() / ymdl.month() + dm) / last</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day_last
+  operator+(const months&amp; dm, const year_month_day_last&amp; ymdl) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-4- <i>Returns:</i> <code>ymdl + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day_last
+  operator-(const year_month_day_last&amp; ymdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-5- <i>Returns:</i> <code>ymdl + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.16.2 <a href="https://wg21.link/time.cal.ymwd.members">[time.cal.ymwd.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-6- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-8- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.16.3 <a href="https://wg21.link/time.cal.ymwd.nonmembers">[time.cal.ymwd.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday operator+(const year_month_weekday&amp; ymwd, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-2- <i>Returns:</i> <code>(ymwd.year() / ymwd.month() + dm) / ymwd.weekday_indexed()</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday operator+(const months&amp; dm, const year_month_weekday&amp; ymwd) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-3- <i>Returns:</i> <code>ymwd + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday operator-(const year_month_weekday&amp; ymwd, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-4- <i>Returns:</i> <code>ymwd + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.17.2 <a href="https://wg21.link/time.cal.ymwdlast.members">[time.cal.ymwdlast.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday_last&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-2- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday_last&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-4- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.17.3 <a href="https://wg21.link/time.cal.ymwdlast.nonmembers">[time.cal.ymwdlast.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday_last
+  operator+(const year_month_weekday_last&amp; ymwdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-2- <i>Returns:</i> <code>(ymwdl.year() / ymwdl.month() + dm) / ymwdl.weekday_last()</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday_last
+  operator+(const months&amp; dm, const year_month_weekday_last&amp; ymwdl) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-3- <i>Returns:</i> <code>ymwdl + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday_last
+  operator-(const year_month_weekday_last&amp; ymwdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> The argument supplied by the caller for the <code>months</code> 
+parameter is not implicitly convertible to <code>years</code>.</ins>
+<p/>
+-4- <i>Returns:</i> <code>ymwdl + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-02-13, Prague]</i></p>
+
+<p>
+Tim Song found a wording problem that we would like to resolve:
+<p/>
+Given a class like
+</p>
+<blockquote><pre>
+struct C : months {
+  operator years();
+};
+</pre></blockquote>
+<p>
+The previous wording requires calls with a <code>C</code> argument to use the <code>years</code> overload, which 
+would require implementation heroics since its conversion sequence to <code>months</code> is better than <code>years</code>.
+</p>
+
+<p><i>[2020-02 Status to Immediate on Friday morning in Prague.]</i></p>
+
+
+
+<p id="res-3260"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Suggested wording below assumes that we can add a <i>Constraints:</i> to a 
+signature where the constraint does not apply to a deduced template. We have examples of such 
+constraints in other parts of the WD (e.g. 20.3.1.3.2 <a href="https://wg21.link/unique.ptr.single.ctor">[unique.ptr.single.ctor]</a>/p15, 
+20.3.1.3.4 <a href="https://wg21.link/unique.ptr.single.asgn">[unique.ptr.single.asgn]</a>/p1). And we have the old form "does not participate &hellip;" 
+being used for non-deduced templates in several places as well (e.g. 22.3.2 <a href="https://wg21.link/pairs.pair">[pairs.pair]</a>/p5).
+<p/>
+There are several ways of implementing such a constraint, such as adding a gratuitous template 
+parameter.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 29.8.13.2 <a href="https://wg21.link/time.cal.ym.members">[time.cal.ym.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month&amp; operator+=(const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-4- <i>Effects:</i> <code>*this = *this + dm</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month&amp; operator-=(const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-6- <i>Effects:</i> <code>*this = *this - dm</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.13.3 <a href="https://wg21.link/time.cal.ym.nonmembers">[time.cal.ym.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month operator+(const year_month&amp; ym, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-3- <i>Returns:</i> A <code>year_month</code> value <code>z</code> such that <code>z - ym == dm</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month operator+(const months&amp; dm, const year_month&amp; ym) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-5- <i>Returns:</i> <code>ym + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month operator-(const year_month&amp; ym, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-6- <i>Returns:</i> <code>ym + -dm</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.14.2 <a href="https://wg21.link/time.cal.ymd.members">[time.cal.ymd.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_day&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-7- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-9- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.14.3 <a href="https://wg21.link/time.cal.ymd.nonmembers">[time.cal.ymd.nonmembers]</a> as indicated:</p>
+<blockquote>
+<pre>
+constexpr year_month_day operator+(const year_month_day&amp; ymd, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-3- <i>Returns:</i> <code>(ymd.year() / ymd.month() + dm) / ymd.day()</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day operator+(const months&amp; dm, const year_month_day&amp; ymd) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-5- <i>Returns:</i> <code>ymd + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day operator+(const months&amp; dm, const year_month_day&amp; ymd) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-6- <i>Returns:</i> <code>ymd + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.15.2 <a href="https://wg21.link/time.cal.ymdlast.members">[time.cal.ymdlast.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_day_last&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-2- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day_last&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-4- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.15.3 <a href="https://wg21.link/time.cal.ymdlast.nonmembers">[time.cal.ymdlast.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_day_last
+  operator+(const year_month_day_last&amp; ymdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-3- <i>Returns:</i> <code>(ymdl.year() / ymdl.month() + dm) / last</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day_last
+  operator+(const months&amp; dm, const year_month_day_last&amp; ymdl) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-4- <i>Returns:</i> <code>ymdl + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_day_last
+  operator-(const year_month_day_last&amp; ymdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-5- <i>Returns:</i> <code>ymdl + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.16.2 <a href="https://wg21.link/time.cal.ymwd.members">[time.cal.ymwd.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-6- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-8- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.16.3 <a href="https://wg21.link/time.cal.ymwd.nonmembers">[time.cal.ymwd.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday operator+(const year_month_weekday&amp; ymwd, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-2- <i>Returns:</i> <code>(ymwd.year() / ymwd.month() + dm) / ymwd.weekday_indexed()</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday operator+(const months&amp; dm, const year_month_weekday&amp; ymwd) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-3- <i>Returns:</i> <code>ymwd + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday operator-(const year_month_weekday&amp; ymwd, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-4- <i>Returns:</i> <code>ymwd + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.17.2 <a href="https://wg21.link/time.cal.ymwdlast.members">[time.cal.ymwdlast.members]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday_last&amp; operator+=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-2- <i>Effects:</i> <code>*this = *this + m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday_last&amp; operator-=(const months&amp; m) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-4- <i>Effects:</i> <code>*this = *this - m</code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.8.17.3 <a href="https://wg21.link/time.cal.ymwdlast.nonmembers">[time.cal.ymwdlast.nonmembers]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr year_month_weekday_last
+  operator+(const year_month_weekday_last&amp; ymwdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-2- <i>Returns:</i> <code>(ymwdl.year() / ymwdl.month() + dm) / ymwdl.weekday_last()</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday_last
+  operator+(const months&amp; dm, const year_month_weekday_last&amp; ymwdl) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-3- <i>Returns:</i> <code>ymwdl + dm</code>.
+</p>
+</blockquote>
+<pre>
+constexpr year_month_weekday_last
+  operator-(const year_month_weekday_last&amp; ymwdl, const months&amp; dm) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> If the argument supplied by the caller for the <code>months</code> 
+parameter is convertible to <code>years</code>, its implicit conversion sequence to <code>years</code> is 
+worse than its implicit conversion sequence to <code>months</code> (12.2.4.3 <a href="https://wg21.link/over.ics.rank">[over.ics.rank]</a>).</ins>
+<p/>
+-4- <i>Returns:</i> <code>ymwdl + (-dm)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

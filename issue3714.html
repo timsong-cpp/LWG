@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3714: Non-single-argument constructors for range adaptors should not be explicit</title>
+<meta property="og:title" content="Issue 3714: Non-single-argument constructors for range adaptors should not be explicit">
+<meta property="og:description" content="C++ library issue. Status: Tentatively NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3714.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">Tentatively NAD</a> status.</em></p>
+<h3 id="3714"><a href="lwg-active.html#3714">3714</a>. Non-single-argument constructors for range adaptors should not be <code>explicit</code></h3>
+<p><b>Section:</b> 26.7.26.2 <a href="https://wg21.link/range.zip.transform.view">[range.zip.transform.view]</a>, 26.7.28.2 <a href="https://wg21.link/range.adjacent.transform.view">[range.adjacent.transform.view]</a>, 26.7.29.2 <a href="https://wg21.link/range.chunk.view.input">[range.chunk.view.input]</a>, 26.7.29.6 <a href="https://wg21.link/range.chunk.view.fwd">[range.chunk.view.fwd]</a>, 26.7.30.2 <a href="https://wg21.link/range.slide.view">[range.slide.view]</a>, 26.7.31.2 <a href="https://wg21.link/range.chunk.by.view">[range.chunk.by.view]</a> <b>Status:</b> <a href="lwg-active.html#NAD">Tentatively NAD</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-06-10 <b>Last modified:</b> 2024-01-29</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Tentatively NAD">Tentatively NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+All C++20 range adaptors' non-single-argument constructors are not declared as <code>explicit</code>, which makes 
+the following initialization well-formed:
+</p>
+<blockquote><pre>
+std::vector v{42};
+std::ranges::take_view r1 = {v, 1};
+std::ranges::filter_view r2 = {v, [](int) { return true; }};
+</pre></blockquote>
+<p>
+However, the non-single-argument constructors of C++23 range adaptors, except for <code>join_with_view</code>, 
+are all <code>explicit</code>, which makes us no longer able to
+</p>
+<blockquote><pre>
+std::ranges::chunk_view r1 = {v, 1}; // <span style="color:red;font-weight:bolder">ill-formed</span>
+std::ranges::chunk_by_view r2 = {v, [](int, int) { return true; }}; // <span style="color:red;font-weight:bolder">ill-formed</span>
+</pre></blockquote>
+<p>
+This seems unnecessary since I don't see the observable benefit of preventing this. In the standard, 
+non-single-argument constructors are rarely specified as <code>explicit</code> unless it is really undesirable, 
+I think the above initialization is what the user expects since it's clearly intentional, and I don't see 
+any good reason to reject it from C++23.
+</p>
+<p><i>[2022-06-11; Daniel comments]</i></p>
+
+<p>
+Another possible candidate could be 26.7.11.3 <a href="https://wg21.link/range.take.while.sentinel">[range.take.while.sentinel]</a>'s
+</p>
+<blockquote><pre>
+constexpr explicit <i>sentinel</i>(sentinel_t&lt;<i>Base</i>&gt; end, const Pred* pred);
+</pre></blockquote>
+
+<p><i>[2022-06-21; Reflector poll]</i></p>
+
+<p>
+Set priority to 4 after reflector poll. Send to LEWG.
+</p>
+
+<p><i>[2023-01-24; LEWG in Kona]</i></p>
+
+<p>Use alternative approach in <a href="https://wg21.link/P2711" title=" Making multi-param constructors of views explicit">P2711</a> instead.</p>
+
+
+
+<p id="res-3714"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.26.2 <a href="https://wg21.link/range.zip.transform.view">[range.zip.transform.view]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;copy_constructible F, input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+              regular_invocable&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt; &amp;&amp;
+              <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt;&gt;
+  class zip_transform_view : public view_interface&lt;zip_transform_view&lt;F, Views...&gt;&gt; {
+    <i>copyable-box</i>&lt;F&gt; <i>fun_</i>;                   <i>// exposition only</i>
+    zip_view&lt;Views...&gt; <i>zip_</i>;                <i>// exposition only</i>
+    [&hellip;]
+  public:
+    zip_transform_view() = default;
+
+    constexpr <del>explicit</del> zip_transform_view(F fun, Views... views);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <del>explicit</del> zip_transform_view(F fun, Views... views);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Initializes <code><i>fun_</i></code> with <code>std::move(fun)</code> and <code><i>zip_</i></code> 
+with <code>std::move(views)...</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.28.2 <a href="https://wg21.link/range.adjacent.transform.view">[range.adjacent.transform.view]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, copy_constructible F, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; (N &gt; 0) &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+             regular_invocable&lt;F&amp;, <i>REPEAT</i>(range_reference_t&lt;V&gt;, N)...&gt; &amp;&amp;
+             <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, <i>REPEAT</i>(range_reference_t&lt;V&gt;, N)...&gt;&gt;
+  class adjacent_transform_view : public view_interface&lt;adjacent_transform_view&lt;V, F, N&gt;&gt; {
+    <i>copyable-box</i>&lt;F&gt; <i>fun_</i>;                       <i>// exposition only</i>
+    adjacent_view&lt;V, N&gt; <i>inner_</i>;                 <i>// exposition only</i>
+    [&hellip;]
+  public:
+    adjacent_transform_view() = default;
+    constexpr <del>explicit</del> adjacent_transform_view(V base, F fun);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <del>explicit</del> adjacent_transform_view(V base, F fun);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Initializes <code><i>fun_</i></code> with <code>std::move(fun)</code> and 
+<code><i>inner_</i></code> with <code>std::move(base)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.29.2 <a href="https://wg21.link/range.chunk.view.input">[range.chunk.view.input]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;view V&gt;
+    requires input_range&lt;V&gt;
+  class chunk_view : public view_interface&lt;chunk_view&lt;V&gt;&gt; {
+    V <i>base_</i> = V();                                        <i>// exposition only</i>
+    range_difference_t&lt;V&gt; <i>n_</i> = 0;                         <i>// exposition only</i>
+    [&hellip;]
+  public:
+    chunk_view() requires default_initializable&lt;V&gt; = default;
+    constexpr <del>explicit</del> chunk_view(V base, range_difference_t&lt;V&gt; n);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <del>explicit</del> chunk_view(V base, range_difference_t&lt;V&gt; n);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <code>n &gt; 0</code> is <code>true</code>.
+<p/>
+-2- <i>Effects</i>: Initializes <code><i>base_</i></code> with <code>std::move(base)</code> and 
+<code><i>n_</i></code> with <code>n</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.29.6 <a href="https://wg21.link/range.chunk.view.fwd">[range.chunk.view.fwd]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+    requires forward_range&lt;V&gt;
+  class chunk_view&lt;V&gt; : public view_interface&lt;chunk_view&lt;V&gt;&gt; {
+    V <i>base_</i> = V();                      <i>// exposition only</i>
+    range_difference_t&lt;V&gt; <i>n_</i> = 0;       <i>// exposition only</i>
+    [&hellip;]
+  public:
+    chunk_view() requires default_initializable&lt;V&gt; = default;
+    constexpr <del>explicit</del> chunk_view(V base, range_difference_t&lt;V&gt; n);
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <del>explicit</del> chunk_view(V base, range_difference_t&lt;V&gt; n);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions:</i> <code>n &gt; 0</code> is <code>true</code>.
+<p/>
+-2- <i>Effects</i>: Initializes <code><i>base_</i></code> with <code>std::move(base)</code> and 
+<code><i>n_</i></code> with <code>n</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.30.2 <a href="https://wg21.link/range.slide.view">[range.slide.view]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;forward_range V&gt;
+    requires view&lt;V&gt;
+  class slide_view : public view_interface&lt;slide_view&lt;V&gt;&gt; {
+    V <i>base_</i> = V();                      <i>// exposition only</i>
+    range_difference_t&lt;V&gt; <i>n_</i> = 0;       <i>// exposition only</i>
+    [&hellip;]
+  public:
+    slide_view() requires default_initializable&lt;V&gt; = default;
+    constexpr <del>explicit</del> slide_view(V base, range_difference_t&lt;V&gt; n);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <del>explicit</del> slide_view(V base, range_difference_t&lt;V&gt; n);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Initializes <code><i>base_</i></code> with <code>std::move(base)</code> and 
+<code><i>n_</i></code> with <code>n</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.31.2 <a href="https://wg21.link/range.chunk.by.view">[range.chunk.by.view]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, indirect_binary_predicate&lt;iterator_t&lt;V&gt;, iterator_t&lt;V&gt;&gt; Pred&gt;
+    requires view&lt;V&gt; &amp;&amp; is_object_v&lt;Pred&gt;
+  class chunk_by_view : public view_interface&lt;chunk_by_view&lt;V, Pred&gt;&gt; {
+    V <i>base_</i> = V();                                <i>// exposition only</i>
+    <i>copyable-box</i>&lt;Pred&gt; <i>pred_</i> = Pred();            <i>// exposition only</i>
+    [&hellip;]
+  public:
+    chunk_by_view() requires default_initializable&lt;V&gt; &amp;&amp; default_initializable&lt;Pred&gt; = default;
+    constexpr <del>explicit</del> chunk_by_view(V base, Pred pred);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <del>explicit</del> chunk_by_view(V base, Pred pred);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Initializes <code><i>base_</i></code> with <code>std::move(base)</code> and 
+<code><i>pred_</i></code> with <code>std::move(pred)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

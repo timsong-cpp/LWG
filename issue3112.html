@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3112: system_error and filesystem_error constructors taking a string may not be able
+to meet their postconditions</title>
+<meta property="og:title" content="Issue 3112: system_error and filesystem_error constructors taking a string may not be able
+to meet their postconditions">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3112.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3112"><a href="lwg-defects.html#3112">3112</a>. <code>system_error</code> and <code>filesystem_error</code> constructors taking a <code>string</code> may not be able
+to meet their postconditions</h3>
+<p><b>Section:</b> 19.5.8.2 <a href="https://wg21.link/syserr.syserr.members">[syserr.syserr.members]</a>, 31.12.7.2 <a href="https://wg21.link/fs.filesystem.error.members">[fs.filesystem.error.members]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2018-05-10 <b>Last modified:</b> 2021-06-06</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#syserr.syserr.members">issues</a> in [syserr.syserr.members].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The constructors of <code>system_error</code> and <code>filesystem_error</code> taking a <code>std::string</code> <code>what_arg</code>
+are specified to have a postcondition of <code>string(what()).find(what_arg) != string::npos</code> (or the equivalent with
+<code>string_view</code>). This is not possible if <code>what_arg</code> contains an embedded null character.
+</p>
+
+<p><i>[2019-01-20 Reflector prioritization]</i></p>
+
+<p>Set Priority to 0 and status to Tentatively Ready</p>
+
+
+<p id="res-3112"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4727">N4727</a>.</p>
+
+<blockquote class="note">
+<p>
+<i>Drafting note:</i> This contains a drive-by editorial change to use <code>string_view</code> for these postconditions rather
+than <code>string</code>.
+</p>
+</blockquote>
+
+<ol>
+<li><p>Edit 19.5.8.2 <a href="https://wg21.link/syserr.syserr.members">[syserr.syserr.members]</a> p1-4 as indicated:</p>
+<blockquote>
+<pre>
+system_error(error_code ec, const string&amp; what_arg);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Constructs an object of class <code>system_error</code>.
+<p/>
+-2- <i>Postconditions:</i> <code>code() == ec</code> and <code>string<ins>_view</ins>(what()).find(what_arg<ins>.c_str()</ins>)
+!= string<ins>_view</ins>::npos</code>.
+</p>
+</blockquote>
+<pre>
+system_error(error_code ec, const char* what_arg);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Constructs an object of class <code>system_error</code>.
+<p/>
+-4- <i>Postconditions:</i> <code>code() == ec</code> and <code>string<ins>_view</ins>(what()).find(what_arg)
+!= string<ins>_view</ins>::npos</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+<li><p>Edit 19.5.8.2 <a href="https://wg21.link/syserr.syserr.members">[syserr.syserr.members]</a> p7-10 as indicated:</p>
+<blockquote>
+<pre>
+system_error(int ev, const error_category&amp; ecat, const std::string&amp; what_arg);
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Constructs an object of class <code>system_error</code>.
+<p/>
+-8- <i>Postconditions:</i> <code>code() == error_code(ev, ecat)</code> and <code>string<ins>_view</ins>(what()).find(what_arg<ins>.c_str()</ins>)
+!= string<ins>_view</ins>::npos</code>.
+</p>
+</blockquote>
+<pre>
+system_error(int ev, const error_category&amp; ecat, const char* what_arg);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Constructs an object of class <code>system_error</code>.
+<p/>
+-10- <i>Postconditions:</i> <code>code() == error_code(ev, ecat)</code> and <code>string<ins>_view</ins>(what()).find(what_arg)
+!= string<ins>_view</ins>::npos</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+<li><p>Edit  [fs.filesystem_error.members] p2-4 as indicated:</p>
+<blockquote>
+<pre>
+filesystem_error(const string&amp; what_arg, error_code ec);
+</pre>
+<blockquote>
+<p>
+-2- <i>Postconditions:</i>
+</p>
+<ul>
+<li> <code>code() == ec</code>, </li>
+<li> <code>path1().empty() == true</code>,</li>
+<li> <code>path2().empty() == true</code>, and</li>
+<li> <code>string_view(what()).find(what_arg<ins>.c_str()</ins>) != string_view::npos</code>.</li>
+</ul>
+</blockquote>
+<pre>
+filesystem_error(const string&amp; what_arg, const path&amp; p1, error_code ec);
+</pre>
+<blockquote>
+<p>
+-3- <i>Postconditions:</i>
+</p>
+<ul>
+<li> <code>code() == ec</code>, </li>
+<li> <code>path1()</code> returns a reference to the stored copy of <code>p1</code>,</li>
+<li> <code>path2().empty() == true</code>, and</li>
+<li> <code>string_view(what()).find(what_arg<ins>.c_str()</ins>) != string_view::npos</code>.</li>
+</ul>
+</blockquote>
+<pre>
+filesystem_error(const string&amp; what_arg, const path&amp; p1, const path&amp; p2, error_code ec);
+</pre>
+<blockquote>
+<p>
+-4- <i>Postconditions:</i>
+</p>
+<ul>
+<li> <code>code() == ec</code>, </li>
+<li> <code>path1()</code> returns a reference to the stored copy of <code>p1</code>,</li>
+<li> <code>path2()</code> returns a reference to the stored copy of <code>p2</code>,</li>
+<li> <code>string_view(what()).find(what_arg<ins>.c_str()</ins>) != string_view::npos</code>.</li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

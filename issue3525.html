@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3525: uses_allocator_construction_args fails to handle types convertible to pair</title>
+<meta property="og:title" content="Issue 3525: uses_allocator_construction_args fails to handle types convertible to pair">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3525.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3525"><a href="lwg-defects.html#3525">3525</a>. <code>uses_allocator_construction_args</code> fails to handle types convertible to <code>pair</code></h3>
+<p><b>Section:</b> 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2021-02-23 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#allocator.uses.construction">issues</a> in [allocator.uses.construction].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+As currently specified, the following program is ill-formed (and appears to have been since LWG <a href="lwg-defects.html#2975" title="Missing case for pair construction in scoped and polymorphic allocators (Status: C++20)">2975</a>):
+</p>
+<blockquote><pre>
+struct S {
+  operator std::pair&lt;const int, int&gt;() const {
+    return {};
+  }
+};
+
+void f() {
+  std::pmr::map&lt;int, int&gt; s;
+  s.emplace(S{});
+}
+</pre></blockquote>
+<p>
+There's no matching overload for <code>uses_allocator_construction_args&lt;pair&lt;const int, int&gt;&gt;(alloc, S&amp;&amp;)</code>,
+since <code>S</code> is not a <code>pair</code> and every overload for constructing <code>pair</code>s that takes one
+non-allocator argument expects a <code>pair</code> from which template arguments can be deduced.
+</p>
+<p><i>[2021-02-27 Tim adds PR and comments]</i></p>
+
+<p>The superseded resolution below attempts to solve this issue by adding two
+additional overloads of <code>uses_allocator_construction_args</code> to
+handle this case. However, the new overloads forces implicit conversions
+at the call to <code>uses_allocator_construction_args</code>, which requires
+the result to be consumed within the same full-expression
+before any temporary created from the conversion is destroyed.
+This is not the case for the <code>piecewise_construct</code> overload of
+<code>uses_allocator_construction_args</code>, which recursively calls
+<code>uses_allocator_construction_args</code> for the two elements of the pair, which
+might themselves be <code>pair</code>s.</p>
+<p>
+The approach taken in the revised PR is to produce an exposition-only
+<code><i>pair-constructor</i></code> object instead. The object holds the allocator
+and the argument by reference, implicitly converts to the specified specialization of <code>pair</code>,
+and when so converted return a <code>pair</code> that is constructed by uses-allocator
+construction with the converted value of the original argument.
+This maintains the existing design that <code>pair</code> itself doesn't know
+anything about allocator construction.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Edit 20.2.2 <a href="https://wg21.link/memory.syn">[memory.syn]</a>, header <code>&lt;memory&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a>, uses-allocator construction</i>
+  [&hellip;]
+
+<ins>  template&lt;class T, class Alloc&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const remove_cv_t&lt;T&gt;&amp; pr) noexcept;</ins>
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const pair&lt;U, V&gt;&amp; pr) noexcept -&gt; <i>see below</i>;
+
+<ins>  template&lt;class T, class Alloc&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    remove_cv_t&lt;T&gt;&amp;&amp; pr) noexcept;</ins>
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Edit 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a> as indicated:</p>
+<blockquote>
+<pre>
+<ins>template&lt;class T, class Alloc&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  const remove_cv_t&lt;T&gt;&amp; pr) noexcept;</ins>
+template&lt;class T, class Alloc, class U, class V&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  const pair&lt;U, V&gt;&amp; pr) noexcept -&gt; <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-12- <i>Constraints:</i> <code>T</code> is a specialization of <code>pair</code>. <ins>For the second overload, <code>is_same_v&lt;pair&lt;U, V&gt;, remove_cv_t&lt;T&gt;&gt;</code> is <code>false</code>.</ins>
+<p/>
+-13- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return uses_allocator_construction_args&lt;T&gt;(alloc, piecewise_construct,
+                                            forward_as_tuple(pr.first),
+                                            forward_as_tuple(pr.second));
+</pre></blockquote>
+</blockquote>
+<pre>
+<ins>template&lt;class T, class Alloc&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  remove_cv_t&lt;T&gt;&amp;&amp; pr) noexcept;</ins>
+template&lt;class T, class Alloc, class U, class V&gt;
+  constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                  pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-14- <i>Constraints:</i> <code>T</code> is a specialization of <code>pair</code>. <ins>For the second overload, <code>is_same_v&lt;pair&lt;U, V&gt;, remove_cv_t&lt;T&gt;&gt;</code> is <code>false</code>.</ins>
+<p/>
+-15- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return uses_allocator_construction_args&lt;T&gt;(alloc, piecewise_construct,
+                                            forward_as_tuple(std::move(pr).first),
+                                            forward_as_tuple(std::move(pr).second));
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2021-03-12; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 following reflector poll.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+<ol>
+<li><p>Edit 20.2.2 <a href="https://wg21.link/memory.syn">[memory.syn]</a>, header <code>&lt;memory&gt;</code> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a>, uses-allocator construction</i>
+  [&hellip;]
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const pair&lt;U, V&gt;&amp; pr) noexcept -&gt; <i>see below</i>;
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    pair&lt;U, V&gt;&amp;&amp; pr) noexcept -&gt; <i>see below</i>;
+
+
+<ins>  template&lt;class T, class Alloc, class U&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc, U&amp;&amp; u) noexcept;</ins>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add the following to 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a>:</p>
+<blockquote>
+<pre>
+<ins>  template&lt;class T, class Alloc, class U&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc, U&amp;&amp; u) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <code><i>FUN</i></code> be the function template:</ins>
+</p>
+<blockquote><pre><ins>
+  template&lt;class A, class B&gt;
+  void <i>FUN</i>(const pair&lt;A, B&gt;&amp;);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <code>T</code> is a specialization of <code>pair</code>, and the expression <code><i>FUN</i>(u)</code> is not well-formed when considered as an unevaluated operand.</ins>
+<p/>
+<ins>-?- <i>Effects:</i> Equivalent to:</ins>
+</p>
+<blockquote><pre><ins>
+return make_tuple(<i>pair-constructor</i>{alloc, u});</ins>
+</pre></blockquote>
+<p><ins>where <code><i>pair-constructor</i></code> is an exposition-only class defined as follows:</ins></p>
+<blockquote><pre><ins>
+struct <i>pair-constructor</i> {
+  using <i>pair-type</i> = remove_cv_t&lt;T&gt;;            // exposition only
+
+  constexpr operator <i>pair-type</i>() const {
+    return <i>do-construct</i>(std::forward&lt;U&gt;(<i>u</i>));
+  }
+
+  constexpr auto <i>do-construct</i>(const <i>pair-type</i>&amp; p) const {  // exposition only
+    return make_obj_using_allocator&lt;<i>pair-type</i>&gt;(<i>alloc</i>, p);
+  }
+  constexpr auto <i>do-construct</i>(<i>pair-type</i>&amp;&amp; p) const {  // exposition only
+    return make_obj_using_allocator&lt;<i>pair-type</i>&gt;(<i>alloc</i>, std::move(p));
+  }
+
+  const Alloc&amp; <i>alloc</i>;  // exposition only
+  U&amp; <i>u</i>;                // exposition only
+};
+</ins></pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2021-12-02 Tim updates PR to avoid public exposition-only members]</i></p>
+
+
+<p><i>[2022-01-31; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-02-10 Approved at February 2022 virtual plenary. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3525"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>.
+</p>
+<ol>
+<li><p>Edit 20.2.2 <a href="https://wg21.link/memory.syn">[memory.syn]</a>, header <code>&lt;memory&gt;</code> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  <i>// 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a>, uses-allocator construction</i>
+  [&hellip;]
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    pair&lt;U, V&gt;&amp; pr) noexcept;
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const pair&lt;U, V&gt;&amp; pr) noexcept;
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    pair&lt;U, V&gt;&amp;&amp; pr) noexcept;
+
+  template&lt;class T, class Alloc, class U, class V&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc,
+                                                    const pair&lt;U, V&gt;&amp;&amp; pr) noexcept;
+
+<ins>  template&lt;class T, class Alloc, class U&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc, U&amp;&amp; u) noexcept;</ins>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Add the following to 20.2.8.2 <a href="https://wg21.link/allocator.uses.construction">[allocator.uses.construction]</a>:</p>
+<blockquote>
+<pre>
+<ins>  template&lt;class T, class Alloc, class U&gt;
+    constexpr auto uses_allocator_construction_args(const Alloc&amp; alloc, U&amp;&amp; u) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- Let <code><i>FUN</i></code> be the function template:</ins>
+</p>
+<blockquote><pre><ins>
+  template&lt;class A, class B&gt;
+  void <i>FUN</i>(const pair&lt;A, B&gt;&amp;);</ins>
+</pre></blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <code>T</code> is a specialization of <code>pair</code>, and the expression <code><i>FUN</i>(u)</code> is not well-formed when considered as an unevaluated operand.</ins>
+<p/>
+<ins>-?- Let <code><i>pair-constructor</i></code> be an exposition-only class defined as follows:</ins></p>
+<blockquote><pre><ins>
+class <i>pair-constructor</i> {
+  using <i>pair-type</i> = remove_cv_t&lt;T&gt;;            // exposition only
+
+  constexpr auto <i>do-construct</i>(const <i>pair-type</i>&amp; p) const {  // exposition only
+    return make_obj_using_allocator&lt;<i>pair-type</i>&gt;(<i>alloc_</i>, p);
+  }
+  constexpr auto <i>do-construct</i>(<i>pair-type</i>&amp;&amp; p) const {  // exposition only
+    return make_obj_using_allocator&lt;<i>pair-type</i>&gt;(<i>alloc_</i>, std::move(p));
+  }
+
+  const Alloc&amp; <i>alloc_</i>;  // exposition only
+  U&amp; <i>u_</i>;                // exposition only
+
+public:
+  constexpr operator <i>pair-type</i>() const {
+    return <i>do-construct</i>(std::forward&lt;U&gt;(<i>u_</i>));
+  }
+};
+</ins></pre></blockquote>
+
+<p>
+<ins> -?- <i>Returns:</i> <code>make_tuple(<i>pc</i>)</code>, where <code><i>pc</i></code>
+is a <code><i>pair-constructor</i></code> object whose <code><i>alloc_</i></code> member is
+initialized with <code>alloc</code> and whose <code><i>u_</i></code> member is initialized with <code>u</code>.
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

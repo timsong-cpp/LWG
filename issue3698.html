@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3698: regex_iterator and join_view don't work together very well</title>
+<meta property="og:title" content="Issue 3698: regex_iterator and join_view don't work together very well">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3698.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3698"><a href="lwg-defects.html#3698">3698</a>. <code>regex_iterator</code> and <code>join_view</code> don't work together very well</h3>
+<p><b>Section:</b> 32.11 <a href="https://wg21.link/re.iter">[re.iter]</a>, 26.7.14 <a href="https://wg21.link/range.join">[range.join]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Barry Revzin <b>Opened:</b> 2022-05-12 <b>Last modified:</b> 2023-03-23</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#re.iter">issues</a> in [re.iter].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Consider this example (from <a href="https://stackoverflow.com/q/72201979/2069064">StackOverflow</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;regex&gt;
+#include &lt;iostream&gt;
+
+int main() {
+  char const text[] = "Hello";
+  std::regex regex{"[a-z]"};
+
+  auto lower = std::ranges::subrange(
+        std::cregex_iterator(
+            std::ranges::begin(text),
+            std::ranges::end(text),
+            regex),
+        std::cregex_iterator{}
+    )
+    | std::views::join
+    | std::views::transform([](auto const&amp; sm) {
+        return std::string_view(sm.first, sm.second);
+    });
+
+  for (auto const&amp; sv : lower) {
+    std::cout &lt;&lt; sv &lt;&lt; '\n';
+  }
+}
+</pre></blockquote>
+<p>
+This example seems sound, having <code>lower</code> be a range of <code>string_view</code> that should refer
+back into <code>text</code>, which is in scope for all this time. The <code>std::regex</code> object is also
+in scope for all this time.
+<p/>
+Yet, if run this through address sanitizer, this blows up in the first call to the dereference operator
+of the underlying <code>transform_view</code>'s iterator with heap-use-after-free.
+<p/>
+The problem here is ultimately that <code>regex_iterator</code> is a stashing iterator (it has a member
+<code>match_results</code>) yet advertises itself as a <code>forward_iterator</code> (despite violating
+25.3.5.5 <a href="https://wg21.link/forward.iterators">[forward.iterators]</a> p6 and 25.3.4.11 <a href="https://wg21.link/iterator.concept.forward">[iterator.concept.forward]</a> p3.
+<p/>
+Then, <code>join_view</code>'s iterator stores an outer iterator (the <code>regex_iterator</code>) and an
+<code>inner_iterator</code> (an iterator into the container that the <code>regex_iterator</code> stashes).
+Copying that iterator effectively invalidates it &mdash; since the new iterator's inner iterator will
+refer to the old iterator's outer iterator's container. These aren't (and can't be) independent copies.
+In this particular example, <code>join_view</code>'s <code>begin</code> iterator is copied into the
+<code>transform_view</code>'s iterator, and then the original is destroyed (which owns the container that
+the new inner iterator still points to), which causes us to have a dangling iterator.
+<p/>
+Note that the example is well-formed in libc++ because libc++ moves instead of copying an iterator,
+which happens to work. But I can produce other non-transform-view related examples that fail.
+<p/>
+This is actually two different problems:
+</p>
+<ol>
+<li><p><code>regex_iterator</code> is really an input iterator, not a forward iterator. It does not meet either
+the C++17 or the C++20 forward iterator requirements.</p></li>
+<li><p><code>join_view</code> can't handle stashing iterators, and would need to additionally store the outer
+iterator in a non-propagating-cache for input ranges (similar to how it already potentially stores the
+inner iterator in a non-propagating-cache).</p></li>
+</ol>
+<p>
+(So potentially this could be two different LWG issues, but it seems nicer to think of them together.)
+</p>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 after reflector poll.
+</p>
+
+<p><i>[Kona 2022-11-08; Move to Open]</i></p>
+
+<p>Tim to write a paper</p>
+
+<p><i>[2023-01-16; Tim comments]</i></p>
+
+<p>
+The paper <a href="https://wg21.link/P2770R0" title=" Stashing stashing iterators for proper flattening">P2770R0</a> is provided with proposed wording.
+</p>
+
+<p><i>[2023-03-22 Resolved by the adoption of <a href="https://wg21.link/P2770R0" title=" Stashing stashing iterators for proper flattening">P2770R0</a> in Issaquah. Status changed: Open &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3698"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

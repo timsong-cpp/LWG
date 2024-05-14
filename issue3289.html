@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3289: Cannot opt out of C++17 iterator-ness without also opting out of C++20 iterator-ness</title>
+<meta property="og:title" content="Issue 3289: Cannot opt out of C++17 iterator-ness without also opting out of C++20 iterator-ness">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3289.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3289"><a href="lwg-defects.html#3289">3289</a>. Cannot opt out of C++17 iterator-ness without also opting out of C++20 iterator-ness</h3>
+<p><b>Section:</b> 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a>, 25.5.5.2 <a href="https://wg21.link/common.iter.types">[common.iter.types]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Eric Niebler <b>Opened:</b> 2019-09-11 <b>Last modified:</b> 2021-05-18</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#iterator.traits">issues</a> in [iterator.traits].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The way to non-intrusively say that a type doesn't satisfy the C++17 iterator requirements is to
+specialize <code>std::iterator_traits</code> and not provide the nested typedefs. However, if a user
+were to do that, she would <em>also</em> be saying that the type is not a C++20 iterator. That is
+because <code>readable</code> and <code>weakly_incrementable</code> are specified in terms of
+<code>iter_value_t&lt;I&gt;</code> and <code>iter_difference_t&lt;I&gt;</code>. Those aliases check to
+see if <code>std::iterator_traits&lt;I&gt;</code> has been specialized (answer: yes), and if so
+resolve to <code>std::iterator_traits&lt;I&gt;::value_type</code> and
+<code>std::iterator_traits&lt;I&gt;::difference_type</code> respectively.
+<p/>
+The proper way to opt out of C++17 iterator-ness while opting <em>in</em> to C++20 iterator-ness
+would be to specialize <code>std::iterator_traits</code> and specify all the nested typedefs <em>except</em>
+<code>::iterator_category</code>. That's a bit weird and may throw off code that is expecting all the
+typedefs to be there, or none of them, so instead we can suggest users to set the <code>iterator_category</code>
+typedef to denote <code>output_iterator_tag</code>, which is a harmless lie; generic C++17 code will get
+the message: this iterator is not a c++17 input iterator, which is the salient bit.
+<p/>
+We then must fix up all the places in the Ranges clause that make faulty assumptions about an
+iterator's <code>iterator_category</code> typedef (as distinct from the iterator concept that it models).
+</p>
+
+<p><i>[2019-10-19 Issue Prioritization]</i></p>
+
+<p>Priority to 1 after reflector discussion.</p>
+
+<p><i>[2019-11 Wednesday night Issue processing in Belfast]</i></p>
+
+<p>Much discussion; no consensus that this is a good approach. Need to coordinate between this and <a href="lwg-defects.html#3283" title="Types satisfying input_iterator but not equality_comparable look like
+C++17 output iterators (Status: Resolved)">3283</a></p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-4- Explicit or partial specializations of <code>iterator_traits</code> may have a member type
+<code>iterator_concept</code> that is used to indicate conformance to the iterator concepts
+(25.3.4 <a href="https://wg21.link/iterator.concepts">[iterator.concepts]</a>). <ins>[<i>Example:</i> To indicate conformance to the
+<code>input_iterator</code> concept but a lack of conformance to the <i>Cpp17InputIterator</i>
+requirements (25.3.5.3 <a href="https://wg21.link/input.iterators">[input.iterators]</a>), an <code>iterator_traits</code>
+specialization might have <code>iterator_concept</code> denote <code>input_iterator_tag</code> and
+<code>iterator_category</code> denote <code>output_iterator_tag</code>. &mdash; <i>end example</i>]</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 25.5.5.2 <a href="https://wg21.link/common.iter.types">[common.iter.types]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The nested <i>typedef-names</i> of the specialization of <code>iterator_traits</code> for
+<code>common_iterator&lt;I, S&gt;</code> are defined as follows.
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; <code>iterator_concept</code> denotes <code>forward_iterator_tag</code> if <code>I</code>
+models <code>forward_iterator</code>; otherwise it denotes <code>input_iterator_tag</code>.</p></li>
+<li><p>(1.2) &mdash; <code>iterator_category</code> denotes <code>forward_iterator_tag</code> if
+<code>iterator_traits&lt;I&gt;::iterator_category</code> models <code>derived_from&lt;forward_iterator_tag&gt;</code>;
+otherwise it denotes <code><del>input_iterator_tag</del><ins>iterator_traits&lt;I&gt;::iterator_category</ins></code>.</p></li>
+<li><p>(1.3) &mdash; If the expression <code>a.operator-&gt;()</code> is well-formed, where <code>a</code> is
+an lvalue of type <code>const common_iterator&lt;I, S&gt;</code>, then <code>pointer</code> denotes the type
+of that expression. Otherwise, pointer denotes <code>void</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.8.3 <a href="https://wg21.link/range.filter.iterator">[range.filter.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <code>iterator::iterator_category</code> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; Let <code>C</code> denote the type <code>iterator_traits&lt;iterator_t&lt;V&gt;&gt;::iterator_category</code>.</p></li>
+<li><p>(3.2) &mdash; If <code>C</code> models <code>derived_from&lt;bidirectional_iterator_tag&gt;</code>, then
+<code>iterator_category</code> denotes <code>bidirectional_iterator_tag</code>.</p></li>
+<li><p><del>(3.3) &mdash; Otherwise, if <code>C</code> models <code>derived_from&lt;forward_iterator_tag&gt;</code>, then
+<code>iterator_category</code> denotes <code>forward_iterator_tag</code>.</del></p></li>
+<li><p>(3.4) &mdash; Otherwise, <code>iterator_category</code> denotes <code><del>input_iterator_tag</del><ins>C</ins></code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.14.3 <a href="https://wg21.link/range.join.iterator">[range.join.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <code>iterator::iterator_category</code> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; Let <code><i>OUTERC</i></code> denote
+<code>iterator_traits&lt;iterator_t&lt;Base&gt;&gt;::iterator_category</code>, and let <code><i>INNERC</i></code>
+denote <code>iterator_traits&lt;iterator_t&lt;range_reference_t&lt;Base&gt;&gt;&gt;::iterator_category</code>.</p></li>
+<li><p><ins>(3.?) &mdash; If <code><i>OUTERC</i></code> does not model <code>derived_from&lt;input_iterator_tag&gt;</code>, <code>iterator_category</code> denotes <code><i>OUTERC</i></code>.</ins></p></li>
+<li><p><ins>(3.?) &mdash; Otherwise, if <code><i>INNERC</i></code> does not model
+<code>derived_from&lt;input_iterator_tag&gt;</code>, <code>iterator_category</code> denotes <code><i>INNERC</i></code>.</ins></p></li>
+<li><p>(3.2) &mdash; <ins>Otherwise, i</ins><del>I</del>f <code>ref_is_glvalue</code> is <code>true</code>,</p>
+<ol style="list-style-type: none">
+<li><p>(3.2.1) &mdash; If <code><i>OUTERC</i></code> and <code><i>INNERC</i></code> each model
+<code>derived_from&lt;bidirectional_iterator_tag&gt;</code>, <code>iterator_category</code> denotes
+<code>bidirectional_iterator_tag</code>.</p></li>
+<li><p>(3.2.2) &mdash; Otherwise, if <code><i>OUTERC</i></code> and <code><i>INNERC</i></code> each model
+<code>derived_from&lt;forward_iterator_tag&gt;</code>, <code>iterator_category</code> denotes
+<code>forward_iterator_tag</code>.</p></li>
+</ol>
+</li>
+<li><p>(3.3) &mdash; Otherwise, <code>iterator_category</code> denotes <code>input_iterator_tag</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify  [range.split.outer] as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class V, class Pattern&gt;
+  template&lt;bool Const&gt;
+  struct split_view&lt;V, Pattern&gt;::outer_iterator {
+  private:
+    [&hellip;]
+  public:
+    using iterator_concept =
+      conditional_t&lt;forward_range&lt;Base&gt;, forward_iterator_tag, input_iterator_tag&gt;;
+    using iterator_category = <ins><i>see below</i></ins><del>input_iterator_tag</del>;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<p>
+<ins>-?- The <i>typedef-name</i> <code>iterator_category</code> denotes <code>input_iterator_tag</code> if
+<code>iterator_traits&lt;iterator_t&lt;Base&gt;&gt;::iterator_category</code> models
+<code>derived_from&lt;input_iterator_tag&gt;</code>, and
+<code>iterator_traits&lt;iterator_t&lt;Base&gt;&gt;::iterator_category</code> otherwise.</ins>
+<p/>
+-1- Many of the following specifications refer to the notional member <code>current</code> of
+<code>outer_iterator</code>. <code>current</code> is equivalent to <code>current_</code> if <code>V</code> models
+<code>forward_range</code>, and <code>parent_-&gt;current_</code> otherwise.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify  [range.split.inner] as indicated:</p>
+
+<blockquote>
+<p>
+-1- The <i>typedef-name</i> <code>iterator_category</code> denotes <code>forward_iterator_tag</code> if
+<code>iterator_traits&lt;iterator_t&lt;Base&gt;&gt;::iterator_category</code> models
+<code>derived_from&lt;forward_iterator_tag&gt;</code>, and
+<code><del>input_iterator_tag</del><ins>iterator_traits&lt;iterator_t&lt;Base&gt;&gt;::iterator_category</ins></code>
+otherwise.
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-02-10, Prague]</i></p>
+
+<p>
+The issue is out of sync with the current working draft, Daniel provides a synchronized merge.
+</p>
+
+<p><i>[2020-02-13, Prague; Priority reduced to 2 after LWG discussion]</i></p>
+
+<p><i>[2021-05-18 Resolved by the adoption of <a href="https://wg21.link/P2259R1">P2259R1</a> at the February 2021 plenary. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3289"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.</p>
+
+<ol>
+<li><p>Modify 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-4- Explicit or partial specializations of <code>iterator_traits</code> may have a member type
+<code>iterator_concept</code> that is used to indicate conformance to the iterator concepts
+(25.3.4 <a href="https://wg21.link/iterator.concepts">[iterator.concepts]</a>). <ins>[<i>Example:</i> To indicate conformance to the
+<code>input_iterator</code> concept but a lack of conformance to the <i>Cpp17InputIterator</i>
+requirements (25.3.5.3 <a href="https://wg21.link/input.iterators">[input.iterators]</a>), an <code>iterator_traits</code>
+specialization might have <code>iterator_concept</code> denote <code>input_iterator_tag</code> and
+<code>iterator_category</code> denote <code>output_iterator_tag</code>. &mdash; <i>end example</i>]</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 25.5.5.2 <a href="https://wg21.link/common.iter.types">[common.iter.types]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The nested <i>typedef-name</i>s of the specialization of <code>iterator_traits</code> for
+<code>common_iterator&lt;I, S&gt;</code> are defined as follows.
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; <code>iterator_concept</code> denotes <code>forward_iterator_tag</code> if <code>I</code>
+models <code>forward_iterator</code>; otherwise it denotes <code>input_iterator_tag</code>.</p></li>
+<li><p>(1.2) &mdash; <code>iterator_category</code> denotes <code>forward_iterator_tag</code> if
+<code>iterator_traits&lt;I&gt;::iterator_category</code> models <code>derived_from&lt;forward_iterator_tag&gt;</code>;
+otherwise it denotes <code><del>input_iterator_tag</del><ins>iterator_traits&lt;I&gt;::iterator_category</ins></code>.</p></li>
+<li><p>(1.3) &mdash; If the expression <code>a.operator-&gt;()</code> is well-formed, where <code>a</code> is
+an lvalue of type <code>const common_iterator&lt;I, S&gt;</code>, then <code>pointer</code> denotes the type
+of that expression. Otherwise, pointer denotes <code>void</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.8.3 <a href="https://wg21.link/range.filter.iterator">[range.filter.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- <code>iterator::iterator_category</code> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; Let <code>C</code> denote the type <code>iterator_traits&lt;iterator_t&lt;V&gt;&gt;::iterator_category</code>.</p></li>
+<li><p>(3.2) &mdash; If <code>C</code> models <code>derived_from&lt;bidirectional_iterator_tag&gt;</code>, then
+<code>iterator_category</code> denotes <code>bidirectional_iterator_tag</code>.</p></li>
+<li><p><del>(3.3) &mdash; Otherwise, if <code>C</code> models <code>derived_from&lt;forward_iterator_tag&gt;</code>, then
+<code>iterator_category</code> denotes <code>forward_iterator_tag</code>.</del></p></li>
+<li><p>(3.4) &mdash; Otherwise, <code>iterator_category</code> denotes <code>C</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.14.3 <a href="https://wg21.link/range.join.iterator">[range.join.iterator]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2- <code>iterator::iterator_category</code> is defined as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; Let <code><i>OUTERC</i></code> denote
+<code>iterator_traits&lt;iterator_t&lt;<i>Base</i>&gt;&gt;::iterator_category</code>, and let <code><i>INNERC</i></code>
+denote <code>iterator_traits&lt;iterator_t&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;::iterator_category</code>.</p></li>
+<li><p><ins>(2.?) &mdash; If <code><i>OUTERC</i></code> does not model <code>derived_from&lt;input_iterator_tag&gt;</code>,
+<code>iterator_category</code> denotes <code><i>OUTERC</i></code>.</ins></p></li>
+<li><p><ins>(2.?) &mdash; Otherwise, if <code><i>INNERC</i></code> does not model
+<code>derived_from&lt;input_iterator_tag&gt;</code>, <code>iterator_category</code> denotes <code><i>INNERC</i></code>.</ins></p></li>
+<li><p>(2.2) &mdash; <ins>Otherwise, i</ins><del>I</del>f <code><i>ref-is-glvalue</i></code> is <code>true</code> and
+<code><i>OUTERC</i></code> and <code><i>INNERC</i></code> each model <code>derived_from&lt;bidirectional_iterator_tag&gt;</code>,
+<code>iterator_category</code> denotes <code>bidirectional_iterator_tag</code>.</p></li>
+<li><p>(2.3) &mdash; Otherwise, if <code><i>ref-is-glvalue</i></code> is <code>true</code> and <code><i>OUTERC</i></code> and
+<code><i>INNERC</i></code> each model <code>derived_from&lt;forward_iterator_tag&gt;</code>, <code>iterator_category</code>
+denotes <code>forward_iterator_tag</code>.</p></li>
+<li><p>(2.4) &mdash; Otherwise, if <code><i>OUTERC</i></code> and <code><i>INNERC</i></code> each model
+<code>derived_from&lt;input_iterator_tag&gt;</code>, <code>iterator_category</code> denotes <code>input_iterator_tag</code>.</p></li>
+<li><p>(2.5) &mdash; Otherwise, <code>iterator_category</code> denotes <code>output_iterator_tag</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+<li><p>Modify  [range.split.outer] as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The previous wording change has been adjusted to follow the pattern used in  [range.split.inner] p1.]
+</p>
+</blockquote>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class V, class Pattern&gt;
+  template&lt;bool Const&gt;
+  struct split_view&lt;V, Pattern&gt;::<i>outer_iterator</i> {
+  private:
+    [&hellip;]
+  public:
+    using iterator_concept =
+      conditional_t&lt;forward_range&lt;<i>Base</i>&gt;, forward_iterator_tag, input_iterator_tag&gt;;
+    using iterator_category = <ins><i>see below</i></ins><del>input_iterator_tag</del>;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+<p>
+<ins>-?- The <i>typedef-name</i> <code>iterator_category</code> denotes:</ins>
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(?.?) &mdash; <code>input_iterator_tag</code> if
+<code>iterator_traits&lt;iterator_t&lt;<i>Base</i>&gt;&gt;::iterator_category</code> models
+<code>derived_from&lt;input_iterator_tag&gt;</code>;</ins></p></li>
+<li><p><ins>(?.?) &mdash; otherwise, <code>iterator_traits&lt;iterator_t&lt;<i>Base</i>&gt;&gt;::iterator_category</code>.</ins></p></li>
+</ol>
+<p>
+-1- Many of the following specifications refer to the notional member <code><i>current</i></code> of
+<code><i>outer-iterator</i></code>. <code><i>current</i></code> is equivalent to <code><i>current_</i></code>
+if <code>V</code> models <code>forward_range</code>, and <code><i>parent_-&gt;current_</i></code> otherwise.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

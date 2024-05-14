@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3647: nothrow-input-iterator constraints should not mention copying</title>
+<meta property="og:title" content="Issue 3647: nothrow-input-iterator constraints should not mention copying">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3647.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3647"><a href="lwg-active.html#3647">3647</a>. <code><i>nothrow-input-iterator</i></code> constraints should not mention copying</h3>
+<p><b>Section:</b> 27.11.2 <a href="https://wg21.link/special.mem.concepts">[special.mem.concepts]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Konstantin Varlamov <b>Opened:</b> 2021-11-30 <b>Last modified:</b> 2022-01-30</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+27.11.2 <a href="https://wg21.link/special.mem.concepts">[special.mem.concepts]</a> states that a type qualifies as a <code><i>nothrow-input-iterator</i></code> 
+only if no exceptions are thrown from, among other things, <em>copy</em> construction and <em>copy</em> 
+assignment. However, being copyable isn't part of the requirements for an <code>input_iterator</code> on which 
+<code><i>nothrow-input-iterator</i></code> is based (indeed, one of the things <code>forward_iterator</code> 
+adds to <code>input_iterator</code> is copyability), and the <code><i>nothrow-input-iterator</i></code> concept 
+doesn't add any new constraints related to copyability.
+</p>
+
+<p><i>[2021-12-19; Daniel comments]</i></p>
+
+<p>
+During LWG discussion of the issue one argument brought forward against the proposed wording was that it 
+might be incomplete, because it doesn't adjust the <code><i>nothrow-forward-iterator</i></code> concept, 
+which adds among other things the <code>copyable</code> requirements. But 
+<code><i>nothrow-forward-iterator</i></code> also requires <code><i>nothrow-sentinel-for</i>&lt;I, I&gt;</code>, 
+which already extends this necessary no-throw requirement for copy operations by p. 4:
+</p>
+<blockquote>
+<p>
+Types <code>S</code> and <code>I</code> model <code><i>nothrow-sentinel-for</i></code> only if no exceptions are thrown 
+from copy construction, move construction, copy assignment, move assignment, or comparisons between valid 
+values of type <code>I</code> and <code>S</code>.
+</p>
+</blockquote>
+<p>
+It should also be emphasized that the definitions of move construction (3.33 <a href="https://wg21.link/defns.move.constr">[defns.move.constr]</a>) and
+move assignment (3.32 <a href="https://wg21.link/defns.move.assign">[defns.move.assign]</a>) are compatible even for copyable input iterator types, 
+because these definitions refer just to expression conditions, and not to concrete operator overloads. So as long
+as an implementation applies these expression conditions, we are safe.
+</p>
+
+<p><i>[2022-01-30; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3647"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 27.11.2 <a href="https://wg21.link/special.mem.concepts">[special.mem.concepts]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class I&gt;
+concept <i>nothrow-input-iterator</i> = <i>// exposition only</i>
+  input_iterator&lt;I&gt; &amp;&amp;
+  is_lvalue_reference_v&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+  same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;, iter_value_t&lt;I&gt;&gt;;
+</pre>
+<blockquote>
+<p>
+-2- A type <code>I</code> models <code><i>nothrow-input-iterator</i></code> only if no exceptions are thrown 
+from increment, <del>copy construction,</del> move construction, <del>copy assignment,</del> move assignment, 
+or indirection through valid iterators.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

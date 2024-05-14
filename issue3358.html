@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3358: &sect;[span.cons] is mistaken that to_address can throw</title>
+<meta property="og:title" content="Issue 3358: &sect;[span.cons] is mistaken that to_address can throw">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3358.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3358"><a href="lwg-defects.html#3358">3358</a>. &sect;[span.cons] is mistaken that <code>to_address</code> can throw</h3>
+<p><b>Section:</b> 24.7.2.2.2 <a href="https://wg21.link/span.cons">[span.cons]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-12-10 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#span.cons">issues</a> in [span.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+[span.cons] paragraphs 6 and 9:
+</p>
+<blockquote><p>
+<i>Throws:</i> When and what <code>to_address(first)</code> throws.
+</p></blockquote>
+<p>
+could equivalently be "<i>Throws:</i> Nothing." since all overloads of <code>std::to_address</code> are 
+<code>noexcept</code>. However, paragraph 9 fails to account for the fact that paragraph 8:
+</p>
+<blockquote><p>
+<i>Effects:</i> Initializes <code>data_</code> with <code>to_address(first)</code> and <code>size_</code> with 
+<code>last - first</code>.
+</p></blockquote>
+<p>
+must evaluate <code>last - first</code>.
+</p>
+
+<p><i>[2020-01-14 Status set to Tentatively Ready after ten positive votes on the reflector.]</i></p>
+
+
+<p><i>[2020-01-14; Daniel comments]</i></p>
+
+<p>
+The fixed wording in 24.7.2.2.2 <a href="https://wg21.link/span.cons">[span.cons]</a> p9 depends on the no-throw-guarantee of integer-class
+conversions to integral types. This guarantee is specified by LWG <a href="lwg-defects.html#3367" title="Integer-class conversions should not throw (Status: C++20)">3367</a>.
+</p>
+
+
+<p id="res-3358"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify 24.7.2.2.2 <a href="https://wg21.link/span.cons">[span.cons]</a> paragraphs 6 and 9 as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> 
+<ol>
+<li><p>The missing paragraph number of the <i>Preconditions</i> element at p7/p8 has
+already been reported as <a href="https://github.com/cplusplus/draft/issues/3540">editorial issue</a></p></li>
+<li><p>The effective change to "Throws: Nothing." in p6 has already been 
+<a href="https://github.com/cplusplus/draft/commit/e01989e83849323ab49089ea18a52ccbac08d90a">applied editorially</a>.</p></li>
+</ol>
+]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class It&gt;
+  constexpr span(It first, size_type count);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-4- <i>Preconditions:</i> [&hellip;]
+<p/>
+-5- <i>Effects:</i> Initializes <code>data_</code> with <code>to_address(first)</code> and <code>size_</code> with 
+<code>count</code>.
+<p/>
+-6- <i>Throws:</i> <del>When and what <code>to_address(first)</code> throws</del><ins>Nothing</ins>.
+</p>
+</blockquote>
+<pre>
+template&lt;class It, class End&gt;
+  constexpr span(It first, End last);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-?- <i>Preconditions:</i> [&hellip;]
+<p/>
+-8- <i>Effects:</i> Initializes <code>data_</code> with <code>to_address(first)</code> and <code>size_</code> 
+with <code>last - first</code>.
+<p/>
+-9- <i>Throws:</i> When and what <code><del>to_address(first)</del><ins>last - first</ins></code> throws.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+</body>
+</html>

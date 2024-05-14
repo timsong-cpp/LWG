@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3553: Useless constraint in split_view::outer-iterator::value_type::begin()</title>
+<meta property="og:title" content="Issue 3553: Useless constraint in split_view::outer-iterator::value_type::begin()">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3553.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3553"><a href="lwg-defects.html#3553">3553</a>. Useless constraint in <code>split_view::<i>outer-iterator</i>::value_type::begin()</code></h3>
+<p><b>Section:</b> 26.7.16.4 <a href="https://wg21.link/range.lazy.split.outer.value">[range.lazy.split.outer.value]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2021-05-18 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.lazy.split.outer.value">issues</a> in [range.lazy.split.outer.value].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <code>copyable</code> constraint in <code>split_view::<i>outer-iterator</i>::value_type::begin()</code> 
+is useless because <code><i>outer-iterator</i></code> always satisfies <code>copyable</code>.
+<p/>
+When <code>V</code> does not model <code>forward_range</code>, the <code><i>outer-iterator</i></code> only contains a pointer, so it 
+is obviously copyable; When <code>V</code> is a <code>forward_range</code>, the <code>iterator_t&lt;Base&gt;</code> is a 
+<code>forward_iterator</code>, so it is copyable, which makes <code><i>outer-iterator</i></code> also copyable.
+<p/>
+Suggested resolution: Remove the no-<code>const begin()</code> and useless <code>copyable</code> constraint in
+ [range.split.outer.value].
+</p>
+
+<p><i>[2021-05-26; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-06-07 Approved at June 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3553"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify  [range.split.outer.value], class <code>split_view::<i>outer-iterator</i>::value_type</code> synopsis, 
+as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; view&lt;Pattern&gt; &amp;&amp;
+             indirectly_comparable&lt;iterator_t&lt;V&gt;, iterator_t&lt;Pattern&gt;, ranges::equal_to&gt; &amp;&amp;
+             (forward_range&lt;V&gt; || <i>tiny-range</i>&lt;Pattern&gt;)
+  template&lt;bool Const&gt;
+  struct split_view&lt;V, Pattern&gt;::<i>outer-iterator</i>&lt;Const&gt;::value_type
+    : view_interface&lt;value_type&gt; {
+  private:
+    <i>outer-iterator i_</i> = <i>outer-iterator</i>(); <i>// exposition only</i>
+  public:
+    value_type() = default;
+    constexpr explicit value_type(<i>outer-iterator</i> i);
+    constexpr <i>inner-iterator</i>&lt;Const&gt; begin() const <del>requires copyable&lt;<i>outer-iterator</i>&gt;</del>;
+    <del>constexpr <i>inner-iterator</i>&lt;Const&gt; begin() requires (!copyable&lt;<i>outer-iterator</i>&gt;);</del>
+    constexpr default_sentinel_t end() const;
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr <i>inner-iterator</i>&lt;Const&gt; begin() const <del>requires copyable&lt;<i>outer-iterator</i>&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Equivalent to: <code>return <i>inner-iterator</i>&lt;Const&gt;{<i>i_</i>};</code>
+</p>
+</blockquote>
+<pre>
+<del>constexpr <i>inner-iterator</i>&lt;Const&gt; begin() requires (!copyable&lt;<i>outer-iterator</i>&gt;)</del>;
+</pre>
+<blockquote>
+<p>
+<del>-3- <i>Effects:</i> Equivalent to: <code>return <i>inner-iterator</i>&lt;Const&gt;{std::move(<i>i_</i>)};</code></del>
+</p>
+</blockquote>
+[&hellip;]
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

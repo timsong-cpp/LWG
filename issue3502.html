@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3502: elements_view should not be allowed to return dangling references</title>
+<meta property="og:title" content="Issue 3502: elements_view should not be allowed to return dangling references">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3502.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3502"><a href="lwg-defects.html#3502">3502</a>. <code>elements_view</code> should not be allowed to return dangling references</h3>
+<p><b>Section:</b> 26.7.23.3 <a href="https://wg21.link/range.elements.iterator">[range.elements.iterator]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2020-11-18 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.elements.iterator">issues</a> in [range.elements.iterator].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This compiles but the resulting view is full of dangling references:
+</p>
+<blockquote><pre>
+std::vector&lt;int&gt; vec = {42};
+auto r = vec | std::views::transform([](auto c) { return std::make_tuple(c, c); })
+             | std::views::keys;
+</pre></blockquote>
+<p>
+This is because <code>elements_view::iterator::operator*</code> is specified as
+</p>
+<blockquote><pre>
+constexpr decltype(auto) operator*() const { return get&lt;N&gt;(*<i>current_</i>); }
+</pre></blockquote>
+<p>
+Here <code>*<i>current_</i></code> is a prvalue, and so the <code>get&lt;N&gt;</code> produces a reference
+into the materialized temporary that becomes dangling as soon as <code>operator*</code> returns.
+<p/>
+We should either ban this case altogether, or make <code>operator*</code> (and <code>operator[]</code>) return by
+value when <code>*<i>current_</i></code> is a prvalue and the corresponding tuple element is not a reference 
+(since this <code>get</code> is <code>std::get</code>, we need not worry about weird user-defined overloads.)
+</p>
+
+<p><i>[2020-11-29; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 2 during reflector discussions.
+</p>
+
+<p><i>[2021-01-31 Tim adds PR]</i></p>
+
+
+<p><i>[2021-02-08; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2021-02-26 Approved at February 2021 virtual plenary. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3502"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4878">N4878</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a>, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;class T, size_t N&gt;
+    concept <i>has-tuple-element</i> =                   // exposition only
+      requires(T t) {
+        typename tuple_size&lt;T&gt;::type;
+        requires N &lt; tuple_size_v&lt;T&gt;;
+        typename tuple_element_t&lt;N, T&gt;;
+        { get&lt;N&gt;(t) } -&gt; convertible_to&lt;const tuple_element_t&lt;N, T&gt;&amp;&gt;;
+      };
+    
+<ins>  template&lt;class T, size_t N&gt;
+  concept <i>returnable-element</i> = is_reference_v&lt;T&gt; || move_­constructible&lt;tuple_element_t&lt;N, T&gt;&gt;;</ins>
+
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+             <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt; <ins>&amp;&amp;</ins>
+             <ins><i>returnable-element</i>&lt;range_reference_t&lt;V&gt;, N&gt;</ins>
+  class elements_view : public view_interface&lt;elements_view&lt;V, N&gt;&gt; {
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+<li><p>Modify 26.7.23.3 <a href="https://wg21.link/range.elements.iterator">[range.elements.iterator]</a> as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+             <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt; <ins>&amp;&amp;</ins>
+             <ins><i>returnable-element</i>&lt;range_reference_t&lt;V&gt;, N&gt;</ins>
+  template&lt;bool Const&gt;
+  class elements_view&lt;V, N&gt;::<i>iterator</i> {                 // exposition only
+    using <i>Base</i> = <i>maybe-const</i>&lt;Const, V&gt;;                 // exposition only
+
+    iterator_t&lt;<i>Base</i>&gt; <i>current_</i> = iterator_t&lt;<i>Base</i>&gt;();<ins>     // exposition only</ins>
+   
+<ins>    static constexpr decltype(auto) <i>get-element</i>(const iterator_t&lt;<i>Base</i>&gt;&amp; i);    // exposition only</ins>
+  public:
+    [&hellip;]
+    constexpr decltype(auto) operator*() const
+    { return <del>get&lt;N&gt;</del><ins><i>get-element</i></ins>(<del>*</del><i>current_</i>); }
+
+    [&hellip;]
+    constexpr decltype(auto) operator[](difference_type n) const
+    requires random_­access_­range&lt;<i>Base</i>&gt;
+    { return <del>get&lt;N&gt;</del><ins><i>get-element</i></ins>(<del>*(</del><i>current_</i> + n<del>)</del>); }
+  };
+}
+</pre>
+</blockquote>
+<pre>
+<ins>static constexpr decltype(auto) <i>get-element</i>(const iterator_t&lt;<i>Base</i>&gt;&amp; i);    // exposition only</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to:</ins>
+</p>
+<blockquote>
+<pre>
+<ins>
+if constexpr (is_reference_v&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;) {
+  return get&lt;N&gt;(*i);
+}
+else {
+  using E = remove_cv_t&lt;tuple_element_t&lt;N, range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;;
+  return static_cast&lt;E&gt;(get&lt;N&gt;(*i));
+}
+</ins>
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+    
+<li><p>Modify 26.7.23.4 <a href="https://wg21.link/range.elements.sentinel">[range.elements.sentinel]</a> as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+             <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt; <ins>&amp;&amp;</ins>
+             <ins><i>returnable-element</i>&lt;range_reference_t&lt;V&gt;, N&gt;</ins>
+  template&lt;bool Const&gt;
+  class elements_view&lt;V, N&gt;::<i>sentinel</i> {                 // exposition only
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

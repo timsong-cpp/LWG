@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3273: Specify weekday_indexed to range of [0, 7]</title>
+<meta property="og:title" content="Issue 3273: Specify weekday_indexed to range of [0, 7]">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3273.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3273"><a href="lwg-defects.html#3273">3273</a>. Specify <code>weekday_indexed</code> to range of <code>[0, 7]</code></h3>
+<p><b>Section:</b> 29.8.7.2 <a href="https://wg21.link/time.cal.wdidx.members">[time.cal.wdidx.members]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Howard Hinnant <b>Opened:</b> 2019-09-02 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+On one hand, we say that if you try to construct a <code>weekday_indexed</code> with index 0, 
+you get an unspecified index instead (29.8.7.2 <a href="https://wg21.link/time.cal.wdidx.members">[time.cal.wdidx.members]</a>/p1),:
+</p>
+<blockquote>
+<p>
+The values held are unspecified if <code>!wd.ok()</code> or index is not in the range <code>[1, 5]</code>.
+</p>
+</blockquote>
+<p>
+OTOH, we take pains to pin down <code>year_month_weekday</code>'s conversion to <code>sys_days</code> 
+when the index is zero (29.8.7.2 <a href="https://wg21.link/time.cal.wdidx.members">[time.cal.wdidx.members]</a>/p19):
+</p>
+<blockquote>
+<p>
+If <code>index()</code> is <code>0</code> the returned <code>sys_days</code> represents the date <code>7</code> 
+days prior to the first <code>weekday()</code> of <code>year()/month()</code>.
+</p>
+</blockquote>
+<p>
+This is inconsistent. We should allow a slightly wider range (say, <code>[0, 7]</code>, since you need 
+at least 3 bits anyway to represent the 5 distinct valid values, and the <code>0</code> value referred 
+to by 29.8.7.2 <a href="https://wg21.link/time.cal.wdidx.members">[time.cal.wdidx.members]</a>/p19.
+</p>
+
+<p><i>[2019-09-24 Issue Prioritization]</i></p>
+
+<p>Status to Tentatively Ready and priority to 0 after six positive votes on the reflector.</p>
+
+
+<p id="res-3273"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify 29.8.7.2 <a href="https://wg21.link/time.cal.wdidx.members">[time.cal.wdidx.members]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> As a drive-by fix a cleanup of "Constructs an object of type <code>weekday_indexed</code>"
+wording has been applied as well. ]
+</p>
+</blockquote>
+
+
+<blockquote>
+<pre>
+constexpr weekday_indexed(const chrono::weekday&amp; wd, unsigned index) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> <del>Constructs an object of type <code>weekday_indexed</code> by 
+initializing</del><ins>Initializes</ins> <code>wd_</code> with <code>wd</code> and <code>index_</code> with 
+<code>index</code>. The values held are unspecified if <code>!wd.ok()</code> or 
+<code>index</code> is not in the range <code>[<del>1</del><ins>0</ins>, <del>5</del><ins>7</ins>]</code>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3275: Why does time_get::do_get require a valid pointer when none of the others do?</title>
+<meta property="og:title" content="Issue 3275: Why does time_get::do_get require a valid pointer when none of the others do?">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3275.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3275"><a href="lwg-active.html#3275">3275</a>. Why does <code>time_get::do_get</code> require a valid pointer when none of the others do?</h3>
+<p><b>Section:</b> 30.4.6.2.3 <a href="https://wg21.link/locale.time.get.virtuals">[locale.time.get.virtuals]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Marshall Clow <b>Opened:</b> 2019-09-09 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#locale.time.get.virtuals">active issues</a> in [locale.time.get.virtuals].</p>
+<p><b>View all other</b> <a href="lwg-index.html#locale.time.get.virtuals">issues</a> in [locale.time.get.virtuals].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+According to 30.4.6.2.3 <a href="https://wg21.link/locale.time.get.virtuals">[locale.time.get.virtuals]</a> p11:
+</p>
+<blockquote><p>
+<i>Requires:</i> <code>t</code> shall point to an object
+</p></blockquote>
+<p>
+[Note: In my "Mandates" paper, I changed this to "<i>Expects:</i> <code>t</code> points to an object"]
+<p/>
+Nevertheless, it's odd, and inconsistent. <code>time_get::get</code> does not have any such stated requirement, 
+and it calls <code>do_get</code>. None of the other "time" calls in <code>time_get</code> have such a (stated) 
+requirement.
+<p/>
+I believe that this requirement is redundant, that it is implied by the wording in P12 and P14.
+<p/>
+P12: "or until it has extracted and assigned those <code>struct tm</code> members"
+<p/>
+P14: "It is unspecified whether multiple calls to <code>do_get()</code> with the address of the same 
+<code>struct tm</code> object will update the current contents of the object or simply overwrite its members."
+<p/>
+If the pointer is invalid (null, or points to unmapped memory, say), you've got UB anyway.
+<p/>
+All the other calls in [locale.time.get.virtuals] were from C++98. <code>do_get_time</code> was added in C++11, 
+and p11 originally said "<code>t</code> shall be dereferenceable". 
+<p/>
+This was changed to "<code>t</code> shall point to an object" as part of the resolution of CWG issue 
+<a href="https://wg21.link/cwg342">342</a>
+</p>
+
+<p><i>[2019-10 Priority set to 3 after reflector discussion]</i></p>
+
+
+
+<p id="res-3275"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify 30.4.6.2.3 <a href="https://wg21.link/locale.time.get.virtuals">[locale.time.get.virtuals]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+iter_type do_get(iter_type s, iter_type end, ios_base&amp; f,
+                 ios_base::iostate&amp; err, tm* t, char format, char modifier) const;
+</pre>
+<blockquote>
+<p>
+<del>-11- <i>Requires:</i> <code>t</code> shall point to an object.</del>
+<p/>
+-12- <i>Effects:</i> [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

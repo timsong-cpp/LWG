@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3435: three_way_comparable_with&lt;reverse_iterator&lt;int*&gt;, reverse_iterator&lt;const int*&gt;&gt;</title>
+<meta property="og:title" content="Issue 3435: three_way_comparable_with&lt;reverse_iterator&lt;int*&gt;, reverse_iterator&lt;const int*&gt;&gt;">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3435.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3435"><a href="lwg-defects.html#3435">3435</a>. <code>three_way_comparable_with&lt;reverse_iterator&lt;int*&gt;, reverse_iterator&lt;const int*&gt;&gt;</code></h3>
+<p><b>Section:</b> 25.5.4.4 <a href="https://wg21.link/move.iter.cons">[move.iter.cons]</a>, 25.5.1.4 <a href="https://wg21.link/reverse.iter.cons">[reverse.iter.cons]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2020-04-26 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#move.iter.cons">issues</a> in [move.iter.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Despite that <code>reverse_iterator&lt;int*&gt;</code> and <code>reverse_iterator&lt;const int*&gt;</code> are comparable with 
+<code>&lt;=&gt;</code>, <code>three_way_comparable_with&lt;reverse_iterator&lt;int*&gt;, reverse_iterator&lt;const int*&gt;&gt;</code> 
+is <code>false</code>. This unfortunate state of affairs results from the absence of constraints on <code>reverse_iterator</code>'s 
+converting constructor: both <code>convertible_to&lt;reverse_iterator&lt;int*&gt;, reverse_iterator&lt;const int*&gt;&gt;</code>
+and <code>convertible_to&lt;reverse_iterator&lt;const int*&gt;, reverse_iterator&lt;int*&gt;&gt;</code> evaluate to <code>true</code>, 
+despite that <code>reverse_iterator&lt;int*&gt;</code>'s converting constructor template is ill-formed when instantiated 
+for <code>reverse_iterator&lt;const int*&gt;</code>. This apparent bi-convertibility results in ambiguity when trying to 
+determine <code>common_reference_t&lt;const reverse_iterator&lt;int*&gt;&amp;, const reverse_iterator&lt;const int*&gt;&amp;&gt;</code>, 
+causing the <code>common_reference</code> requirement in <code>three_way_comparable_with</code> to fail.
+<p/>
+I think we should correct this by constraining <code>reverse_iterator</code>'s conversion constructor (and converting 
+assignment operator, while we're here) correctly so we can use the concept to determine when it's ok to compare 
+specializations of <code>reverse_iterator</code> with <code>&lt;=&gt;</code>.
+<p/>
+<code>move_iterator</code> has similar issues due to its similarly unconstrained conversions. We should fix both similarly.
+</p>
+
+<p><i>[2020-07-17; Priority set to 2 in telecon]</i></p>
+
+
+<p><i>[2020-07-26; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector discussions.
+</p>
+<p><i>[2020-11-09 Approved In November virtual meeting. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3435"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify 25.5.4.4 <a href="https://wg21.link/move.iter.cons">[move.iter.cons]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> this incorporates and supercedes the P/R of LWG <a href="lwg-defects.html#3265" title="move_iterator's conversions are more broken after P1207 (Status: C++23)">3265</a>.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+constexpr move_iterator();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> <del>Constructs a <code>move_iterator</code>, v</del><ins>V</ins>alue-initializ<ins>es</ins><del>ing</del> 
+<code>current</code>. <del>Iterator operations applied to the resulting iterator have defined behavior if and only if 
+the corresponding operations are defined on a value-initialized iterator of type <code>Iterator</code>.</del>
+</p>
+</blockquote>
+<pre>
+constexpr explicit move_iterator(Iterator i);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> <del>Constructs a <code>move_iterator</code>, i</del><ins>I</ins>nitializ<ins>es</ins><del>ing</del> 
+<code>current</code> with <code>std::move(i)</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-3- <del><i>Mandates:</i> <code>U</code> is convertible to <code>Iterator</code></del><ins><i>Constraints:</i> 
+<code>is_same_v&lt;U, Iterator&gt;</code> is <code>false</code> and <code>const U&amp;</code> models 
+<code>convertible_to&lt;Iterator&gt;</code></ins>.
+<p/>
+-4- <i>Effects:</i> <del>Constructs a <code>move_iterator</code>, i</del><ins>I</ins>nitializ<ins>es</ins><del>ing</del> 
+<code>current</code> with <code>u.<ins>current</ins><del>base()</del></code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt; constexpr move_iterator&amp; operator=(const move_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+-5- <del><i>Mandates:</i> <code>U</code> is convertible to <code>Iterator</code></del><ins><i>Constraints:</i> 
+<code>is_same_v&lt;U, Iterator&gt;</code> is <code>false</code>, <code>const U&amp;</code> models 
+<code>convertible_to&lt;Iterator&gt;</code>, and <code>assignable_from&lt;Iterator&amp;, const U&amp;&gt;</code> 
+is modeled</ins>.
+<p/>
+-6- <i>Effects:</i> Assigns <code>u.<ins>current</ins><del>base()</del></code> to <code>current</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 25.5.1.4 <a href="https://wg21.link/reverse.iter.cons">[reverse.iter.cons]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class U&gt; constexpr reverse_iterator(const reverse_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <code>is_same_v&lt;U, Iterator&gt;</code> is <code>false</code> and 
+<code>const U&amp;</code> models <code>convertible_to&lt;Iterator&gt;</code>.</ins>
+<p/>
+-3- <i>Effects:</i> Initializes <code>current</code> with <code>u.current</code>.
+</p>
+</blockquote>
+<pre>
+template&lt;class U&gt;
+  constexpr reverse_iterator&amp;
+    operator=(const reverse_iterator&lt;U&gt;&amp; u);
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Constraints:</i> <code>is_same_v&lt;U, Iterator&gt;</code> is <code>false</code>, 
+<code>const U&amp;</code> models <code>convertible_to&lt;Iterator&gt;</code>, and 
+<code>assignable_from&lt;Iterator&amp;, const U&amp;&gt;</code> is modeled.</ins>
+<p/>
+-4- <i>Effects:</i> Assigns <code>u.<ins>current</ins><del>base()</del></code> to <code>current</code>.
+<p/>
+-5- <i>Returns:</i> <code>*this</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

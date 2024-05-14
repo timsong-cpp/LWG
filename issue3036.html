@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3036: polymorphic_allocator::destroy is extraneous</title>
+<meta property="og:title" content="Issue 3036: polymorphic_allocator::destroy is extraneous">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3036.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3036"><a href="lwg-defects.html#3036">3036</a>. <code>polymorphic_allocator::destroy</code> is extraneous</h3>
+<p><b>Section:</b> 20.4.3 <a href="https://wg21.link/mem.poly.allocator.class">[mem.poly.allocator.class]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2017-11-15 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#mem.poly.allocator.class">issues</a> in [mem.poly.allocator.class].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>polymorphic_allocator</code>'s member function <code>destroy</code> is exactly
+equivalent to the default implementation of <code>destroy</code> in
+<code>allocator_traits</code> (20.2.9.3 <a href="https://wg21.link/allocator.traits.members">[allocator.traits.members]</a> para 6). It
+should be struck from <code>polymorphic_allocator</code> as it provides no value.
+</p>
+
+<p><i>[28-Nov-2017 Mailing list discussion - set priority to P3]</i></p>
+
+<p>PJ says that Dinkumware is shipping an implementation of <code>polymorphic_allocator</code> with <code>destroy</code>, so removing it would be a breaking change for him.</p>
+
+<p><i>[2019-02; Kona Wednesday night issue processing]</i></p>
+
+<p>Status to Open; revisit once <a href="https://wg21.link/P0339">P0339</a> lands. Poll taken was 5-3-2 in favor of removal.</p>
+
+<p><i>[2020-10-05; Jonathan provides new wording]</i></p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+Wording relative to <a href="https://wg21.link/n4700">N4700</a>.
+</p>
+
+<ol>
+<li>
+<p>
+Strike the declaration of <code>destroy</code> from the synopsis of class
+<code>polymorphic_allocator</code> in 20.4.3 <a href="https://wg21.link/mem.poly.allocator.class">[mem.poly.allocator.class]</a>:
+</p>
+<blockquote>
+<pre>
+template &lt;class T1, class T2, class U, class V&gt;
+  void construct(pair&lt;T1,T2&gt;* p, pair&lt;U, V&gt;&amp;&amp; pr);
+
+<del>template &lt;class T&gt;</del>
+  <del>void destroy(T* p);</del>
+
+polymorphic_allocator select_on_container_copy_construction() const;
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>
+Strike the specification of <code>destroy</code> in 20.4.3.3 <a href="https://wg21.link/mem.poly.allocator.mem">[mem.poly.allocator.mem]</a>:
+</p>
+<blockquote>
+[&hellip;]
+
+<pre>
+<del>template &lt;class T&gt;</del>
+  <del>void destroy(T* p);</del>
+</pre>
+
+<p><del>14 Effects: As if by <code>p->~T()</code>.</del></p>
+
+[&hellip;]
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-10-11; Reflector poll]</i></p>
+
+<p>
+Moved to Tentatively Ready after seven votes in favour.
+</p>
+<p><i>[2020-11-09 Approved In November virtual meeting. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3036"><b>Proposed resolution:</b></p>
+<p>
+Wording relative to <a href="https://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li>
+<p>
+Strike the declaration of <code>destroy</code> from the synopsis of class
+<code>polymorphic_allocator</code> in 20.4.3 <a href="https://wg21.link/mem.poly.allocator.class">[mem.poly.allocator.class]</a>:
+</p>
+<blockquote>
+<pre>
+template &lt;class T1, class T2, class U, class V&gt;
+  void construct(pair&lt;T1,T2&gt;* p, pair&lt;U, V&gt;&amp;&amp; pr);
+
+<del>template &lt;class T&gt;</del>
+  <del>void destroy(T* p);</del>
+
+polymorphic_allocator select_on_container_copy_construction() const;
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>
+Adjust the specification of <code>delete_object</code> in 20.4.3.3 <a href="https://wg21.link/mem.poly.allocator.mem">[mem.poly.allocator.mem]</a>:
+</p>
+<blockquote>
+<pre>
+template &lt;class T&gt;
+  void delete_object(T* p);
+</pre>
+
+<p>-13- Effects: Equivalent to:</p>
+<blockquote><pre>
+  <ins>allocator_traits&lt;polymorphic_allocator&gt;::</ins>destroy(<ins>*this, </ins>p);
+  deallocate_object(p);
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>
+Strike the specification of <code>destroy</code> in 20.4.3.3 <a href="https://wg21.link/mem.poly.allocator.mem">[mem.poly.allocator.mem]</a>:
+</p>
+<blockquote>
+[&hellip;]
+
+<pre>
+<del>template &lt;class T&gt;</del>
+  <del>void destroy(T* p);</del>
+</pre>
+
+<p><del>-17- Effects: As if by <code>p->~T()</code>.</del></p>
+
+[&hellip;]
+</blockquote>
+</li>
+
+<li>
+<p>Add a new subclause to Annex D:</p>
+<blockquote>
+<p>
+<ins>
+<strong>D.?? Deprecated <code>polymorphic_allocator</code> member function</strong>
+</ins>
+</p>
+<p>
+<ins>
+-1- The following member is declared in addition to those members specified in
+20.4.3.3 <a href="https://wg21.link/mem.poly.allocator.mem">[mem.poly.allocator.mem]</a>:
+</ins>
+</p>
+<blockquote><pre><ins>
+namespace std::pmr {
+  template&lt;class Tp = byte&gt;
+  class polymorphic_allocator {
+  public:
+    template &lt;class T&gt;
+      void destroy(T* p);
+  };
+}
+</ins></pre></blockquote>
+<pre><ins>
+template &lt;class T&gt;
+  void destroy(T* p);
+</ins></pre>
+<p><ins>-1- Effects: As if by <code>p->~T()</code>.</ins></p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

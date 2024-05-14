@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3099: is_assignable&lt;Incomplete&amp;, Incomplete&amp;&gt;</title>
+<meta property="og:title" content="Issue 3099: is_assignable&lt;Incomplete&amp;, Incomplete&amp;&gt;">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3099.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3099"><a href="lwg-active.html#3099">3099</a>. <code>is_assignable&lt;Incomplete&amp;, Incomplete&amp;&gt;</code></h3>
+<p><b>Section:</b> 21.3.3 <a href="https://wg21.link/meta.type.synop">[meta.type.synop]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2018-04-10 <b>Last modified:</b> 2023-06-12</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.type.synop">active issues</a> in [meta.type.synop].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.type.synop">issues</a> in [meta.type.synop].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+LWG <a href="lwg-active.html#2939" title="Some type-completeness constraints of traits are overspecified (Status: New)">2939</a> suggests that the the preconditions of the type traits need reevaluation.
+This issue focuses specifically on <code>is_assignable</code> and, by extension, its variants:
+<ul>
+<li><code>is_copy_assignable&lt;T&gt;</code>, equivalent to <code>is_assignable&lt;T&amp;, const T&amp;&gt;</code>,
+</li>
+<li><code>is_move_assignable&lt;T&gt;</code>, equivalent to <code>is_assignable&lt;T&amp;, T&gt;</code>,
+</li>
+<li><code>is_trivially_assignable&lt;T, U&gt;</code>, equivalent to <code>is_assignable&lt;T, U&gt; &amp;&amp;
+  /* magic */</code>,
+</li>
+<li><code>is_trivially_copy_assignable&lt;T&gt;</code>, equivalent to <code>is_assignable&lt;T&amp;, const T&amp;&gt; &amp;&amp;
+  /* magic */</code>,
+</li>
+<li><code>is_trivially_move_assignable&lt;T&gt;</code>, equivalent to <code>is_assignable&lt;T&amp;, T&gt; &amp;&amp;
+  /* magic */</code>,
+</li>
+<li><code>is_nothrow_assignable&lt;T, U&gt;</code>, equivalent to <code>is_assignable&lt;T, U&gt; &amp;&amp;
+    noexcept(declval&lt;T&gt;() = declval&lt;U&gt;())</code>,
+</li>
+<li><code>is_nothrow_copy_assignable&lt;T&gt;</code>, equivalent to <code>is_assignable&lt;T&amp;, const T&amp;&gt; &amp;&amp;
+    noexcept(declval&lt;T&amp;&gt;() = declval&lt;const T&amp;&gt;())</code>,
+</li>
+<li><code>is_nothrow_move_assignable&lt;T&gt;</code>, equivalent to <code>is_assignable&lt;T&amp;, T&gt; &amp;&amp;
+    noexcept(declval&lt;T&amp;&gt;() = declval&lt;T&gt;())</code>, and
+</li>
+</ul>
+</p>
+<p>
+We note a discrepancy: <code>is_copy_assignable&lt;T&gt;</code> requires <code>T</code> to be a complete type, but the
+equivalent form <code>is_assignable&lt;T&amp;, const T&amp;&gt;</code> <em>does not</em>. The requirement for
+<code>is_copy_assignable&lt;T&gt;</code> seems sensible, since there's no way to determine whether or not the assignment
+<code>declval&lt;T&amp;&gt;() = declval&lt;const T&amp;&gt;()</code> is well-formed when <code>T</code> is incomplete.
+It seems that the same argument should apply to all of the above "assignable" traits, and that they must require that
+the referent type is complete when given a reference type parameter to be implementable.
+</p>
+
+<p><i>[2018-08 Batavia Monday issue discussion]</i></p>
+
+<p>Issues <a href="lwg-defects.html#2797" title="Trait precondition violations (Status: Resolved)">2797</a>, <a href="lwg-active.html#2939" title="Some type-completeness constraints of traits are overspecified (Status: New)">2939</a>, <a href="lwg-defects.html#3022" title="is_convertible&lt;derived*, base*&gt; may lead to ODR (Status: Resolved)">3022</a>, and <a href="lwg-active.html#3099" title="is_assignable&lt;Incomplete&amp;, Incomplete&amp;&gt; (Status: New)">3099</a> are all closely related. Walter to write a paper resolving them.</p>
+
+<p><i>[2020-02-14, Prague]</i></p>
+
+<p>
+LWG discussions. Set priority to 2.
+</p>
+
+<p><i>[2023-06-12; Varna]</i></p>
+
+<p> 
+<a href="https://wg21.link/P1285R0" title=" Improving Completeness Requirements for Type Traits">P1285R0</a> is related to this issue.
+</p>
+
+
+<p id="res-3099"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4741">N4741</a>.</p>
+<blockquote>
+<ol>
+<li>In 21.3.5.4 <a href="https://wg21.link/meta.unary.prop">[meta.unary.prop]</a> Table 42, change the Precondition text for <code>is_assignable</code>,
+<code>is_trivially_assignable</code>, and <code>is_nothrow_assignable</code> as follows:
+<blockquote>
+<ins><code>remove_cvref_t&lt;</code></ins><code>T</code><ins><code>&gt;</code></ins> and
+<ins><code>remove_cvref_t&lt;</code></ins><code>U</code><ins><code>&gt;</code></ins> shall be complete types, <del><i>cv</i></del>
+<code>void</code>, or arrays of unknown bound.
+</blockquote>
+</li>
+
+<li>In 21.3.5.4 <a href="https://wg21.link/meta.unary.prop">[meta.unary.prop]</a> Table 42, change the Precondition text for <code>is_copy_assignable</code>,
+<code>is_move_assignable</code>, <code>is_trivially_copy_assignable</code>, <code>is_trivially_move_assignable</code>,
+<code>is_nothrow_copy_assignable</code>, and <code>is_nothrow_move_assignable</code> as follows:
+<blockquote>
+<ins><code>remove_cvref_t&lt;</code></ins><code>T</code><ins><code>&gt;</code></ins> shall be a complete type, <del><i>cv</i></del>
+<code>void</code>, or an array of unknown bound.
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+
+
+
+
+</body>
+</html>

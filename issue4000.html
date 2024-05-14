@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Issue 4000: shared_ptr of function type</title>
-<style type="text/css">
+<title>Issue 4000: flat_map::insert_range's Effects is not quite right</title>
+<meta property="og:title" content="Issue 4000: flat_map::insert_range's Effects is not quite right">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue4000.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,53 +24,110 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="4000" href="lwg-active.html#4000">4000</a>. <tt>shared_ptr</tt> of function type</h3>
-<p><b>Section:</b> 23.11.2.2 <a href="https://wg21.link/util.smartptr.shared">[util.smartptr.shared]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2017-09-13 <b>Last modified:</b> 2017-09-18</p>
-<p><b>Priority: </b>Not Prioritized
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="4000"><a href="lwg-active.html#4000">4000</a>. <code>flat_map::insert_range</code>'s <i>Effects</i> is not quite right</h3>
+<p><b>Section:</b> 24.6.9.6 <a href="https://wg21.link/flat.map.modifiers">[flat.map.modifiers]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-10-23 <b>Last modified:</b> 2024-02-22</p>
+<p><b>Priority: </b>3
 </p>
-<p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared">active issues</a> in [util.smartptr.shared].</p>
-<p><b>View all other</b> <a href="lwg-index.html#util.smartptr.shared">issues</a> in [util.smartptr.shared].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-<tt>shared_ptr</tt> has been designed to support use cases where it owns a pointer to function, and whose deleter 
-does something with it. This can be used, for example, to keep a dynamic library loaded for as long as their exported 
-functions are referenced.
-<p/>
-Implementations have overlooked that the <tt>T</tt> in <tt>shared_ptr&lt;T&gt;</tt> can be a function type. It isn't 
-immediately obvious from the standard, and it's not possible to tell from the wording that this is intentional.
+<code>flat_map::insert_range</code> adds elements to the <code>containers</code> member via:
+</p>
+<blockquote><pre>
+for (const auto&amp; e : rg) {
+  c.keys.insert(c.keys.end(), e.first);
+  c.values.insert(c.values.end(), e.second);
+}
+</pre></blockquote>
+<p>
+which is incorrect because <code>rg</code>'s value type may not be a <code>pair</code> (<code>tuple</code>, for instance), 
+which means that <code>.first</code> and <code>.second</code> are not valid in such cases.
+</p>
 
-Hi!
+<p><i>[2024-02-22; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll in October 2023.
+</p>
+
+<p>
+"This is <a href="https://wg21.link/P2767" title=" flat_map/flat_set omnibus">P2767</a> section 6 which LWG looked at in Varna,
+and was turned into https://github.com/cplusplus/draft/pull/6274 as an
+editorial change."
 </p>
 
 
-<p><b>Proposed resolution:</b></p>
-<p>This wording is relative to <a href="http://wg21.link/n4687">N4687</a>.</p>
+
+<p id="res-4000"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4964" title=" Working Draft, Programming Languages — C++">N4964</a>.
+</p>
 
 <ol>
-<li><p>Edit 23.11.2.2 <a href="https://wg21.link/util.smartptr.shared">[util.smartptr.shared]</a> as indicated:</p>
+
+<li><p>Modify 24.6.9.6 <a href="https://wg21.link/flat.map.modifiers">[flat.map.modifiers]</a> as indicated:</p>
+
+<blockquote><pre>
+template&lt;<i>container-compatible-range</i>&lt;value_type&gt; R&gt;
+  void insert_range(R&amp;&amp; rg);
+</pre>
 <blockquote>
 <p>
-[&hellip;]
-<p/>
--2- Specializations of <tt>shared_ptr</tt> shall be <tt>CopyConstructible</tt>, <tt>CopyAssignable</tt>, and 
-<tt>LessThanComparable</tt>, allowing their use in standard containers. Specializations of <tt>shared_ptr</tt> shall be 
-contextually convertible to <tt>bool</tt>, allowing their use in boolean expressions and declarations in conditions. 
-<del>The template parameter <tt>T</tt> of <tt>shared_ptr</tt> may be an incomplete type.</del>
-<p/>
-<ins>-?- The template parameter <tt>T</tt> of <tt>shared_ptr</tt> may be an incomplete type. <tt>T*</tt> shall be an object 
-pointer type or a function pointer type.</ins>
-<p/>
+-12- <i>Effects</i>: Adds elements to <code>c</code> as if by:
+</p>
+<blockquote><pre>
+for (<ins>value_type</ins><del>const auto&amp;</del> e : rg) {
+  c.keys.insert(c.keys.end(), <ins>std::move(</ins>e.first<ins>)</ins>);
+  c.values.insert(c.values.end(), <ins>std::move(</ins>e.second<ins>)</ins>);
+}
+</pre></blockquote>
+<p>
 [&hellip;]
 </p>
 </blockquote>
+</blockquote>
+
 </li>
+
 </ol>
 
 

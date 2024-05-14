@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3705: Hashability shouldn't depend on basic_string's allocator</title>
+<meta property="og:title" content="Issue 3705: Hashability shouldn't depend on basic_string's allocator">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3705.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3705"><a href="lwg-defects.html#3705">3705</a>. Hashability shouldn't depend on <code>basic_string</code>'s allocator</h3>
+<p><b>Section:</b> 23.4.6 <a href="https://wg21.link/basic.string.hash">[basic.string.hash]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2022-05-26 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#basic.string.hash">issues</a> in [basic.string.hash].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+23.4.6 <a href="https://wg21.link/basic.string.hash">[basic.string.hash]</a> says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<pre>
+template&lt;&gt; struct hash&lt;string&gt;;
+template&lt;&gt; struct hash&lt;u8string&gt;;
+template&lt;&gt; struct hash&lt;u16string&gt;;
+template&lt;&gt; struct hash&lt;u32string&gt;;
+template&lt;&gt; struct hash&lt;wstring&gt;;
+template&lt;&gt; struct hash&lt;pmr::string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u8string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u16string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u32string&gt;;
+template&lt;&gt; struct hash&lt;pmr::wstring&gt;;
+</pre>
+<blockquote>
+<p>
+-1- If <code>S</code> is one of these string types, <code>SV</code> is the corresponding string view type, and 
+<code>s</code> is an object of type <code>S</code>, then <code>hash&lt;S&gt;()(s) == hash&lt;SV&gt;()(SV(s))</code>
+</p>
+</blockquote>
+</blockquote>
+<p>
+Despite that the hash value of a <code>basic_string</code> object is equivalent to the hash value of a 
+corresponding <code>basic_string_view</code> object, which has no allocator, the capability to hash a 
+<code>basic_string</code> depends on its allocator. All of the enabled specializations have specific 
+allocators, which fact becomes more clear if we expand the type aliases:
+</p>
+<blockquote><pre>
+template&lt;&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, allocator&lt;char&gt;&gt;;
+template&lt;&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, allocator&lt;char8_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, allocator&lt;char16_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, allocator&lt;char32_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, allocator&lt;wchar_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, pmr::polymorphic_allocator&lt;char&gt;&gt;;
+template&lt;&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, pmr::polymorphic_allocator&lt;char8_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, pmr::polymorphic_allocator&lt;char16_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, pmr::polymorphic_allocator&lt;char32_t&gt;&gt;;
+
+template&lt;&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, pmr::polymorphic_allocator&lt;wchar_t&gt;&gt;;
+</pre></blockquote>
+<p>
+If the hash value doesn't depend on the allocator type, why should we care about the allocator type? 
+I posit that we should not, and that these ten explicit specializations should be replaced by 5 partial 
+specializations that enable hashing <code>basic_string</code> specializations using these combinations of 
+character type and traits type with any allocator type.
+</p>
+
+<p><i>[2022-06-21; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3705"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 23.4.2 <a href="https://wg21.link/string.syn">[string.syn]</a>, header <code>&lt;string&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+
+<i>// 23.4.6 <a href="https://wg21.link/basic.string.hash">[basic.string.hash]</a>, hash support</i>
+template&lt;class T&gt; struct hash;
+<del>template&lt;&gt; struct hash&lt;string&gt;;
+template&lt;&gt; struct hash&lt;u8string&gt;;
+template&lt;&gt; struct hash&lt;u16string&gt;;
+template&lt;&gt; struct hash&lt;u32string&gt;;
+template&lt;&gt; struct hash&lt;wstring&gt;;
+template&lt;&gt; struct hash&lt;pmr::string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u8string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u16string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u32string&gt;;
+template&lt;&gt; struct hash&lt;pmr::wstring&gt;;</del>
+<ins>template&lt;class A&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, A&gt;&gt;;</ins>
+
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 23.4.6 <a href="https://wg21.link/basic.string.hash">[basic.string.hash]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<del>template&lt;&gt; struct hash&lt;string&gt;;
+template&lt;&gt; struct hash&lt;u8string&gt;;
+template&lt;&gt; struct hash&lt;u16string&gt;;
+template&lt;&gt; struct hash&lt;u32string&gt;;
+template&lt;&gt; struct hash&lt;wstring&gt;;
+template&lt;&gt; struct hash&lt;pmr::string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u8string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u16string&gt;;
+template&lt;&gt; struct hash&lt;pmr::u32string&gt;;
+template&lt;&gt; struct hash&lt;pmr::wstring&gt;;</del>
+<ins>template&lt;class A&gt; struct hash&lt;basic_string&lt;char, char_traits&lt;char&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char8_t, char_traits&lt;char8_t&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char16_t, char_traits&lt;char16_t&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;char32_t, char_traits&lt;char32_t&gt;, A&gt;&gt;;
+template&lt;class A&gt; struct hash&lt;basic_string&lt;wchar_t, char_traits&lt;wchar_t&gt;, A&gt;&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+-1- If <code>S</code> is one of these string types, <code>SV</code> is the corresponding string view type, and 
+<code>s</code> is an object of type <code>S</code>, then <code>hash&lt;S&gt;()(s) == hash&lt;SV&gt;()(SV(s))</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

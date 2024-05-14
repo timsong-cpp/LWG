@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3802: flat_foo allocator-extended constructors lack move semantics</title>
+<meta property="og:title" content="Issue 3802: flat_foo allocator-extended constructors lack move semantics">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3802.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3802"><a href="lwg-active.html#3802">3802</a>. <code>flat_<i>foo</i></code> allocator-extended constructors lack move semantics</h3>
+<p><b>Section:</b> 24.6.9 <a href="https://wg21.link/flat.map">[flat.map]</a>, 24.6.10 <a href="https://wg21.link/flat.multimap">[flat.multimap]</a>, 24.6.11 <a href="https://wg21.link/flat.set">[flat.set]</a>, 24.6.12 <a href="https://wg21.link/flat.multiset">[flat.multiset]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Arthur O'Dwyer <b>Opened:</b> 2022-10-25 <b>Last modified:</b> 2023-06-16</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#flat.map">active issues</a> in [flat.map].</p>
+<p><b>View all other</b> <a href="lwg-index.html#flat.map">issues</a> in [flat.map].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Compare 24.6.7.2 <a href="https://wg21.link/priqueue.cons">[priqueue.cons]</a>'s overload set
+</p>
+<blockquote><pre>
+priority_queue(const Compare&amp;, const Container&amp;);
+priority_queue(const Compare&amp;, Container&amp;&amp;);
+template&lt;class Alloc&gt; priority_queue(const Compare&amp;, const Container&amp;, const Alloc&amp;);
+template&lt;class Alloc&gt; priority_queue(const Compare&amp;, Container&amp;&amp;, const Alloc&amp;);
+</pre></blockquote>
+<p>
+against 24.6.9 <a href="https://wg21.link/flat.map">[flat.map]</a>'s overload set
+</p>
+<blockquote><pre>
+flat_map(key_container_type, mapped_container_type);
+template&lt;class Allocator&gt; flat_map(const key_container_type&amp;, const mapped_container_type&amp;, const Allocator&amp; a);
+</pre></blockquote>
+<p>
+I see two issues here:
+</p>
+<ol style="list-style-type: none">
+<li><p>(A) The allocator-extended ctor of <code>flat_map</code> always copies the <code>key_container</code> and <code>value_container</code>, 
+when it should be move-enabled.</p></li>
+<li><p>(B) Almost certainly the <code>Allocator</code> parameter should be named <code>Alloc</code> instead, and there should be a 
+separate "Constructors with allocators" section with wording similar to 24.6.7.3 <a href="https://wg21.link/priqueue.cons.alloc">[priqueue.cons.alloc]</a> explaining that 
+these ctors don't participate in overload resolution unless 
+<code>uses_allocator_v&lt;KeyContainer, Alloc&gt; &amp;&amp; uses_allocator_v&lt;MappedContainer, Alloc&gt;</code>.</p></li>
+</ol>
+<p>
+I suggest this overload set to replace the two overloads above:
+</p>
+<blockquote><pre>
+flat_map(key_container_type, mapped_container_type);
+template&lt;class Alloc&gt; flat_map(const key_container_type&amp;, const mapped_container_type&amp;, const Alloc&amp; a);
+template&lt;class Alloc&gt; flat_map(const key_container_type&amp;, mapped_container_type&amp;&amp;, const Alloc&amp; a);
+template&lt;class Alloc&gt; flat_map(key_container_type&amp;&amp;, const mapped_container_type&amp;, const Alloc&amp; a);
+template&lt;class Alloc&gt; flat_map(key_container_type&amp;&amp;, mapped_container_type&amp;&amp;, const Alloc&amp; a);
+</pre></blockquote>
+<p>
+This preserves the apparent assumption that <code>KeyContainer(std::move(kc))</code> is always efficient but 
+<code>KeyContainer(std::move(kc), otheralloc)</code> might not be. Similar wording changes would have to be made to all the 
+<code>flat_<i>foo</i></code> containers.
+<p/>
+Tony Table:
+</p>
+<blockquote><pre>
+template&lt;class T, class Comp = std::less&lt;T&gt;, class Container = std::pmr::vector&lt;T&gt;&gt;
+using pmr_flat_set = std::flat_set&lt;T, Comp, Container&gt;;
+
+std::pmr::vector&lt;pmr_flat_set&lt;int&gt;&gt; vs;
+std::pmr::vector&lt;int&gt; data = {1,2,3};
+
+vs.reserve(1);
+vs.emplace_back(std::move(data));
+  // constructs-in-place with the argument list (std::move(data), get_allocator())
+  // BEFORE: copies (causes heap traffic)
+  // AFTER: moves (no heap traffic)
+</pre></blockquote>
+
+<p><i>[2022-11-04; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 after reflector poll.
+</p>
+
+<p><i>[2023-06-14 Varna]</i></p>
+
+<p>Mentioned in <a href="https://wg21.link/P2767R0" title=" flat_map/flat_set omnibus">P2767R0</a>, but not resolved by it.</p>
+
+
+
+<p id="res-3802"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

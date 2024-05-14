@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3436: std::construct_at should support arrays</title>
+<meta property="og:title" content="Issue 3436: std::construct_at should support arrays">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3436.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3436"><a href="lwg-active.html#3436">3436</a>. <code>std::construct_at</code> should support arrays</h3>
+<p><b>Section:</b> 27.11.8 <a href="https://wg21.link/specialized.construct">[specialized.construct]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2020-04-29 <b>Last modified:</b> 2024-03-18</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#specialized.construct">active issues</a> in [specialized.construct].</p>
+<p><b>View all other</b> <a href="lwg-index.html#specialized.construct">issues</a> in [specialized.construct].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>std::construct_at</code> is ill-formed for array types, because the type of the <code>new</code>-expression is <code>T</code> 
+not <code>T*</code> so it cannot be converted to the return type.
+<p/>
+In C++17 <code>allocator_traits::construct</code> did work for arrays, because it returns <code>void</code> so there is no 
+ill-formed conversion. On the other hand, in C++17 <code>allocator_traits::destroy</code> didn't work for arrays, 
+because <code>p-&gt;~T()</code> isn't valid.
+<p/>
+In C++20 <code>allocator_traits::destroy</code> does work, because <code>std::destroy_at</code> treats arrays specially, 
+but <code>allocator_traits::construct</code> no longer works because it uses <code>std::construct_at</code>.
+<p/>
+It seems unnecessary and/or confusing to remove support for arrays in <code>construct</code> when we're adding it in <code>destroy</code>.
+<p/>
+I suggest that <code>std::construct_at</code> should also handle arrays. It might be reasonable to restrict that 
+support to the case where <code>sizeof...(Args) == 0</code>, if supporting parenthesized aggregate-initialization 
+is not desirable in <code>std::construct_at</code>.
+</p>
+
+<p><i>[2020-05-09; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 2 after reflector discussions.
+</p>
+
+<p><i>[2021-01-16; Zhihao Yuan provides wording]</i></p>
+
+
+<p>
+<strong>Previous resolution [SUPERSEDED]:</strong>
+</p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4878" title=" Working Draft, Standard for Programming Language C++">N4878</a>. 
+</p>
+
+<ol>
+<li><p>Modify 27.11.8 <a href="https://wg21.link/specialized.construct">[specialized.construct]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> The expression <code>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</code> is well-formed
+when treated as an unevaluated operand.
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<del>return</del><ins>auto ptr =</ins> ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+<ins>if constexpr (is_array_v&lt;T&gt;)
+  return launder(location);
+else
+  return ptr;</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2021-12-07; Zhihao Yuan comments and provides improved wording]</i></p>
+
+<p>
+The previous PR allows constructing arbitrary number of elements when
+<code>T</code> is an array of unknown bound:</p>
+<blockquote><pre>
+extern int a[];
+std::construct_at(&amp;a, 0, 1, 2);
+</pre></blockquote>
+<p>
+and leads to a UB.
+</p>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>. 
+</p>
+
+<ol>
+<li><p>Modify 27.11.8 <a href="https://wg21.link/specialized.construct">[specialized.construct]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i> The expression <code>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</code> is well-formed
+when treated as an unevaluated operand (7.2.3 <a href="https://wg21.link/expr.context">[expr.context]</a>) <ins>and <code>is_unbounded_array_v&lt;T&gt;</code> is 
+<code>false</code></ins>.
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<del>return</del><ins>auto ptr =</ins> ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+<ins>if constexpr (is_array_v&lt;T&gt;)
+  return launder(location);
+else
+  return ptr;</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2024-03-18; Jonathan provides new wording]</i></p>
+
+<p>
+During Core review in Varna, Hubert suggested creating <code class='backtick'>T[1]</code> for the array case.
+</p>
+
+
+
+<p id="res-3436"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4971" title=" Working Draft, Programming Languages — C++">N4971</a>. 
+</p>
+
+<ol>
+<li><p>Modify 27.11.8 <a href="https://wg21.link/specialized.construct">[specialized.construct]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i>
+<ins><code>is_unbounded_array_v&lt;T&gt;</code> is <code>false</code>.</ins>
+The expression <code>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</code> is well-formed
+when treated as an unevaluated operand (7.2.3 <a href="https://wg21.link/expr.context">[expr.context]</a>).
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<ins>if constexpr (is_array_v&lt;T&gt;)
+  return ::new (<i>voidify</i>(*location)) T[1]{{std::forward&lt;Args&gt;(args)...}};
+else</ins>
+  return ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>could use 
+
+
+
+
+</body>
+</html>

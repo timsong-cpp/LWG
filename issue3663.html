@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3663: basic_string(const T&amp;, const Alloc&amp;) turns moves into copies</title>
+<meta property="og:title" content="Issue 3663: basic_string(const T&amp;, const Alloc&amp;) turns moves into copies">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3663.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3663"><a href="lwg-active.html#3663">3663</a>. <code>basic_string(const T&amp;, const Alloc&amp;)</code> turns moves into copies</h3>
+<p><b>Section:</b> 23.4.3.3 <a href="https://wg21.link/string.cons">[string.cons]</a>, 23.4.3.7.3 <a href="https://wg21.link/string.assign">[string.assign]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2022-01-21 <b>Last modified:</b> 2022-01-30</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#string.cons">issues</a> in [string.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This will do a copy not a move:
+</p>
+<blockquote>
+<pre>
+struct Str : std::string {
+  Str() = default;
+  Str(Str&amp;&amp; s) : std::string(std::move(s)) { }
+};
+Str s;
+Str s2(std::move(s));
+</pre>
+</blockquote>
+<p>
+The problem is that the new C++17 constructor:
+</p>
+<blockquote><pre>
+basic_string(const T&amp;, const Alloc&amp; = Alloc());
+</pre></blockquote>
+<p>
+is an exact match, but the <code>basic_string</code> move constructor requires a derived-to-base conversion.
+<p/>
+This is a regression since C++14, because the move constructor was called in C++14.
+<p/>
+This problem also exists for <code>assign(const T&amp;)</code> and <code>operator=(const T&amp;)</code>.
+<p/>
+We can fix this by constraining those functions with <code>!derived_from&lt;T, basic_string&gt;</code>, so 
+that the move constructor is the only viable function. Libstdc++ has done something very similar since 
+2017, but using <code>!is_convertible&lt;const T*, const basic_string*&gt;</code> instead of <code>derived_from</code>.
+</p>
+
+<p><i>[2022-01-30; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+Jonathan to revise P/R to use <code>is_base_of</code> or
+<code>is_convertible</code> instead of <code>derived_from</code>.
+</p>
+
+
+
+<p id="res-3663"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4901" title=" Working Draft, Standard for Programming Language C++">N4901</a>. 
+</p>
+
+<ol>
+<li><p>Modify 23.4.3.3 <a href="https://wg21.link/string.cons">[string.cons]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  constexpr explicit basic_string(const T&amp; t, const Allocator&amp; a = Allocator());
+</pre>
+<blockquote>
+<p>
+-7- <i>Constraints:</i>
+</p>
+<ol style="list-style-type:none">
+<li><p>(7.1) &mdash; <code>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</code> 
+is <code>true</code> and</p></li>
+<li><p><ins>(7.?) &mdash; <code>derived_from&lt;T, basic_string&gt;</code> is <code>false</code> and</ins></p></li>
+<li><p>(7.2) &mdash; <code>is_convertible_v&lt;const T&amp;, const charT*&gt;</code> is <code>false</code>.</p></li>
+</ol>
+<p>
+-8- <i>Effects:</i> Creates a variable, <code>sv</code>, as if by <code>basic_string_view&lt;charT, traits&gt; sv = t;</code> 
+and then behaves the same as <code>basic_string(sv.data(), sv.size(), a)</code>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+template&lt;class T&gt;
+  constexpr basic_string&amp; operator=(const T&amp; t);
+</pre>
+<blockquote>
+<p>
+-27- <i>Constraints:</i>
+</p>
+<ol style="list-style-type:none">
+<li><p>(27.1) &mdash; <code>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</code> 
+is <code>true</code> and</p></li>
+<li><p><ins>(27.?) &mdash; <code>derived_from&lt;T, basic_string&gt;</code> is <code>false</code> and</ins></p></li>
+<li><p>(27.2) &mdash; <code>is_convertible_v&lt;const T&amp;, const charT*&gt;</code> is <code>false</code>.</p></li>
+</ol>
+<p>
+-28- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+basic_string_view&lt;charT, traits&gt; sv = t;
+return assign(sv);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 23.4.3.7.3 <a href="https://wg21.link/string.assign">[string.assign]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  constexpr basic_string&amp; assign(const T&amp; t);
+</pre>
+<blockquote>
+<p>
+-4- <i>Constraints:</i>
+</p>
+<ol style="list-style-type:none">
+<li><p>(4.1) &mdash; <code>is_convertible_v&lt;const T&amp;, basic_string_view&lt;charT, traits&gt;&gt;</code> 
+is <code>true</code> and</p></li>
+<li><p><ins>(4.?) &mdash; <code>derived_from&lt;T, basic_string&gt;</code> is <code>false</code> and</ins></p></li>
+<li><p>(4.2) &mdash; <code>is_convertible_v&lt;const T&amp;, const charT*&gt;</code> is <code>false</code>.</p></li>
+</ol>
+<p>
+-5- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+basic_string_view&lt;charT, traits&gt; sv = t;
+return assign(sv.data(), sv.size());
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

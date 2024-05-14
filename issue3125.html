@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3125: duration streaming precondition should be a SFINAE condition</title>
+<meta property="og:title" content="Issue 3125: duration streaming precondition should be a SFINAE condition">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3125.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3125"><a href="lwg-defects.html#3125">3125</a>. <code>duration</code> streaming precondition should be a SFINAE condition</h3>
+<p><b>Section:</b> 29.5.11 <a href="https://wg21.link/time.duration.io">[time.duration.io]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Johel Ernesto Guerrero Pe&ntilde;a <b>Opened:</b> 2018-06-23 <b>Last modified:</b> 2020-11-09</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.duration.io">issues</a> in [time.duration.io].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+29.5.11 <a href="https://wg21.link/time.duration.io">[time.duration.io]</a>/1 states:
+</p>
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Rep, class Period&gt;
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<blockquote>
+<p>
+<i>Requires:</i> <code>Rep</code> is an integral type whose integer conversion rank (6.8.6 <a href="https://wg21.link/conv.rank">[conv.rank]</a>) is greater 
+than or equal to that of <code>short</code>, or a floating point type. <code>charT</code> is <code>char</code> or <code>wchar_t</code>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+I think the intention was to make this a compile-time error, since all the information to make it so is available 
+at compile-time. But the wording doesn't suggest that.
+</p>
+<p><i>[2018-06-29; Daniel comments]</i></p>
+
+<p>
+The wording will be significantly simplified by the application of the new Library element <i>Constraints:</i> 
+introduced by <a href="https://wg21.link/p0788r3">P0788R3</a> and available with the post-Rapperswil working draft.
+</p>
+
+<p><i>[2018-07-20 Priority set to 2 after reflector discussion. NAD and P0 were also mentioned.]</i></p>
+
+
+<p><i>[2018-08-23 Batavia Issues processing]</i></p>
+
+<p>Marshall to talk to Howard about his intent. Status to Open</p>
+
+<strong>Previous resolution [SUPERSEDED]:</strong>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4750">N4750</a>.
+</p>
+
+<p>Change 29.5.11 <a href="https://wg21.link/time.duration.io">[time.duration.io]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The suggested wording changes include the insertion of two bullets into the existing running text
+to improve clarification of the logic arm of the "unless"].
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class charT, class traits, class Rep, class Period&gt;
+  basic_ostream&lt;charT, traits&gt;&amp;
+    operator&lt;&lt;(basic_ostream&lt;charT, traits&gt;&amp; os, const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<blockquote>
+<p>
+-1- <i><del>Requires</del><ins>Remarks</ins>:</i> <ins>This function shall not participate in overload resolution 
+unless:</ins>
+</p>
+<ul>
+<li><p><code>Rep</code> is an integral type whose integer conversion rank (6.8.6 <a href="https://wg21.link/conv.rank">[conv.rank]</a>) is 
+greater than or equal to that of <code>short</code>, or a floating point type<del>.</del><ins>, and</ins></p></li>
+<li><p><code>charT</code> is <code>char</code> or <code>wchar_t</code></p></li>
+</ul>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</blockquote>
+
+<p><i>[2020-02-13, Prague]</i></p>
+
+<p>
+Will be resolved by LWG <a href="lwg-defects.html#3317" title="Incorrect operator&lt;&lt; for floating-point durations (Status: C++20)">3317</a>.
+</p>
+<p><i>[2020-11-09 Resolved for C++20. Status changed: Tentatively Resolved &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3125"><b>Proposed resolution:</b></p>
+<p>
+</p>
+
+
+
+
+
+</body>
+</html>

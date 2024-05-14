@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3120: Unclear behavior of monotonic_buffer_resource::release()</title>
+<meta property="og:title" content="Issue 3120: Unclear behavior of monotonic_buffer_resource::release()">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3120.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3120"><a href="lwg-defects.html#3120">3120</a>. Unclear behavior of <code>monotonic_buffer_resource::release()</code></h3>
+<p><b>Section:</b> 20.4.6.3 <a href="https://wg21.link/mem.res.monotonic.buffer.mem">[mem.res.monotonic.buffer.mem]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Arthur O'Dwyer <b>Opened:</b> 2018-06-10 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#mem.res.monotonic.buffer.mem">issues</a> in [mem.res.monotonic.buffer.mem].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The effects of <code>monotonic_buffer_resource::release()</code> are defined as:
+</p>
+<blockquote>
+<p>
+Calls <code>upstream_rsrc-&gt;deallocate()</code> as necessary to release all allocated memory.
+</p>
+</blockquote>
+<p>
+This doesn't give any instruction on what to do with the memory controlled by the <code>monotonic_buffer_resource</code> which 
+was not allocated, i.e., what to do with the initial buffer provided to its constructor.
+<p/>
+Boost.Container's pmr implementation expels its initial buffer after a <code>release()</code>.
+Arthur O'Dwyer's proposed pmr implementation for libc++ reuses the initial buffer after a <code>release()</code>, on the 
+assumption that this is what the average library user will be expecting.
+</p>
+<blockquote>
+<pre>
+#include &lt;memory_resource&gt;
+
+int main() 
+{
+  char buffer[100];
+  {
+    std::pmr::monotonic_buffer_resource mr(buffer, 100, std::pmr::null_memory_resource());
+    mr.release();
+    mr.allocate(60);  // A
+  }
+  {
+    std::pmr::monotonic_buffer_resource mr(buffer, 100, std::pmr::null_memory_resource());
+    mr.allocate(60);  // B
+    mr.release();
+    mr.allocate(60);  // C
+  }
+}
+</pre>
+</blockquote>
+<p>
+Assume that allocation "B" always succeeds.<br/>
+With the proposed libc++ implementation, allocations "A" and "C" both succeed.<br/>
+With Boost.Container's implementation, allocations "A" and "C" both fail.<br/>
+Using another plausible implementation strategy, allocation "A" could succeed but allocation "C" 
+could fail. I have been informed that MSVC's implementation does this.
+<p/>
+Which of these strategies should be permitted by the Standard?
+<p/>
+Arthur considers "A and C both succeed" to be the obviously most user-friendly strategy, and really 
+really hopes it's going to be permitted. Requiring "C" to succeed is unnecessary (and would render MSVC's 
+current implementation non-conforming) but could help programmers concerned with portability between 
+different implementations.
+<p/>
+Another side-effect of <code>release()</code> which goes underspecified by the Standard is the effect of 
+<code>release()</code> on <code>next_buffer_size</code>. As currently written, my interpretation is that 
+<code>release()</code> is not permitted to decrease <code>current_buffer_size</code>; I'm not sure if this 
+is a feature or a bug.
+<p/>
+Consider this test case (taken from <a href="https://reviews.llvm.org/D47111#inline-421469">here</a>):
+</p>
+<blockquote>
+<pre>
+std::pmr::monotonic_buffer_resource mr(std::pmr::new_delete_resource());
+for (int i=0; i &lt; 100; ++i) {
+  mr.allocate(1);  // D
+  mr.release();
+}
+</pre>
+</blockquote>
+<p>
+Arthur believes it is important that the 100<sup>th</sup> invocation of line "D" does not attempt to allocate 
+2<sup>100</sup> bytes from the upstream resource.
+</p>
+
+<p><i>[2018-06-23 after reflector discussion]</i></p>
+
+<p>Priority set to 2</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4750">N4750</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> The resolution depicted below would make MSVC's and my-proposed-libc++'s implementations 
+both conforming.]</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 20.4.6.3 <a href="https://wg21.link/mem.res.monotonic.buffer.mem">[mem.res.monotonic.buffer.mem]</a> as indicated:</p>
+<blockquote>
+<pre>
+void release();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Calls <code>upstream_rsrc-&gt;deallocate()</code> as necessary to release all allocated memory. 
+<ins>Resets the state of the initial buffer.</ins>
+<p/>
+-2- [<i>Note:</i> The memory is released back to <code>upstream_rsrc</code> even if some blocks that were allocated from
+this have not been deallocated from this. <ins>This function has an unspecified effect on <code>next_buffer_size</code>.</ins> 
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2018-08-23 Batavia Issues processing]</i></p>
+
+<p>We liked Pablo's wording from the reflector discussion. Status to Open.</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4750">N4750</a>.</p>
+
+<ol>
+<li><p>Modify 20.4.6.3 <a href="https://wg21.link/mem.res.monotonic.buffer.mem">[mem.res.monotonic.buffer.mem]</a> as indicated:</p>
+<blockquote>
+<pre>
+void release();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Calls <code>upstream_rsrc-&gt;deallocate()</code> as necessary to release all allocated memory. 
+<ins>Resets <code>*this</code> to its initial state at construction.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-10-03; Daniel comments and provides improved wording]</i></p>
+
+<p>
+The recent wording introduces the very generic term "state" without giving a concrete
+definition of that term. During reflector discussions different interpretations of that term
+were expressed. The revised wording below gets rid of that word and replaces it by the
+actually involved exposition-only members.
+</p>
+
+<p><i>[2020-10-06; moved to Tentatively Ready after seven votes in favour in reflector poll]</i></p>
+
+<p><i>[2020-11-09 Approved In November virtual meeting. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3120"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.</p>
+
+<ol>
+<li><p>Modify 20.4.6.3 <a href="https://wg21.link/mem.res.monotonic.buffer.mem">[mem.res.monotonic.buffer.mem]</a> as indicated:</p>
+<blockquote>
+<pre>
+void release();
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Calls <code>upstream_rsrc-&gt;deallocate()</code> as necessary to release all allocated memory. 
+<ins>Resets <code>current_buffer</code> and <code>next_buffer_size</code> to their initial values at construction.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

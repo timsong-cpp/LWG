@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3184: Inconsistencies in bind_front wording</title>
+<meta property="og:title" content="Issue 3184: Inconsistencies in bind_front wording">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3184.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3184"><a href="lwg-defects.html#3184">3184</a>. Inconsistencies in <code>bind_front</code> wording</h3>
+<p><b>Section:</b> 22.10.14 <a href="https://wg21.link/func.bind.partial">[func.bind.partial]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2019-01-16 <b>Last modified:</b> 2023-02-07</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+During the merge of the <a href="https://wg21.link/p0356r5">P0356R5</a>, following "oddities" of the new wording was pointed 
+out by Jens Maurer:
+<ol>
+<li><p>The initialization of the state entities of the <code>bind_front/not_fn</code> is specified using formulation "<code>xx</code> 
+initialized with the <i>initializer</i> <code>(yyy)</code>". Per author knowledge this specification is correct, however 
+inconsistent with the other parts of the of the standard, that direct-non-list-initialization term in such context.</p></li>
+<li><p>The specification of the <i>Mandates</i> element for <code>bind_front</code> uses <code>conjunction_v</code> to specify 
+conjunction of the requirements, while corresponding element of the <code>not_fn</code> specifies it using <code>&amp;&amp;</code>. 
+As <code>conjuction_v</code> implies order of evaluation that is not necessary in this case (for every valid program, all 
+provided traits must evaluate to true), it may be replaced with usage of fold expression with operator <code>&amp;&amp;</code>.</p></li>
+</ol>
+</p>
+
+<p><i>[2019-01-26 Priority to 0 and Status to Tentatively Ready after five positive votes on the reflector.]</i></p>
+
+
+
+<p id="res-3184"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ol>
+<li><p>Change  [func.not_fn] as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class F&gt; <i>unspecified</i> not_fn(F&amp;&amp; f);
+</pre>
+<blockquote>
+<p>
+-1- In the text that follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; [&hellip;]</p></li>
+<li><p>(1.2) &mdash; [&hellip;]</p></li>
+<li><p>(1.3) &mdash; <code>fd</code> is the target object of <code>g</code> (22.10.3 <a href="https://wg21.link/func.def">[func.def]</a>) of type 
+<code>FD</code> <ins>direct-non-list-initialized with</ins><del>initialized with the <i>initializer</i></del> 
+<code><del>(</del>std::forward&lt;F&gt;(f)<del>)</del></code><del> (9.4 <a href="https://wg21.link/dcl.init">[dcl.init]</a>)</del>,</p></li>
+<li><p>(1.4) &mdash; [&hellip;]</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Change  [func.bind_front] as indicated:</p>
+<blockquote>
+<pre>
+template &lt;class F, class... Args&gt;
+<i>unspecified</i> bind_front(F&amp;&amp; f, Args&amp;&amp;... args);
+</pre>
+<blockquote>
+<p>
+-1- In the text that follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(1.1) &mdash; [&hellip;]</p></li>
+<li><p>(1.2) &mdash; [&hellip;]</p></li>
+<li><p>(1.3) &mdash; <code>fd</code> is the target object of <code>g</code> (22.10.3 <a href="https://wg21.link/func.def">[func.def]</a>) of type 
+<code>FD</code> <ins>direct-non-list-initialized with</ins><del>initialized with the <i>initializer</i></del> 
+<code><del>(</del>std::forward&lt;F&gt;(f)<del>)</del></code><del> (9.4 <a href="https://wg21.link/dcl.init">[dcl.init]</a>)</del>,</p></li>
+<li><p>(1.4) &mdash; [&hellip;]</p></li>
+<li><p>(1.5) &mdash; <code>bound_args</code> is a pack of bound argument entities of <code>g</code> (22.10.3 <a href="https://wg21.link/func.def">[func.def]</a>) 
+of types <code>BoundArgs...</code>, <ins>direct-non-list-initialized with</ins><del>initialized with 
+<i>initializer</i>s </del><code><del>(</del>std::forward&lt;Args&gt;(args)<del>)</del>...</code>, 
+respectively, and</p></li>
+<li><p>(1.6) &mdash; [&hellip;]</p></li>
+</ol>
+<p>
+-2- <i>Mandates:</i>
+</p>
+<blockquote><pre>
+<ins>is_constructible_v&lt;FD, F&gt; &amp;&amp; is_move_constructible_v&lt;FD&gt; &amp;&amp; 
+(is_constructible_v&lt;BoundArgs, Args&gt; &amp;&amp; ...) &amp;&amp; (is_move_constructible_v&lt;BoundArgs&gt; &amp;&amp; ...)</ins><del>conjunction_v&lt;is_constructible&lt;FD, F&gt;, is_move_constructible&lt;FD&gt;,
+is_constructible&lt;BoundArgs, Args&gt;..., is_move_constructible&lt;BoundArgs&gt;...&gt;</del>
+</pre></blockquote>
+<p>
+shall be true.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

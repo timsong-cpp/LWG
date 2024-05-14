@@ -1,12 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Issue 2399: shared_ptr's constructor from unique_ptr should be constrained</title>
-<style type="text/css">
+<meta property="og:title" content="Issue 2399: shared_ptr's constructor from unique_ptr should be constrained">
+<meta property="og:description" content="C++ library issue. Status: C++17">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue2399.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
   p {text-align:justify}
   li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
   blockquote.note
   {
     background-color:#E0E0E0;
@@ -17,14 +24,47 @@
   }
   ins {background-color:#A0FFA0}
   del {background-color:#FFA0A0}
-  table {border-collapse: collapse;}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
 </style>
 </head>
 <body>
 <hr>
-<h3><a name="2399" href="lwg-defects.html#2399">2399</a>. <tt>shared_ptr</tt>'s constructor from <tt>unique_ptr</tt> should be constrained</h3>
-<p><b>Section:</b> 23.11.2.2.1 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> <b>Status:</b> <a href="lwg-active.html#C++17">C++17</a>
- <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2017-09-13</p>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++17">C++17</a> status.</em></p>
+<h3 id="2399"><a href="lwg-defects.html#2399">2399</a>. <code>shared_ptr</code>'s constructor from <code>unique_ptr</code> should be constrained</h3>
+<p><b>Section:</b> 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> <b>Status:</b> <a href="lwg-active.html#C++17">C++17</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2014-06-14 <b>Last modified:</b> 2017-07-30</p>
 <p><b>Priority: </b>0
 </p>
 <p><b>View other</b> <a href="lwg-index-open.html#util.smartptr.shared.const">active issues</a> in [util.smartptr.shared.const].</p>
@@ -55,8 +95,8 @@ int main() {
 }
 </pre></blockquote>
 <p>
-This fails to compile due to ambiguous overload resolution, but we can easily make this work. (Note: <tt>shared_ptr</tt>'s 
-constructor from <tt>auto_ptr</tt> is also affected, but I believe that it's time to remove <tt>auto_ptr</tt> completely.)
+This fails to compile due to ambiguous overload resolution, but we can easily make this work. (Note: <code>shared_ptr</code>'s 
+constructor from <code>auto_ptr</code> is also affected, but I believe that it's time to remove <code>auto_ptr</code> completely.)
 </p>
 
 <p><i>[2014-06-16 Rapperswil]</i></p>
@@ -67,22 +107,22 @@ Move to Ready
 
 
 
-<p><b>Proposed resolution:</b></p>
+<p id="res-2399"><b>Proposed resolution:</b></p>
 <p>This wording is relative to N3936.</p>
 
 <ol>
-<li><p>Change 23.11.2.2.1 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> around p33 as indicated:</p>
+<li><p>Change 20.3.2.2.2 <a href="https://wg21.link/util.smartptr.shared.const">[util.smartptr.shared.const]</a> around p33 as indicated:</p>
 
 <blockquote>
 <pre>
 template &lt;class Y, class D&gt; shared_ptr(unique_ptr&lt;Y, D&gt;&amp;&amp; r);
 </pre>
 <p>
-<ins>-?- <i>Remark</i>: This constructor shall not participate in overload resolution unless <tt>unique_ptr&lt;Y, D&gt;::pointer</tt> 
-is convertible to <tt>T*</tt>.</ins>
+<ins>-?- <i>Remark</i>: This constructor shall not participate in overload resolution unless <code>unique_ptr&lt;Y, D&gt;::pointer</code> 
+is convertible to <code>T*</code>.</ins>
 <p/>
--33- <i>Effects</i>: Equivalent to <tt>shared_ptr(r.release(), r.get_deleter())</tt> when <tt>D</tt> is not a reference type,
-otherwise <tt>shared_ptr(r.release(), ref(r.get_deleter()))</tt>.
+-33- <i>Effects</i>: Equivalent to <code>shared_ptr(r.release(), r.get_deleter())</code> when <code>D</code> is not a reference type,
+otherwise <code>shared_ptr(r.release(), ref(r.get_deleter()))</code>.
 </p>
 </blockquote>
 </li>

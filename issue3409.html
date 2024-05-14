@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3409: Too lax description of atomic_ref&lt;T&gt;::required_alignment</title>
+<meta property="og:title" content="Issue 3409: Too lax description of atomic_ref&lt;T&gt;::required_alignment">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3409.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3409"><a href="lwg-active.html#3409">3409</a>. Too lax description of <code>atomic_ref&lt;T&gt;::required_alignment</code></h3>
+<p><b>Section:</b> 33.5.7.2 <a href="https://wg21.link/atomics.ref.ops">[atomics.ref.ops]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Andrey Semashev <b>Opened:</b> 2020-02-27 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<a href="https://wg21.link/n4849">N4849</a> 33.5.7.2 <a href="https://wg21.link/atomics.ref.ops">[atomics.ref.ops]</a>/1 
+describes <code>atomic_ref&lt;T&gt;::required_alignment</code> constant as follows:
+</p>
+<blockquote><p>
+The alignment required for an object to be referenced by an atomic
+reference, which is at least <code>alignof(T)</code>.
+</p></blockquote>
+<p>
+This wording allows for an implementation to always define <code>required_alignment</code> 
+to be equal to <code>alignof(T)</code> and implement atomic operations using locking, 
+even if a lock-free implementation is possible at a higher alignment. For example, 
+on x86-64, <code>atomic_ref&lt;complex&lt;double&gt;&gt;</code> could be lock-free 
+only when the referred object is aligned to 16 bytes, but the above definition 
+allows an implementation to define <code>required_alignment</code> to 8 and use locking.
+<p/>
+The note in 33.5.7.2 <a href="https://wg21.link/atomics.ref.ops">[atomics.ref.ops]</a>/2 does mention that lock-free operations
+may require higher alignment, but it does not provide guidance to the implementations 
+so that <code>required_alignment</code> reflects alignment required for lock-free 
+operations, if possible, and not just minimum alignment required for any kind of 
+implementation.
+<p/>
+The suggested resolution is to change the wording so that it is clear
+that <code>required_alignment</code> indicates the alignment required for lock-free
+implementation, if one is possible, or <code>alignof(T)</code> otherwise.
+<p/>
+Further, the note in 33.5.7.2 <a href="https://wg21.link/atomics.ref.ops">[atomics.ref.ops]</a>/2 contains this sentence:
+</p>
+<blockquote><p>
+Further, whether operations on an <code>atomic_ref</code> are lock-free could
+depend on the alignment of the referenced object.
+</p></blockquote>
+<p>
+This sentence is misleading, because according to <code>is_lock_free()</code>
+definition in 33.5.7.2 <a href="https://wg21.link/atomics.ref.ops">[atomics.ref.ops]</a>/4, the lock-free property is not 
+allowed to depend on the alignment of a particular referenced object
+(<code>is_lock_free()</code> must return <code>true</code> or <code>false</code> if 
+operations on <em>all</em> objects of the given type <code>T</code> are lock-free or 
+not). In other words, <code>atomic_ref</code> can only refer to an object aligned at 
+least to <code>required_alignment</code> and its lock-free capability cannot depend 
+on the actual runtime alignment of the object.
+<p/>
+To avoid the confusion, I propose to remove the sentence. The rest of
+the note can stay intact. However, this second edit is less important
+than the first one and can be omitted in case of disagreement.
+</p>
+
+<p><i>[2020-04-04 Issue Prioritization]</i></p>
+
+<p>Priority to 3 after reflector discussion.</p>
+
+
+<p id="res-3409"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4849">N4849</a>.
+</p>
+
+<ol>
+<li><p>Modify 33.5.7.2 <a href="https://wg21.link/atomics.ref.ops">[atomics.ref.ops]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+static constexpr size_t required_alignment;
+</pre>
+<blockquote>
+<p>
+-1- <ins>Let <code>A</code> be t</ins><del>T</del>he alignment required for an object to be referenced by 
+an atomic reference, <del>which is at least <code>alignof(T)</code></del><ins>so that 
+<code>is_always_lock_free</code> is <code>true</code>. If there is no such alignment or <code>A</code> is less 
+than <code>alignof(T)</code>, <code>required_alignment</code> equals <code>alignof(T)</code>. Otherwise, 
+<code>required_alignment</code> equals <code>A</code></ins>.
+<p/>
+-2- [<i>Note:</i> Hardware could require an object referenced by an <code>atomic_ref</code> to have 
+stricter alignment (6.7.6 <a href="https://wg21.link/basic.align">[basic.align]</a>) than other objects of type <code>T</code>. <del>Further, 
+whether operations on an <code>atomic_ref</code> are lock-free could depend on the alignment of the 
+referenced object.</del> For example, lock-free operations on <code>std::complex&lt;double&gt;</code>
+could be supported only if aligned to <code>2*alignof(double)</code>. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

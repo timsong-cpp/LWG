@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3283: Types satisfying input_iterator but not equality_comparable look like
+C++17 output iterators</title>
+<meta property="og:title" content="Issue 3283: Types satisfying input_iterator but not equality_comparable look like
+C++17 output iterators">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3283.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3283"><a href="lwg-defects.html#3283">3283</a>. Types satisfying <code>input_iterator</code> but not <code>equality_comparable</code> look like
+C++17 output iterators</h3>
+<p><b>Section:</b> 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Eric Niebler <b>Opened:</b> 2019-09-10 <b>Last modified:</b> 2021-05-18</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#iterator.traits">issues</a> in [iterator.traits].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In C++20, if an iterator doesn't define <em>all</em> of the associated iterator types (value,
+category, reference, and difference), the primary <code>std::iterator_traits</code> template picks
+a category based on structural conformance to a set of implementation-defined concepts that
+capture the old iterator requirements tables. (See 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a>.) In C++17,
+input iterators were required to be equality-comparable with themselves. In C++20 that is not
+the case, so such iterators must not be given <code>intput_iterator_tag</code> as a category.
+They don't, so that's all well and good.
+<p/>
+However, 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> concludes that, since such an iterator cannot be an
+input iterator, it must therefor be an <em>output</em> iterator, and it assigns it a category
+of <code>std::output_iterator_tag</code>. It does this even if there is a nested
+<code>iterator_category</code> typedef declaring the iterator to be input. (This will happen
+frequently as C++20 iterators don't require iterators to declare their reference type, for
+instance.) This will be extremely confusing to users who, understandably, will be at a loss to
+understand why the legacy STL algorithms think their iterator is an output iterator when they
+have clearly stated that the iterator is input!
+<p/>
+The fix is to tweak the specification such that the output category is assigned to an iterator
+only (a) if it declares its category to be output, or (b) it doesn't specify a category at all.
+The result, for the user, is that their iterator simply won't look like a C++17 iterator at all,
+because it isn't!
+<p/>
+Suggested priority: P1. We can't make this change after C++20 because it would be an observable change.
+<p/>
+This fix has been implemented in range-v3.
+</p>
+
+<p><i>[2019-10-12 Priority set to 1 after reflector discussion]</i></p>
+
+
+<p><i>[2019-11 Wednesday night Issue processing in Belfast]</i></p>
+
+<p>Much discussion along with <a href="lwg-defects.html#3289" title="Cannot opt out of C++17 iterator-ness without also opting out of C++20 iterator-ness (Status: Resolved)">3289</a>. CC to write rationale for NAD.</p>
+
+<p><i>[2020-02-13, Prague; Priority reduced to 2 after LWG discussion]</i></p>
+
+<p><i>[2021-05-18 Resolved by the adoption of <a href="https://wg21.link/P2259R1">P2259R1</a> at the February 2021 plenary. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3283"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify 25.3.2.3 <a href="https://wg21.link/iterator.traits">[iterator.traits]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- The members of a specialization <code>iterator_traits&lt;I&gt;</code> generated from the
+<code>iterator_traits</code> primary template are computed as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>(3.1) &mdash; If <code>I</code> has valid [&hellip;]</p></li>
+<li><p>[&hellip;]</p></li>
+<li><p>(3.3) &mdash; Otherwise, if <code>I</code> satisfies the exposition-only concept
+<code><i>cpp17-iterator</i></code> <ins>and either</ins></p>
+<ol style="list-style-type:lower-alpha">
+<li><p><ins><code>I::iterator_category</code> is valid and denotes <code>output_iterator_tag</code> or a
+type publicly and unambiguously derived from <code>output_iterator_tag</code>, or</ins></p></li>
+<li><p><ins>there is no type <code>I::iterator_category</code></ins></p></li>
+</ol>
+<p>then <code>iterator_traits&lt;I&gt;</code> has the following publicly accessible members:</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

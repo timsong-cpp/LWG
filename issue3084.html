@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3084: Termination in C++ is unclear</title>
+<meta property="og:title" content="Issue 3084: Termination in C++ is unclear">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3084.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3084"><a href="lwg-active.html#3084">3084</a>. Termination in C++ is unclear</h3>
+<p><b>Section:</b> 17.5 <a href="https://wg21.link/support.start.term">[support.start.term]</a>, 17.9.5 <a href="https://wg21.link/exception.terminate">[exception.terminate]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> JF Bastien  <b>Opened:</b> 2018-03-15 <b>Last modified:</b> 2018-04-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#support.start.term">active issues</a> in [support.start.term].</p>
+<p><b>View all other</b> <a href="lwg-index.html#support.start.term">issues</a> in [support.start.term].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+It's unclear how different termination facilities in C++ interact (and how they interact with the C 
+termination facilities). Individually some of these functions try to handle corner cases, but hilarity 
+ensues when combined with each other. As a simple example, can an <code>atexit</code> handler call <code>exit</code>? 
+If not, can it call <code>quick_exit</code>, and can then <code>at_quick_exit</code> handler call <code>exit</code>? 
+Is it possible to install an <code>atexit</code> handler from an <code>at_quick_exit</code>, without strongly 
+happens before, while handling a separate <code>atexit</code> handler (and what happens then)?
+<p/>
+The termination handlers and termination conditions I collected:
+</p>
+<ul>
+<li><p>returning from <code>main</code> calls <code>atexit</code> handlers.</p></li>
+<li><p><code>atexit</code> / <code>exit</code></p></li>
+<li><p><code>at_quick_exit</code> / <code>quick_exit</code></p></li>
+<li><p><code>set_terminate</code></p></li>
+<li><p>violating <code>noexcept</code> and other things that call <code>std::terminate</code> (see 
+<code>[except.terminate]</code>)</p></li>
+<li><p>violating exception specification</p></li>
+<li><p>parallel algorithms leaving with uncaught exception</p></li>
+<li><p>some <code>std::signal</code> such as <code>SIGTERM</code>, <code>SIGSEGV</code>, <code>SIGINT</code>, 
+<code>SIGILL</code>, <code>SIGABRT</code>, and (maybe?) <code>SIGFPE</code>.</p></li>
+<li><p><code>set_unexpected</code> (now a zombie)</p></li>
+<li><p><code>unexpected_handler</code> (now a zombie)</p></li>
+</ul>
+<p>
+What's unclear is:
+</p>
+<ul>
+<li><p>Is termination handling a DAG?</p></li>
+<li><p>Which thread(s) are termination handlers called on?</p></li>
+<li><p>Is program termination Turing complete?</p></li>
+</ul>
+<p>
+I've written a sample program which exercises some of this, see 
+<a href="https://github.com/jfbastien/terminator/blob/master/terminator.cc">here</a>.
+</p>
+
+<p><i>[2018-04-02, Jens comments]</i></p>
+
+<p>
+Any potential wording should carefully take [basic.start] into account, and maybe should actually be integrated 
+into the core wording, not the library wording.
+</p>
+
+<p><i>[2018-04-02 Priority set to 3 after discussion on the reflector.]</i></p>
+
+
+
+<p id="res-3084"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3372: vformat_to should not try to deduce Out twice</title>
+<meta property="og:title" content="Issue 3372: vformat_to should not try to deduce Out twice">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3372.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3372"><a href="lwg-defects.html#3372">3372</a>. <code>vformat_to</code> should not try to deduce <code>Out</code> twice</h3>
+<p><b>Section:</b> 22.14.5 <a href="https://wg21.link/format.functions">[format.functions]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2020-01-16 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#format.functions">issues</a> in [format.functions].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>vformat_to</code> currently deduces <code>Out</code> from its first and last arguments.
+This requires its last argument's type to be a specialization of <code>basic_format_args</code>,
+which notably prevents the use of <code><i>format-arg-store</i></code> arguments directly.
+This is unnecessary: we should only deduce from the first argument.
+</p>
+
+<p><i>[2020-02-01 Status set to Tentatively Ready after six positive votes on the reflector.]</i></p>
+
+
+
+<p id="res-3372"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Edit 22.14.1 <a href="https://wg21.link/format.syn">[format.syn]</a>, header <code>&lt;format&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+
+  [&hellip;]
+
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, string_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, wstring_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, string_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, wstring_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+<li><p>Edit 22.14.5 <a href="https://wg21.link/format.functions">[format.functions]</a> p8 through p10 as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p> -8- <i>Effects:</i> Equivalent to:</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(out, fmt, <del>{</del>make_format_args&lt;context&gt;(args...)<del>}</del>);
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, string_view fmt, const Args&amp;... args);
+template&lt;class Out, class... Args&gt;
+  Out format_to(Out out, const locale&amp; loc, wstring_view fmt, const Args&amp;... args);
+</pre>
+<blockquote>
+<p> -9- <i>Effects:</i> Equivalent to:</p>
+<blockquote>
+<pre>
+using context = basic_format_context&lt;Out, decltype(fmt)::value_type&gt;;
+return vformat_to(out, loc, fmt, <del>{</del>make_format_args&lt;context&gt;(args...)<del>}</del>);
+</pre>
+</blockquote>
+</blockquote>
+<pre>
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, string_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, wstring_view fmt, format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, string_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, char&gt; args);
+  template&lt;class Out&gt;
+    Out vformat_to(Out out, const locale&amp; loc, wstring_view fmt,
+                   format_args_t&lt;<ins>type_identity_t&lt;</ins>Out<ins>&gt;</ins>, wchar_t&gt; args);
+</pre>
+<blockquote>
+<p> -10- Let <code>charT</code> be <code>decltype(fmt)::value_type</code>.</p>
+<p> [&hellip;] </p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

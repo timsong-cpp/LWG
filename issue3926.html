@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3926: Which namespace std is the mentioned one?</title>
+<meta property="og:title" content="Issue 3926: Which namespace std is the mentioned one?">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3926.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3926"><a href="lwg-active.html#3926">3926</a>. Which namespace <code>std</code> is the mentioned one?</h3>
+<p><b>Section:</b> 16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> jim x <b>Opened:</b> 2023-04-19 <b>Last modified:</b> 2023-05-24</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#namespace.std">active issues</a> in [namespace.std].</p>
+<p><b>View all other</b> <a href="lwg-index.html#namespace.std">issues</a> in [namespace.std].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a> p1 says
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Unless otherwise specified, the behavior of a C++ program is undefined if it adds declarations or definitions to namespace 
+<code>std</code> or to a namespace within namespace <code>std</code>.
+</p>
+</blockquote>
+<p>
+Which <code>std</code> namespace does the rule intend to refer to? Does the text refer to any namespace named <code>std</code>? 
+Consider this case:
+</p>
+<blockquote><pre>
+namespace A{
+   namespace std{  // UB or not? 
+      void show(){}
+      namespace B{
+         void fun(){}  // UB or not? 
+     }
+  }
+}
+int main(){  
+}
+</pre></blockquote>
+<p>
+A resemble usage like the above example can be seen in a <a href="https://github.com/NVIDIA/libcudacxx">libcudacxx github code</a>, 
+for example.
+<p/>
+Suggested resolution:
+<p/>
+We may want to say the namespace <code>std</code> only refers to the namespace whose declaration <b>inhabits</b> the global scope.
+<p/>
+16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a> p2, p7 that refers to namespace <code>std</code> have a similar issue.
+</p>
+
+<p><i>[2023-04-24; Ville provides wording]</i></p>
+
+
+<p><i>[2023-05-24; Reflector poll]</i></p>
+
+<p>
+Set priority to 4 after reflector poll.
+</p>
+
+
+
+<p id="res-3926"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4944" title=" Working Draft, Standard for Programming Language C++">N4944</a>.
+</p>
+
+<ol>
+<li>
+<p>Modify 16.4.5.2.1 <a href="https://wg21.link/namespace.std">[namespace.std]</a> as indicated:</p>
+
+<blockquote>
+<p>
+<ins>-?- The restrictions on the use of namespace <code>std</code> apply only to a top-level
+namespace named <code>std</code>. Namespaces named <code>std</code> nested in program-defined 
+namespaces are not restricted this way or otherwise reserved.</ins>
+<p/>
+-1- Unless otherwise specified, the behavior of a C++ program is undefined if it adds declarations or definitions
+to namespace <code>std</code> or to a namespace within namespace <code>std</code>.
+</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

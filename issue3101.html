@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3101: span's Container constructors need another constraint</title>
+<meta property="og:title" content="Issue 3101: span's Container constructors need another constraint">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3101.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3101"><a href="lwg-defects.html#3101">3101</a>. <code>span</code>'s <code>Container</code> constructors need another constraint</h3>
+<p><b>Section:</b> 24.7.2.2.2 <a href="https://wg21.link/span.cons">[span.cons]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Stephan T. Lavavej <b>Opened:</b> 2018-04-12 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#span.cons">issues</a> in [span.cons].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+When I overhauled <code>span</code>'s constructor constraints, I was careful about the built-in array, <code>std::array</code>, 
+and converting <code>span</code> constructors. These types contain bounds information, so we can achieve safety at 
+compile-time by permitting implicit conversions if and only if the destination extent is dynamic (this accepts 
+anything by recording the size at runtime) or the source and destination extents are identical. However, I missed 
+the fact that the <code>Container</code> constructors are the opposite case. A <code>Container</code> (e.g. a <code>vector</code>) 
+has a size that's known only at runtime. It's safe to convert this to a <code>span</code> with <code>dynamic_extent</code>, 
+but for consistency and safety, this shouldn't implicitly convert to a <code>span</code> with fixed extent. (The more 
+verbose <code>(ptr, count)</code> and <code>(first, last)</code> constructors are available to construct fixed extent spans 
+from runtime-length ranges. Note that debug precondition checks are equally possible with the <code>Container</code> and 
+<code>(ptr, count)</code>/<code>(first, last)</code> constructors. The issue is that implicit conversions are notoriously 
+problematic, so they should be permitted only when they are absolutely known to be safe.)
+</p>
+
+<p><i>[2018-04-24 Priority set to 1 after discussion on the reflector.]</i></p>
+
+
+<p><i>[2018-06 Rapperswil Thursday issues processing]</i></p>
+
+<p>Status to LEWG. Should this be ill-formed, or fail at runtime if the container is too small?
+Discussion on the reflector <a href="http://lists.isocpp.org/lib/2018/04/6719.php">here</a>.</p>
+
+<p><i>[2018-11 San Diego Saturday]</i></p>
+
+<p>LEWG said that they're fine with the proposed resolution. Status to Tentatively Ready.</p>
+
+
+<p id="res-3101"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4741">N4741</a>.</p>
+
+<blockquote>
+<ol>
+<li>
+<p>Edit 24.7.2.2.2 <a href="https://wg21.link/span.cons">[span.cons]</a> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class Container&gt; constexpr span(Container&amp; cont);
+template&lt;class Container&gt; constexpr span(const Container&amp; cont);
+</pre>
+<blockquote>
+<p>
+-14- <i>Requires:</i> <code>[data(cont), data(cont) + size(cont))</code> shall be a valid range. <del>If <code>extent</code> is 
+not equal to <code>dynamic_extent</code>, then <code>size(cont)</code> shall be equal to <code>extent</code>.</del>
+<p/>
+-15- <i>Effects:</i> Constructs a <code>span</code> that is a view over the range <code>[data(cont), data(cont) + size(cont))</code>.
+<p/>
+-16- <i>Postconditions:</i> <code>size() == size(cont) &amp;&amp; data() == data(cont)</code>.
+<p/>
+-17- <i>Throws:</i> What and when <code>data(cont)</code> and <code>size(cont)</code> throw.
+<p/>
+-18- <i>Remarks:</i> These constructors shall not participate in overload resolution unless:
+</p>
+<ol style="list-style-type: none">
+<li><p><ins>(18.?) &mdash; <code>extent == dynamic_extent</code>,</ins></p></li>
+<li><p>(18.1) &mdash; <code>Container</code> is not a specialization of <code>span</code>,</p></li>
+<li><p>(18.2) &mdash; <code>Container</code> is not a specialization of <code>array</code>,</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+
+
+
+
+</body>
+</html>

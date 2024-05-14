@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3316: Correctly define epoch for utc_clock / utc_timepoint</title>
+<meta property="og:title" content="Issue 3316: Correctly define epoch for utc_clock / utc_timepoint">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3316.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3316"><a href="lwg-defects.html#3316">3316</a>. Correctly define epoch for <code>utc_clock</code> / <code>utc_timepoint</code></h3>
+<p><b>Section:</b> 29.7.3.1 <a href="https://wg21.link/time.clock.utc.overview">[time.clock.utc.overview]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Great Britain <b>Opened:</b> 2019-11-05 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/329">GB 333</a></b></p>
+
+<p>
+UTC epoch is not correctly defined UTC has an officially recorded epoch of 1/1/1972 00:00:00 
+and is 10 seconds behind TAI.
+This can be confirmed through reference to the 
+<a href="https://www.bipm.org/cc/CCTF/Allowed/18/CCTF_09-32_noteUTC.pdf#page=6">BIPM</a> (the 
+body that oversees international metrology)
+</p>
+<blockquote><p>
+"The defining epoch of 1 January 1972, <code>0 h 0m 0 s</code> UTC was set 10 s behind TAI, which
+was the approximate accumulated difference between TAI and UT1 since the inception of
+TAI in 1958, and a unique fraction of a second adjustment was applied so that UTC would
+differ from TAI by an integral number of seconds. The recommended maximum departure of 
+UTC from UT1 was 0.7 s. The term "leap second" was introduced for the stepped second."
+</p></blockquote>
+<p>
+Proposed change:
+<p/>
+<code>utc_clock</code> and <code>utc_timepoint</code> should correctly report relative to the official 
+UTC epoch. 27.2.2.1 footnote 1 should read: 
+</p>
+<blockquote><p>
+In contrast to <code>sys_time</code>, which does not take leap seconds into account, 
+<code>utc_clock</code> and its associated <code>time_point</code>, <code>utc_time</code>, count time,
+including leap seconds, since 1972-01-01 00:00:00 UTC. [<i>Example:</i> 
+<code>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{1972y/January/1}}).time_since_epoch()</code> 
+is <code>0s</code>. <code>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{2000y/January/1}}).time_since_epoch()</code>
+is <code>883'612'822</code>, which is <code>10'197 * 86'400s + 22s</code>. &mdash; <i>end example</i>]
+</p></blockquote>
+<p>
+<b>Howard Hinnant:</b>
+<p/>
+Clarify that the epoch of <code>utc_clock</code> is intended to be <code>1970-01-01</code>.
+<p/>
+Rationale: The main use case of <code>utc_clock</code> is to get the correct number of seconds 
+when subtracting time points straddling a leap second insertion point, and this computation 
+is independent of the epoch. Furthermore learning/teaching that <code>utc_clock</code> is 
+<code>system_clock</code> except that <code>utc_clock</code> includes leap seconds is easier.  
+And this fact is more easily understood when comparing the underlying <code>.time_since_epoch()</code> 
+of equivalent time points from each clock.
+</p>
+
+<p><i>[2019-11 Status to Ready during Wednesday morning issue processing in Belfast.]</i></p>
+
+
+
+<p id="res-3316"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify 29.7.3.1 <a href="https://wg21.link/time.clock.utc.overview">[time.clock.utc.overview]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- In contrast to <code>sys_time</code>, which does not take leap seconds into account, <code>utc_clock</code> 
+and its associated <code>time_point</code>, <code>utc_time</code>, count time, including leap seconds, since 
+1970-01-01 00:00:00 UTC. <ins>[<i>Note:</i> The UTC time standard began on 
+1972-01-01 00:00:10 TAI. To measure time since this epoch instead, one can add/subtract the 
+constant <code>sys_days{1972y/1/1} - sys_days{1970y/1/1}</code> (<code>63'072'000s</code>) from the 
+<code>utc_time</code> &mdash; <i>end note</i>]</ins> [<i>Example:</i> <code>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{1970y/January/1}}).time_since_epoch()</code> is <code>0s</code>. 
+<code>clock_cast&lt;utc_clock&gt;(sys_seconds{sys_days{2000y/January/1}}).time_since_epoch()</code>
+is <code>946'684'822s</code>, which is <code>10'957 * 86'400s + 22s</code>. &mdash; <i>end example</i>]
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

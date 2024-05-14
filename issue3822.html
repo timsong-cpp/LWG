@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3822: Avoiding normalization in filesystem::weakly_canonical</title>
+<meta property="og:title" content="Issue 3822: Avoiding normalization in filesystem::weakly_canonical">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3822.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3822"><a href="lwg-defects.html#3822">3822</a>. Avoiding normalization in <code>filesystem::weakly_canonical</code></h3>
+<p><b>Section:</b> 31.12.13.40 <a href="https://wg21.link/fs.op.weakly.canonical">[fs.op.weakly.canonical]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> US <b>Opened:</b> 2022-11-08 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#fs.op.weakly.canonical">issues</a> in [fs.op.weakly.canonical].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This addresses NB comment
+<b><a href="https://github.com/cplusplus/nbballot/issues/448">US-60-125</a></b>
+(31.12.13.40 <a href="https://wg21.link/fs.op.weakly.canonical">[fs.op.weakly.canonical]</a> Avoiding normalization)
+</p>
+
+<p>
+NB comment: "Implementations cannot avoid normalization because arbitrary file system 
+changes may have occurred since any previous call. Proposed change:
+Remove the paragraph."
+</p>
+
+<p><i>[Kona 2022-11-07; LWG review]</i></p>
+
+<p>
+Discussion revolved around two different interpretations of the <i>Remarks</i>:
+<ul>
+<li>
+It's normative recommendation for <code>path</code> objects to cache some kind of
+flag that indicates they are in a normalized form, which would be checked in
+<code>weakly_canonical</code> to avoid normalizing again. This is the interpretation
+assumed by the NB comment, which correctly notes that such caching would be
+unreliable.
+</li>
+<li>
+It's an optimization hint to implementors that they should not normalize the
+result if each component has been canonicalized one-by-one. That is, when
+canonicalizing <code>"/a/b/c"</code> by incrementally building up canonicalized 
+components, if the entire path exists then the result will already have been
+normalized and should not be normalized again explicitly.
+</li>
+</ul>
+</p>
+<p>
+For the first interpretation, the recommendation is a bad recommendation and
+should be removed as suggested by the comment. For the second interpretation,
+we don't need to give hints to implementors about not doing unnecessary work;
+they already know they shouldn't do that. Either way, it should go.
+</p>
+
+<p><i>[Kona 2022-11-09; Move to Immediate]</i></p>
+
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Immediate &rarr; WP.]</i></p>
+
+
+
+<p id="res-3822"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 31.12.13.40 <a href="https://wg21.link/fs.op.weakly.canonical">[fs.op.weakly.canonical]</a> as indicated:</p>
+
+<blockquote><pre>
+path filesystem::weakly_canonical(const path&amp; p);
+path filesystem::weakly_canonical(const path&amp; p, error_code&amp; ec);
+</pre>
+<blockquote>
+<p>-1- <i>Effects</i>: Using <code>status(p)</code> or <code>status(p, ec)</code>,
+respectively, to determine existence, return a path composed by
+<code>operator/=</code> from the result of calling <code>canonical()</code> with
+a path argument composed of the leading elements of <code>p</code> that exist,
+if any, followed by the elements of <code>p</code> that do not exist, if any.
+For the first form, <code>canonical()</code> is called without an <code>error_code</code> argument.
+For the second form, <code>canonical()</code> is called with <code>ec</code> as an
+<code>error_code</code> argument, and <code>path()</code> is returned at the first
+error occurrence, if any.
+</p>
+<p>-2- <i>Postconditions</i>: The returned path is in normal form
+(31.12.6.2 <a href="https://wg21.link/fs.path.generic">[fs.path.generic]</a>).</p>
+<p> -3- <i>Returns</i>: <code>p</code> with symlinks resolved and the result
+normalized (31.12.6.2 <a href="https://wg21.link/fs.path.generic">[fs.path.generic]</a>).</p>
+<p>-4- <i>Throws</i>: As specified in 31.12.5 <a href="https://wg21.link/fs.err.report">[fs.err.report]</a>.</p>
+<p><del>-5- <i>Remarks</i>: Implementations should avoid unnecessary
+normalization such as when <code>canonical</code> has already been called
+on the entirety of <code>p</code>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

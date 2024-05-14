@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3361: safe_range&lt;SomeRange&amp;> case</title>
+<meta property="og:title" content="Issue 3361: safe_range&lt;SomeRange&amp;> case">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3361.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3361"><a href="lwg-defects.html#3361">3361</a>. <code>safe_range&lt;<i>SomeRange</i>&amp;></code> case</h3>
+<p><b>Section:</b> 26.4.2 <a href="https://wg21.link/range.range">[range.range]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Johel Ernesto Guerrero Pe&ntilde;a <b>Opened:</b> 2019-12-19 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.range">issues</a> in [range.range].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+26.5.5 <a href="https://wg21.link/range.dangling">[range.dangling]</a> p2 hints at how <code>safe_range</code> should allow lvalue ranges to model it.
+However, its wording doesn't take into account that case.
+</p>
+
+<p><i>[2020-01 Priority set to 3 after review on the reflector.]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4842">N4842</a>.</p>
+
+<ol>
+<li><p>Modify 26.4.2 <a href="https://wg21.link/range.range">[range.range]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  concept safe_range =
+    range&lt;T&gt; &amp;&amp;
+      (is_lvalue_reference_v&lt;T&gt; || enable_safe_range&lt;remove_cvref_t&lt;T&gt;&gt;);
+</pre>
+<blockquote>
+<p>
+-5- <del>Given an expression <code>E</code> such that <code>decltype((E))</code> is <code>T</code>,</del><ins>A type</ins>
+<code>T</code> models <code>safe_range</code> <del>only</del> <ins>if:</ins>
+<ol style="list-style-type: none">
+<li><p><ins>(5.1) &mdash; <code>is_lvalue_reference_v&lt;T&gt;</code> is <code>true</code>, or</ins></p></li>
+<li><p><ins>(5.2) &mdash; given an expression <code>E</code> such that <code>decltype((E))</code> is <code>T</code>,</ins>
+<del>if</del> the validity of iterators obtained from the object denoted by <code>E</code> is not tied to the lifetime of
+that object.</p></li>
+</ol>
+<p/>
+-6- [<i>Note:</i> <del>Since the validity of iterators is not tied to the lifetime of an object
+whose type models <code>safe_range</code>, a</del><ins>A</ins> function can accept arguments of <del>such</del> a
+type <ins>that models <code>safe_range</code></ins> <del>by value</del> and return iterators obtained from it
+without danger of dangling. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2021-05-19 Tim updates wording]</i></p>
+
+<p>
+The new wording below attempts to keep the "borrowed" property generally
+applicable to all models of <code>borrowed_range</code>, instead of bluntly carving
+out lvalue reference types.
+</p>
+
+<p><i>[2021-09-20; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll in June.
+</p>
+
+<p><i>[2021-10-14 Approved at October 2021 virtual plenary. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3361"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.</p>
+
+<ol>
+<li><p>Modify 26.4.2 <a href="https://wg21.link/range.range">[range.range]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  concept borrowed_range =
+    range&lt;T&gt; &amp;&amp;
+      (is_lvalue_reference_v&lt;T&gt; || enable_borrowed_range&lt;remove_cvref_t&lt;T&gt;&gt;);
+</pre>
+<blockquote>
+<p>
+-5- <ins>Let <code>U</code> be <code>remove_reference_t&lt;T&gt;</code> if <code>T</code>
+is an rvalue reference type, and <code>T</code> otherwise.</ins>
+Given <del>an expression <code>E</code> such that <code>decltype((E))</code> is <code>T</code></del>
+<ins>a variable <code>u</code> of type <code>U</code></ins>,
+<code>T</code> models <code>borrowed_range</code> only if the validity of iterators
+obtained from <del>the object denoted by <code>E</code></del> <ins>u</ins> is not tied
+to the lifetime of that <del>object</del> <ins>variable</ins>.
+<p/>
+-6- [<i>Note:</i> Since the validity of iterators is not tied to the lifetime of
+<del>an object</del><ins>a variable</ins> whose type models <code>borrowed_range</code>,
+a function <del>can accept arguments of</del> <ins>with a parameter of</ins>
+such a type <del>by value and</del> <ins>can</ins> return iterators
+obtained from it without danger of dangling.
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

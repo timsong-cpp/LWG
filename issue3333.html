@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3333: ranges::cbegin/ranges::cend, (and maybe ranges::crbegin/ranges::crend) are under-specified to allow rvalue-arrays</title>
+<meta property="og:title" content="Issue 3333: ranges::cbegin/ranges::cend, (and maybe ranges::crbegin/ranges::crend) are under-specified to allow rvalue-arrays">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3333.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3333"><a href="lwg-closed.html#3333">3333</a>. <code>ranges::cbegin/ranges::cend</code>, (and maybe <code>ranges::crbegin/ranges::crend</code>) are under-specified to allow rvalue-arrays</h3>
+<p><b>Section:</b> 26.3.4 <a href="https://wg21.link/range.access.cbegin">[range.access.cbegin]</a>, 26.3.5 <a href="https://wg21.link/range.access.cend">[range.access.cend]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Christopher Di Bella <b>Opened:</b> 2019-11-06 <b>Last modified:</b> 2020-02-13</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The following should be ill-formed, but is not, likely due to decay-to-pointer or reference collapsing.
+</p>
+<blockquote><pre>
+double x[321];
+ranges::cbegin(std::move(x)); <i>// should be ill-formed</i>
+ranges::cend(std::move(x));   <i>// should be ill-formed</i>
+</pre></blockquote>
+<p>
+This might be a problem for <code>ranges::crbegin</code> and <code>ranges::crend</code>, but I haven't implemented 
+any of <code>rbegin</code>, <code>rend</code>, <code>crbegin</code>, and <code>crend</code> to confirm as much.
+</p>
+<p><i>[2020-02 Status to NAD on Thursday morning in Prague.]</i></p>
+
+
+
+<p id="res-3333"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Change 26.3.4 <a href="https://wg21.link/range.access.cbegin">[range.access.cbegin]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The name <code>ranges::cbegin</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). 
+<ins>If t</ins><del>T</del>he expression <code>ranges::<del>c</del>begin(E)</code> for some subexpression 
+<code>E</code> of type <code>T</code> <ins>is well-formed, then the expression <code>ranges::cbegin(E)</code></ins> 
+is expression-equivalent to:
+<ol style="list-style-type: none">
+  <li><p>(1.1) &mdash; <code>ranges::begin(static_cast&lt;const T&amp;&gt;(E))</code> if <code>E</code> is an lvalue.</p></li>
+  <li><p>(1.2) &mdash; Otherwise, <code>ranges::begin(static_cast&lt;const T&amp;&amp;&gt;(E))</code>.</p></li>
+</ol>
+</p>
+</blockquote>
+</li>
+
+<li><p>Change 26.3.5 <a href="https://wg21.link/range.access.cend">[range.access.cend]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The name <code>ranges::cend</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). 
+<ins>If t</ins><del>T</del>he expression <code>ranges::<del>c</del>end(E)</code> for some subexpression 
+<code>E</code> of type <code>T</code> <ins>is well-formed, then the expression <code>ranges::cend(E)</code></ins> 
+is expression-equivalent to:
+<ol style="list-style-type: none">
+  <li><p>(1.1) &mdash; <code>ranges::end(static_cast&lt;const T&amp;&gt;(E))</code> if <code>E</code> is an lvalue.</p></li>
+  <li><p>(1.2) &mdash; Otherwise, <code>ranges::end(static_cast&lt;const T&amp;&amp;&gt;(E))</code>.</p></li>
+</ol>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3888: Most ranges uninitialized memory algorithms are underconstrained</title>
+<meta property="og:title" content="Issue 3888: Most ranges uninitialized memory algorithms are underconstrained">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3888.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3888"><a href="lwg-active.html#3888">3888</a>. Most ranges uninitialized memory algorithms are underconstrained</h3>
+<p><b>Section:</b> 27.11.8 <a href="https://wg21.link/specialized.construct">[specialized.construct]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2023-02-17 <b>Last modified:</b> 2023-03-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#specialized.construct">active issues</a> in [specialized.construct].</p>
+<p><b>View all other</b> <a href="lwg-index.html#specialized.construct">issues</a> in [specialized.construct].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+LWG <a href="lwg-defects.html#3870" title="Remove voidify (Status: C++23)">3870</a> removed the support for constructing objects via <i>cv</i>-qualified lvalues. 
+However, it had not changed anything in the immediate context, which means some previously permitted 
+usages become hard errors instead of substitution failures.
+<p/>
+Note that <code>ranges::uninitialized_default_construct</code> and <code>ranges::uninitialized_default_construct_n</code> 
+are underconstrained even before LWG <a href="lwg-defects.html#3870" title="Remove voidify (Status: C++23)">3870</a>, because <code>remove_reference_t&lt;iter_reference_t&lt;I&gt;&gt;</code> 
+may be a <code>const</code> type, while only it's <i>cv</i>-unqualified version (<code>iter_value_t&lt;I&gt;</code>) 
+is required to be <code>default_initializable</code>.
+<p/>
+<code>construct_at</code> and <code>ranges::construct_at</code> are also made underconstrained because the function 
+body is no longer valid when <code>T</code> is <i>cv</i>-qualified, which is not reflected in <i>Constraints:</i>.
+</p>
+
+<p><i>[2023-03-22; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3888"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li><p>Modify 27.11.2 <a href="https://wg21.link/special.mem.concepts">[special.mem.concepts]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class I&gt;
+concept <i>nothrow-input-iterator</i> = // <i>exposition only</i>
+  input_iterator&lt;I&gt; &amp;&amp;
+  is_lvalue_reference_v&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+  <ins>same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;, remove_reference_t&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;</ins>
+  same_as&lt;remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;, iter_value_t&lt;I&gt;&gt;;
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 27.11.8 <a href="https://wg21.link/specialized.construct">[specialized.construct]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints</i>: <ins><code>T</code> is a <i>cv</i>-unqualified type, and t</ins><del>T</del>he expression 
+<code>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</code> is well-formed when treated 
+as an unevaluated operand (7.2.3 <a href="https://wg21.link/expr.context">[expr.context]</a>).
+<p/>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+return ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

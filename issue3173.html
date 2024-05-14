@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3173: Enable CTAD for ref-view</title>
+<meta property="og:title" content="Issue 3173: Enable CTAD for ref-view">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3173.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3173"><a href="lwg-defects.html#3173">3173</a>. Enable CTAD for <i><code>ref-view</code></i></h3>
+<p><b>Section:</b> 26.7.6.2 <a href="https://wg21.link/range.ref.view">[range.ref.view]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2018-12-09 <b>Last modified:</b> 2021-06-06</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In the specification of <code>view::all</code> in 26.7.6 <a href="https://wg21.link/range.all">[range.all]</a>,
+<a href="https://wg21.link/range.all#2.2">paragraph 2.2</a> states that
+<code>view::all(E)</code> is sometimes expression-equivalent to
+"<code><i>ref-view</i>{E}</code> if that expression is well-formed". Unfortunately,
+the expression <code><i>ref-view</i>{E}</code> is <strong>never</strong> well-formed:
+<code><i>ref-view</i></code>'s only non-default constructor is a
+perfect-forwarding-ish constructor template that accepts only arguments that
+convert to lvalues of the <code><i>ref-view</i></code>'s template argument type, and
+either do not convert to rvalues or have a better lvalue conversion (similar to
+the <code>reference_wrapper</code> converting constructor
+(22.10.6.2 <a href="https://wg21.link/refwrap.const">[refwrap.const]</a>) after issue <a href="lwg-defects.html#2993" title="reference_wrapper&lt;T&gt; conversion from T&amp;&amp; (Status: C++20)">2993</a>).
+</p><p>
+Presumably this breakage was not intentional, and we should add a deduction
+guide to enable class template argument deduction to function as intended by
+<a href="https://wg21.link/range.all#2.2">paragraph 2.2</a>.
+</p>
+
+<p><i>[2018-12-16 Status to Tentatively Ready after six positive votes on the reflector.]</i></p>
+
+
+
+<p id="res-3173"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4791">N4791</a>.</p>
+
+<ol>
+<li><p>Modify the <code><i>ref-view</i></code> class synopsis
+in  [ranges.view.ref] as follows:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;Range R&gt;
+    requires is_object_v&lt;R&gt;
+  class <i>ref-view</i> : public view_interface&lt;<i>ref-view</i>&lt;R&gt;&gt; {
+    [&hellip;]
+  };
+
+  <ins>template&lt;class R&gt;</ins>
+    <ins><i>ref_view</i>(R&amp;) -> <i>ref_view</i>&lt;R&gt;;</ins>
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3786: Flat maps' deduction guide needs to default Allocator to be useful</title>
+<meta property="og:title" content="Issue 3786: Flat maps' deduction guide needs to default Allocator to be useful">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3786.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3786"><a href="lwg-defects.html#3786">3786</a>. Flat maps' deduction guide needs to default <code>Allocator</code> to be useful</h3>
+<p><b>Section:</b> 24.6.9.2 <a href="https://wg21.link/flat.map.defn">[flat.map.defn]</a>, 24.6.10.2 <a href="https://wg21.link/flat.multimap.defn">[flat.multimap.defn]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Johel Ernesto Guerrero Pe&ntilde;a <b>Opened:</b> 2022-09-25 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#flat.map.defn">issues</a> in [flat.map.defn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This originated from the editorial issue <a href="https://github.com/cplusplus/draft/issues/5800">#5800</a>.
+<p/>
+<a href="https://wg21.link/P0429R9" title=" A Standard flat_map">P0429R9</a> added some deduction guides with a non-defaulted <code>Allocator</code> 
+template parameter and a corresponding function parameter that is defaulted. Since the 
+template parameter <code>Allocator</code> is not defaulted, these deduction guides are never used.
+</p>
+
+<p><i>[2022-09-28; LWG telecon]</i></p>
+
+<p>
+We should not just ignore the allocator, it should be rebound and used for
+the two container types.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 24.6.9.2 <a href="https://wg21.link/flat.map.defn">[flat.map.defn]</a>, class template <code>flat_map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;void&gt;</ins>&gt;
+  flat_map(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.10.2 <a href="https://wg21.link/flat.multimap.defn">[flat.multimap.defn]</a>, class template <code>flat_multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;void&gt;</ins>&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[2022-10-19; Jonathan provides improved wording]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 24.6.1 <a href="https://wg21.link/container.adaptors.general">[container.adaptors.general]</a> as indicated:</p>
+
+<blockquote>
+<p>-8- The following exposition-only alias templates may appear in
+deduction guides for container adaptors:
+</p>
+<blockquote><pre>
+template&lt;class Container&gt;
+  using <i>cont-key-type</i> =                                <i>// exposition only</i>
+    remove_const_t&lt;typename Container::value_type::first_type&gt;;
+template&lt;class Container&gt;
+  using <i>cont-mapped-type</i> =                             <i>// exposition only</i>
+    typename Container::value_type::second_type;
+<ins>template&lt;class Allocator, class T&gt;
+  using <i>alloc-rebind</i> =                             <i>// exposition only</i>
+    typename allocator_traits&lt;Allocator&gt;::template rebind_alloc&lt;T&gt;;
+</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.9.2 <a href="https://wg21.link/flat.map.defn">[flat.map.defn]</a>, class template <code>flat_map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;void&gt;</ins>&gt;
+  flat_map(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_map(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;<ins>, less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.10.2 <a href="https://wg21.link/flat.multimap.defn">[flat.multimap.defn]</a>, class template <code>flat_multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;void&gt;</ins>&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;<ins>, less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.11.2 <a href="https://wg21.link/flat.set.defn">[flat.set.defn]</a>, class template <code>flat_set</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;ranges::range_value_t&lt;R&gt;&gt;,
+         class Allocator = allocator&lt;ranges::range_value_t&lt;R&gt;&gt;&gt;
+  flat_set(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_set&lt;ranges::range_value_t&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_set(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_set&lt;ranges::range_value_t&lt;R&gt;, less&lt;ranges::range_value_t&lt;R&gt;&gt;<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.12.2 <a href="https://wg21.link/flat.multiset.defn">[flat.multiset.defn]</a>, class template <code>flat_multiset</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;ranges::range_value_t&lt;R&gt;&gt;,
+         class Allocator = allocator&lt;ranges::range_value_t&lt;R&gt;&gt;&gt;
+  flat_multiset(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multiset&lt;ranges::range_value_t&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_multiset(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_multiset&lt;ranges::range_value_t&lt;R&gt;, less&lt;ranges::range_value_t&lt;R&gt;&gt;<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+</blockquote>
+
+<p><i>[2023-01-11; Jonathan Wakely provides improved wording]</i></p>
+
+<p>
+During LWG telecon Tim pointed out that because
+<code>allocator&lt;void&gt;</code> does not meet the <i>Cpp17Allocator</i>
+requirements, it might not "qualify as an allocator" and so would cause
+the deduction guides to not participate in overload resolution, as per
+24.6.1 <a href="https://wg21.link/container.adaptors.general">[container.adaptors.general]</a> p6 (6.4).
+Use <code>allocator&lt;byte&gt;</code> instead.
+</p>
+
+<p><i>[Issaquah 2023-02-07; LWG]</i></p>
+
+<p>
+Edited proposed resolution to fix missing <ins><code>&gt;</code></ins>
+in guides for maps.
+Move to Immediate for C++23
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Immediate &rarr; WP.]</i></p>
+
+
+
+<p id="res-3786"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 24.6.1 <a href="https://wg21.link/container.adaptors.general">[container.adaptors.general]</a> as indicated:</p>
+
+<blockquote>
+<p><ins>-8- The following exposition-only alias template may appear in
+deduction guides for container adaptors:</ins>
+</p>
+<blockquote><pre>
+<ins>template&lt;class Allocator, class T&gt;
+  using <i>alloc-rebind</i> =                                 <i>// exposition only</i>
+    typename allocator_traits&lt;Allocator&gt;::template rebind_alloc&lt;T&gt;;
+</ins>
+</pre></blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.9.2 <a href="https://wg21.link/flat.map.defn">[flat.map.defn]</a>, class template <code>flat_map</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;byte&gt;</ins>&gt;
+  flat_map(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_map(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_map&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;<ins>, less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.10.2 <a href="https://wg21.link/flat.multimap.defn">[flat.multimap.defn]</a>, class template <code>flat_multimap</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,
+         class Allocator <ins>= allocator&lt;byte&gt;</ins>&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_multimap(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_multimap&lt;<i>range-key-type</i>&lt;R&gt;, <i>range-mapped-type</i>&lt;R&gt;<ins>, less&lt;<i>range-key-type</i>&lt;R&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-key-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-key-type</i>&lt;R&gt;&gt;&gt;,</ins>
+         <ins>vector&lt;<i>range-mapped-type</i>&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, <i>range-mapped-type</i>&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.11.2 <a href="https://wg21.link/flat.set.defn">[flat.set.defn]</a>, class template <code>flat_set</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;ranges::range_value_t&lt;R&gt;&gt;,
+         class Allocator = allocator&lt;ranges::range_value_t&lt;R&gt;&gt;&gt;
+  flat_set(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_set&lt;ranges::range_value_t&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_set(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_set&lt;ranges::range_value_t&lt;R&gt;, less&lt;ranges::range_value_t&lt;R&gt;&gt;<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.6.12.2 <a href="https://wg21.link/flat.multiset.defn">[flat.multiset.defn]</a>, class template <code>flat_multiset</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;ranges::input_range R, class Compare = less&lt;ranges::range_value_t&lt;R&gt;&gt;,
+         class Allocator = allocator&lt;ranges::range_value_t&lt;R&gt;&gt;&gt;
+  flat_multiset(from_range_t, R&amp;&amp;, Compare = Compare(), Allocator = Allocator())
+    -&gt; flat_multiset&lt;ranges::range_value_t&lt;R&gt;, Compare<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+
+template&lt;ranges::input_range R, class Allocator&gt;
+  flat_multiset(from_range_t, R&amp;&amp;, Allocator)
+    -&gt; flat_multiset&lt;ranges::range_value_t&lt;R&gt;, less&lt;ranges::range_value_t&lt;R&gt;&gt;<ins>,</ins>
+         <ins>vector&lt;ranges::range_value_t&lt;R&gt;, <i>alloc-rebind</i>&lt;Allocator, ranges::range_value_t&lt;R&gt;&gt;&gt;</ins>&gt;;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+</body>
+</html>

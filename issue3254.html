@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3254: Strike stop_token's operator!=</title>
+<meta property="og:title" content="Issue 3254: Strike stop_token's operator!=">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3254.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3254"><a href="lwg-defects.html#3254">3254</a>. Strike <code>stop_token</code>'s <code>operator!=</code></h3>
+<p><b>Section:</b> 33.3.3 <a href="https://wg21.link/stoptoken">[stoptoken]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-08-06 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In the shiny new world of the future, we need not declare overloads of <code>operator!=</code> that 
+<code>return !(x == y);</code> the rewrite rule in 12.2.2.3 <a href="https://wg21.link/over.match.oper">[over.match.oper]</a> para 3.4.3 
+achieves the same effect. Consequently, we should not declare such unnecessary 
+<code>operator!=</code> overloads. The synopsis of class <code>stop_token</code> in 33.3.3 <a href="https://wg21.link/stoptoken">[stoptoken]</a> 
+declares exactly such an <code>operator!=</code> friend which should be struck.
+</p>
+<p><i>[01-2020 Moved to Tentatively Ready after 5 positive votes on the reflector.]</i></p>
+
+
+
+<p id="res-3254"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify 33.3.3 <a href="https://wg21.link/stoptoken">[stoptoken]</a>, class <code>stop_token</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  class stop_token {
+  public:  
+    [&hellip;]
+    [[nodiscard]] friend bool operator==(const stop_token&amp; lhs, const stop_token&amp; rhs) noexcept;
+    <del>[[nodiscard]] friend bool operator!=(const stop_token&amp; lhs, const stop_token&amp; rhs) noexcept;</del>
+    friend void swap(stop_token&amp; lhs, stop_token&amp; rhs) noexcept;
+  };
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify  [stoptoken.cmp] and  [stoptoken.special] as indicated:</p>
+
+<blockquote>
+<p>
+<b>32.3.3.3 <ins>Non-member functions</ins><del>Comparisons</del> [stoptoken.<ins>nonmembers</ins><del>cmp</del>]</b>
+</p>
+<pre>
+[[nodiscard]] bool operator==(const stop_token&amp; lhs, const stop_token&amp; rhs) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Returns:</i> <code>true</code> if <code>lhs</code> and <code>rhs</code> have ownership of the same stop 
+state or if both <code>lhs</code> and <code>rhs</code> do not have ownership of a stop state; otherwise <code>false</code>.
+</p>
+</blockquote>
+<pre>
+<del>[[nodiscard]] bool operator!=(const stop_token&amp; lhs, const stop_token&amp; rhs) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-2- <i>Returns:</i> <code>!(lhs==rhs)</code>.</del>
+</p>
+</blockquote>
+<p>
+<del><b>32.3.3.4 Specialized algorithms [stoptoken.special]</b></del>
+</p>
+<pre>
+friend void swap(stop_token&amp; x, stop_token&amp; y) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to: <code>x.swap(y)</code>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3850: views::as_const on empty_view&lt;T&gt; should return empty_view&lt;const T&gt;</title>
+<meta property="og:title" content="Issue 3850: views::as_const on empty_view&lt;T&gt; should return empty_view&lt;const T&gt;">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3850.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3850"><a href="lwg-defects.html#3850">3850</a>. <code>views::as_const</code> on <code>empty_view&lt;T&gt;</code> should return <code>empty_view&lt;const T&gt;</code></h3>
+<p><b>Section:</b> 26.7.22.1 <a href="https://wg21.link/range.as.const.overview">[range.as.const.overview]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2023-01-06 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.as.const.overview">issues</a> in [range.as.const.overview].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, applying <code>views::as_const</code> to an <code>empty_view&lt;int&gt;</code>
+will result in an <code>as_const_view&lt;empty_view&lt;int&gt;&gt;</code>,
+and its iterator type will be <code>basic_const_iterator&lt;int*&gt;</code>.
+</p>
+<p>
+This amount of instantiation is not desirable for such a simple view,
+in which case simply returning <code>empty_view&lt;const int&gt;</code> should be enough.
+</p>
+
+<p><i>[2023-02-01; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after eight votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3850"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.22.1 <a href="https://wg21.link/range.as.const.overview">[range.as.const.overview]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-2- The name <code>views::as_const</code> denotes a range adaptor object (26.7.2 <a href="https://wg21.link/range.adaptor.object">[range.adaptor.object]</a>). 
+Let <code>E</code> be an expression, let <code>T</code> be <code>decltype((E))</code>, and let <code>U</code> be 
+<code>remove_cvref_t&lt;T&gt;</code>. The expression <code>views::as_const(E)</code> is expression-equivalent
+to:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; If <code>views::all_t&lt;T&gt;</code> models <code>constant_range</code>, then <code>views::all(E)</code>.</p></li>
+<li><p><ins>(2.?) &mdash; Otherwise, if <code>U</code> denotes <code>empty_view&lt;X&gt;</code> for some type <code>X</code>, then <code>auto(views::empty&lt;const X&gt;)</code>.</ins></p></li>
+<li><p>(2.2) &mdash; Otherwise, if <code>U</code> denotes <code>span&lt;X, Extent&gt;</code> for some type <code>X</code> and some 
+extent <code>Extent</code>, then <code>span&lt;const X, Extent&gt;(E)</code>.</p></li>
+<li><p>(2.3) &mdash; Otherwise, if <code>E</code> is an lvalue, <code>const U</code> models <code>constant_range</code>, and 
+<code>U</code> does not model <code>view</code>, then <code>ref_view(static_cast&lt;const U&amp;&gt;(E))</code>.</p></li>
+<li><p>(2.4) &mdash; Otherwise, <code>as_const_view(E)</code>.</p></li>
+</ol>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+</body>
+</html>

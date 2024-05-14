@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3234: Sufficient Additional Special Math Overloads</title>
+<meta property="og:title" content="Issue 3234: Sufficient Additional Special Math Overloads">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3234.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3234"><a href="lwg-defects.html#3234">3234</a>. Sufficient Additional Special Math Overloads</h3>
+<p><b>Section:</b> 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-07-11 <b>Last modified:</b> 2023-02-07</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#cmath.syn">active issues</a> in [cmath.syn].</p>
+<p><b>View all other</b> <a href="lwg-index.html#cmath.syn">issues</a> in [cmath.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The "sufficient additional overloads" wording in 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a> paragraph 2 does not 
+apply to the special math functions, since they are not "overloaded functions". The lack of 
+"sufficient additional overloads" doesn't agree with <a href="https://wg21.link/n3060">N3060</a> (the 
+final draft of ISO/IEC 29124 which standardized the mathematical special functions) [sf.cmath] 
+paragraphs 3 and 4:
+</p>
+<blockquote>
+<p>
+-3- Each of the functions specified above that has one or more <code>double</code> parameters (the 
+<code>double</code> version) shall have two additional overloads:
+</p>
+<ol><li><p>
+a version with each <code>double</code> parameter replaced with a <code>float</code> parameter (the 
+<code>float</code> version), and
+</p></li><li><p>
+a version with each <code>double</code> parameter replaced with a <code>long double</code> parameter (the 
+<code>long double</code> version).
+</p></li>
+</ol>
+<p>
+The return type of each such <code>float</code> version shall be <code>float</code>, and the return type of 
+each such <code>long double</code> version shall be <code>long double</code>.
+<p/>
+-4- Moreover, each <code>double</code> version shall have sufficient additional overloads to determine 
+which of the above three versions to actually call, by the following ordered set of rules:
+</p>
+<ol>
+<li><p>
+First, if any argument corresponding to a <code>double</code> parameter in the <code>double</code> version 
+has type <code>long double</code>, the <code>long double</code> version is called.
+</p></li><li><p>
+Otherwise, if any argument corresponding to a <code>double</code> parameter in the <code>double</code> 
+version has type <code>double</code> or has an integer type, the <code>double</code> version is called. 
+</p></li><li><p>
+Otherwise, the <code>float</code> version is called.
+</p></li>
+</ol>
+</blockquote>
+<p>
+<a href="https://wg21.link/p0226r1">P226R1 "Mathematical Special Functions for C++17"</a> notably 
+states: "At the level of and following [c.math], create a new subclause with heading and initial 
+content the same as IS 29124:2010's clause [sf.cmath], 'Additions to header <code>&lt;cmath&gt;</code>,' 
+renumbering as appropriate to the new context." which suggests the change between 29124 and C++17
+was an oversight and not intentional.
+<p/>
+Notably there is implementation divergence: MSVC implements precisely the wording in C++17, whereas 
+libstdc++ provides additional overloads as specified in 29124, so they disagree 
+<a href="https://godbolt.org/z/C6_NB2">e.g. on whether <code>std::sph_neumann({}, {})</code> is 
+well-formed</a>.
+</p>
+
+<p><i>[2020-04-07 Issue Prioritization]</i></p>
+
+<p>Priority to 3 after reflector discussion.</p>
+
+<p><i>[2023-02-07 Status changed: New &rarr; Resolved.]</i></p>
+
+<p>
+Resolved by the application of <a href="https://wg21.link/P1467R9" title=" Extended floating-point types and standard names">P1467R9</a>.
+It's now clear that the special functions should have
+"sufficient additional overloads".
+</p>
+
+
+
+<p id="res-3234"><b>Proposed resolution:</b></p>
+
+
+
+
+</body>
+</html>

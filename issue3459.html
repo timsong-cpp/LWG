@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3459: Why doesn't std::convertible_to have semantic requirement when To is reference-to-function type?</title>
+<meta property="og:title" content="Issue 3459: Why doesn't std::convertible_to have semantic requirement when To is reference-to-function type?">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3459.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3459"><a href="lwg-active.html#3459">3459</a>. Why doesn't <code>std::convertible_to</code> have semantic requirement when <code>To</code> is reference-to-function type?</h3>
+<p><b>Section:</b> 18.4.4 <a href="https://wg21.link/concept.convertible">[concept.convertible]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2020-06-30 <b>Last modified:</b> 2020-07-12</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#concept.convertible">active issues</a> in [concept.convertible].</p>
+<p><b>View all other</b> <a href="lwg-index.html#concept.convertible">issues</a> in [concept.convertible].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+18.4.4 <a href="https://wg21.link/concept.convertible">[concept.convertible]</a> p2:
+</p>
+<blockquote>
+<p>
+Types <code>From</code> and <code>To</code> model <code>convertible_to&lt;From, To&gt;</code> only if:
+</p>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; <code>To</code> is not an object or reference-to-object type, or <code>static_cast&lt;To&gt;(f())</code> is 
+equal to <code>test(f)</code>.</p></li>
+<li><p>[&hellip;]</p></li>
+</ol>
+</blockquote>
+<p>
+This requires the implicit and explicit conversions to produce equal results.
+<p/>
+However, it seems that when <code>To</code> is a reference-to-function type, this restriction does not apply. 
+This makes it possible to create a class that models <code>convertible_to</code>, but produces different 
+results depending on the kind of conversion:
+</p>
+<blockquote><pre>
+#include &lt;concepts&gt;
+
+int foo() { return 0; }
+int bar() { return 42; }
+
+using FT = int();
+struct A 
+{
+  operator FT&amp;() const { return foo; }
+  explicit operator FT&amp;() { return bar; }
+};
+
+static_assert(std::convertible_to&lt;A, FT&amp;&gt;);
+
+A a;
+FT&amp; x = a;                    // x == foo
+auto y = static_cast&lt;FT&amp;&gt;(a); // y == bar
+</pre></blockquote>
+
+<p><i>[2020-07-12; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 3 after reflector discussions.
+</p>
+
+
+<p id="res-3459"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

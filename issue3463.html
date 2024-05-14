@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3463: Incorrect requirements for transform_inclusive_scan without initial value</title>
+<meta property="og:title" content="Issue 3463: Incorrect requirements for transform_inclusive_scan without initial value">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3463.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3463"><a href="lwg-active.html#3463">3463</a>. Incorrect requirements for <code>transform_inclusive_scan</code> without initial value</h3>
+<p><b>Section:</b> 27.10.11 <a href="https://wg21.link/transform.inclusive.scan">[transform.inclusive.scan]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Agust&iacute;n K-ballo Berg&eacute; <b>Opened:</b> 2020-07-07 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The requirements for the overloads of <code>std::transform_inclusive_scan</code>
+without an initial value incorrectly assume that the internal accumulator uses 
+the iterator's value type, as it does for <code>std::inclusive_scan</code>, rather 
+than the transformed type of the iterator's value type, as it was intended.
+<p/>
+According to the standard, the following program is ill-formed as it
+requires <code>std::string</code> to be convertible to <code>int</code>:
+</p>
+<blockquote><pre>
+auto vs = {0, 1, 2};
+std::transform_inclusive_scan(
+   vs.begin(), vs.end(),
+   std::ostream_iterator&lt;std::string&gt;(std::cout, ";"),
+   [](std::string x, std::string y) { return x + y; },
+   [](int x) { return std::to_string(x); });
+</pre></blockquote>
+<p>
+libstdc++ and Microsoft's STL accept the snippet, producing <code>0;01;012;</code>
+as expected, libc++ strictly conforms to the standard and rejects it.
+<p/>
+These constrains were introduced by <a href="https://wg21.link/p0574r1">P0574R1</a>.
+</p>
+
+<p><i>[2020-07-17; Priority set to 3 in telecon]</i></p>
+
+
+
+<p id="res-3463"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>. 
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Current implementations that accept the code, do some form of <code>auto acc =
+unary_op(*first);</code>, therefore the following proposed wording uses <code>decay_t</code>
+instead of e.g. <code>remove_cvref_t</code>.]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 27.10.11 <a href="https://wg21.link/transform.inclusive.scan">[transform.inclusive.scan]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class OutputIterator,
+         class BinaryOperation, class UnaryOperation&gt;
+  constexpr OutputIterator
+    transform_inclusive_scan(InputIterator first, InputIterator last,
+                             OutputIterator result,
+                             BinaryOperation binary_op, UnaryOperation unary_op);
+template&lt;class ExecutionPolicy,
+         class ForwardIterator1, class ForwardIterator2,
+         class BinaryOperation, class UnaryOperation&gt;
+  ForwardIterator2
+    transform_inclusive_scan(ExecutionPolicy&amp;&amp; exec,
+                             ForwardIterator1 first, ForwardIterator1 last,
+                             ForwardIterator2 result,
+                             BinaryOperation binary_op, UnaryOperation unary_op);
+template&lt;class InputIterator, class OutputIterator,
+         class BinaryOperation, class UnaryOperation, class T&gt;
+  constexpr OutputIterator
+    transform_inclusive_scan(InputIterator first, InputIterator last,
+                             OutputIterator result,
+                             BinaryOperation binary_op, UnaryOperation unary_op,
+                             T init);
+template&lt;class ExecutionPolicy,
+         class ForwardIterator1, class ForwardIterator2,
+         class BinaryOperation, class UnaryOperation, class T&gt;
+  ForwardIterator2
+    transform_inclusive_scan(ExecutionPolicy&amp;&amp; exec,
+                             ForwardIterator1 first, ForwardIterator1 last,
+                             ForwardIterator2 result,
+                             BinaryOperation binary_op, UnaryOperation unary_op,
+                             T init);
+</pre>
+<blockquote>
+<p>
+-1- Let <code>U</code> be <del>the value type of <code>decltype(first)</code></del><ins><ins><code>decay_t&lt;decltype(unary_op(*first))&gt;</code></ins></ins>.
+<p/>
+-2- [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3344: advance(i, most-negative) and prev(i, most-negative)</title>
+<meta property="og:title" content="Issue 3344: advance(i, most-negative) and prev(i, most-negative)">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3344.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3344"><a href="lwg-active.html#3344">3344</a>. <code>advance(i, <i>most-negative</i>)</code> and <code>prev(i, <i>most-negative</i>)</code></h3>
+<p><b>Section:</b> 25.4.3 <a href="https://wg21.link/iterator.operations">[iterator.operations]</a>, 25.4.4.2 <a href="https://wg21.link/range.iter.op.advance">[range.iter.op.advance]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-11-22 <b>Last modified:</b> 2019-12-07</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#iterator.operations">active issues</a> in [iterator.operations].</p>
+<p><b>View all other</b> <a href="lwg-index.html#iterator.operations">issues</a> in [iterator.operations].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>ranges::advance</code> (25.4.4.2 <a href="https://wg21.link/range.iter.op.advance">[range.iter.op.advance]</a>) and <code>std::advance</code> 
+(25.4.3 <a href="https://wg21.link/iterator.operations">[iterator.operations]</a>) can be called with a negative count <code>n</code> when the 
+iterator argument <code>i</code> models <code>bidirectional_iterator</code> (respectively, meets the 
+<i>Cpp17BidirectionalIterator</i> requirements). In this case, they are specified to "decrement <code>i</code> 
+by <code>-n</code>". If <code>n</code> is the most-negative value of a signed integral type, the expression <code>-n</code> 
+has undefined behavior. This UB is unfortunate given that typical implementations never actually 
+form the expression <code>-n</code>. It's nonsensical to describe the effects of a function in terms 
+of an expression with undefined behavior, so we should either define the behavior or exclude 
+this case via precondition.
+<p/>
+<code>ranges::prev()</code> and <code>std::prev</code> (25.4.3 <a href="https://wg21.link/iterator.operations">[iterator.operations]</a>) have a similar problem: 
+<code>prev(i, n)</code> is equivalent to:
+</p>
+<blockquote><pre>
+advance(i, -n); 
+return i;
+</pre></blockquote>
+<p>
+which has undefined behavior when <code>n</code> is <code>numeric_limits&lt;T&gt;::min()</code> where <code>T</code> 
+is <code>iter_difference_t&lt;decltype(i)&gt;</code> (for <code>ranges::prev</code>) or some signed integral type 
+(for <code>std::prev</code>). There <em>is</em> an implicit precondition here thanks to "<i>Effects:</i> Equivalent 
+to" since the equivalent code has a precondition that <code>n</code> is not a most-negative value, so 
+this wording is not defective. We could, however, define behavior for <code>prev</code> regardless of the 
+value of <code>n</code> by duplicating the specification of advance and inverting the "direction" of the 
+operations. We should consider doing so.
+</p>
+
+<p><i>[2019-12-07 Issue Prioritization]</i></p>
+
+<p>Priority to 3 after reflector discussion.</p>
+
+
+<p id="res-3344"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> I've chosen to provide wording for the conservative "define behavior for 
+<code>advance</code> and leave <code>prev</code> as status quo" middle ground.
+<p/>
+The occurrences of "|" in the below are math-font vertical bars (indicating absolute value). I've 
+changed both positive and negative cases for consistency of presentation.
+]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify 25.4.3 <a href="https://wg21.link/iterator.operations">[iterator.operations]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class InputIterator, class Distance&gt;
+  constexpr void advance(InputIterator&amp; i, Distance n);
+</pre>
+<blockquote>
+<p>
+-2- <i>Expects:</i> <code>n</code> is negative only for bidirectional iterators.
+<p/>
+-3- <i>Effects:</i> Increments <code>i</code> by <code><ins>|</ins>n<ins>|</ins></code> if <code>n</code> is 
+non-negative, and decrements <code>i</code> by <code><del>-</del><ins>|</ins>n<ins>|</ins></code> otherwise.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 25.4.4.2 <a href="https://wg21.link/range.iter.op.advance">[range.iter.op.advance]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_or_output_iterator I&gt;
+  constexpr void ranges::advance(I&amp; i, iter_difference_t&lt;I&gt; n);
+</pre>
+<blockquote>
+<p>
+-1- <i>Expects:</i> If <code>I</code> does not model <code>bidirectional_iterator</code>, <code>n</code> is not negative.
+<p/>
+-2- <i>Effects:</i>
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; If <code>I</code> models <code>random_access_iterator</code>, 
+equivalent to <code>i += n</code>.</p></li>
+<li><p>(2.2) &mdash; Otherwise, if <code>n</code> is non-negative, increments <code>i</code> by 
+<code><ins>|</ins>n<ins>|</ins></code>.</p></li>
+<li><p>(2.3) &mdash; Otherwise, decrements <code>i</code> by <code><del>-</del><ins>|</ins>n<ins>|</ins></code>.</p></li>
+</ol>
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+  constexpr iter_difference_t&lt;I&gt; ranges::advance(I&amp; i, iter_difference_t&lt;I&gt; n, S bound);
+</pre>
+<blockquote>
+<p>
+-5- <i>Expects:</i> [&hellip;]
+<p/>
+-6- <i>Effects:</i>
+<ol style="list-style-type: none">
+<li><p>(6.1) &mdash; If <code>S</code> and <code>I</code> model 
+<code>sized_sentinel_for&lt;S, I&gt;</code>:</p>
+<ol style="list-style-type: none">
+<li><p>(6.1.1) &mdash; If <code>|n| &ge; |bound - i|</code>, equivalent to <code>ranges::advance(i, bound)</code>.:</p>
+</li>
+<li><p>(6.1.2) &mdash; Otherwise, equivalent to <code>ranges::advance(i, n)</code>.</p></li>
+</ol>
+</li>
+<li><p>(6.2) &mdash; Otherwise,</p>
+<ol style="list-style-type: none">
+<li><p>(6.2.1) &mdash; if <code>n</code> is non-negative, while <code>bool(i != bound)</code> is <code>true</code>, 
+increments <code>i</code> but at most <code><ins>|</ins>n<ins>|</ins></code> times.:</p>
+</li>
+<li><p>(6.2.2) &mdash; Otherwise, while <code>bool(i != bound)</code> is <code>true</code>, decrements <code>i</code> 
+but at most <code><del>-</del><ins>|</ins>n<ins>|</ins></code> times.</p></li>
+</ol>
+</li>
+</ol>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

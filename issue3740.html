@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3740: slide_view::size should preserve the signedness of underlying range's size</title>
+<meta property="og:title" content="Issue 3740: slide_view::size should preserve the signedness of underlying range's size">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3740.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3740"><a href="lwg-closed.html#3740">3740</a>. <code>slide_view::size</code> should preserve the signedness of underlying range's size</h3>
+<p><b>Section:</b> 26.7.30.2 <a href="https://wg21.link/range.slide.view">[range.slide.view]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-07-15 <b>Last modified:</b> 2022-11-30</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.slide.view">issues</a> in [range.slide.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, <code>slide_view::size const</code> has the following <i>Effects</i>:
+</p>
+<pre>
+auto sz = ranges::distance(<i>base_</i>) - <i>n_</i> + 1;
+if (sz &gt; 0) sz = 0;
+return <i>to-unsigned-like</i>(sz);
+</pre>
+<p>
+There are two problems worth noting here. First, as described in LWG <a href="lwg-closed.html#3739" title="chunk_view::size should preserve the signedness of the size of the underlying range (Status: NAD)">3739</a>, 
+<code>ranges::distance(<i>base_</i>)</code> and <code><i>n_</i></code> may have 
+different types, which makes the actual type of <code>sz</code> not deterministic.
+Also, the return type is unconditionally converted to an unsigned type, even though 
+the underlying range may have a signed size type.
+</p>
+Second, even if <code>V</code> has the same <code>difference_type</code> as <code>const V</code>, 
+there may still be integer promotion issues mentioned by LWG <a href="lwg-active.html#3730" title="std::ranges::drop_view may have different size type from its underlying view (Status: New)">3730</a>
+since we add an integer <code>1</code> at the end here.
+<p>
+I think converting <code>sz</code> to the size type of the underlying range before 
+returning is the appropriate thing to do.
+</p>
+
+<p><i>[2022-08-23; Reflector poll: NAD]</i></p>
+
+<p>
+Paper author: "I did consider promotion and decided not to care. The code compiles and conforms to all ranges requirements, and that seems entirely sufficient to me." "Even if we don't outlaw those being different types entirely, people playing those games will still get exactly one unsigned-integer-like type back. It's totally deterministic."
+</p>
+
+<p><i>[2022-11-30 LWG telecon. Status changed: Tentatively NAD &rarr; NAD.]</i></p>
+
+
+
+<p id="res-3740"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.30.2 <a href="https://wg21.link/range.slide.view">[range.slide.view]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() requires sized_range&lt;V&gt;;
+constexpr auto size() const requires sized_range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to:
+<pre>
+auto sz = ranges::distance(<i>base_</i>) - <i>n_</i> + 1;
+if (sz &lt; 0) sz = 0;
+return <ins>static_cast&lt;decltype(ranges::size(<i>base_</i>))&gt;</ins><del><i>to-unsigned-like</i></del>(sz);
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

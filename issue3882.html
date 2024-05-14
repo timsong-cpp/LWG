@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3882: tuple relational operators have confused friendships</title>
+<meta property="og:title" content="Issue 3882: tuple relational operators have confused friendships">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3882.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3882"><a href="lwg-active.html#3882">3882</a>. <code>tuple</code> relational operators have confused friendships</h3>
+<p><b>Section:</b> 22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Corentin Jabot <b>Opened:</b> 2023-02-08 <b>Last modified:</b> 2023-03-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#tuple.rel">active issues</a> in [tuple.rel].</p>
+<p><b>View all other</b> <a href="lwg-index.html#tuple.rel">issues</a> in [tuple.rel].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In 22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a>:
+</p>
+<blockquote><pre>
+template&lt;class... TTypes, <i>tuple-like</i> UTuple>
+  constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp; t, const UTuple&amp; u);
+</pre></blockquote>
+<p>
+Is defined as a non-member non-friend function that "is to be found via argument-dependent lookup only."
+<p/>
+The intent is that it should be defined as a hidden friend in <code>tuple</code>.
+<p/>
+The current specification is confusing as to which class should contain that hidden friend, or how to otherwise 
+implement that adl only restriction. (An hostile reading may consider it to be a hidden friend of <code>UTuple</code>), 
+and does not follow the guidance of <a href="https://wg21.link/P1601" title=" Recommendations for Specifying “Hidden Friends”">P1601</a> "Recommendations for Specifying ``Hidden Friends''".
+<p/>
+We should consider making these <code>operator==</code> and <code>operator&lt;=&gt;</code> overloads hidden friends of 
+<code>tuple</code>, i.e.
+</p>
+<blockquote><pre>
+std::tuple {
+  template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+  friend constexpr bool operator==(const tuple&amp; t, const UTuple&amp; u);
+  template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+  friend constexpr <i>see below</i> operator&lt;=&gt;(const tuple&amp;, const UTuple&amp;);
+};
+</pre></blockquote>
+
+<p><i>[2023-02-18; Daniel provides wording]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li><p>Modify 22.4.2 <a href="https://wg21.link/tuple.syn">[tuple.syn]</a>, header <code>&lt;tuple&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  // <i>22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a>, relational operators</i>
+  template&lt;class... TTypes, class... UTypes&gt;
+    constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp;, const tuple&lt;UTypes...&gt;&amp;);
+  <del>template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+    constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp;, const UTuple&amp;);</del>
+  template&lt;class... TTypes, class... UTypes&gt;
+    constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;TTypes, UTypes&gt;...&gt;
+      operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp;, const tuple&lt;UTypes...&gt;&amp;);
+  <del>template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+    constexpr <i>see below</i> operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp;, const UTuple&amp;);</del>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 22.4.4 <a href="https://wg21.link/tuple.tuple">[tuple.tuple]</a>, class template <code>tuple</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class... Types&gt;
+  class tuple {
+  public:
+    [&hellip;]
+
+    template&lt;<i>tuple-like</i> UTuple&gt;
+      constexpr tuple&amp; operator=(UTuple&amp;&amp;);
+    template&lt;<i>tuple-like</i> UTuple&gt;
+      constexpr const tuple&amp; operator=(UTuple&amp;&amp;) const;
+
+    <ins>// <i>22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a>, relational operators</i></ins>
+    <ins>template&lt;<i>tuple-like</i> UTuple&gt;
+      friend constexpr bool operator==(const tuple&amp;, const UTuple&amp;);</ins>
+    <ins>template&lt;<i>tuple-like</i> UTuple&gt;
+      friend constexpr <i>see below</i> operator&lt;=&gt;(const tuple&amp;, const UTuple&amp;);</ins>
+
+    // <i>22.4.4.4 <a href="https://wg21.link/tuple.swap">[tuple.swap]</a>, tuple swap</i>
+    constexpr void swap(tuple&amp;) noexcept(<i>see below</i>);
+    constexpr void swap(const tuple&amp;) const noexcept(<i>see below</i>);
+  };
+}
+</pre>
+</blockquote>
+
+</li>
+
+
+<li><p>Modify 22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class... TTypes, class... UTypes&gt;
+  constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp; t, const tuple&lt;UTypes...&gt;&amp; u);
+template&lt;<del>class... TTypes,</del> <i>tuple-like</i> UTuple&gt;
+  <ins>friend</ins> constexpr bool operator==(const tuple<del>&lt;TTypes...&gt;</del>&amp; t, const UTuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-1- For the first overload let <code>UTuple</code> be <code>tuple&lt;UTypes...&gt;</code>. <ins>For the second overload
+let <code>TTypes</code> denote the pack <code>Types</code>.</ins>
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(5.1) &mdash; The elementary comparisons are performed in order from the zeroth index upwards. No comparisons
+or element accesses are performed after the first equality comparison that evaluates to <code>false</code>.</p></li>
+<li><p>(5.2) &mdash; The second overload is to be found via argument-dependent lookup (6.5.4 <a href="https://wg21.link/basic.lookup.argdep">[basic.lookup.argdep]</a>) only.</p></li>
+</ol>
+</blockquote>
+<pre>
+template&lt;class... TTypes, class... UTypes&gt;
+  constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;TTypes, UTypes&gt;...&gt;
+    operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp; t, const tuple&lt;UTypes...&gt;&amp; u);
+template&lt;<del>class... TTypes,</del> <i>tuple-like</i> UTuple&gt;
+  <ins>friend</ins> constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;<del>T</del>Types, Elems&gt;...&gt; 
+    operator&lt;=&gt;(const tuple<del>&lt;TTypes...&gt;</del>&amp; t, const UTuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-6- For the second overload, <ins>let <code>TTypes</code> denote the pack <code>Types</code> and</ins> <code>Elems</code> denotes the 
+pack of types <code>tuple_element_t&lt;0, UTuple&gt;, tuple_element_t&lt;1, UTuple&gt;, ... , 
+tuple_element_t&lt;tuple_size_v&lt;UTuple&gt; - 1, UTuple&gt;</code>.
+<p/>
+[&hellip;]
+<p/>
+-8- <i>Remarks</i>: The second overload is to be found via argument-dependent lookup (6.5.4 <a href="https://wg21.link/basic.lookup.argdep">[basic.lookup.argdep]</a>) only.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2023-03-05; Daniel comments and provides improved wording]</i></p>
+
+<p>
+The revised wording ensures that no ambiguity exists between the overload candidates, furthermore the additional wording about
+being found via argument-dependent lookup only has been eliminated, because the general conventions of 16.4.6.6 <a href="https://wg21.link/hidden.friends">[hidden.friends]</a>
+apply. 
+<p/>
+The reusage of the exposition-only concept <code><i>different-from</i></code> is already existing practice in various places of 
+22.4 <a href="https://wg21.link/tuple">[tuple]</a>. We have also existing wording practice where we have an extra <i>Constraints:</i> element added even though 
+a prototype has already a language constraint as part of its signature.
+</p>
+
+<p><i>[2023-03-22; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+
+
+<p id="res-3882"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li><p>Modify 22.4.2 <a href="https://wg21.link/tuple.syn">[tuple.syn]</a>, header <code>&lt;tuple&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  [&hellip;]
+  // <i>22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a>, relational operators</i>
+  template&lt;class... TTypes, class... UTypes&gt;
+    constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp;, const tuple&lt;UTypes...&gt;&amp;);
+  <del>template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+    constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp;, const UTuple&amp;);</del>
+  template&lt;class... TTypes, class... UTypes&gt;
+    constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;TTypes, UTypes&gt;...&gt;
+      operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp;, const tuple&lt;UTypes...&gt;&amp;);
+  <del>template&lt;class... TTypes, <i>tuple-like</i> UTuple&gt;
+    constexpr <i>see below</i> operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp;, const UTuple&amp;);</del>
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 22.4.4 <a href="https://wg21.link/tuple.tuple">[tuple.tuple]</a>, class template <code>tuple</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class... Types&gt;
+  class tuple {
+  public:
+    [&hellip;]
+
+    template&lt;<i>tuple-like</i> UTuple&gt;
+      constexpr tuple&amp; operator=(UTuple&amp;&amp;);
+    template&lt;<i>tuple-like</i> UTuple&gt;
+      constexpr const tuple&amp; operator=(UTuple&amp;&amp;) const;
+
+    <ins>// <i>22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a>, relational operators</i></ins>
+    <ins>template&lt;<i>tuple-like</i> UTuple&gt;
+      friend constexpr bool operator==(const tuple&amp;, const UTuple&amp;);</ins>
+    <ins>template&lt;<i>tuple-like</i> UTuple&gt;
+      friend constexpr <i>see below</i> operator&lt;=&gt;(const tuple&amp;, const UTuple&amp;);</ins>
+
+    // <i>22.4.4.4 <a href="https://wg21.link/tuple.swap">[tuple.swap]</a>, tuple swap</i>
+    constexpr void swap(tuple&amp;) noexcept(<i>see below</i>);
+    constexpr void swap(const tuple&amp;) const noexcept(<i>see below</i>);
+  };
+}
+</pre>
+</blockquote>
+
+</li>
+
+
+<li><p>Modify 22.4.9 <a href="https://wg21.link/tuple.rel">[tuple.rel]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class... TTypes, class... UTypes&gt;
+  constexpr bool operator==(const tuple&lt;TTypes...&gt;&amp; t, const tuple&lt;UTypes...&gt;&amp; u);
+template&lt;<del>class... TTypes,</del> <i>tuple-like</i> UTuple&gt;
+  <ins>friend</ins> constexpr bool operator==(const tuple<del>&lt;TTypes...&gt;</del>&amp; t, const UTuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-1- For the first overload let <code>UTuple</code> be <code>tuple&lt;UTypes...&gt;</code>. <ins>For the second overload
+let <code>TTypes</code> denote the pack <code>Types</code>.</ins>
+<p/>
+<ins>-?- <i>Constraints</i>: For the second overload, <code><i>different-from</i>&lt;UTuple, tuple&gt;</code> 
+(26.5.2 <a href="https://wg21.link/range.utility.helpers">[range.utility.helpers]</a>) is <code>true</code>.</ins>
+<p/>
+-2- <i>Mandates</i>: [&hellip;]
+<p/>
+[&hellip;]
+<p/>
+-5- <i>Remarks</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><del>(5.1) &mdash;</del> The elementary comparisons are performed in order from the zeroth index upwards. No comparisons
+or element accesses are performed after the first equality comparison that evaluates to <code>false</code>.</p></li>
+<li><p><del>(5.2) &mdash; The second overload is to be found via argument-dependent lookup (6.5.4 <a href="https://wg21.link/basic.lookup.argdep">[basic.lookup.argdep]</a>) only.</del></p></li>
+</ol>
+</blockquote>
+<pre>
+template&lt;class... TTypes, class... UTypes&gt;
+  constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;TTypes, UTypes&gt;...&gt;
+    operator&lt;=&gt;(const tuple&lt;TTypes...&gt;&amp; t, const tuple&lt;UTypes...&gt;&amp; u);
+template&lt;<del>class... TTypes,</del> <i>tuple-like</i> UTuple&gt;
+  <ins>friend</ins> constexpr common_comparison_category_t&lt;<i>synth-three-way-result</i>&lt;<del>T</del>Types, Elems&gt;...&gt; 
+    operator&lt;=&gt;(const tuple<del>&lt;TTypes...&gt;</del>&amp; t, const UTuple&amp; u);
+</pre>
+<blockquote>
+<p>
+-6- For the second overload, <ins>let <code>TTypes</code> denote the pack <code>Types</code> and</ins> <code>Elems</code> denotes the 
+pack of types <code>tuple_element_t&lt;0, UTuple&gt;, tuple_element_t&lt;1, UTuple&gt;, ... , 
+tuple_element_t&lt;tuple_size_v&lt;UTuple&gt; - 1, UTuple&gt;</code>.
+<p/>
+<ins>-?- <i>Constraints</i>: For the second overload, <code><i>different-from</i>&lt;UTuple, tuple&gt;</code> 
+(26.5.2 <a href="https://wg21.link/range.utility.helpers">[range.utility.helpers]</a>) is <code>true</code>.</ins>
+<p/>
+-7- <i>Effects</i>: [&hellip;]
+<p/>
+<del>-8- <i>Remarks</i>: The second overload is to be found via argument-dependent lookup (6.5.4 <a href="https://wg21.link/basic.lookup.argdep">[basic.lookup.argdep]</a>) only.</del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

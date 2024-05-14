@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3776: Avoid parsing format-spec if it is not present or empty</title>
+<meta property="og:title" content="Issue 3776: Avoid parsing format-spec if it is not present or empty">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3776.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3776"><a href="lwg-closed.html#3776">3776</a>. Avoid parsing <i>format-spec</i> if it is not present or empty</h3>
+<p><b>Section:</b> 22.14.6.1 <a href="https://wg21.link/formatter.requirements">[formatter.requirements]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Mark de Wever <b>Opened:</b> 2022-08-28 <b>Last modified:</b> 2023-06-16</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#formatter.requirements">issues</a> in [formatter.requirements].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+A format string 22.14.2.1 <a href="https://wg21.link/format.string.general">[format.string.general]</a>/1 has an optional
+<i>format-specifier</i> replacement field. If this field is not present, the
+current wording makes it clear the intention is to call parse when a
+formatting argument use a handle class 22.14.8.1 <a href="https://wg21.link/format.arg">[format.arg]</a>/19
+</p>
+<blockquote>
+<p>
+<i>Effects</i>: Initializes <code>ptr_</code> with <code>addressof(val)</code> and <code>format_</code> with
+</p>
+<blockquote><pre>
+   [](basic_format_parse_context&lt;char_type&gt;&amp; parse_ctx,
+      Context&amp; format_ctx, const void* ptr) {
+     typename Context::template formatter_type&lt;TD&gt; f;
+     parse_ctx.advance_to(f.parse(parse_ctx));
+     format_ctx.advance_to(f.format(*const_cast&lt;TQ*&gt;(static_cast&lt;const TD*>(ptr)),
+                                    format_ctx));
+  }
+</pre>
+</blockquote>
+</blockquote>
+<p>
+For other types it is implied by [tab:formatter.basic]
+</p>
+<blockquote>
+<p>
+Formats <code>u</code> according to the specifiers stored in <code>*this</code>, writes the
+output to <code>fc.out()</code>, and returns an iterator past the end of the output
+range. The output shall only depend on <code>u</code>, <code>fc.locale()</code>, <code>fc.arg(n)</code> for
+any value <code>n</code> of type <code>size_t</code>, and the range <code>[pc.begin(), pc.end())</code> from
+the last call to <code>f.parse(pc)</code>.
+</p>
+</blockquote>
+<p>
+(Similar wording is used in [tab:formatter])
+<p/>
+Before the <code>parse</code> function is called it is known whether or not a
+<i>format-spec</i> is present. It seems wasteful to call a function that is
+known not to parse anything. Therefore I propose to make the call
+optional.
+<p/>
+This change is only observable for formatter specializations using the
+<code>handle</code> class, for the formatter specializations in
+22.14.6.4 <a href="https://wg21.link/format.formatter.spec">[format.formatter.spec]</a> the change has no observable effect.
+</p>
+
+<p><i>[2022-10-12; Reflector poll]</i></p>
+
+<p>
+Set status to "LEWG" and priority to 3 after reflector poll.
+</p>
+<p>
+Several votes for NAD as this would be a design change requiring a paper.
+Dissenting opinions: "Different handling of empty and default specs is entirely
+incidental and not a design feature. Moreover, built-in formatters treat these
+cases identically so it's a good idea to make this explicit."
+"Don't need a full paper to clarify the meaning of <i>"don't call member
+<code>parse</code> if there's no format spec"</i>.
+If LEWG agree the direction PR can be polished."
+</p>
+
+<p><i>[Issaquah 2023-02-07; LWG]</i></p>
+
+<p>Will be resolved differently by <a href="https://wg21.link/P2733" title=" Fix handling of empty specifiers in std::format">P2733</a>.</p>
+
+<p><i>[Varna 2023-06-16; Status changed: LEWG &rarr; NAD.]</i></p>
+
+<p>
+Resolved differently by LWG <a href="lwg-defects.html#3892" title="Incorrect formatting of nested ranges and tuples (Status: WP)">3892</a>.
+</p>
+
+
+
+<p id="res-3776"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 22.14.6.1 <a href="https://wg21.link/formatter.requirements">[formatter.requirements]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-3- Given character type <code>charT</code>, output iterator type <code>Out</code>, and formatting argument type 
+<code>T</code>, in Table 74 and Table 75:
+<p/>
+[&hellip;]
+<p/>
+<code>pc.begin()</code> points to the beginning of the <i>format-spec</i> (22.14.2 <a href="https://wg21.link/format.string">[format.string]</a>) 
+of the replacement field being formatted in the format string. If <i>format-spec</i> is 
+<ins>not present or</ins> empty then either <code>pc.begin() == pc.end()</code> or <code>*pc.begin() == '}'</code>.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <i>BasicFormatter</i> requirements [tab:formatter.basic] as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 74: <i>BasicFormatter</i> requirements [tab:formatter.basic]</caption>
+<tr>
+<th align="center">Expression</th>
+<th align="center">Return type</th>
+<th align="center">Requirement</th>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+<tr>
+<td>
+<code>f.format(u, fc)</code>
+</td>
+<td>
+<code>FC::iterator</code>
+</td>
+<td>
+Formats <code>u</code> according to the specifiers stored in<br/>
+<code>*this</code>, writes the output to <code>fc.out()</code>, and returns<br/>
+an iterator past the end of the output range.<br/>
+The output shall only depend on <code>u</code>, <code>fc.locale()</code>,<br/>
+<code>fc.arg(n)</code> for any value <code>n</code> of type <code>size_t</code>, and<br/>
+the range <code>[pc.begin(), pc.end())</code> from the last<br/>
+call to <code>f.parse(pc)</code>. <ins>When the <i>format-spec</i><br/>
+(22.14.2 <a href="https://wg21.link/format.string">[format.string]</a>) is not present or empty<br/> 
+the call to <code>f.parse(pc)</code> is omitted.</ins>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Modify <i>Formatter</i> requirements [tab:formatter] as indicated:</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 75: <i>Formatter</i> requirements [tab:formatter]</caption>
+<tr>
+<th align="center">Expression</th>
+<th align="center">Return type</th>
+<th align="center">Requirement</th>
+</tr>
+
+<tr>
+<td>
+<code>f.format(t, fc)</code>
+</td>
+<td>
+<code>FC::iterator</code>
+</td>
+<td>
+Formats <code>t</code> according to the specifiers stored in<br/>
+<code>*this</code>, writes the output to <code>fc.out()</code>, and returns<br/>
+an iterator past the end of the output range.<br/>
+The output shall only depend on <code>t</code>, <code>fc.locale()</code>,<br/>
+<code>fc.arg(n)</code> for any value <code>n</code> of type <code>size_t</code>, and<br/>
+the range <code>[pc.begin(), pc.end())</code> from the last<br/>
+call to <code>f.parse(pc)</code>. <ins>When the <i>format-spec</i><br/>
+(22.14.2 <a href="https://wg21.link/format.string">[format.string]</a>) is not present or empty<br/> 
+the call to <code>f.parse(pc)</code> is omitted.</ins>
+</td>
+</tr>
+
+<tr>
+<td colspan="3" align="center">
+<code>&hellip;</code>
+</td>
+</tr>
+
+</table>
+</blockquote>
+</li>
+
+<li><p>Modify 22.14.8.1 <a href="https://wg21.link/format.arg">[format.arg]</a> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-16- The class <code>handle</code> allows formatting an object of a user-defined type.
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class Context&gt;
+  class basic_format_arg&lt;Context&gt;::handle {
+    const void* ptr_;                                          // <i>exposition only</i>
+    void (*format_)(basic_format_parse_context&lt;char_type&gt;<del>&amp;</del><ins>*</ins>,
+                    Context&amp;, const void*);                    // <i>exposition only</i>
+
+    template&lt;class T&gt; explicit handle(T&amp;&amp; val) noexcept;       // <i>exposition only</i>
+
+    friend class basic_format_arg&lt;Context&gt;;                    // <i>exposition only</i>
+
+  public:
+    void format(basic_format_parse_context&lt;char_type&gt;&amp;, Context&amp; ctx) const;
+  };
+}
+</pre></blockquote>
+<pre>
+template&lt;class T&gt; explicit handle(T&amp;&amp; val) noexcept;
+</pre>
+<blockquote>
+<p>
+-17- [&hellip;]
+<p/>
+-18- [&hellip;]
+<p/>
+-19- <i>Effects</i>: Initializes <code>ptr_</code> with <code>addressof(val)</code> and <code>format_</code> with
+</p>
+<blockquote><pre>
+[](basic_format_parse_context&lt;char_type&gt;<del>&amp;</del><ins>*</ins> parse_ctx,
+   Context&amp; format_ctx, const void* ptr) {
+  typename Context::template formatter_type&lt;TD&gt; f;
+  <ins>if (parse_ctx)</ins> parse_ctx<del>.</del><ins>-&gt;</ins>advance_to(f.parse(<ins>*</ins>parse_ctx));
+  format_ctx.advance_to(f.format(*const_cast&lt;TQ*&gt;(static_cast&lt;const TD*&gt;(ptr)),
+                                 format_ctx));
+}
+</pre></blockquote>
+</blockquote>
+<pre>
+void format(basic_format_parse_context&lt;char_type&gt;&amp; parse_ctx, Context&amp; format_ctx) const;
+</pre>
+<blockquote>
+<p>
+-20- <i>Effects</i>: <ins>If the <i>format-spec</i> (22.14.2 <a href="https://wg21.link/format.string">[format.string]</a>) is not present or empty,
+equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>format_(nullptr, format_ctx, ptr_);</ins>
+</pre></blockquote>
+<p>
+<ins>otherwise, e</ins><del>E</del>quivalent to:
+</p>
+<blockquote><pre>
+format_(<ins>addressof(</ins>parse_ctx<ins>)</ins>, format_ctx, ptr_);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

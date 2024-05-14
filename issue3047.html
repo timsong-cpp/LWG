@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3047: atomic compound assignment operators can cause undefined behavior when corresponding 
+fetch_meow members don't</title>
+<meta property="og:title" content="Issue 3047: atomic compound assignment operators can cause undefined behavior when corresponding 
+fetch_meow members don't">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3047.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3047"><a href="lwg-active.html#3047">3047</a>. <code>atomic</code> compound assignment operators can cause undefined behavior when corresponding 
+<code>fetch_<i>meow</i></code> members don't</h3>
+<p><b>Section:</b> 33.5.8.3 <a href="https://wg21.link/atomics.types.int">[atomics.types.int]</a>, 33.5.8.5 <a href="https://wg21.link/atomics.types.pointer">[atomics.types.pointer]</a>, 33.5.8.6 <a href="https://wg21.link/atomics.types.memop">[atomics.types.memop]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Tim Song <b>Opened:</b> 2017-12-15 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Given <code>atomic&lt;int&gt; meow{INT_MAX};</code>, <code>meow.fetch_add(1)</code> has well-defined behavior because 33.5.8.3 <a href="https://wg21.link/atomics.types.int">[atomics.types.int]</a> p7 says that
+<blockquote>
+<p>
+<i>Remarks:</i> For signed integer types, arithmetic is defined to use two's complement representation. There are no undefined results.
+</p>
+</blockquote>
+but <code>meow += 1</code> and <code>++meow</code> have undefined behavior, because these operator functions are defined (by, respectively, 
+33.5.8.3 <a href="https://wg21.link/atomics.types.int">[atomics.types.int]</a> p8 and 33.5.8.6 <a href="https://wg21.link/atomics.types.memop">[atomics.types.memop]</a>) to be equivalent to <code>return fetch_add(1) + 1;</code>, 
+and so the addition of 1 to the result of <code>fetch_add</code> &mdash; which causes an integer overflow in this case &mdash; occurs 
+outside the protection of <code>fetch_add</code> magic. Additionally, the return value might differ from what <code>fetch_add</code> actually
+wrote since that addition isn't required to use two's complement. This seems like a trap for the unwary. Is it intended?
+<p/>
+A similar issue affects the <code>atomic&lt;T*&gt;</code> partial specialization for pointers.
+</p>
+<p><i>[2018-01; Priority set to 3 after mailing list discussion]</i></p>
+
+
+<p><i>[2019-04-15; JF Bastien comments and provides wording]</i></p>
+
+<p>
+As discussed by LWG during the <a href="http://wiki.edg.com/bin/view/Wg21sandiego2018/LWGD1236Review">San 
+Diego 2018 meeting</a>, Jens removed LWG 3047 from <a href="https://wg21.link/p1236r1">"P1236R1: Alternative Wording for P
+0907R4 Signed Integers are Two's Complement"</a>.
+</p>
+
+
+<p id="res-3047"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify 33.5.7.3 <a href="https://wg21.link/atomics.ref.int">[atomics.ref.int]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<i>integral</i> operator <i>op</i>=(<i>integral</i> operand) const noexcept;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Equivalent to: <code>return 
+<ins>static_cast&lt;<i>integral</i>&gt;(static_cast&lt;make_unsigned_t&lt;<i>integral</i>&gt;&gt;(</ins>fetch_<i>key</i>(operand)<ins>)</ins> 
+<i>op</i> <ins>static_cast&lt;make_unsigned_t&lt;<i>integral</i>&gt;&gt;(</ins>operand<ins>))</ins>;</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 33.5.7.6 <a href="https://wg21.link/atomics.ref.memop">[atomics.ref.memop]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+T* operator++() const noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to: <code>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_add(1)<ins>)</ins> + 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</code>
+</p>
+</blockquote>
+<pre>
+T* operator--(<del>int</del>) const noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to: <code>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_sub(1)<ins>)</ins> - 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 33.5.8.3 <a href="https://wg21.link/atomics.types.int">[atomics.types.int]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+T operator <i>op</i>=(T operand) volatile noexcept;
+T operator <i>op</i>=(T operand) noexcept;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <code>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_<i>key</i>(operand)<ins>)</ins> 
+<i>op</i> <ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>operand<ins>))</ins>;</code>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <code>atomic&lt;<i>integral</i>&gt;</code>'s working for <code>operator++/operator--</code> 
+is shared with <code>atomic&lt;T*&gt;</code>. &mdash; <i>end drafting note</i>]
+<p/>
+[<i>Drafting note:</i> <code>atomic&lt;<i>floating-point</i>&gt;</code> seems to be correct, LWG should confirm 
+that it is. &mdash; <i>end drafting note</i>]
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 33.5.8.5 <a href="https://wg21.link/atomics.types.pointer">[atomics.types.pointer]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+T* operator <i>op</i>=(ptrdiff_t operand) volatile noexcept;
+T* operator <i>op</i>=(ptrdiff_t operand) noexcept;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to: <code>return 
+<ins>reinterpret_cast&lt;T*&gt;(reinterpret_cast&lt;ptrdiff_t&gt;(</ins>fetch_<i>key</i>(operand)<ins>)</ins> 
+<i>op</i> operand<ins>)</ins>;</code>
+<p/>
+<ins><i>Remarks:</i> The result may be an undefined address, but the operations otherwise have no undefined behavior.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 33.5.8.6 <a href="https://wg21.link/atomics.types.memop">[atomics.types.memop]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+T operator++() volatile noexcept;
+T operator++() noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to: <code>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_add(1)<ins>)</ins> + 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</code>
+</p>
+</blockquote>
+<pre>
+T operator--() volatile noexcept;
+T operator--() noexcept;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to: <code>return 
+<ins>static_cast&lt;T&gt;(static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>fetch_sub(1)<ins>)</ins> - 
+<ins>static_cast&lt;make_unsigned_t&lt;T&gt;&gt;(</ins>1<ins>))</ins>;</code>
+</p>
+</blockquote>
+</blockquote>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> Alternatively, LWG may want to separate the integral overload of <code>operator++/operator--</code> 
+from that of <code>atomic&lt;T*&gt;</code>. <i>end drafting note</i>]
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

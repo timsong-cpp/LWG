@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3963: Different std::flat_map/std::flat_multimap specializations should be able to share same nested classes</title>
+<meta property="og:title" content="Issue 3963: Different std::flat_map/std::flat_multimap specializations should be able to share same nested classes">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3963.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3963"><a href="lwg-active.html#3963">3963</a>. Different <code>std::flat_map</code>/<code>std::flat_multimap</code> specializations should be able to share same nested classes</h3>
+<p><b>Section:</b> 24.6.9.2 <a href="https://wg21.link/flat.map.defn">[flat.map.defn]</a>, 24.6.10.2 <a href="https://wg21.link/flat.multimap.defn">[flat.multimap.defn]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2023-07-24 <b>Last modified:</b> 2023-11-03</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#flat.map.defn">issues</a> in [flat.map.defn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Per current wording, <code>std::flat_map&lt;K, V, C1, KCont, VCont&gt;::containers</code> and 
+<code>std::flat_multimap&lt;K, V, C2, KCont, VCont&gt;::containers</code> need to be different types 
+since they are specified as nested classes. Likewise, 
+<code>std::flat_map&lt;K, V, C, KCont1, VCont1&gt;::value_compare</code> and 
+<code>std::flat_multimap&lt;K, V, C, KCont2, VCont2&gt;::value_compare</code> also need to be different types.
+<p/>
+It may be better to allow implementations to make different <code>std::flat_map</code>/<code>std::flat_multimap</code> 
+specializations share same nested classes.
+</p>
+
+<p><i>[2023-11-02; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+"This would mean we have to care about whether the template parameters are
+associated entities of the <code>containers</code> type, for ADL purposes."
+"That only matters if you're doing silly things, we shouldn't design the
+library with silly people in mind."
+"Nobody asked to be able to do this for <code>value_compare</code> in
+associative containers, why do we think vendors would take advantage of this
+freedom here? NAD."
+</p>
+
+
+
+<p id="res-3963"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4950" title=" Working Draft, Standard for Programming Language C++">N4950</a>.
+</p>
+
+<ol>
+
+<li><p>Add the new paragraph after 24.6.9.2 <a href="https://wg21.link/flat.map.defn">[flat.map.defn]</a> p1 and 24.6.10.2 <a href="https://wg21.link/flat.multimap.defn">[flat.multimap.defn]</a> p1 (twice):</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: The intent is to keep the property that key/mapped types, key/mapped containers, 
+and the comparator type are not the associated types of these nested classes during ADL. ]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+<ins>
+-?- Implementations may define member types <code>containers</code> and <code>value_compare</code> as nested 
+classes of another templated class and introduce them as <i>typedef-name</i>s. Implementations shall ensure that 
+these nested classes are not themselves class templates and have the specified names.
+</ins>
+</p>
+
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

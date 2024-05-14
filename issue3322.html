@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3322: Add join_view::base() member function</title>
+<meta property="og:title" content="Issue 3322: Add join_view::base() member function">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3322.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3322"><a href="lwg-defects.html#3322">3322</a>. Add <code>join_view::base()</code> member function</h3>
+<p><b>Section:</b> 26.7.14.2 <a href="https://wg21.link/range.join.view">[range.join.view]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> United States <b>Opened:</b> 2019-11-06 <b>Last modified:</b> 2020-11-09</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.join.view">issues</a> in [range.join.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/289">US 293</a></b></p>
+
+<p>
+<code>join_view</code> is missing a <code>base()</code> member for returning the underlying view. All the other
+range adaptors provide this.
+<p/>
+Proposed change:
+</p>
+<p>
+To the <code>join_view</code> class template add the member:
+</p>
+<blockquote><pre>
+constexpr V base() const { return base_; }
+</pre></blockquote>
+<p>
+<b>Jonathan Wakely:</b>
+<p/>
+The NB comment says "<code>join_view</code> is missing a <code>base()</code> member for returning the 
+underlying view. All the other range adaptors provide this."
+<p/>
+In fact, <code>split_view</code> and <code>istream_view</code> do not provide <code>base()</code> either. Of the 
+views that do define <code>base()</code>, all except <code>all_view</code> do so out-of-line, so the proposed 
+resolution adds it out-of-line too.
+</p>
+
+<p><i>[2019-11 Status to Ready during Wednesday night issue processing in Belfast.]</i></p>
+
+
+<p><i>[2019-12-16; Casey comments]</i></p>
+
+<p>
+This issue has been resolved by <a href="https://wg21.link/p1456r1">P1456R1</a> "Move-only views", which 
+added no less than two member functions named "base" to <code>join_view</code>.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify 26.7.14.2 <a href="https://wg21.link/range.join.view">[range.join.view]</a>, class template <code>join_view</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;input_range R&gt;
+  requires viewable_range&lt;R&gt; &amp;&amp; constructible_from&lt;V, all_view&lt;R&gt;&gt;
+constexpr explicit join_view(R&amp;&amp; r);
+
+<ins>constexpr V base() const;</ins>
+
+constexpr auto begin() {
+  return iterator&lt;<i>simple-view</i>&lt;V&gt;&gt;{*this, ranges::begin(base_)};
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.14.2 <a href="https://wg21.link/range.join.view">[range.join.view]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_range R&gt;
+  requires viewable_range&lt;R&gt; &amp;&amp; constructible_from&lt;V, all_view&lt;R&gt;&gt;
+constexpr explicit join_view(R&amp;&amp; r);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> [&hellip;]
+</p>
+</blockquote>
+<pre>
+<ins>constexpr V base() const;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <code>return base_;</code></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+<p><i>[2020-11-09 Resolved for C++20. Status changed: Tentatively Resolved &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3322"><b>Proposed resolution:</b></p>
+<p>
+Resolved by accepting <a href="https://wg21.link/p1456r1">P1456R1</a>.
+</p>
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3739: chunk_view::size should preserve the signedness of the size of the underlying range</title>
+<meta property="og:title" content="Issue 3739: chunk_view::size should preserve the signedness of the size of the underlying range">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3739.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3739"><a href="lwg-closed.html#3739">3739</a>. <code>chunk_view::size</code> should preserve the signedness of the size of the underlying range</h3>
+<p><b>Section:</b> 26.7.29.2 <a href="https://wg21.link/range.chunk.view.input">[range.chunk.view.input]</a>, 26.7.29.6 <a href="https://wg21.link/range.chunk.view.fwd">[range.chunk.view.fwd]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-07-15 <b>Last modified:</b> 2022-11-30</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.chunk.view.input">issues</a> in [range.chunk.view.input].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, the <i>Effects</i> of <code>chunk_view::size</code> simply returns 
+<code><i>to-unsigned-like</i>(<i>div-ceil</i>(ranges::distance(<i>base_</i>), <i>n_</i>))</code>, 
+where <code><i>div-ceil</i></code> is defined in 26.7.29.2 <a href="https://wg21.link/range.chunk.view.input">[range.chunk.view.input]</a> as:
+</p>
+<pre>
+template&lt;class I&gt;
+constexpr I <i>div-ceil</i>(I num, I denom) { // <i>exposition only</i>
+  I r = num / denom;
+  if (num % denom)
+    ++r;
+  return r;
+}
+</pre>
+<p>
+There are two problems here. First, for the const version of <code>chunk_view::size</code>, 
+the types of <code>ranges::distance(<i>base_</i>)</code> and <code><i>n_</i></code> are 
+<code>range_difference_t&lt;const V&gt;</code> and 
+<code>range_difference_t&lt;V&gt;</code> respectively,   and the two parameters of 
+<code><i>div-ceil</i></code> have the same type <code>I</code>.
+Given that the standard does not guarantee that <code>V</code> and <code>const V</code> must have 
+the same <code>difference_type</code>,   this makes the <code><i>div-ceil</i></code>'s template 
+deduction fail when the two are different.
+<p/>
+Second, the standard does not guarantee that <code>ranges::size</code> must return an 
+unsigned type, but here we use <code><i>to-unsigned-like</i></code> to unconditionally 
+convert the return type of <code>chunk_view::size</code> to an unsigned type,
+which is inconsistent with the behavior of other range adaptors such as 
+<code>take_view</code> and <code>drop_view</code>.
+<p/>
+We should try to preserve the characteristics of the <code>range_size_t</code> of the underlying 
+range as much as possible.
+</p>
+
+<p><i>[2022-08-23; Reflector poll: NAD (would need a paper for LEWG)]</i></p>
+
+<p>
+The "range_difference_t&lt;const V&gt; and range_difference_t&lt;V&gt; can be both valid but have different types" part is something I expect Mr. Carter's eventual paper to outlaw. The "preserve signedness" part is LEWG.
+</p>
+
+<p><i>[2022-11-30 LWG telecon. Status changed: Tentatively NAD &rarr; NAD.]</i></p>
+
+
+
+<p id="res-3739"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.29.2 <a href="https://wg21.link/range.chunk.view.input">[range.chunk.view.input]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() requires sized_range&lt;V&gt;;
+constexpr auto size() const requires sized_range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to:
+<pre>
+return <del><i>to-unsigned-like</i>(</del><i>div-ceil</i>(ranges::<ins>size</ins><del>distance</del>(<i>base_</i>), <ins>static_cast&lt;decltype(ranges::size(<i><i>base_</i></i>))&gt;(</ins><i>n_</i>));
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.29.6 <a href="https://wg21.link/range.chunk.view.fwd">[range.chunk.view.fwd]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr auto size() requires sized_range&lt;V&gt;;
+constexpr auto size() const requires sized_range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects:</i> Equivalent to:
+<pre>
+return <del><i>to-unsigned-like</i>(</del><i>div-ceil</i>(ranges::<ins>size</ins><del>distance</del>(<i>base_</i>), <ins>static_cast&lt;decltype(ranges::size(<i><i>base_</i></i>))&gt;(</ins><i>n_</i>));
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

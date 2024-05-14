@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3839: range_formatter's set_separator, set_brackets, and underlying functions should be noexcept</title>
+<meta property="og:title" content="Issue 3839: range_formatter's set_separator, set_brackets, and underlying functions should be noexcept">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3839.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3839"><a href="lwg-defects.html#3839">3839</a>. <code>range_formatter</code>'s <code>set_separator</code>, <code>set_brackets</code>, and <code>underlying</code> functions should be <code>noexcept</code></h3>
+<p><b>Section:</b> 22.14.7.2 <a href="https://wg21.link/format.range.formatter">[format.range.formatter]</a>, 22.14.7.3 <a href="https://wg21.link/format.range.fmtdef">[format.range.fmtdef]</a>, 22.14.9 <a href="https://wg21.link/format.tuple">[format.tuple]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-12-11 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#format.range.formatter">issues</a> in [format.range.formatter].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The <code>set_separator</code> and <code>set_brackets</code> of <code>range_formatter</code> only invoke 
+<code>basic_string_view</code>'s assignment operator, which is <code>noexcept</code>, we should add <code>noexcept</code> 
+specifications for them.
+<p/>
+In addition, its <code>underlying</code> function returns a reference to the underlying <code>formatter</code>, 
+which never throws, they should also be <code>noexcept</code>.
+<p/>
+Similar rules apply to <code><i>range-default-formatter</i></code> and <code>formatter</code>'s <code>tuple</code> specialization.
+</p>
+
+<p><i>[2023-01-06; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after eight votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3839"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 22.14.7.2 <a href="https://wg21.link/format.range.formatter">[format.range.formatter]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T, class charT = char&gt;
+    requires same_as&lt;remove_cvref_t&lt;T&gt;, T&gt; &amp;&amp; formattable&lt;T, charT&gt;
+  class range_formatter {
+    formatter&lt;T, charT&gt; <i>underlying_</i>;                                          // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>separator_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;(", ");      // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>opening-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;("["); // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>closing-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;("]"); // <i>exposition only</i>
+
+  public:
+    constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+    constexpr void set_brackets(basic_string_view&lt;charT&gt; opening,
+                                basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+    constexpr formatter&lt;T, charT&gt;&amp; underlying() <ins>noexcept</ins> { return <i>underlying_</i>; }
+    constexpr const formatter&lt;T, charT&gt;&amp; underlying() const <ins>noexcept</ins> { return <i>underlying_</i>; }
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-7- <i>Effects:</i> Equivalent to: <code><i>separator_</i> = sep;</code>
+</p>
+</blockquote>
+<pre>
+constexpr void set_brackets(basic_string_view&lt;charT&gt; opening, basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-8- <i>Effects:</i> Equivalent to:
+<pre>
+<i>opening-bracket_</i> = opening;
+<i>closing-bracket_</i> = closing;
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 22.14.7.3 <a href="https://wg21.link/format.range.fmtdef">[format.range.fmtdef]</a> as indicated:</p>
+  
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;ranges::input_range R, class charT&gt;
+  struct <i>range-default-formatter</i>&lt;range_format::sequence, R, charT&gt; {    // <i>exposition only</i>
+  private:
+    using <i>maybe-const-r</i> = <i>fmt-maybe-const</i>&lt;R, charT&gt;;                    // <i>exposition only</i>
+    range_formatter&lt;remove_cvref_t&lt;ranges::range_reference_t&lt;<i>maybe-const-r</i>&gt;&gt;,
+                    charT&gt; <i>underlying_</i>;                                 // <i>exposition only</i>
+
+  public:
+    constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+    constexpr void set_brackets(basic_string_view&lt;charT&gt; opening,
+                                basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+  
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+<pre>
+constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Equivalent to: <code><i>underlying_</i>.set_separator(sep);</code>.
+</p>
+</blockquote>
+<pre>
+constexpr void set_brackets(basic_string_view&lt;charT&gt; opening, basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects:</i> Equivalent to: <code><i>underlying_</i>.set_brackets(opening, closing);</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 22.14.9 <a href="https://wg21.link/format.tuple">[format.tuple]</a> as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class charT, formattable&lt;charT&gt;... Ts&gt;
+  struct formatter&lt;<i>pair-or-tuple</i>&lt;Ts...&gt;, charT&gt; {
+  private:
+    tuple&lt;formatter&lt;remove_cvref_t&lt;Ts&gt;, charT&gt;...&gt; <i>underlying_</i>;               // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>separator_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;(", ");      // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>opening-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;("("); // <i>exposition only</i>
+    basic_string_view&lt;charT> <i>closing-bracket_</i> = <i>STATICALLY-WIDEN</i>&lt;charT&gt;(")"); // <i>exposition only</i>
+
+  public:
+    constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+    constexpr void set_brackets(basic_string_view&lt;charT&gt; opening,
+                                basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr void set_separator(basic_string_view&lt;charT&gt; sep) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <code><i>separator_</i> = sep;</code>
+</p>
+</blockquote>
+<pre>
+constexpr void set_brackets(basic_string_view&lt;charT&gt; opening, basic_string_view&lt;charT&gt; closing) <ins>noexcept</ins>;
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to:
+<pre>
+<i>opening-bracket_</i> = opening;
+<i>closing-bracket_</i> = closing;
+</pre>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3258: Range access and initializer_list</title>
+<meta property="og:title" content="Issue 3258: Range access and initializer_list">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3258.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3258"><a href="lwg-defects.html#3258">3258</a>. Range access and <code>initializer_list</code></h3>
+<p><b>Section:</b> 26.3.2 <a href="https://wg21.link/range.access.begin">[range.access.begin]</a>, 26.3.3 <a href="https://wg21.link/range.access.end">[range.access.end]</a>, 26.3.6 <a href="https://wg21.link/range.access.rbegin">[range.access.rbegin]</a>, 26.3.7 <a href="https://wg21.link/range.access.rend">[range.access.rend]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2019-08-15 <b>Last modified:</b> 2021-06-23</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The specification of <code>ranges::begin</code> in 26.3.2 <a href="https://wg21.link/range.access.begin">[range.access.begin]</a> includes a
+"poison pill" overload:
+<blockquote><pre>
+template&lt;class T&gt; void begin(initializer_list&lt;T&gt;&amp;&amp;) = delete;
+</pre></blockquote>
+which exists to create an ambiguity with the non-member <code>initializer_list</code> overload of
+<code>begin</code> in namespace <code>std</code> (17.10.2 <a href="https://wg21.link/initializer.list.syn">[initializer.list.syn]</a>) when performing
+unqualified lookup, since specializations of <code>initializer_list</code> should not satisfy
+<code><i>forwarding-range</i></code> (26.4.2 <a href="https://wg21.link/range.range">[range.range]</a>). The design intent is that
+<code>const</code> specializations of <code>initializer_list</code> should also not satisfy
+<code><i>forwarding-range</i></code>, although they are rare enough beasts that they were overlooked
+when this wording is written.
+</p><p>
+<code>ranges::end</code> (26.3.3 <a href="https://wg21.link/range.access.end">[range.access.end]</a>) has a similar poison pill for
+<code>initializer_list</code>, which should be changed consistently.
+</p><p>
+Notably <code>ranges::rbegin</code> (26.3.6 <a href="https://wg21.link/range.access.rbegin">[range.access.rbegin]</a>) and <code>ranges::rend</code>
+(26.3.6 <a href="https://wg21.link/range.access.rbegin">[range.access.rbegin]</a>) as currently specified <em>accept</em> rvalue
+<code>initializer_list</code> arguments; they find the <code>initializer_list</code> overloads of
+<code>std::rbegin</code> and <code>std::rend</code> (25.7 <a href="https://wg21.link/iterator.range">[iterator.range]</a>) via ADL. While I can't
+put my finger on anything in particular that's broken by this behavior, it seems wise to make
+<code>rbegin</code> and <code>rend</code> consistent with <code>begin</code> and <code>end</code> for
+<code>initializer_list</code> until and unless we discover a reason to do otherwise.
+</p>
+<p><i>[2019-10 Priority set to 3 after reflector discussion]</i></p>
+
+<p><i>[2021-06-23 Resolved by adoption of <a href="https://wg21.link/P2091R0" title=" Issues with Range Access CPOs">P2091R0</a> in Prague. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+<p id="res-3258"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify 26.3.2 <a href="https://wg21.link/range.access.begin">[range.access.begin]</a> as follows:</p>
+
+<blockquote><p>
+-1- The name <code>ranges::begin</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). The expression <code>ranges::begin(E)</code> for some
+subexpression <code>E</code> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; <code>E + 0</code> if <code>E</code> is an lvalue of array type (6.8.4 <a href="https://wg21.link/basic.compound">[basic.compound]</a>).
+</p><p>
+(1.2) &mdash; Otherwise, if <code>E</code> is an lvalue, <code><i>decay-copy</i>(E.begin())</code> if it
+is a valid expression and its type <code>I</code> models <code>input_or_output_iterator</code>.
+</p><p>
+(1.3) &mdash; Otherwise, <code><i>decay-copy</i>(begin(E))</code> if it is a valid expression and its
+type <code>I</code> models <code>input_or_output_iterator</code> with overload resolution performed in a
+context that includes the declarations:
+<blockquote><pre>
+template&lt;class T&gt; void begin(T&amp;&amp;) = delete;
+template&lt;class T&gt; void begin(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
+</pre></blockquote>
+and does not include a declaration of <code>ranges::begin</code>.
+</p><p>
+[&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Modify 26.3.3 <a href="https://wg21.link/range.access.end">[range.access.end]</a> as follows:</p>
+
+<blockquote><p>
+-1- The name <code>ranges::end</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). The expression <code>ranges::end(E)</code> for some
+subexpression <code>E</code> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; <code>E + extent_v&lt;T&gt;</code> if <code>E</code> is an lvalue of array type (6.8.4 <a href="https://wg21.link/basic.compound">[basic.compound]</a>) <code>T</code>.
+</p><p>
+(1.2) &mdash; Otherwise, if <code>E</code> is an lvalue, <code><i>decay-copy</i>(E.end())</code> if it is a
+valid expression and its type <code>S</code> models <code>sentinel_for&lt;decltype(ranges::begin(E))&gt;</code>
+</p><p>
+(1.3) &mdash; Otherwise, <code><i>decay-copy</i>(end(E))</code> if it is a valid expression and its type
+<code>S</code> models <code>sentinel_for&lt;decltype(ranges::begin(E))&gt;</code> with overload resolution
+performed in a context that includes the declarations:
+<blockquote><pre>
+template&lt;class T&gt; void end(T&amp;&amp;) = delete;
+template&lt;class T&gt; void end(initializer_list&lt;T&gt;<del>&amp;&amp;</del>) = delete;
+</pre></blockquote>
+and does not include a declaration of <code>ranges::end</code>.
+</p><p>
+[&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Modify 26.3.6 <a href="https://wg21.link/range.access.rbegin">[range.access.rbegin]</a> as follows:</p>
+
+<blockquote><p>
+-1- The name <code>ranges::rbegin</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). The expression <code>ranges::rbegin(E)</code> for some
+subexpression <code>E</code> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; If <code>E</code> is an lvalue, <code><i>decay-copy</i>(E.rbegin())</code> if it is a valid
+expression and its type <code>I</code> models <code>input_or_output_iterator</code>.
+</p><p>
+(1.2) &mdash; Otherwise, <code><i>decay-copy</i>(rbegin(E))</code> if it is a valid expression and its
+type <code>I</code> models <code>input_or_output_iterator</code> with overload resolution performed in a
+context that includes the declaration<ins>s</ins>:
+<blockquote><pre>
+template&lt;class T&gt; void rbegin(T&amp;&amp;) = delete;
+<ins>template&lt;class T&gt; void rbegin(initializer_list&lt;T&gt;) = delete;</ins>
+</pre></blockquote>
+and does not include a declaration of <code>ranges::rbegin</code>.
+</p><p>
+[&hellip;]
+</p></blockquote>
+</li>
+
+<li><p>Modify 26.3.7 <a href="https://wg21.link/range.access.rend">[range.access.rend]</a> as follows:</p>
+
+<blockquote><p>
+-1- The name <code>ranges::rend</code> denotes a customization point object (16.3.3.3.5 <a href="https://wg21.link/customization.point.object">[customization.point.object]</a>). The expression <code>ranges::rend(E)</code> for some
+subexpression <code>E</code> is expression-equivalent to:
+</p><p>
+(1.1) &mdash; If <code>E</code> is an lvalue, <code><i>decay-copy</i>(E.rend())</code> if it is a valid
+expression and its type <code>S</code> models
+<blockquote><pre>
+sentinel_for&lt;decltype(ranges::rbegin(E))&gt;
+</pre></blockquote>
+</p><p>
+(1.2) &mdash; Otherwise, <code><i>decay-copy</i>(rend(E))</code> if it is a valid expression and its
+type <code>S</code> models
+<blockquote><pre>
+sentinel_for&lt;decltype(ranges::rbegin(E))&gt;
+</pre></blockquote>
+with overload resolution performed in a context that includes the declaration<ins>s</ins>:
+<blockquote><pre>
+template&lt;class T&gt; void rend(T&amp;&amp;) = delete;
+<ins>template&lt;class T&gt; void rend(initializer_list&lt;T&gt;) = delete;</ins>
+</pre></blockquote>
+and does not include a declaration of <code>ranges::rend</code>.
+</p><p>
+[&hellip;]
+</p></blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

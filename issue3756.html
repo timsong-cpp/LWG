@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3756: Is the std::atomic_flag class signal-safe?</title>
+<meta property="og:title" content="Issue 3756: Is the std::atomic_flag class signal-safe?">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3756.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3756"><a href="lwg-defects.html#3756">3756</a>. Is the <code>std::atomic_flag</code> class signal-safe?</h3>
+<p><b>Section:</b> 17.13.5 <a href="https://wg21.link/support.signal">[support.signal]</a>, 33.5.10 <a href="https://wg21.link/atomics.flag">[atomics.flag]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Ruslan Baratov <b>Opened:</b> 2022-08-18 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Following document number <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a> about signal-safe instructions
+17.13.5 <a href="https://wg21.link/support.signal">[support.signal]</a> Signal handlers, and it's unclear whether
+<code>std::atomic_flag</code> is signal-safe.
+<p/>
+Formally it doesn't fit any of the mentioned conditions:
+</p>
+<ul>
+<li><p><code>f</code> is a non-static member function invoked on an object <code>A</code>, such that
+<code>A.is_lock_free()</code> yields <code>true</code>, or</p>
+<blockquote class="note"><p>
+(there is no <code>is_lock_free</code> method in <code>std::atomic_flag</code> class)
+</p></blockquote>
+</li>
+<li><p><code>f</code> is a non-member function, and for every pointer-to-atomic argument <code>A</code>
+passed to <code>f</code>, <code>atomic_is_lock_free(A)</code> yields <code>true</code></p>
+<blockquote class="note"><p>
+(<code>std::atomic_flag</code> object can't be passed to <code>atomic_is_lock_free</code> as argument)
+</p></blockquote></li>
+</ul>
+<p>
+However, <code>std::atomic_flag</code> seem to fit well here, it's atomic, and it's
+always lock-free.
+<p/>
+The suggestion is as follows: If <code>std::atomic_flag</code> is signal-safe, then it
+should be explicitly mentioned in 17.13.5 <a href="https://wg21.link/support.signal">[support.signal]</a>, e.g., the following lines
+should be added:
+</p>
+<blockquote>
+<ul>
+<li><p><ins><code>f</code> is a non-static member function invoked on an <code>atomic_flag</code> object, or</ins></p></li>
+<li><p><ins><code>f</code> is a non-member function, and every pointer-to-atomic argument
+passed to <code>f</code> is <code>atomic_flag</code>, or</ins></p></li>
+</ul>
+</blockquote>
+<p>
+If the <code>std::atomic_flag</code> is not signal-safe, the following note could be added:
+</p>
+<blockquote>
+<p>
+<ins>[<i>Note:</i> Even though <code>atomic_flag</code> is atomic and lock-free, it's not signal-safe. &mdash; <i>end note</i>]</ins>
+</p>
+</blockquote>
+
+<p><i>[2022-09-23; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll. Send to SG1.
+</p>
+<p>
+Another way to fix this is to add <code>is_always_lock_free (=true)</code> and
+<code>is_lock_free() { return true; }</code> to <code>atomic_flag</code>.
+</p>
+
+<p><i>[Kona 2022-11-10; SG1 yields a recommendation]</i></p>
+
+<p>
+Poll: Adopt the proposed resolution for LWG3756 <br/>
+"f is a non-static member function invoked on an
+atomic_flag object, or"
+<br/>
+"f is a non-member function, and every pointer-to-
+atomic argument passed to f is atomic_flag, or"
+<pre>
+SF F N A SA
+11 3 0 0 0
+</pre>
+</p>
+<p>
+Unanimous consent
+</p>
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 17.13.5 <a href="https://wg21.link/support.signal">[support.signal]</a> as indicated:</p>
+<blockquote>
+<p>-1-
+A call to the function <code>signal</code> synchronizes with any resulting
+invocation of the signal handler so installed.
+</p>
+
+<p>-2-
+A <i>plain lock-free atomic operation</i> is an invocation of a function
+<code>f</code> from 33.5 <a href="https://wg21.link/atomics">[atomics]</a>, such that:
+</p>
+<ol style="list-style-type: none">
+<li>(2.1) &mdash;
+<code>f</code> is the function <code>atomic_is_lock_free()</code>, or
+</li>
+<li>(2.2) &mdash;
+<code>f</code> is the member function <code>is_lock_free()</code>, or
+</li>
+<li><ins>(2.?) &mdash;
+<code>f</code> is a non-static member function invoked on an
+<code>atomic_flag</code> object, or</ins>
+</li>
+<li><ins>(2.?) &mdash;
+<code>f</code> is a non-member function, and every pointer-to-atomic argument
+passed to <code>f</code> is <code>atomic_flag</code>, or</ins>
+</li>
+<li>(2.3) &mdash;
+<code>f</code> is a non-static member function invoked on an object <code>A</code>,
+such that <code>A.is_lock_free()</code> yields <code>true</code>, or
+</li>
+<li>(2.4) &mdash;
+<code>f</code> is a non-member function, and for every pointer-to-atomic argument
+<code>A</code> passed to <code>f</code>,
+<code>atomic_is_lock_free(A)</code> yields <code>true</code>.
+</li>
+</ol>
+<p>-3-
+An evaluation is <i>signal-safe</i> unless it includes one of the following:
+</p>
+<ol style="list-style-type: none">
+<li>(3.1) &mdash;
+a call to any standard library function, except for plain lock-free
+atomic operations and functions explicitly identified as signal-safe;
+<p>
+[<i>Note 1</i>: This implicitly excludes the use of <code>new</code> and
+<code>delete</code> expressions that rely on a library-provided memory allocator.
+&mdash; <i>end note</i>]
+</p>
+</li>
+<li>(3.2) &mdash;
+an access to an object with thread storage duration;
+</li>
+<li>(3.3) &mdash;
+a <code>dynamic_cast</code> expression;
+</li>
+<li>(3.4) &mdash;
+throwing of an exception;
+</li>
+<li>(3.5) &mdash;
+control entering a <i>try-block</i> or <i>function-try-block</i>;
+</li>
+<li>(3.6) &mdash;
+initialization of a variable with static storage duration requiring
+dynamic initialization (6.9.3.3 <a href="https://wg21.link/basic.start.dynamic">[basic.start.dynamic]</a>, 8.8 <a href="https://wg21.link/stmt.dcl">[stmt.dcl]</a>)<sup>206</sup>; or
+</li>
+<li>(3.7) &mdash;
+waiting for the completion of the initialization of a variable with
+static storage duration (8.8 <a href="https://wg21.link/stmt.dcl">[stmt.dcl]</a>).
+</li>
+</ol>
+<p>
+A signal handler invocation has undefined behavior if it includes an
+evaluation that is not signal-safe.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+</blockquote>
+
+<p><i>[2022-11-11; Jonathan provides improved wording]</i></p>
+
+<p><i>[Kona 2022-11-11; Move to Ready]</i></p>
+
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3756"><b>Proposed resolution:</b></p>
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 17.13.5 <a href="https://wg21.link/support.signal">[support.signal]</a> as indicated:</p>
+<blockquote>
+<p>-1-
+A call to the function <code>signal</code> synchronizes with any resulting
+invocation of the signal handler so installed.
+</p>
+
+<p>-2-
+A <i>plain lock-free atomic operation</i> is an invocation of a function
+<code>f</code> from 33.5 <a href="https://wg21.link/atomics">[atomics]</a>, such that:
+</p>
+<ol style="list-style-type: none">
+<li>(2.1) &mdash;
+<code>f</code> is the function <code>atomic_is_lock_free()</code>, or
+</li>
+<li>(2.2) &mdash;
+<code>f</code> is the member function <code>is_lock_free()</code>, or
+</li>
+<li><ins>(2.?) &mdash;
+<code>f</code> is a non-static member function of class <code>atomic_flag</code>, or
+</ins>
+</li>
+<li><ins>(2.?) &mdash;
+<code>f</code> is a non-member function, and the first parameter of <code>f</code>
+has type <i>cv</i> <code>atomic_flag*</code>, or
+</ins>
+</li>
+<li>(2.3) &mdash;
+<code>f</code> is a non-static member function invoked on an object <code>A</code>,
+such that <code>A.is_lock_free()</code> yields <code>true</code>, or
+</li>
+<li>(2.4) &mdash;
+<code>f</code> is a non-member function, and for every pointer-to-atomic argument
+<code>A</code> passed to <code>f</code>,
+<code>atomic_is_lock_free(A)</code> yields <code>true</code>.
+</li>
+</ol>
+<p>-3-
+An evaluation is <i>signal-safe</i> unless it includes one of the following:
+</p>
+<ol style="list-style-type: none">
+<li>(3.1) &mdash;
+a call to any standard library function, except for plain lock-free
+atomic operations and functions explicitly identified as signal-safe;
+<p>
+[<i>Note 1</i>: This implicitly excludes the use of <code>new</code> and
+<code>delete</code> expressions that rely on a library-provided memory allocator.
+&mdash; <i>end note</i>]
+</p>
+</li>
+<li>(3.2) &mdash;
+an access to an object with thread storage duration;
+</li>
+<li>(3.3) &mdash;
+a <code>dynamic_cast</code> expression;
+</li>
+<li>(3.4) &mdash;
+throwing of an exception;
+</li>
+<li>(3.5) &mdash;
+control entering a <i>try-block</i> or <i>function-try-block</i>;
+</li>
+<li>(3.6) &mdash;
+initialization of a variable with static storage duration requiring
+dynamic initialization (6.9.3.3 <a href="https://wg21.link/basic.start.dynamic">[basic.start.dynamic]</a>, 8.8 <a href="https://wg21.link/stmt.dcl">[stmt.dcl]</a>)<sup>206</sup>; or
+</li>
+<li>(3.7) &mdash;
+waiting for the completion of the initialization of a variable with
+static storage duration (8.8 <a href="https://wg21.link/stmt.dcl">[stmt.dcl]</a>).
+</li>
+</ol>
+<p>
+A signal handler invocation has undefined behavior if it includes an
+evaluation that is not signal-safe.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

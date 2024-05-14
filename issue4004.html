@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 4004: The load and store operation in &sect;[atomics.order] p1 is ambiguous</title>
+<meta property="og:title" content="Issue 4004: The load and store operation in &sect;[atomics.order] p1 is ambiguous">
+<meta property="og:description" content="C++ library issue. Status: SG1">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue4004.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#SG1">SG1</a> status.</em></p>
+<h3 id="4004"><a href="lwg-active.html#4004">4004</a>. The load and store operation in &sect;[atomics.order] p1 is ambiguous</h3>
+<p><b>Section:</b> 33.5.4 <a href="https://wg21.link/atomics.order">[atomics.order]</a> <b>Status:</b> <a href="lwg-active.html#SG1">SG1</a>
+ <b>Submitter:</b> jim x <b>Opened:</b> 2023-10-30 <b>Last modified:</b> 2024-03-11</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#atomics.order">active issues</a> in [atomics.order].</p>
+<p><b>View all other</b> <a href="lwg-index.html#atomics.order">issues</a> in [atomics.order].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#SG1">SG1</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+33.5.4 <a href="https://wg21.link/atomics.order">[atomics.order]</a> p1 says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<ol style="list-style-type: none">
+<li><p>(1.2) &mdash; <code>memory_order::release</code>, <code>memory_order::acq_rel</code>, and <code>memory_order::seq_cst</code>: a store operation 
+performs a release operation on the affected memory location.</p></li>
+<li><p>(1.3) &mdash; <code>memory_order::consume</code>: a load operation performs a consume operation on the affected memory location. 
+[&hellip;]</p></li>
+<li><p>(1.4) &mdash; <code>memory_order::acquire</code>, <code>memory_order::acq_rel</code>, and <code>memory_order::seq_cst</code>: a 
+load operation performs an acquire operation on the affected memory location.</p></li>
+</ol>
+</blockquote>
+<p>
+What do the store and load operations intend to mean in this context? If there is no extra specification, 
+it is easy to consider them as the operations performed by the non-static member functions "store" and "load" 
+defined in the <code>atomic</code> class (template).
+<p/>
+33.5.4 <a href="https://wg21.link/atomics.order">[atomics.order]</a> p2 says
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+An atomic operation <i>A</i> that performs a release operation on an atomic object <i>M</i> synchronizes with 
+an atomic operation <i>B</i> that performs an acquire operation on <i>M</i> and takes its value from any side 
+effect in the release sequence headed by <i>A</i>.
+</p>
+</blockquote>
+<p>
+According to the above interpretation, <i>A</i> is an operation performed by the non-static member function 
+<code>store</code>, however, I think the following example can establish the synchronization relationship
+</p>
+<blockquote><pre>
+std::atomic&lt;int&gt; x{0};
+Thread 1:
+int expected = 0;
+x.compare_exchange_strong(expected, 1, memory_order::release, memory_order::relaxed ); //#1
+
+Thread 2:
+int expected = 1;
+while(x.compare_exchange_strong( expected, 2, memory_order::acquire, memory_order::relaxed )){} // #2
+</pre></blockquote>
+<p>
+Assuming the RMW operations are successful in the two threads, I think <code>#1</code> intends to perform a 
+release operation while <code>#2</code> performs an acquire operation, and hence they can establish the 
+synchronization relationship, however, they both are RMW operations.
+<p/>
+It should be clearly defined which are store operations and which are load operations. 
+</p>
+
+<p><i>[2024-03-11; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll in November 2023. Ask SG1 to look.
+</p>
+<p>
+Jonathan:
+"Interpreting this to only mean the <code>store</code> and <code>load</code>
+member functions wouldn't even be self-consistent. Could be clearer though,
+6.9.2 <a href="https://wg21.link/intro.multithread">[intro.multithread]</a> talks about reads and writes (and RMW ops)
+and only uses "store" and "load" informally. Maybe just add something saying
+"reads are also called loads and writes are also called stores".
+</p>
+
+
+
+<p id="res-4004"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

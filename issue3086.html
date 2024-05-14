@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3086: Possible problem in &sect;[new.delete.single]</title>
+<meta property="og:title" content="Issue 3086: Possible problem in &sect;[new.delete.single]">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3086.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3086"><a href="lwg-active.html#3086">3086</a>. Possible problem in &sect;[new.delete.single]</h3>
+<p><b>Section:</b> 17.6.3.2 <a href="https://wg21.link/new.delete.single">[new.delete.single]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> William M. Miller <b>Opened:</b> 2018-03-16 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#new.delete.single">active issues</a> in [new.delete.single].</p>
+<p><b>View all other</b> <a href="lwg-index.html#new.delete.single">issues</a> in [new.delete.single].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+In general requirements on a whole program, as opposed to a single translation unit, generally specify 
+"no diagnostic required", since we don't want to require implementations to do multi-translation-unit 
+analysis. However, 17.6.3.2 <a href="https://wg21.link/new.delete.single">[new.delete.single]</a> paragraph 11 says,
+</p>
+<blockquote><p>
+If a function with a <code>size</code> parameter is defined, the program shall also define the corresponding 
+version without the <code>size</code> parameter.
+</p></blockquote>
+<p>
+This is clearly not restricted to a single translation unit; should "no diagnostic required" be added?
+</p>
+
+<p><i>[2018-04-03; Thomas K&ouml;ppe and Tim Song suggest wording]</i></p>
+
+
+<p><i>[2018-06-18 after reflector discussion]</i></p>
+
+<p>Priority set to 3</p>
+
+
+<p id="res-3086"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4727">N4727</a>.
+</p>
+
+<ol>
+<li><p>Edit 17.6.3.2 <a href="https://wg21.link/new.delete.single">[new.delete.single]</a> as indicated:</p>
+<blockquote>
+<pre>
+void operator delete(void* ptr) noexcept;
+void operator delete(void* ptr, std::size_t size) noexcept;
+void operator delete(void* ptr, std::align_val_t alignment) noexcept;
+void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) noexcept;
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects:</i> [&hellip;]
+<p/>
+-11- <i>Replaceable:</i> A C++ program may define functions with any of these function signatures, and thereby
+displace the default versions defined by the C++ standard library. If a function without a <code>size</code> parameter
+is defined, the program should also define the corresponding function with a <code>size</code> parameter. If a
+function with a <code>size</code> parameter is defined, the program shall also define the corresponding version
+without the <code>size</code> parameter<ins>; no diagnostic is required</ins>. [<i>Note:</i> The default behavior 
+below may change in the future, which will require replacing both deallocation functions when replacing the 
+allocation function. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Edit 17.6.3.3 <a href="https://wg21.link/new.delete.array">[new.delete.array]</a> as indicated:</p>
+<blockquote>
+<pre>
+void operator delete[](void* ptr) noexcept;
+void operator delete[](void* ptr, std::size_t size) noexcept;
+void operator delete[](void* ptr, std::align_val_t alignment) noexcept;
+void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) noexcept;
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> [&hellip;]
+<p/>
+-10- <i>Replaceable:</i> A C++ program may define functions with any of these function signatures, and thereby
+displace the default versions defined by the C++ standard library. If a function without a <code>size</code> parameter
+is defined, the program should also define the corresponding function with a <code>size</code> parameter. If a
+function with a <code>size</code> parameter is defined, the program shall also define the corresponding version
+without the <code>size</code> parameter<ins>; no diagnostic is required</ins>. [<i>Note:</i> The default behavior 
+below may change in the future, which will require replacing both deallocation functions when replacing the 
+allocation function. &mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3791: join_view::iterator::operator-- may be ill-formed</title>
+<meta property="og:title" content="Issue 3791: join_view::iterator::operator-- may be ill-formed">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3791.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3791"><a href="lwg-defects.html#3791">3791</a>. <code>join_view::<i>iterator</i>::operator--</code> may be ill-formed</h3>
+<p><b>Section:</b> 26.7.14.3 <a href="https://wg21.link/range.join.iterator">[range.join.iterator]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-09-30 <b>Last modified:</b> 2023-03-23</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.join.iterator">issues</a> in [range.join.iterator].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, <code>join_view::<i>iterator</i>::operator--</code> has the following <i>Effects</i>:
+</p>
+<blockquote><pre>
+if (<i>outer_</i> == ranges::end(<i>parent_</i>-><i>base_</i>))
+  <i>inner_</i> = ranges::end(*--<i>outer_</i>);
+while (<i>inner_</i> == ranges::begin(*<i>outer_</i>))
+  <i>inner_</i> = ranges::end(*--<i>outer_</i>);
+--<i>inner_</i>;
+return *this;
+</pre></blockquote>
+<p>
+which uses <code>ranges::end(*--<i>outer_</i>)</code> to get the sentinel of the inner range.
+However, <code>*--<i>outer_</i></code> may return an rvalue reference to a non-borrowed range,
+in which case calling <code>ranges::end</code> will be ill-formed,
+<a href="https://godbolt.org/z/s4bxTWfqv">for example</a>:
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+int main() {
+  std::vector&lt;std::vector&lt;int&gt;&gt; v;
+  auto r = v | std::views::transform([](auto&amp; x) -&gt; auto&amp;&amp; { return std::move(x); })
+             | std::views::join;
+  auto e = --r.end(); // <span style="color:red;font-weight:bolder">hard error</span>
+}
+</pre></blockquote>
+<p>
+The proposed resolution uses a temporary reference to bind <code>*--<i>outer_</i></code>, so that
+<code>ranges::end</code> is always invoked on an lvalue range, which is consistent with the behavior of
+<code>join_with_view::<i>iterator</i>::operator--</code>.
+</p>
+
+<p><i>[2022-10-12; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+<p>
+"Could introduce an <code>as_lvalue</code> lambda (like
+<code>auto as_lvalue = []&lt;class T&gt;(T&amp;&amp; x) -&gt; T&amp; { return (T&amp;)x; };</code>) and use it throughout."
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.14.3 <a href="https://wg21.link/range.join.iterator">[range.join.iterator]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <i>iterator</i>&amp; operator--()
+  requires <i>ref-is-glvalue</i> &amp;&amp; bidirectional_range&lt;<i>Base</i>&gt; &amp;&amp;
+            bidirectional_range&lt;range_reference_t&lt;<i>Base</i>&gt;&gt; &amp;&amp;
+            common_range&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;;
+</pre>
+</blockquote>
+<p>
+-13- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+if (<i>outer_</i> == ranges::end(<i>parent_</i>-><i>base_</i>)) <ins>{
+  auto&amp;&amp; inner = *--<i>outer_</i>;</ins>
+  <i>inner_</i> = ranges::end(<ins>inner</ins><del>*--<i>outer_</i></del>);
+<ins>}</ins>
+while (<ins>true</ins><del><i>inner_</i> == ranges::begin(*<i>outer_</i>)</del>) <ins>{
+  if (auto&amp;&amp; tmp = *<i>outer_</i>; <i>inner_</i> == ranges::begin(tmp)) {
+    auto&amp;&amp; inner = *--<i>outer_</i>;</ins>
+    <i>inner_</i> = ranges::end(<ins>inner</ins><del>*--<i>outer_</i></del>);
+  <ins>} else {
+    break;
+  }
+}</ins>
+--<i>inner_</i>;
+return *this;
+</pre></blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2023-03-22 Resolved by the adoption of <a href="https://wg21.link/P2770R0" title=" Stashing stashing iterators for proper flattening">P2770R0</a> in Issaquah. Status changed: New &rarr; Resolved.]</i></p>
+
+
+
+
+<p id="res-3791"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

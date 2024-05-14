@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3691: Replacement of keys in associative containers</title>
+<meta property="og:title" content="Issue 3691: Replacement of keys in associative containers">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3691.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3691"><a href="lwg-active.html#3691">3691</a>. Replacement of keys in associative containers</h3>
+<p><b>Section:</b> 24.2.7.1 <a href="https://wg21.link/associative.reqmts.general">[associative.reqmts.general]</a>, 24.2.8.1 <a href="https://wg21.link/unord.req.general">[unord.req.general]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Jens Maurer <b>Opened:</b> 2022-04-19 <b>Last modified:</b> 2022-05-17</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#associative.reqmts.general">active issues</a> in [associative.reqmts.general].</p>
+<p><b>View all other</b> <a href="lwg-index.html#associative.reqmts.general">issues</a> in [associative.reqmts.general].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Keys for elements of associative containers are presented as <code>const</code> subobjects, 
+preventing their modification by user code according to 9.2.9.2 <a href="https://wg21.link/dcl.type.cv">[dcl.type.cv]</a> p4.
+<p/>
+However, that does not prevent those keys to be transparently replaced, for example via
+</p>
+<blockquote><pre>
+std::map&lt;int, int&gt; map;
+map.emplace(1, 2);
+using KT = std::map&lt;int, int&gt;::key_type;
+auto it = map.begin();
+it-&gt;first.~KT();
+new (const_cast&lt;int*&gt;(&amp;it-&gt;first)) KT(3);
+</pre></blockquote>
+<p>
+This, of course, breaks the ordering of the keys, and should be undefined behavior.
+<p/>
+Related issue: <a href="https://wg21.link/cwg2514">CWG 2514</a>.
+</p>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll. One vote for NAD.
+</p>
+
+
+
+<p id="res-3691"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 24.2.7.1 <a href="https://wg21.link/associative.reqmts.general">[associative.reqmts.general]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-5- For <code>set</code> and <code>multiset</code> the value type is the same as the key type. For 
+<code>map</code> and <code>multimap</code> it is equal to <code>pair&lt;const Key, T&gt;</code>. 
+<ins>Ending the lifetime of the key subobject of a container element by means other than 
+invoking a member function of the container results in undefined behavior.</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 24.2.8.1 <a href="https://wg21.link/unord.req.general">[unord.req.general]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-7- For <code>unordered_set</code> and <code>unordered_multiset</code> the value type is the same as the key type. 
+For <code>unordered_map</code> and <code>unordered_multimap</code> it is <code>pair&lt;const Key, T&gt;</code>.
+<ins>Ending the lifetime of the key subobject of a container element by means other than 
+invoking a member function of the container results in undefined behavior.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

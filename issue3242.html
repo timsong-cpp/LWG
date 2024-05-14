@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3242: std::format: missing rules for arg-id in width and precision</title>
+<meta property="og:title" content="Issue 3242: std::format: missing rules for arg-id in width and precision">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3242.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3242"><a href="lwg-defects.html#3242">3242</a>. <code>std::format</code>: missing rules for <code>arg-id</code> in <code>width</code> and <code>precision</code></h3>
+<p><b>Section:</b> 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Richard Smith <b>Opened:</b> 2019-07-31 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#format.string.std">active issues</a> in [format.string.std].</p>
+<p><b>View all other</b> <a href="lwg-index.html#format.string.std">issues</a> in [format.string.std].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+According to 22.14.2 <a href="https://wg21.link/format.string">[format.string]</a> we have:
+</p>
+<blockquote><p>
+If the numeric <code>arg-id</code>s in a format string are <code>0, 1, 2, ...</code> in sequence, they can all be 
+omitted (not just some) and the numbers <code>0, 1, 2, ...</code> will be automatically used in that order. 
+A format string does not contain a mixture of automatic and manual indexing.
+</p></blockquote>
+<p>
+&hellip; but what does that mean in the presence of <code>arg-id</code> in <code>width</code> and <code>precision</code>? 
+Can one replace
+</p>
+<blockquote><pre>
+"{0:{1}} {2}"
+</pre></blockquote>
+<p>
+with
+</p>
+<blockquote><pre>
+"{:{}} {}"
+</pre></blockquote>
+<p>
+? The grammar says the answer is no, because the <code>arg-id</code> in <code>width</code> is not optional, but 
+the normative wording says the answer is yes.
+<p/>
+<b>Victor Zverovich:</b>
+<p/>
+That's a bug in the grammar. The <code>arg-id</code> should be optional in <code>width</code> and <code>precision</code>:
+</p>
+<blockquote>
+<pre>
+width     ::= nonzero-digit [integer] | '{' [arg-id] '}'
+precision ::= integer | '{' [arg-id] '}'
+</pre>
+</blockquote>
+
+<p><i>[2020-02 Status to Immediate on Thursday morning in Prague.]</i></p>
+
+
+
+
+<p id="res-3242"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4830">N4830</a>.</p>
+
+<ol>
+<li><p>Modify the <code><i>width</i></code> and <code><i>precision</i></code> grammar in the syntax 
+of format specifications of 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+[&hellip;]
+<i>width:</i>
+         <i>positive-integer</i>
+         { <i>arg-id<ins><sub>opt</sub></ins></i> }
+<i>precision:</i>
+         . <i>nonnegative-integer</i>  
+         . { <i>arg-id<ins><sub>opt</sub></ins></i> }   
+[&hellip;]         
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 22.14.2.2 <a href="https://wg21.link/format.string.std">[format.string.std]</a> as indicated:</p>
+
+<blockquote>
+<p>
+-6- The <i>#</i> option causes [&hellip;]
+<p/>
+<ins>-?- If <code>{ <i>arg-id<sub>opt</sub></i> }</code> is used in a <i>width</i> or <i>precision</i>, 
+the value of the corresponding formatting argument is used in its place. If the corresponding 
+formatting argument is not of integral type, or its value is negative for <i>precision</i> or 
+non-positive for <i>width</i>, an exception of type <code>format_error</code> is thrown.</ins>
+<p/>
+-7- The <i>positive-integer</i> in <i>width</i> is a decimal integer defining the minimum field width. 
+If <i>width</i> is not specified, there is no minimum field width, and the field width is determined 
+based on the content of the field.
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

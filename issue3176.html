@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3176: Underspecified behavior of unordered containers when Container::key_equal differs from Pred</title>
+<meta property="og:title" content="Issue 3176: Underspecified behavior of unordered containers when Container::key_equal differs from Pred">
+<meta property="og:description" content="C++ library issue. Status: Resolved">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3176.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#Resolved">Resolved</a> status.</em></p>
+<h3 id="3176"><a href="lwg-defects.html#3176">3176</a>. Underspecified behavior of unordered containers when <code>Container::key_equal</code> differs from <code>Pred</code></h3>
+<p><b>Section:</b> 24.2.8 <a href="https://wg21.link/unord.req">[unord.req]</a> <b>Status:</b> <a href="lwg-active.html#Resolved">Resolved</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2018-11-27 <b>Last modified:</b> 2020-01-13</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#unord.req">active issues</a> in [unord.req].</p>
+<p><b>View all other</b> <a href="lwg-index.html#unord.req">issues</a> in [unord.req].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Resolved">Resolved</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+After acceptance of <a href="https://wg21.link/p0919r3">P0919R3</a> into the new working draft (<a href="https://wg21.link/n4791">N4791</a>), 
+it is possible that an unordered container's member type <code>key_equal</code> is different from its template argument for <code>Pred</code> 
+(the former being <code>Hash::transparent_key_equal</code> while the latter being <code>std::equal_to&lt;Key&gt;</code>). However, it is 
+unclear which is stored in the container and used as the predicate in this case.
+<p/>
+In particular, [unord.req]/4 says:
+</p>
+<blockquote>
+<p>
+[&hellip;] The container's object of type <code>Pred</code> &mdash; denoted by <code>pred</code> &mdash; is called the <i>key equality 
+predicate</i> of the container.
+</p>
+</blockquote>
+<p>
+In Table 70, the row for <code>X::key_equal</code> places requirements to <code>Pred</code> and not to <code>Hash::transparent_key_equal</code>:
+</p>
+<blockquote>
+<p>
+<i>Requires:</i> <code>Pred</code> is <i>Cpp17CopyConstructible</i>. <code>Pred</code> shall be a binary predicate that takes two arguments 
+of type <code>Key</code>. <code>Pred</code> is an equivalence relation.
+</p>
+</blockquote>
+<p>
+The specification of <code>operator==</code> and <code>operator!=</code> in [unord.req]/12 uses <code>Pred</code>:
+</p>
+<blockquote>
+<p>
+[&hellip;] The behavior of a program that uses <code>operator==</code> or operator!= on unordered containers is undefined unless
+the <code>Pred</code> function object has the same behavior for both containers and the equality comparison function for <code>Key</code> 
+is a refinement(footnote 227) of the partition into equivalent-key groups produced by <code>Pred</code>.
+</p>
+</blockquote>
+<p>
+The exception safety guarantees in [unord.req.except] mentions "the container's <code>Pred</code> object" twice.
+<p/>
+The <i>noexcept-specifier</i>s of unordered containers' move assignment operator and <code>swap</code> member function are all in 
+terms of <code>Pred</code>.
+<p/>
+I think the intent is to make <code>Hash::transparent_key_equal</code> override <code>Pred</code>. If that's true, then all the 
+abovementioned uses of <code>Pred</code> in the specification should probably be changed to uses <code>key_equal</code>.
+</p>
+
+<p><i>[2018-12-21 Reflector prioritization]</i></p>
+
+<p>Set Priority to 2</p>
+
+<p><i>[2020-01 Resolved by the adoption of <a href="https://wg21.link/P1690">P1690</a> in Belfast.]</i></p>
+
+
+
+<p id="res-3176"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

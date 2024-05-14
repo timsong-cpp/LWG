@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3095: strstreambuf refers to nonexistent member of fpos, fpos::offset</title>
+<meta property="og:title" content="Issue 3095: strstreambuf refers to nonexistent member of fpos, fpos::offset">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3095.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3095"><a href="lwg-active.html#3095">3095</a>. <code>strstreambuf</code> refers to nonexistent member of <code>fpos</code>, <code>fpos::offset</code></h3>
+<p><b>Section:</b> 99 [depr.strstreambuf.virtuals] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Billy O'Neal III <b>Opened:</b> 2018-04-04 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#depr.strstreambuf.virtuals">issues</a> in [depr.strstreambuf.virtuals].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>strstreambuf</code> refers to a nonexistent member function of <code>fpos</code> in the specification of the member function
+<code>seekpos</code>, 99 [depr.strstreambuf.virtuals]/18 (emphasize mine): 
+</p>
+<blockquote><p>
+For a sequence to be positioned, if its next pointer is a null pointer, the positioning operation fails.
+Otherwise, the function determines <code>newoff</code> from <span style="color:#C80000;font-weight:bold"><code>sp.offset()</code></span>:
+</p></blockquote>
+<p>
+The intent is clearly to get the corresponding <code>streamoff</code> from the <code>fpos</code>, as p19 says "the resultant 
+offset <code>newoff</code> (of type <code>off_type</code>)". The mechanism to make that conversion is a normal explicit conversion, 
+as indicated in the last row of the table in [fpos.operations].
+</p>
+
+<p><i>[2018-06-18 after reflector discussion]</i></p>
+
+<p>Priority set to 4</p>
+
+
+<p id="res-3095"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4727">N4727</a>.
+</p>
+
+<ol>
+<li>
+<p>Edit 99 [depr.strstreambuf.virtuals] as indicated:</p>
+<blockquote>
+<pre>
+pos_type seekpos(pos_type sp, ios_base::openmode which
+                 = ios_base::in | ios_base::out) override;
+</pre>
+<blockquote>
+<p>
+-17- <i>Effects:</i> [&hellip;]
+<p/>
+-18- For a sequence to be positioned, if its next pointer is a null pointer, the positioning operation fails.
+Otherwise, the function determines <code>newoff</code> from <code><ins>static_cast&lt;off_type&gt;(</ins>sp<ins>)</ins><del>.offset()</del></code>:
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3433: subrange::advance(n) has UB when n &lt; 0</title>
+<meta property="og:title" content="Issue 3433: subrange::advance(n) has UB when n &lt; 0">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3433.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3433"><a href="lwg-defects.html#3433">3433</a>. <code>subrange::advance(n)</code> has UB when <code>n &lt; 0</code></h3>
+<p><b>Section:</b> 26.5.4.3 <a href="https://wg21.link/range.subrange.access">[range.subrange.access]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Casey Carter <b>Opened:</b> 2020-04-21 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.subrange.access">issues</a> in [range.subrange.access].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>subrange::advance(n)</code> is specified to call <code>ranges::advance(<i>begin_</i>, n, <i>end_</i>)</code> 
+in both <code><i>StoreSize</i></code> and <code>!<i>StoreSize</i></code> cases (26.5.4.3 <a href="https://wg21.link/range.subrange.access">[range.subrange.access]</a>/9). 
+Unfortunately, <code>ranges::advance(<i>begin_</i>, n, <i>end_</i>)</code> has undefined behavior when 
+<code>n &lt; 0</code> unless <code>[<i>end_</i>, <i>begin_</i>)</code> denotes a valid range 
+(25.4.4.2 <a href="https://wg21.link/range.iter.op.advance">[range.iter.op.advance]</a>/5). This would all be perfectly fine &mdash; the UB is exposed to 
+the caller via effects-equivalent-to &mdash; were it not the design intent that <code>subrange::advance(-n)</code> 
+be usable to reverse the effects of <code>subrange::advance(n)</code> when the <code>subrange</code> has a 
+bidirectional iterator type. That is, however, clearly the design intent: <code>subrange::prev()</code>, 
+for example, is equivalent to <code>subrange::advance(-1)</code>.
+</p>
+
+<p><i>[2020-05-11; Reflector prioritization]</i></p>
+
+<p>
+Set priority to 2 after reflector discussions.
+</p>
+
+<p><i>[2021-01-15; Issue processing telecon]</i></p>
+
+<p>
+Set status to Tentatively Ready after discussion and poll.
+<table>
+<tr><th>F</th><th>A</th><th>N</th></tr>
+<tr><td>7</td><td>0</td><td>3</td></tr>
+</table>
+</p>
+<p><i>[2021-02-26 Approved at February 2021 virtual plenary. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3433"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.5.4.3 <a href="https://wg21.link/range.subrange.access">[range.subrange.access]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr subrange&amp; advance(iter_difference_t&lt;I&gt; n);
+</pre>
+<blockquote>
+<p>
+-9- <i>Effects:</i> Equivalent to:
+<ol style="list-style-type: none">
+<li><p><del>(9.1) &mdash; If <code><i>StoreSize</i></code> is <code>true</code>,</del></p>
+<blockquote><pre>
+<del>auto d = n - ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+if (d &gt;= 0)
+  <i>size_</i> -= <i>to-unsigned-like</i>(d);
+else
+  <i>size_</i> += <i>to-unsigned-like</i>(-d);
+return *this;</del>
+</pre></blockquote>
+</li>
+<li><p><del>(9.2) &mdash; Otherwise,</del></p>
+<blockquote><pre>
+<del>ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+return *this;</del>
+</pre></blockquote>
+</li>
+</ol>
+<blockquote><pre>
+<ins>if constexpr (bidirectional_iterator&lt;I&gt;) {
+  if (n &lt; 0) {
+    ranges::advance(<i>begin_</i>, n);
+    if constexpr (<i>StoreSize</i>)
+      <i>size_</i> += <i>to-unsigned-like</i>(-n);
+    return *this;
+  }
+}
+
+auto d = n - ranges::advance(<i>begin_</i>, n, <i>end_</i>);
+if constexpr (<i>StoreSize</i>)
+  <i>size_</i> -= <i>to-unsigned-like</i>(d);
+return *this;</ins>
+</pre></blockquote>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

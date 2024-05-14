@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3406: elements_view::begin() and elements_view::end() have incompatible
+constraints</title>
+<meta property="og:title" content="Issue 3406: elements_view::begin() and elements_view::end() have incompatible
+constraints">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3406.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3406"><a href="lwg-defects.html#3406">3406</a>. <code>elements_view::begin()</code> and <code>elements_view::end()</code> have incompatible
+constraints</h3>
+<p><b>Section:</b> 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Patrick Palka <b>Opened:</b> 2020-02-21 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#range.elements.view">issues</a> in [range.elements.view].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<a href="https://wg21.link/p1994r1">P1994R1</a> (<code>elements_view</code> needs its own
+<code>sentinel</code>) introduces a distinct <code><i>sentinel</i></code> type for <code>elements_view</code>.
+In doing so, it replaces the two existing overloads of <code>elements_view::end()</code> with four new ones:
+</p>
+<blockquote><pre>
+<del>-    constexpr auto end() requires (!<i>simple-view</i>&lt;V&gt;)
+-    { return ranges::end(<i>base_</i>); }
+-
+-    constexpr auto end() const requires <i>simple-view</i>&lt;V&gt;
+-    { return ranges::end(<i>base_</i>); }</del>
+
+<ins>+    constexpr auto end()
++    { return <i>sentinel</i>&lt;false&gt;{ranges::end(<i>base_</i>)}; }
++
++    constexpr auto end() requires common_range&lt;V&gt;
++    { return <i>iterator</i>&lt;false&gt;{ranges::end(<i>base_</i>)}; }
++
++    constexpr auto end() const
++      requires range&lt;const V&gt;
++    { return <i>sentinel</i>&lt;true&gt;{ranges::end(<i>base_</i>)}; }
++
++    constexpr auto end() const
++      requires common_range&lt;const V&gt;
++    { return <i>iterator</i>&lt;true&gt;{ranges::end(<i>base_</i>)}; }</ins>
+</pre></blockquote>
+<p>
+But now these new overloads of <code>elements_view::end()</code> have constraints
+that are no longer consistent with the constraints of <code>elements_view::begin()</code>:
+</p>
+<blockquote><pre>
+     constexpr auto begin() requires (!<i>simple-view</i>&lt;V&gt;)
+     { return <i>iterator</i>&lt;false&gt;(ranges::begin(<i>base_</i>)); }
+
+     constexpr auto begin() const requires <i>simple-view</i>&lt;V&gt;
+     { return <i>iterator</i>&lt;true&gt;(ranges::begin(<i>base_</i>)); }
+</pre></blockquote>
+<p>
+This inconsistency means that we can easily come up with a view <code>V</code> for
+which <code>elements_view&lt;V&gt;::begin()</code> returns an <code><i>iterator</i>&lt;true&gt;</code>
+and <code>elements_view&lt;V&gt;::end()</code> returns an <code><i>sentinel</i>&lt;false&gt;</code>,
+i.e. incomparable things of opposite constness. For example:
+</p>
+<blockquote><pre>
+tuple&lt;int, int&gt; x[] = {{0,0}};
+ranges::subrange r = {counted_iterator(x, 1), default_sentinel};
+auto v = r | views::elements&lt;0&gt;;
+v.begin() == v.end(); <i>// ill-formed</i>
+</pre></blockquote>
+<p>
+Here, overload resolution for <code>begin()</code> selects the <code>const</code> overload because
+the subrange <code>r</code> models <code><i>simple-view</i></code>. But overload resolution for
+<code>end()</code> selects the non-<code>const</code> non-<code>common_range</code> overload. Hence
+the last line of this snippet is ill-formed because it is comparing an iterator and
+sentinel of opposite constness, for which we have no matching <code>operator==</code>
+overload. So in this example <code>v</code> does not even model range because its <code>begin()</code>
+and <code>end()</code> are incomparable.
+<p/>
+This issue can be resolved by making sure the constraints on <code>elements_view::begin()</code>
+and on <code>elements_view::end()</code> are consistent and compatible. The following proposed
+resolution seems to be one way to achieve that and takes inspiration from the design of
+<code>transform_view</code>.
+</p>
+
+<p><i>[2020-04-04 Issue Prioritization]</i></p>
+
+<p>Priority to 1 after reflector discussion.</p>
+
+<p><i>[2020-07-17; telecon]</i></p>
+
+<p>
+Should be considered together with <a href="lwg-defects.html#3448" title="transform_view's sentinel&lt;false&gt; not comparable with iterator&lt;true&gt; (Status: C++23)">3448</a> and <a href="lwg-defects.html#3449" title="take_view and take_while_view's sentinel&lt;false&gt; not comparable with their const iterator (Status: C++23)">3449</a>.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4849">N4849</a> after application of
+<a href="https://wg21.link/p1994r1">P1994R1</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a>, class template <code>elements_view</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+      <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt;
+  class elements_view : public view_interface&lt;elements_view&lt;V, N&gt;&gt; {
+  public:
+    [&hellip;]
+    constexpr V base() &amp;&amp; { return std::move(<i>base_</i>); }
+
+    constexpr auto begin() <del>requires (!<i>simple-view</i>&lt;V&gt;)</del>
+    { return <i>iterator</i>&lt;false&gt;(ranges::begin(<i>base_</i>)); }
+    constexpr auto begin() const requires <del><i>simple-view</i>&lt;V&gt;</del><ins>range&lt;const V&gt;</ins>
+    { return <i>iterator</i>&lt;true&gt;(ranges::begin(<i>base_</i>)); }
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2020-06-05 Tim updates P/R in light of reflector discussions and LWG <a href="lwg-defects.html#3448" title="transform_view's sentinel&lt;false&gt; not comparable with iterator&lt;true&gt; (Status: C++23)">3448</a> and comments]</i></p>
+
+<p>
+The fact that, as currently specified, <code>sentinel&lt;false&gt;</code> is not
+comparable with <code>iterator&lt;true&gt;</code> is a problem with the specification
+of this comparison, as noted in LWG <a href="lwg-defects.html#3448" title="transform_view's sentinel&lt;false&gt; not comparable with iterator&lt;true&gt; (Status: C++23)">3448</a>. The P/R below repairs
+this problem along the lines suggested in that issue. The constraint mismatch does
+make this problem easier to observe for <code>elements_view</code>, but the mismatch
+is not independently a problem: since <code>begin</code> can only add constness on
+<code><i>simple-view</i></code>s for which constness is immaterial, whether
+<code>end</code> also adds constness or not ought not to matter.
+<p/>
+However, there is a problem with the <code>begin</code> overload set: if <code>const V</code> is a range,
+but <code>V</code> is not a <code><i>simple-view</i></code>, then a <code>const elements_view&lt;V, N&gt;</code>
+has no viable <code>begin</code> at all (the simplest example of such non-simple-views
+is probably <code>single_view</code>). That's simply broken; the fix is to constrain
+the <code>const</code> overload of <code>begin</code> with just <code>range&lt;const V&gt;</code>
+instead of <code><i>simple-view</i>&lt;V&gt;</code>. Notably, this is how many other
+uses of <i><code>simple-view</code></i> work already (see, e.g., <code>take_view</code> in
+26.7.10.2 <a href="https://wg21.link/range.take.view">[range.take.view]</a>).
+<p/>
+The previous <i><code>simple-view</code></i> constraint on <code>end</code> served a
+useful purpose (when done correctly): it reduces template instantiations if
+the underlying view is const-agnostic. This was lost in P1994 because that paper
+modeled the overload set on <code>transform_view</code>; however, discussion with
+Eric Niebler confirmed that the reason <code>transform_view</code> doesn't have the
+<i><code>simple-view</code></i> optimization is because it would add constness to
+the callable object as well, which can make a material difference in the result.
+Such concerns are not present in <code>elements_view</code> where the "callable
+object" is effectively hard-coded into the type and unaffected by
+const-qualification. The revised P/R below therefore restores the
+<i><code>simple-view</code></i> optimization.
+<p/>
+I have implemented this P/R together with P1994 on top of libstdc++ trunk and
+can confirm that no existing test cases were broken by these changes, and that
+it fixes the issue reported here as well as in LWG 3448 (as it relates to
+<code>elements_view</code>).
+</p>
+
+<p><i>[2020-10-02; Status to Tentatively Ready after five positive votes on the reflector]</i></p>
+
+
+<p><i>[2020-11-09 Approved In November virtual meeting. Status changed: Tentatively Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3406"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4861">N4861</a>. It assumes
+the <code><i>maybe-const</i></code> helper introduced by the P/R of LWG <a href="lwg-defects.html#3448" title="transform_view's sentinel&lt;false&gt; not comparable with iterator&lt;true&gt; (Status: C++23)">3448</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.23.2 <a href="https://wg21.link/range.elements.view">[range.elements.view]</a>, class template <code>elements_view</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+      <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt;
+  class elements_view : public view_interface&lt;elements_view&lt;V, N&gt;&gt; {
+  public:
+    [&hellip;]
+    constexpr V base() &amp;&amp; { return std::move(<i>base_</i>); }
+
+    constexpr auto begin() requires (!<i>simple-view</i>&lt;V&gt;)
+    { return <i>iterator</i>&lt;false&gt;(ranges::begin(<i>base_</i>)); }
+
+    constexpr auto begin() const requires <del><i>simple-view</i>&lt;V&gt;</del><ins>range&lt;const V&gt;</ins>
+    { return <i>iterator</i>&lt;true&gt;(ranges::begin(<i>base_</i>)); }
+
+    constexpr auto end() <ins>requires (!<i>simple-view</i>&lt;V&gt; &amp;&amp; !common_range&lt;V&gt;)</ins>
+    { return sentinel&lt;false&gt;{ranges::end(<i>base_</i>)}; }
+
+    constexpr auto end() requires <ins>(!<i>simple-view</i>&lt;V&gt; &amp;&amp;</ins> common_range&lt;V&gt;<ins>)</ins>
+    { return iterator&lt;false&gt;{ranges::end(<i>base_</i>)}; }
+
+    constexpr auto end() const requires range&lt;const V&gt;
+    { return sentinel&lt;true&gt;{ranges::end(<i>base_</i>)}; }
+
+    constexpr auto end() const requires common_range&lt;const V&gt;
+    { return iterator&lt;true&gt;{ranges::end(<i>base_</i>)}; }
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 26.7.23.4 <a href="https://wg21.link/range.elements.sentinel">[range.elements.sentinel]</a> as indicated:</p>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: Unlike the current P/R of LWG <a href="lwg-defects.html#3448" title="transform_view's sentinel&lt;false&gt; not comparable with iterator&lt;true&gt; (Status: C++23)">3448</a>, this P/R also changes
+the return type of <code>operator-</code> to depend on the constness of iterator
+rather than that of the sentinel. This is consistent with
+<code>sized_sentinel_for&lt;S, I&gt;</code> (25.3.4.8 <a href="https://wg21.link/iterator.concept.sizedsentinel">[iterator.concept.sizedsentinel]</a>),
+which requires <code>decltype(i - s)</code> to be <code>iter_difference_t&lt;I&gt;</code>.]
+</p>
+</blockquote>
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+      <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt;
+  template&lt;bool Const&gt;
+  class elements_view&lt;V, F&gt;::<i>sentinel</i> {
+    [&hellip;]
+    constexpr sentinel_t&lt;<i>Base</i>&gt; base() const;
+
+    <ins>template&lt;bool OtherConst&gt;</ins>
+      <ins>requires sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;</ins>
+    friend constexpr bool operator==(const <i>iterator</i>&lt;<ins>Other</ins>Const&gt;&amp; x, const <i>sentinel</i>&amp; y);
+
+    <ins>template&lt;bool OtherConst&gt;</ins>
+      <ins>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;</ins>
+    friend constexpr range_difference_t&lt;<del><i>Base</i></del><ins><i>maybe-const</i>&lt;OtherConst, V&gt;</ins>&gt;
+      operator-(const <i>iterator</i>&lt;<ins>Other</ins>Const&gt;&amp; x, const <i>sentinel</i>&amp; y)
+        <del>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+
+    <ins>template&lt;bool OtherConst&gt;</ins>
+      <ins>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;</ins>
+    friend constexpr range_difference_t&lt;<del><i>Base</i></del><ins><i>maybe-const</i>&lt;OtherConst, V&gt;</ins>&gt;
+      operator-(const <i>sentinel</i>&amp; x, const <i>iterator</i>&lt;<ins>Other</ins>Const&gt;&amp; y)
+        <del>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+  };
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+<ins>template&lt;bool OtherConst&gt;</ins>
+  <ins>requires sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;</ins>
+friend constexpr bool operator==(const <i>iterator</i>&lt;<ins>Other</ins>Const&gt;&amp; x, const <i>sentinel</i>&amp; y);
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects:</i> Equivalent to: <code>return x.<i>current_</i> == y.<i>end_</i>;</code>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;bool OtherConst&gt;</ins>
+  <ins>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;</ins>
+friend constexpr range_difference_t&lt;<del><i>Base</i></del><ins><i>maybe-const</i>&lt;OtherConst, V&gt;</ins>&gt;
+  operator-(const <i>iterator</i>&lt;<ins>Other</ins>Const&gt;&amp; x, const <i>sentinel</i>&amp; y)
+    <del>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects:</i> Equivalent to: <code>return x.<i>current_</i> - y.<i>end_</i>;</code>
+</p>
+</blockquote>
+<pre>
+<ins>template&lt;bool OtherConst&gt;</ins>
+  <ins>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>maybe-const</i>&lt;OtherConst, V&gt;&gt;&gt;</ins>
+friend constexpr range_difference_t&lt;<del><i>Base</i></del><ins><i>maybe-const</i>&lt;OtherConst, V&gt;</ins>&gt;
+  operator-(const <i>sentinel</i>&amp; x, const <i>iterator</i>&lt;<ins>Other</ins>Const&gt;&amp; y)
+    <del>requires sized_sentinel_for&lt;sentinel_t&lt;<i>Base</i>&gt;, iterator_t&lt;<i>Base</i>&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-6- <i>Effects:</i> Equivalent to: <code>return x.<i>end_</i> - y.<i>current_</i>;</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

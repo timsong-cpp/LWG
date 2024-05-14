@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3760: cartesian_product_view::iterator's parent_ is never valid</title>
+<meta property="og:title" content="Issue 3760: cartesian_product_view::iterator's parent_ is never valid">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3760.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3760"><a href="lwg-defects.html#3760">3760</a>. <code>cartesian_product_view::<i>iterator</i></code>'s <code><i>parent_</i></code> is never valid</h3>
+<p><b>Section:</b> 26.7.33 <a href="https://wg21.link/range.cartesian">[range.cartesian]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-08-27 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>cartesian_product_view::<i>iterator</i></code> has a pointer member <code><i>parent_</i></code> that points 
+to <code>cartesian_product_view</code>, but its constructor only accepts a <code>tuple</code> of iterators, which 
+makes <code><i>parent_</i></code> always default-initialized to <code>nullptr</code>.
+<p/>
+The proposed resolution is to add an aliased <code><i>Parent</i></code> parameter to the constructor and 
+initialize <code><i>parent_</i></code> with <code>addressof</code>, as we usually do.
+</p>
+
+<p><i>[2022-09-23; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after eight votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3760"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.33.2 <a href="https://wg21.link/range.cartesian.view">[range.cartesian.view]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <i>iterator</i>&lt;false&gt; begin()
+  requires (!<i>simple-view</i>&lt;First&gt; || ... || !<i>simple-view</i>&lt;Vs&gt;);
+</pre>
+<blockquote>
+<p>
+-2- <i>Effects</i>: Equivalent to: <code>return <i>iterator</i>&lt;false&gt;(<ins>*this,</ins> <i>tuple-transform</i>(ranges::begin, 
+<i>bases_</i>));</code>
+</p>
+</blockquote>  
+<pre>
+constexpr <i>iterator</i>&lt;true&gt; begin() const
+  requires (range&lt;const First&gt; &amp;&amp; ... &amp;&amp; range&lt;const Vs&gt;);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Equivalent to: <code>return <i>iterator</i>&lt;true&gt;(<ins>*this,</ins> <i>tuple-transform</i>(ranges::begin, 
+<i>bases_</i>));</code>
+</p>
+</blockquote>
+<pre>
+constexpr <i>iterator</i>&lt;false&gt; end()
+  requires ((!<i>simple-view</i>&lt;First&gt; || ... || !<i>simple-view</i>&lt;Vs&gt;)
+    &amp;&amp; <i>cartesian-product-is-common</i>&lt;First, Vs...&gt;);
+constexpr <i>iterator</i>&lt;true&gt; end() const
+  requires <i>cartesian-product-is-common</i>&lt;const First, const Vs...&gt;;
+</pre>
+<blockquote>
+<p>
+-4- Let:
+</p>
+<ol style="list-style-type: none">
+<li><p>(4.1) &mdash; <code><i>is-const</i></code> be <code>true</code> for the const-qualified overload, and <code>false</code> otherwise;</p></li>
+<li><p>(4.2) &mdash; <code><i>is-empty</i></code> be <code>true</code> if the expression <code>ranges::empty(rng)</code> is <code>true</code> 
+for any <code>rng</code> among the underlying ranges except the first one and <code>false</code> otherwise; and</p></li>
+<li><p>(4.3) &mdash; <code><i>begin-or-first-end</i>(rng)</code> be expression-equivalent to 
+<code><i>is-empty</i> ? ranges::begin(rng) : <i>cartesian-common-arg-end</i>(rng)</code> if <code>rng</code> is the first underlying range 
+and <code>ranges::begin(rng)</code> otherwise.</p></li>
+</ol>
+<p>
+-5- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+<i>iterator</i>&lt;<i>is-const</i>&gt; it(<ins>*this,</ins> <i>tuple-transform</i>(
+  [](auto&amp; rng){ return <i>begin-or-first-end</i>(rng); }, <i>bases_</i>));
+return it;
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify  [ranges.cartesian.iterator] as indicated:</p>
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;input_range First, forward_range... Vs&gt;
+    requires (view&lt;First&gt; &amp;&amp; ... &amp;&amp; view&lt;Vs&gt;)
+  template&lt;bool Const&gt;
+  class cartesian_product_view&lt;First, Vs...&gt;::<i>iterator</i> {
+  public:
+    [&hellip;]
+
+  private:
+    <ins>using <i>Parent</i> = <i>maybe-const</i>&lt;Const, cartesian_product_view&gt;;           <i>// exposition only</i></ins>
+    <ins><i>Parent</i></ins><del><i>maybe-const</i>&lt;Const, cartesian_product_view&gt;</del>* <i>parent_</i> = nullptr; <i>// exposition only</i>
+    tuple&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, First&gt;&gt;,
+      iterator_t&lt;<i>maybe-const</i>&lt;Const, Vs&gt;&gt;...&gt; <i>current_</i>;                   <i>// exposition only</i>
+    
+    template&lt;size_t N = sizeof...(Vs)&gt;
+      constexpr void <i>next</i>();                                             <i>// exposition only</i>
+    
+    template&lt;size_t N = sizeof...(Vs)&gt;
+      constexpr void <i>prev</i>();                                             <i>// exposition only</i>
+    
+    template&lt;class Tuple>
+      constexpr difference_type <i>distance-from</i>(Tuple t);                  <i>// exposition only</i>
+    
+    constexpr <del>explicit</del> <i>iterator</i>(<ins><i>Parent</i>&amp; parent,</ins> tuple&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, First&gt;&gt;,
+      iterator_t&lt;<i>maybe-const</i>&lt;Const, Vs&gt;&gt;...&gt; current);                   <i>// exposition only</i>
+  };
+}
+</pre>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+constexpr <del>explicit</del> <i>iterator</i>(<ins><i>Parent</i>&amp; parent,</ins> tuple&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, First&gt;&gt;,
+  iterator_t&lt;<i>maybe-const</i>&lt;Const, Vs&gt;&gt;...&gt; current);
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects</i>:  Initializes <ins><code><i>parent_</i></code> with <code>addressof(parent)</code> and</ins> 
+<code><i>current_</i></code> with <code>std::move(current)</code>.
+</p>
+</blockquote>
+<pre>
+constexpr <i>iterator</i>(<i>iterator</i>&lt;!Const&gt; i) requires Const &amp;&amp;
+  (convertible_to&lt;iterator_t&lt;First&gt;, iterator_t&lt;const First&gt;&gt; &amp;&amp;
+    ... &amp;&amp; convertible_to&lt;iterator_t&lt;Vs&gt;, iterator_t&lt;const Vs&gt;&gt;);
+</pre>
+<blockquote>
+<p>
+-11- <i>Effects</i>: Initializes <ins><code><i>parent_</i></code> with <code>i.<i>parent_</i></code> and</ins> 
+<code><i>current_</i></code> with <code>std::move(i.<i>current_</i>)</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

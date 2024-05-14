@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3870: Remove voidify</title>
+<meta property="og:title" content="Issue 3870: Remove voidify">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3870.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3870"><a href="lwg-defects.html#3870">3870</a>. Remove <code><i>voidify</i></code></h3>
+<p><b>Section:</b> 27.11.1 <a href="https://wg21.link/specialized.algorithms.general">[specialized.algorithms.general]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2023-01-30 <b>Last modified:</b> 2024-03-18</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+This is the resolution for NB comment <b><a href="https://github.com/cplusplus/nbballot/issues/452">GB-121</a></b>
+</p>
+
+<p>
+The <code><i>voidify</i></code> helper breaks const-correctness, for no tangible benefit.
+C++20 ballot comment US 215 also suggested removing it,
+but failed to achieve consensus. That should be reconsidered.
+</p>
+<p>
+The only claimed benefits are:
+<ul>
+<li>Allowing the <code>uninitialized_xxx</code> algorithms
+to create objects in const storage
+(including overwriting objects declared as const which is usually UB).
+The caller should be responsible for using <code>const_cast</code>
+if that's really desirable.
+Implicitly removing 'const' is unsafe and unnecessary.
+</li>
+<li>
+Supporting creation of const objects with <code>std::construct_at</code>.
+This seems reasonable, but should be supported by adding a dedicated
+function that doesn't conflate the type of the storage to write to
+and the object to create, e.g. <code>construct_at&lt;const T&gt;(ptr)</code>.
+</li>
+</ul>
+</p>
+
+<p><i>[Issaquah 2023-02-06; LWG]</i></p>
+
+<p>
+Casey noted:
+</p>
+<blockquote>
+The claimed benefit is allowing the <code>uninitialized_xxx</code> algorithms
+to create objects of const and/or volatile type, which they cannot otherwise do
+since they deduce the type of object to be created from the reference type
+of the pertinent iterator. Creating const objects has some (marginal?) benefits
+over using const pointers to mutable objects. For example, their non-mutable
+members cannot be modified via casting away const without undefined behavior.
+A unit test might take advantage of this behavior to force a compiler to
+diagnose such undefined behavior in a constant expression.
+</blockquote>
+<p>
+The issue submitter was aware of this, but an open Core issue,
+CWG <a href="https://cplusplus.github.io/CWG/issues/2514.html">2514</a>,
+would invalidate that benefit. If accepted, objects with dynamic storage
+duration (such as those created by <code>std::construct_as</code> and the
+<code>std::uninitialized_xxx</code> algorithms) would never be const objects,
+so casting away the const would not be undefined. So implicitly removing
+const in <code><i>voidify</i></code> would still allow modifying "truly const"
+objects (resulting in undefined behaviour), without being able to create
+"truly const" objects in locations where that actually <i>is</i> safe.
+If CWG 2514 is accepted, the <code><i>voidify</i></code> behaviour would be all
+downside.
+</p>
+<p>
+LWG requested removing the remaining casts from the proposed resolution,
+relying on an implicit conversion to <code>void*</code> instead.
+Move to Immediate for C++23.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li><p>Modify 27.11.1 <a href="https://wg21.link/specialized.algorithms.general">[specialized.algorithms.general]</a>, <b>General</b>,
+as indicated:</p>
+
+<blockquote>
+<p>-4-
+Some algorithms specified in 27.11 <a href="https://wg21.link/specialized.algorithms">[specialized.algorithms]</a>
+make use of the exposition-only function <code><i>voidify</i></code>:
+</p>
+<blockquote>
+<pre><code>
+template&lt;class T&gt;
+  constexpr void* <i>voidify</i>(T&amp; obj) noexcept {
+    return <del>const_cast&lt;void*&gt;(</del>static_cast&lt;<del>const volatile </del>void*&gt;(addressof(obj))<del>)</del>;
+  }
+</code></pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</blockquote>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Immediate &rarr; WP.]</i></p>
+
+
+
+<p id="res-3870"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4928" title=" Working Draft, Standard for Programming Language C++">N4928</a>.
+</p>
+
+<ol>
+<li><p>Modify 27.11.1 <a href="https://wg21.link/specialized.algorithms.general">[specialized.algorithms.general]</a>, <b>General</b>,
+as indicated:</p>
+
+<blockquote>
+<p>-4-
+Some algorithms specified in 27.11 <a href="https://wg21.link/specialized.algorithms">[specialized.algorithms]</a>
+make use of the exposition-only function <code><i>voidify</i></code>:
+</p>
+<blockquote>
+<pre><code>
+template&lt;class T&gt;
+  constexpr void* <i>voidify</i>(T&amp; obj) noexcept {
+    return <del>const_cast&lt;void*&gt;(static_cast&lt;const volatile void*&gt;(</del>addressof(obj)<del>))</del>;
+  }
+</code></pre>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

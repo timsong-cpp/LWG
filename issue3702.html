@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3702: Should zip_transform_view::iterator remove operator&lt;?</title>
+<meta property="og:title" content="Issue 3702: Should zip_transform_view::iterator remove operator&lt;?">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3702.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3702"><a href="lwg-defects.html#3702">3702</a>. Should <code>zip_transform_view::<i>iterator</i></code> remove <code>operator&lt;</code>?</h3>
+<p><b>Section:</b> 26.7.26.3 <a href="https://wg21.link/range.zip.transform.iterator">[range.zip.transform.iterator]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Hewill Kang <b>Opened:</b> 2022-05-21 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+After LWG <a href="lwg-defects.html#3692" title="zip_view::iterator's operator&lt;=&gt; is overconstrained (Status: C++23)">3692</a>, <code>zip_view::<i>iterator</i></code> only provides <code>operator&lt;=&gt;</code>. 
+Since the comparison of <code>zip_transform_view::<i>iterator</i></code> uses <code>zip_view::<i>iterator</i></code>'s 
+<code>operator&lt;=&gt;</code>, it is possible to remove <code>zip_transform_view::<i>iterator</i></code>'s 
+<code>operator&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code> and just detect if <code><i>ziperator</i></code>'s 
+<code>operator&lt;=&gt;</code> is available.
+<p/>
+Since the <code><i>ziperator</i></code>'s <code>operator&lt;=&gt;</code> is valid only when <code>zip_view</code> is a 
+<code>random_access_range</code>, we don't need to additionally constrain the <code><i>ziperator</i></code> to be 
+<code>three_way_comparable</code>.
+</p>
+
+<p><i>[2022-06-21; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after five votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3702"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.26.3 <a href="https://wg21.link/range.zip.transform.iterator">[range.zip.transform.iterator]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+[&hellip;]
+template&lt;copy_constructible F, input_range... Views&gt;
+requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+         regular_invocable&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt; &amp;&amp;
+         <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt;&gt;
+template&lt;bool Const&gt;
+class zip_transform_view&lt;F, Views...&gt;::<i>iterator</i> {
+  using <i>Parent</i> = <i>maybe-const&lt;</i>Const, zip_transform_view&gt;;        // exposition only
+  using <i>Base</i> = <i>maybe-const</i>&lt;Const, <i>InnerView</i>&gt;;                   // exposition only
+  <i>Parent</i>* <i>parent_</i> = nullptr;                                    // exposition only
+  <i>ziperator</i>&lt;Const&gt; <i>inner_</i>;                                      // exposition only
+
+  constexpr <i>iterator</i>(<i>Parent</i>&amp; parent, <i>ziperator</i>&lt;Const&gt; inner);   // exposition only
+public:
+  [&hellip;]
+  friend constexpr bool operator==(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires equality_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;;
+  
+  <del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;
+  friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;
+  friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;
+  friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;;</del>
+  friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+    requires random_access_range&lt;<i>Base</i>&gt;<del>&amp;&amp; three_way_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;</del>;
+  [&hellip;]
+};
+[&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+friend constexpr bool operator==(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires equality_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;;
+<del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;
+friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;;</del>
+friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires random_access_range&lt;<i>Base</i>&gt;<del>&amp;&amp; three_way_comparable&lt;<i>ziperator</i>&lt;Const&gt;&gt;</del>;
+</pre>
+<blockquote>
+<p>
+-14- Let <code><i>op</i></code> be the operator.
+</p>
+<p>
+-15- <i>Effects</i>: Equivalent to: <code>return x.<i>inner_</i> <i>op</i> y.<i>inner_</i>;</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

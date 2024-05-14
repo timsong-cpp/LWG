@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3320: span::cbegin/cend methods produce different results than std::[ranges::]cbegin/cend</title>
+<meta property="og:title" content="Issue 3320: span::cbegin/cend methods produce different results than std::[ranges::]cbegin/cend">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3320.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3320"><a href="lwg-defects.html#3320">3320</a>. <code>span::cbegin/cend</code> methods produce different results than <code>std::[ranges::]cbegin/cend</code></h3>
+<p><b>Section:</b> 24.7.2.2.7 <a href="https://wg21.link/span.iterators">[span.iterators]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Poland <b>Opened:</b> 2019-11-06 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p><b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/243">PL 247</a></b></p>
+
+<p>
+<code>span&lt;T&gt;</code> provides a <code>const</code>-qualified <code>begin()</code> method and <code>cbegin()</code> 
+method that produces a different result if <code>T</code> is not <code>const</code>-qualifed:
+</p>
+<ol>
+<li><p><code>begin()</code> produces mutable iterator over <code>T</code> (as if <code>T*</code>)</p></li>
+<li><p><code>cbegin()</code> produces <code>const</code> iterator over <code>T</code> (as if <code>T const*</code>)</p></li>
+</ol>
+<p>
+As consequence for the object <code>s</code> of type <code>span&lt;T&gt;</code>, the call to the 
+<code>std::cbegin(s)/std::ranges::cbegin(s)</code> produces different result than <code>s.cbegin()</code>.
+<p/>
+Proposed change:
+<p/>
+Change <code>span&lt;T&gt;</code> members <code>cbegin()/cend()/crbegin()/crend()/const_iterator</code> 
+to be equivalent to <code>begin()/end()/rbegin()/rend()/iterator</code> respectively.
+</p>
+<p>
+<b>Tomasz Kami&nacute;ski:</b>
+<p/>
+Per <a href="https://github.com/cplusplus/nbballot/issues/243">LEWG discussion in Belfast</a> these 
+methods and related typedefs should be removed.
+</p>
+
+<p><i>[2019-11 Status to Ready during Wednesday night issue processing in Belfast.]</i></p>
+
+
+
+<p id="res-3320"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4835">N4835</a>.</p>
+
+<ol>
+<li><p>Modify 24.7.2.2.1 <a href="https://wg21.link/span.overview">[span.overview]</a>, class template <code>span</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class ElementType, size_t Extent = dynamic_extent&gt;
+  class span {
+  public:
+    <i>// constants and types</i>
+    using element_type = ElementType;
+    using value_type = remove_cv_t&lt;ElementType&gt;;
+    using index_type = size_t;
+    using difference_type = ptrdiff_t;
+    using pointer = element_type*;
+    using const_pointer = const element_type*;
+    using reference = element_type&amp;;
+    using const_reference = const element_type&amp;;
+    using iterator = <i>implementation-defined</i>; <i>// see 24.7.2.2.7 <a href="https://wg21.link/span.iterators">[span.iterators]</a></i>
+    <del>using const_iterator = <i>implementation-defined</i>;</del>
+    using reverse_iterator = std::reverse_iterator&lt;iterator&gt;;
+    <del>using const_reverse_iterator = std::reverse_iterator&lt;const_iterator&gt;;</del>
+    static constexpr index_type extent = Extent;
+    
+    [&hellip;]
+    <i>// 24.7.2.2.7 <a href="https://wg21.link/span.iterators">[span.iterators]</a>, iterator support</i>
+    constexpr iterator begin() const noexcept;
+    constexpr iterator end() const noexcept;
+    <del>constexpr const_iterator cbegin() const noexcept;
+    constexpr const_iterator cend() const noexcept;</del>
+    constexpr reverse_iterator rbegin() const noexcept;
+    constexpr reverse_iterator rend() const noexcept;
+    <del>constexpr const_reverse_iterator crbegin() const noexcept;
+    constexpr const_reverse_iterator crend() const noexcept;</del>
+    friend constexpr iterator begin(span s) noexcept { return s.begin(); }
+    friend constexpr iterator end(span s) noexcept { return s.end(); }
+    [&hellip;]
+  };
+[&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 24.7.2.2.7 <a href="https://wg21.link/span.iterators">[span.iterators]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+using iterator = <i>implementation-defined</i>;
+<del>using const_iterator = <i>implementation-defined</i>;</del>
+</pre>
+<blockquote>
+<p>
+-1- The type<del>s</del> model<ins>s</ins> <code>contiguous_iterator</code> 
+(25.3.4.14 <a href="https://wg21.link/iterator.concept.contiguous">[iterator.concept.contiguous]</a>), meet<ins>s</ins> the <i>Cpp17RandomAccessIterator</i> 
+requirements (25.3.5.7 <a href="https://wg21.link/random.access.iterators">[random.access.iterators]</a>), and meet<ins>s</ins> the requirements for 
+constexpr iterators (25.3.1 <a href="https://wg21.link/iterator.requirements.general">[iterator.requirements.general]</a>). All requirements on container 
+iterators (24.2 <a href="https://wg21.link/container.requirements">[container.requirements]</a>) apply to <code>span::iterator</code> <del>and 
+<code>span::const_iterator</code></del> as well.
+</p>
+</blockquote>
+[&hellip;]
+<pre>
+<del>constexpr const_iterator cbegin() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-6- <i>Returns:</i> A constant iterator referring to the first element in the span. If 
+<code>empty()</code> is <code>true</code>, then it returns the same value as <code>cend()</code>.</del>
+</p>
+</blockquote>
+<pre>
+<del>constexpr const_iterator cend() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-7- <i>Returns:</i> A constant iterator which is the past-the-end value.</del>
+</p>
+</blockquote>
+<pre>
+<del>constexpr const_reverse_iterator crbegin() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-8- <i>Effects:</i> Equivalent to: <code>return const_reverse_iterator(cend());</code></del>
+</p>
+</blockquote>
+<pre>
+<del>constexpr const_reverse_iterator crend() const noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-9- <i>Effects:</i> Equivalent to: <code>return const_reverse_iterator(cbegin());</code></del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

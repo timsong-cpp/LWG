@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3545: std::pointer_traits should be SFINAE-friendly</title>
+<meta property="og:title" content="Issue 3545: std::pointer_traits should be SFINAE-friendly">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3545.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3545"><a href="lwg-defects.html#3545">3545</a>. <code>std::pointer_traits</code> should be SFINAE-friendly</h3>
+<p><b>Section:</b> 20.2.3 <a href="https://wg21.link/pointer.traits">[pointer.traits]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> Glen Joseph Fernandes <b>Opened:</b> 2021-04-20 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#pointer.traits">issues</a> in [pointer.traits].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<a href="https://wg21.link/p1474r1">P1474R1</a> chose to use <code>std::to_address</code> 
+(a mechanism of converting pointer-like types to raw pointers) for contiguous iterators.
+<code>std::to_address</code> provides an optional customization point via an optional member in 
+<code>std::pointer_traits</code>. However all iterators are not pointers, and the primary 
+template of <code>std::pointer_traits&lt;Ptr&gt;</code> requires that either 
+<code>Ptr::element_type</code> is valid or <code>Ptr</code> is of the form 
+<code>template&lt;T, Args...&gt;</code> or the <code>pointer_traits</code> specialization is
+ill-formed. This requires specializing <code>pointer_traits</code> for those contiguous iterator 
+types which is inconvenient for users. <a href="https://wg21.link/p1474">P1474</a>
+should have also made <code>pointer_traits</code> SFINAE friendly.
+</p>
+
+<p><i>[2021-05-10; Reflector poll]</i></p>
+
+<p>
+Priority set to 2. Send to LEWG.
+Daniel: "there is no similar treatment for the <code>rebind</code> member
+template and I think it should be clarified whether <code>pointer_to</code>'s
+signature should exist and in which form in the offending case."
+</p>
+
+<p><i>[2022-01-29; Daniel comments]</i></p>
+
+<p>
+This issue has some overlap with LWG <a href="lwg-active.html#3665" title="Is std::allocator_traits&lt;Alloc&gt;::rebind_alloc SFINAE-friendly? (Status: New)">3665</a> in regard to the question how we should handle
+the <code>rebind_alloc</code> member template of the <code>allocator_traits</code> template as specified by 
+20.2.9.2 <a href="https://wg21.link/allocator.traits.types">[allocator.traits.types]</a>/11. It would seem preferable to decide for the same approach in both 
+cases.
+</p>
+
+<p><i>[2022-02-22 LEWG telecon; Status changed: LEWG &rarr; Open]</i></p>
+
+<p>
+No objection to unanimous consent for Jonathan's suggestion to make
+<code>pointer_traits</code> an empty class when there is no
+<code>element_type</code>. Jonathan to provide a paper.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/n4885">N4885</a>.
+</p>
+
+<ol>
+<li><p>Modify 20.2.3.2 <a href="https://wg21.link/pointer.traits.types">[pointer.traits.types]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+As additional drive-by fix the improper usage of the term "instantiation"
+has been corrected.
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+using element_type = <i>see below</i>;
+</pre>
+<blockquote>
+<p>
+-1- <i>Type:</i> <code>Ptr::element_type</code> if the <i>qualified-id</i> <code>Ptr::element_type</code> 
+is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>); otherwise, <code>T</code> if <code>Ptr</code> 
+is a class template <del>instantiation</del><ins>specialization</ins> of the form 
+<code>SomePointer&lt;T, Args&gt;</code>, where <code>Args</code> is zero or more type arguments; otherwise, 
+<del>the specialization is ill-formed</del><ins><code>pointer_traits</code> has no member <code>element_type</code></ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-09-27; Jonathan provides new wording]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.</p>
+
+<ol>
+<li>
+<p>Modify 20.2.3.1 <a href="https://wg21.link/pointer.traits.general">[pointer.traits.general]</a> as indicated:</p>
+
+<blockquote>
+<p>-1-
+The class template <code>pointer_traits</code> supplies a uniform interface to
+certain attributes of pointer-like types.
+</p>
+
+<blockquote><pre>
+namespace std {
+  template&lt;class Ptr&gt; struct pointer_traits {
+    <del>using pointer         = Ptr;</del>
+    <del>using element_type    = <i>see below</i>;</del>
+    <del>using difference_type = <i>see below</i>;</del>
+
+    <del>template&lt;class U&gt; using rebind = <i>see below</i>;</del>
+    <del>static pointer pointer_to(<i>see below</i> r);</del>
+
+    <ins><i>see below</i></ins>;
+  };
+
+  template&lt;class T&gt; struct pointer_traits&lt;T*&gt; {
+    using pointer         = T*;
+    using element_type    = T;
+    using difference_type = ptrdiff_t;
+
+    template&lt;class U&gt; using rebind = U*;
+    static constexpr pointer pointer_to(<i>see below</i> r) noexcept;
+  };
+}
+</pre></blockquote>
+
+</blockquote>
+</li>
+
+<li>
+<p>Modify 20.2.3.2 <a href="https://wg21.link/pointer.traits.types">[pointer.traits.types]</a> as indicated:</p>
+
+<blockquote>
+
+<p><ins>-?-
+The definitions in this subclause make use of the following
+exposition-only class template and concept:
+</ins></p>
+<blockquote><pre><ins>
+template&lt;class T&gt;
+struct <i>ptr-traits-elem</i> <i>// exposition only</i>
+{ };
+
+template&lt;class T&gt; requires requires { typename T::element_type; }
+struct <i>ptr-traits-elem</i>&lt;T&gt;
+{ using type = typename T::element_type; };
+
+template&lt;template&lt;class...&gt; class SomePointer, class T, class... Args&gt;
+requires (!requires { typename SomePointer&lt;T, Args...&gt;::element_type; })
+struct <i>ptr-traits-elem</i>&lt;SomePointer&lt;T, Args...&gt;&gt;
+{ using type = T; };
+
+template&lt;class Ptr&gt;
+  concept <i>has-elem-type</i> = <i>// exposition only</i>
+    requires { typename <i>ptr-traits-elem</i>&lt;Ptr&gt;::type; }
+</ins></pre></blockquote>
+
+<p><ins>-?-
+If <code>Ptr</code> satisfies <code><i>has-elem-type</i></code>,
+a specialization <code>pointer_traits&lt;Ptr&gt;</code> generated from the
+<code>pointer_traits</code> primary template has the members described in
+20.2.3.2 <a href="https://wg21.link/pointer.traits.types">[pointer.traits.types]</a> and 20.2.3.3 <a href="https://wg21.link/pointer.traits.functions">[pointer.traits.functions]</a>;
+otherwise, such a specialization has no members by any of the names described
+in those subclauses or in 20.2.3.4 <a href="https://wg21.link/pointer.traits.optmem">[pointer.traits.optmem]</a>.
+</ins></p>
+
+<pre><ins>using pointer = Ptr;</ins>
+</pre>
+
+<pre>using element_type = <del><i>see below</i></del> <ins>typename <i>ptr-traits-elem</i>&lt;Ptr&gt;::type</ins>;</pre>
+<blockquote>
+<p><del>-1- <i>Type</i>: <code>Ptr::element_type</code> if the <i>qualified-id</i>
+<code>Ptr::element_type</code> is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>);
+otherwise, <code>T</code> if <code>Ptr</code> is a class template instantiation of the
+form <code>SomePointer&lt;T, Args&gt;</code>, where <code>Args</code> is zero or more
+type arguments; otherwise, the
+specialization is ill-formed.</del>
+</p>
+</blockquote>
+<pre>using difference_type = <i>see below</i>;</pre>
+<blockquote>
+<p>-2-
+<i>Type</i>: <code>Ptr::difference_type</code> if the <i>qualified-id</i>
+<code>Ptr::difference_type</code> is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>);
+otherwise, <code>ptrdiff_t</code>.
+</p>
+</blockquote>
+<pre>template&lt;class U&gt; using rebind = <i>see below</i>;</pre>
+<blockquote>
+<p>-3-
+<i>Alias template</i>: <code>Ptr::rebind&lt;U&gt;</code> if the <i>qualified-id</i>
+<code>Ptr::rebind&lt;U&gt;</code> is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>);
+otherwise, <code>SomePointer&lt;U, Args&gt;</code> if <code>Ptr</code> is a class template instantiation of the
+form <code>SomePointer&lt;T, Args&gt;</code>, where <code>Args</code> is zero or more
+type arguments; otherwise, the instantiation of <code>rebind</code> is ill-formed.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+</blockquote>
+
+<p><i>[2022-10-11; Jonathan provides improved wording]</i></p>
+
+
+<p><i>[2022-10-19; Reflector poll]</i></p>
+
+<p>
+Set status to "Tentatively Ready" after six votes in favour in reflector poll.
+</p>
+
+<p><i>[2022-11-12 Approved at November 2022 meeting in Kona. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3545"><b>Proposed resolution:</b></p>
+
+<p>This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.</p>
+
+<ol>
+<li>
+<p>Modify 20.2.3.1 <a href="https://wg21.link/pointer.traits.general">[pointer.traits.general]</a> as indicated:</p>
+
+<blockquote>
+<p>-1-
+The class template <code>pointer_traits</code> supplies a uniform interface to
+certain attributes of pointer-like types.
+</p>
+
+<blockquote><pre>
+namespace std {
+  template&lt;class Ptr&gt; struct pointer_traits {
+    <del>using pointer         = Ptr;</del>
+    <del>using element_type    = <i>see below</i>;</del>
+    <del>using difference_type = <i>see below</i>;</del>
+
+    <del>template&lt;class U&gt; using rebind = <i>see below</i>;</del>
+    <del>static pointer pointer_to(<i>see below</i> r);</del>
+
+    <ins><i>see below</i></ins>;
+  };
+
+  template&lt;class T&gt; struct pointer_traits&lt;T*&gt; {
+    using pointer         = T*;
+    using element_type    = T;
+    using difference_type = ptrdiff_t;
+
+    template&lt;class U&gt; using rebind = U*;
+    static constexpr pointer pointer_to(<i>see below</i> r) noexcept;
+  };
+}
+</pre></blockquote>
+
+</blockquote>
+</li>
+
+<li>
+<p>Modify 20.2.3.2 <a href="https://wg21.link/pointer.traits.types">[pointer.traits.types]</a> as indicated:</p>
+
+<blockquote>
+
+<p><ins>-?-
+The definitions in this subclause make use of the following
+exposition-only class template and concept:
+</ins></p>
+<blockquote><pre><ins>
+template&lt;class T&gt;
+struct <i>ptr-traits-elem</i> <i>// exposition only</i>
+{ };
+
+template&lt;class T&gt; requires requires { typename T::element_type; }
+struct <i>ptr-traits-elem</i>&lt;T&gt;
+{ using type = typename T::element_type; };
+
+template&lt;template&lt;class...&gt; class SomePointer, class T, class... Args&gt;
+requires (!requires { typename SomePointer&lt;T, Args...&gt;::element_type; })
+struct <i>ptr-traits-elem</i>&lt;SomePointer&lt;T, Args...&gt;&gt;
+{ using type = T; };
+
+template&lt;class Ptr&gt;
+  concept <i>has-elem-type</i> = <i>// exposition only</i>
+    requires { typename <i>ptr-traits-elem</i>&lt;Ptr&gt;::type; }
+</ins></pre></blockquote>
+
+<p><ins>-?-
+If <code>Ptr</code> satisfies <code><i>has-elem-type</i></code>,
+a specialization <code>pointer_traits&lt;Ptr&gt;</code> generated from the
+<code>pointer_traits</code> primary template has the following members
+as well as those described in 20.2.3.3 <a href="https://wg21.link/pointer.traits.functions">[pointer.traits.functions]</a>;
+otherwise, such a specialization has no members by any of those names.
+</ins></p>
+
+<pre><ins>using pointer = <i>see below</i>;</ins></pre>
+<blockquote>
+<p><ins>-?-
+<i>Type</i>: <code>Ptr</code>.
+</ins></p>
+</blockquote>
+
+<pre>using element_type = <i>see below</i>;</pre>
+<blockquote>
+<p>-1- <i>Type</i>:
+<ins><code>typename <i>ptr-traits-elem</i>&lt;Ptr&gt;::type</code>.</ins>
+<del><code>Ptr::element_type</code> if the <i>qualified-id</i>
+<code>Ptr::element_type</code> is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>);
+otherwise, <code>T</code> if <code>Ptr</code> is a class template instantiation of the
+form <code>SomePointer&lt;T, Args&gt;</code>, where <code>Args</code> is zero or more
+type arguments; otherwise, the
+specialization is ill-formed.</del>
+</p>
+</blockquote>
+<pre>using difference_type = <i>see below</i>;</pre>
+<blockquote>
+<p>-2-
+<i>Type</i>: <code>Ptr::difference_type</code> if the <i>qualified-id</i>
+<code>Ptr::difference_type</code> is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>);
+otherwise, <code>ptrdiff_t</code>.
+</p>
+</blockquote>
+<pre>template&lt;class U&gt; using rebind = <i>see below</i>;</pre>
+<blockquote>
+<p>-3-
+<i>Alias template</i>: <code>Ptr::rebind&lt;U&gt;</code> if the <i>qualified-id</i>
+<code>Ptr::rebind&lt;U&gt;</code> is valid and denotes a type (13.10.3 <a href="https://wg21.link/temp.deduct">[temp.deduct]</a>);
+otherwise, <code>SomePointer&lt;U, Args&gt;</code> if <code>Ptr</code> is a class template instantiation of the
+form <code>SomePointer&lt;T, Args&gt;</code>, where <code>Args</code> is zero or more
+type arguments; otherwise, the instantiation of <code>rebind</code> is ill-formed.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify 20.2.3.4 <a href="https://wg21.link/pointer.traits.optmem">[pointer.traits.optmem]</a> as indicated:</p>
+
+<blockquote>
+<p>-1-
+Specializations of <code>pointer_traits</code> may define the member declared
+in this subclause to customize the behavior of the standard library.
+<ins>
+A specialization generated from the <code>pointer_traits</code> primary template
+has no member by this name.
+</ins>
+</p>
+<pre>static element_type* to_address(pointer p) noexcept;</pre>
+<blockquote>
+<p>-1- <i>Returns</i>:
+A pointer of type <code>element_type*</code> that references the same location
+as the argument <code>p</code>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

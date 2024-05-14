@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3692: zip_view::iterator's operator&lt;=&gt; is overconstrained</title>
+<meta property="og:title" content="Issue 3692: zip_view::iterator's operator&lt;=&gt; is overconstrained">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3692.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3692"><a href="lwg-defects.html#3692">3692</a>. <code>zip_view::<i>iterator</i></code>'s <code>operator&lt;=&gt;</code> is overconstrained</h3>
+<p><b>Section:</b> 26.7.25.3 <a href="https://wg21.link/range.zip.iterator">[range.zip.iterator]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> S. B. Tam <b>Opened:</b> 2022-04-21 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<code>zip_view::<i>iterator</i></code>'s <code>operator&lt;=&gt;</code> is constrained with 
+<code>(three_way_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views>>> &amp;&amp; ...)</code>. 
+This is unnecessary, because the comparison is performed on the stored <code><i>tuple-or-pair</i></code>, 
+and both <code>std::tuple</code> and <code>std::pair</code> provide <code>operator&lt;=&gt;</code> regardless of 
+whether the elements are three-way comparable.
+<p/>
+Note that, because neither <code>std::tuple</code> nor <code>std::pair</code> provides <code>operator&lt;</code> 
+since C++20, comparing two <code>zip::<i>iterator</i></code>s with <code>operator&lt;</code> (which is specified 
+to return <code>x.<i>current_</i> &lt; y.<i>current_</i></code>, where <code><i>current_</i></code> is a 
+<code><i>tuple-or-pair</i></code>) eventually uses <code>tuple</code> or <code>pair</code>'s <code>operator&lt;=&gt;</code> 
+anyway.
+<p/>
+Thus, I think it's possible to make <code>operator&lt;=&gt;</code> not require <code>three_way_comparable</code>. 
+This also makes it possible to remove the operator functions for <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, 
+<code>&gt;=</code> and rely on the operators synthesized from <code>operator&lt;=&gt;</code>.
+</p>
+
+<p><i>[2022-04-24; Daniel comments and provides wording]</i></p>
+
+<p>
+It should be pointed out that by still constraining <code>operator&lt;=&gt;</code> with 
+<code><i>all-random-access</i>&lt;Const, Views...&gt;</code> we also constrain by 
+<code>random_access_iterator&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;</code>
+which again means that we constrain by 
+<code>totally_ordered&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt;</code>, so
+this operator will only be satisfied with iterators <code>I</code> that satisfy 
+<code><i>partially-ordered-with</i>&lt;I, I&gt;</code>. Based on this argument the delegation to
+<code><i>tuple-or-pair</i></code>'s <code>operator&lt;=&gt;</code> that solely depends on 
+<code><i>synth-three-way</i></code> should be appropriate.
+</p>
+
+<p><i>[2022-05-17; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after six votes in favour during reflector poll.
+</p>
+
+<p><i>[2022-07-15; LWG telecon: move to Ready]</i></p>
+
+
+<p><i>[2022-07-25 Approved at July 2022 virtual plenary. Status changed: Ready &rarr; WP.]</i></p>
+
+
+
+<p id="res-3692"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4910" title=" Working Draft, Standard for Programming Language C++">N4910</a>.
+</p>
+
+<ol>
+<li><p>Modify 26.7.25.3 <a href="https://wg21.link/range.zip.iterator">[range.zip.iterator]</a> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0)
+  template&lt;bool Const&gt;
+  class zip_view&lt;Views...&gt;::<i>iterator</i> {
+    <i>tuple-or-pair</i>&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt; <i>current_</i>; <i>// exposition only</i>
+    constexpr explicit <i>iterator</i>(<i>tuple-or-pair</i>&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;...&gt;); <i>// exposition only</i>
+  public:
+    [&hellip;]
+    friend constexpr bool operator==(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires (equality_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...);
+    
+    <del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;
+    friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;
+    friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;
+    friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+    friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+      requires <i>all-random-access</i>&lt;Const, Views...&gt; <del>&amp;&amp;
+               three_way_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...)</del>;    
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+<del>friend constexpr bool operator&lt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-16- <i>Returns:</i> <code>x.<i>current_</i> &lt; y.<i>current_</i></code>.</del>
+</p>
+</blockquote>
+<pre>
+<del>friend constexpr bool operator&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-17- <i>Effects:</i> Equivalent to: <code>return y &lt; x;</code></del>
+</p>
+</blockquote>
+<pre>
+<del>friend constexpr bool operator&lt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-18- <i>Effects:</i> Equivalent to: <code>return !(y &lt; x);</code></del>
+</p>
+</blockquote>
+<pre>
+<del>friend constexpr bool operator&gt;=(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt;;</del>
+</pre>
+<blockquote>
+<p>
+<del>-19- <i>Effects:</i> Equivalent to: <code>return !(x &lt; y);</code></del>
+</p>
+</blockquote>
+<pre>
+friend constexpr auto operator&lt;=&gt;(const <i>iterator</i>&amp; x, const <i>iterator</i>&amp; y)
+  requires <i>all-random-access</i>&lt;Const, Views...&gt; <del>&amp;&amp;
+          (three_way_comparable&lt;iterator_t&lt;<i>maybe-const</i>&lt;Const, Views&gt;&gt;&gt; &amp;&amp; ...)</del>;
+</pre>
+<blockquote>
+<p>
+-20- <i>Returns:</i> <code>x.<i>current_</i> &lt;=&gt; y.<i>current_</i></code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

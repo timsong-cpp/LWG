@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3485: atomic_ref safety should be based on operations that "potentially conflict" rather than lifetime</title>
+<meta property="og:title" content="Issue 3485: atomic_ref safety should be based on operations that &quot;potentially conflict&quot; rather than lifetime">
+<meta property="og:description" content="C++ library issue. Status: SG1">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3485.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#SG1">SG1</a> status.</em></p>
+<h3 id="3485"><a href="lwg-active.html#3485">3485</a>. <code>atomic_ref</code> safety should be based on operations that "potentially conflict" rather than lifetime</h3>
+<p><b>Section:</b> 33.5.7 <a href="https://wg21.link/atomics.ref.generic">[atomics.ref.generic]</a> <b>Status:</b> <a href="lwg-active.html#SG1">SG1</a>
+ <b>Submitter:</b> Billy O'Neal III <b>Opened:</b> 2020-09-12 <b>Last modified:</b> 2020-09-29</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#atomics.ref.generic">issues</a> in [atomics.ref.generic].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#SG1">SG1</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Consider the following program:
+</p>
+<blockquote><pre>
+#include &lt;atomic&gt;
+#include &lt;iostream&gt;
+#include &lt;thread&gt;
+
+using namespace std;
+
+int main() {
+  int i{500};
+  atomic_ref atom{i};
+  i += 500;
+  thread t1{[&amp;atom] { for (int val{0}, x{0}; x &lt; 70;) {
+    if (atom.compare_exchange_weak(val, val + 10)) { ++x; }}}};
+  thread t2{[&amp;atom] { for (int val{0}, y{0}; y &lt; 29;) {
+    if (atom.compare_exchange_weak(val, val + 1)) { ++y; }}}};
+  t1.join(); t2.join();
+  cout &lt;&lt; i &lt;&lt; endl; // 1729
+}
+</pre></blockquote>
+<p>
+Technically this program has undefined behavior. 33.5.7 <a href="https://wg21.link/atomics.ref.generic">[atomics.ref.generic]</a> p3 says 
+that, during the lifetime of any <code>atomic_ref</code> referring to an object, that the object 
+may only be accessed through the <code>atomic_ref</code> instances. However, in this example the 
+<code>atomic_ref</code> is constructed before the <code>i+=500</code> and is not destroyed before the 
+print, even though we have a happens-before relationship between the atomic and non-atomic 
+'phases' of access of the value.
+<p/>
+The user would instead have to write:
+</p>
+<blockquote><pre>
+#include &lt;atomic&gt;
+#include &lt;iostream&gt;
+#include &lt;thread&gt;
+
+using namespace std;
+
+int main() {
+  int i{500};
+  i += 500;
+  {
+    atomic_ref atom{i};
+    thread t1{[&amp;atom] { for (int val{0}, x{0}; x &lt; 70;) {
+      if (atom.compare_exchange_weak(val, val + 10)) { ++x; }}}};
+    thread t2{[&amp;atom] { for (int val{0}, y{0}; y &lt; 29;) {
+      if (atom.compare_exchange_weak(val, val + 1)) { ++y; }}}};
+    t1.join(); t2.join();
+  } // destroy atom
+  cout &lt;&lt; i &lt;&lt; endl; // 1729
+}
+</pre></blockquote>
+<p>
+We should probably get SG1 on record clarifying whether they intend the first program to be acceptable. 
+I can think of a reason to for <code>atomic_ref</code>'s ctor to do something (zeroing out padding), but 
+in our implementation it does nothing. I can't think of any reason for <code>atomic_ref</code>'s dtor to 
+do anything.
+</p>
+
+<p><i>[2020-09-29; Priority to P3 after reflector discussions; Status set to "SG1"]</i></p>
+
+
+
+
+<p id="res-3485"><b>Proposed resolution:</b></p>
+
+
+
+
+
+</body>
+</html>

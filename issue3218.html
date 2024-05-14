@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3218: Modifier for %d parse flag does not match POSIX and format specification</title>
+<meta property="og:title" content="Issue 3218: Modifier for %d parse flag does not match POSIX and format specification">
+<meta property="og:description" content="C++ library issue. Status: C++20">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3218.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++20">C++20</a> status.</em></p>
+<h3 id="3218"><a href="lwg-defects.html#3218">3218</a>. Modifier for <code>%d</code> parse flag does not match POSIX and <code>format</code> specification</h3>
+<p><b>Section:</b> 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a> <b>Status:</b> <a href="lwg-active.html#C++20">C++20</a>
+ <b>Submitter:</b> Tomasz Kami&nacute;ski <b>Opened:</b> 2019-06-13 <b>Last modified:</b> 2021-02-25</p>
+<p><b>Priority: </b>0
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#time.parse">active issues</a> in [time.parse].</p>
+<p><b>View all other</b> <a href="lwg-index.html#time.parse">issues</a> in [time.parse].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++20">C++20</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, the '<code>%d</code>' parse flags accepts the '<code>E</code>' modifier to parse the
+locale's alternative representation, see Table 88 &mdash;
+<a href="http://eel.is/c++draft/time.parse#11.sentence-26">
+"Meaning of <code>parse</code> flags"</a>:
+</p>
+<blockquote><p>
+The modified command <code>%Ed</code> interprets the locale's
+alternative representation of the day of the month.
+</p></blockquote>
+<p>
+This is inconsistent with the
+<a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/strftime.html">POSIX
+<code>strftime</code> specification</a> and the <code>format</code> functions, that uses '<code>O</code>'
+to output alternate locale representation. Per Table 87 &mdash;
+<a href="http://eel.is/c++draft/time.format#17.sentence-28">"Meaning of <code>format</code>
+conversion specifiers"</a>:
+</p>
+<blockquote><p>
+The modified command <code>%Od</code> produces the locale's alternative representation.
+</p></blockquote>
+
+<p><i>[2019-06-24; Howard comments]</i></p>
+
+<p>
+This was simply a type-o in my documentation that infected the proposal and subsequently the C++ working draft.
+<p/>
+None of <code>std::time_put</code>, C's <code>strftime</code>, or POSIX's <code>strftime</code> support
+<code>%Ed</code> but all support <code>%Od</code>. Furthermore the existing example implementation
+supports <code>%Od</code> but not <code>%Ed</code>. And all the existing example implementation
+does is forward to <code>std::time_put</code>.
+</p>
+
+<p><i>[2019-07 Issue Prioritization]</i></p>
+
+<p>Status to Tentatively Ready after five positive votes on the reflector.</p>
+
+
+<p id="res-3218"><b>Proposed resolution:</b></p>
+<p>This wording is relative to <a href="https://wg21.link/n4810">N4810</a>.</p>
+
+<ol>
+<li><p>Modify 29.13 <a href="https://wg21.link/time.parse">[time.parse]</a>, Table 88 &mdash; "Meaning of <code>parse</code> flags",
+as indicated:</p>
+
+<blockquote>
+
+<table border="1">
+<caption>Table 88 &mdash; Meaning of <code>parse</code> flags</caption>
+<tr style="text-align:center">
+<th>Flag</th>
+<th>Parsed value</th>
+</tr>
+<tr>
+<td colspan="3" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+<tr>
+<td><code>%d</code></td>
+<td>The day of the month as a decimal number. The modified command <code>%<i>N</i>d</code>
+specifies the maximum number of characters to read. If <code><i>N</i></code> is not specified,
+the default is 2. Leading zeroes are permitted but not required. The modified command
+<code>%<del>E</del><ins>O</ins>d</code> interprets the locale's alternative representation
+of the day of the month.</td>
+</tr>
+<tr>
+<td colspan="3" align="center">
+<code>[&hellip;]</code>
+</td>
+</tr>
+</table>
+
+</blockquote>
+</li>
+</ol>
+
+
+
+
+</body>
+</html>

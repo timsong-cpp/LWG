@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3790: P1467 accidentally changed nexttoward's signature</title>
+<meta property="og:title" content="Issue 3790: P1467 accidentally changed nexttoward's signature">
+<meta property="og:description" content="C++ library issue. Status: C++23">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3790.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#C++23">C++23</a> status.</em></p>
+<h3 id="3790"><a href="lwg-defects.html#3790">3790</a>. P1467 accidentally changed <code>nexttoward</code>'s signature</h3>
+<p><b>Section:</b> 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a> <b>Status:</b> <a href="lwg-active.html#C++23">C++23</a>
+ <b>Submitter:</b> David Olsen <b>Opened:</b> 2022-09-30 <b>Last modified:</b> 2023-11-22</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#cmath.syn">active issues</a> in [cmath.syn].</p>
+<p><b>View all other</b> <a href="lwg-index.html#cmath.syn">issues</a> in [cmath.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#C++23">C++23</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+<a href="https://wg21.link/P1467" title=" Extended floating-point types and standard names">P1467</a> (Extended floating-point types), which was adopted for C++23 at the July plenary, 
+has a typo (which is entirely my fault) that no one noticed during wording review.  The changes to the 
+<code>&lt;cmath&gt;</code> synopsis in the paper included changing this:
+</p>
+<blockquote><pre>
+constexpr float nexttoward(float x, long double y);       // see [library.c]
+constexpr double nexttoward(double x, long double y);
+constexpr long double nexttoward(long double x, long double y);   // see [library.c]
+</pre></blockquote>
+<p>
+to this:
+</p>
+<blockquote><pre>
+constexpr <i>floating-point-type</i> nexttoward(<i>floating-point-type</i> x, <i>floating-point-type</i> y);
+</pre></blockquote>
+<p>
+That changed the second parameter of <code>nexttoward</code> from always being <code>long double</code> to being 
+<code><i>floating-point-type</i></code>, which matches the type of the first parameter.
+<p/>
+The change is obviously incorrect. The purpose of the changes to <code>&lt;cmath&gt;</code> was to add overloads 
+of the functions for extended floating-point types, not to change any existing signatures.
+</p>
+
+<p><i>[2022-10-10; Reflector poll]</i></p>
+
+<p>
+Set priority to 1 after reflector poll. Discussion during prioritization
+revolved around whether to delete <code>nexttoward</code> for new FP types
+or just restore the C++20 signatures, which might accept the new types via
+implicit conversions (and so return a different type, albeit with the same
+representation and same set of values).
+</p>
+<p>
+"When the first argument to <code>nexttoward</code> is an extended
+floating-point type that doesn't have the same representation as a standard
+floating-point type, such as <code>std::float16_t</code>,
+<code>std::bfloat16_t</code>, or <code>std::float128_t</code> (on some systems),
+the call to <code>nexttoward</code> is ambiguous and ill-formed,
+so the unexpected return type is not an issue.
+Going through the extra effort of specifying '= delete' for
+<code>nexttoward</code> overloads that have extended floating-point arguments
+is a solution for a problem that doesn't really exist."
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a>, header <code>&lt;cmath&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+constexpr <i>floating-point-type</i> nexttoward(<i>floating-point-type</i> x, <del><i>floating-point-type</i></del><ins>long double</ins> y);
+constexpr float nexttowardf(float x, long double y);
+constexpr long double nexttowardl(long double x, long double y);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-10-04; David Olsen comments and provides improved wording]</i></p>
+
+<p>
+C23 specifies variants of most of the functions in <code>&lt;math.h&gt;</code> for the <code>_FloatN</code> types 
+(which are C23's equivalent of C++23's <code>std::floatN_t</code> types). But it does not specify those variants 
+for <code>nexttoward</code>.
+<p/>
+Based on what C23 is doing, I think it would be reasonable to leave <code>nexttoward</code>'s signature unchanged 
+from C++20. There would be no requirement to provide overloads for extended floating-point types, only for 
+the standard floating-point types. Instead of explicitly deleting the overloads with extended floating-point 
+types, we can just never declare them in the first place.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a>, header <code>&lt;cmath&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<ins>constexpr float nexttoward(float x, long double y);</ins>
+<ins>constexpr double nexttoward(double x, long double y);</ins>
+<ins>constexpr long double nexttoward(long double x, long double y);</ins>
+<del>constexpr <i>floating-point-type</i> nexttoward(<i>floating-point-type</i> x, <i>floating-point-type</i> y);</del>
+constexpr float nexttowardf(float x, long double y);
+constexpr long double nexttowardl(long double x, long double y);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2022-11-12; Tomasz comments and provides improved wording]</i></p>
+
+<p>
+During 2022-10-26 LWG telecon we decided that we want to make the calls of the <code>nexttoward</code>
+to be ill-formed (equivalent of Mandates) when the first argument is extended floating-point type.
+</p>
+
+
+<p><i>[2023-01-11; Reflector poll]</i></p>
+
+<p>
+Set status to Tentatively Ready after seven votes in favour during reflector poll.
+</p>
+
+<p><i>[2023-02-13 Approved at February 2023 meeting in Issaquah. Status changed: Voting &rarr; WP.]</i></p>
+
+
+
+<p id="res-3790"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+	
+<li><p>Modify 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a>, header <code>&lt;cmath&gt;</code> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+[&hellip;]
+constexpr <i>floating-point-type</i> nexttoward(<i>floating-point-type</i> x, <del><i>floating-point-type</i></del><ins>long double</ins> y);
+constexpr float nexttowardf(float x, long double y);
+constexpr long double nexttowardl(long double x, long double y);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+
+<li><p>Add following paragraph at the end of 28.7.1 <a href="https://wg21.link/cmath.syn">[cmath.syn]</a>, header <code>&lt;cmath&gt;</code> synopsis:</p>
+
+<blockquote>
+<ins>-?- An invocation of <code>nexttoward</code> is ill-formed if the argument corresponding to the <i>floating-point-type</i>
+parameter has extended floating-point type.</ins>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+</body>
+</html>

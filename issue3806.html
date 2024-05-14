@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3806: Should concept formattable&lt;T, charT&gt; default to char?</title>
+<meta property="og:title" content="Issue 3806: Should concept formattable&lt;T, charT&gt; default to char?">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3806.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3806"><a href="lwg-closed.html#3806">3806</a>. Should concept <code>formattable&lt;T, charT&gt;</code> default to <code>char</code>?</h3>
+<p><b>Section:</b> 22.14.6.3 <a href="https://wg21.link/format.formattable">[format.formattable]</a> <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2022-10-28 <b>Last modified:</b> 2023-01-24</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#format.formattable">issues</a> in [format.formattable].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+For many uses of <code>&lt;format&gt;</code> there's no need to explicitly mention the output type as 
+<code>char</code>. There are either typedefs for <code>char</code> specializations (<code>format_context</code>, 
+<code>format_parse_context</code>, <code>format_args</code>, etc.) or a default template argument 
+(<code>formatter</code>, <code>range_formatter</code>). But for the new <code>formattable</code> concept you 
+always need to specify the character type:
+</p>
+<blockquote><pre>
+static_assert( std::formattable&lt;int&gt; ); // <span style="color:red;font-weight:bolder">ill-formed</span>
+static_assert( std::formattable&lt;int, char&gt; ); // OK
+</pre></blockquote>
+<p>
+Should the concept have a default template argument for the second parameter, to make it easier to 
+check whether something is <code>formattable</code> as <code>char</code>?
+</p>
+
+<p><i>[2022-11-01; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 after reflector poll.
+Two votes for NAD, the convenience makes it easier to misuse.
+</p>
+
+<p><i>[2022-11-30; Reflector poll]</i></p>
+
+<p>
+Set status to "Tentatively NAD" after ten votes in reflector poll.
+</p>
+
+<p><i>[2022-11-30 LWG telecon. Status changed: Tentatively NAD &rarr; NAD.]</i></p>
+
+
+<p><i>[2023-01-24 LEWG electronic poll; weak consensus to reject the propsed change.]</i></p>
+
+
+
+<p id="res-3806"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4917" title=" Working Draft, Standard for Programming Language C++">N4917</a>.
+</p>
+
+<ol>
+<li><p>Modify 22.14.1 <a href="https://wg21.link/format.syn">[format.syn]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// 22.14.6 <a href="https://wg21.link/format.formatter">[format.formatter]</a>, formatter</i>
+template&lt;class T, class charT = char&gt; struct formatter;
+
+<i>// 22.14.6.3 <a href="https://wg21.link/format.formattable">[format.formattable]</a>, concept formattable</i>
+template&lt;class T, class charT <ins>= char</ins>&gt;
+  concept formattable = <i>see below</i>;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 22.14.6.3 <a href="https://wg21.link/format.formattable">[format.formattable]</a> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> This repeats the default template argument already shown in the synopsis, 
+which would not be valid in C++ code. That is consistent with our presentation style though, 
+as this is not C++ code, it's a specification. See e.g. <code>indirect_strict_weak_order</code> and 
+<code>subrange</code>.]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-1- Let <code><i>fmt-iter-for</i>&lt;charT&gt;</code> be an unspecified type that models 
+<code>output_iterator&lt;const charT&amp;&gt;</code> (25.3.4.10 <a href="https://wg21.link/iterator.concept.output">[iterator.concept.output]</a>).
+</p>
+<blockquote>
+<pre>
+template&lt;class T, class charT <ins>= char</ins>&gt;
+  concept formattable =
+    semiregular&lt;formatter&lt;remove_cvref_t&lt;T&gt;, charT&gt;&gt; &amp;&amp;
+    requires(formatter&lt;remove_cvref_t&lt;T&gt;, charT&gt; f,
+             const formatter&lt;remove_cvref_t&lt;T&gt;, charT&gt; cf,
+             T t,
+             basic_format_context&lt;<i>fmt-iter-for</i>&lt;charT&gt;, charT&gt; fc,
+             basic_format_parse_context&lt;charT&gt; pc) {
+      { f.parse(pc) } -&gt; same_as&lt;basic_format_parse_context&lt;charT&gt;::iterator&gt;;
+      { cf.format(t, fc) } -&gt; same_as&lt;<i>fmt-iter-for</i>&lt;charT&gt;&gt;;
+    };
+</pre>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

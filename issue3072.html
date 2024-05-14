@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3072: [networking.ts] DynamicBuffer object lifetimes underspecified</title>
+<meta property="og:title" content="Issue 3072: [networking.ts] DynamicBuffer object lifetimes underspecified">
+<meta property="og:description" content="C++ library issue. Status: New">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3072.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
+<h3 id="3072"><a href="lwg-active.html#3072">3072</a>. [networking.ts] <code>DynamicBuffer</code> object lifetimes underspecified</h3>
+<p><b>Section:</b> 16.2.4 [networking.ts::buffer.reqmts.dynamicbuffer], 17.6 [networking.ts::buffer.async.read], 17.8 [networking.ts::buffer.async.write], 17.10 [networking.ts::buffer.async.read.until] <b>Status:</b> <a href="lwg-active.html#New">New</a>
+ <b>Submitter:</b> Christopher Kohlhoff <b>Opened:</b> 2018-02-26 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>3
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#networking.ts::buffer.reqmts.dynamicbuffer">active issues</a> in [networking.ts::buffer.reqmts.dynamicbuffer].</p>
+<p><b>View all other</b> <a href="lwg-index.html#networking.ts::buffer.reqmts.dynamicbuffer">issues</a> in [networking.ts::buffer.reqmts.dynamicbuffer].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses: networking.ts</b>
+<p>The <code>DynamicBuffer</code> overloads of <code>async_read</code> and <code>async_write</code>, and 
+<code>async_read_until</code>, are underspecified with respect to the lifetime of the dynamic 
+buffer argument <code>b</code>.</p>
+
+<p>Asio's implementation (and the intended specification) performs <code><em>DECAY_COPY</em>(b)</code> 
+in the <code>async_read</code>, <code>async_write</code>, and <code>async_read_until</code> 
+initiating functions. All operations performed on <code>b</code> are actually performed on that 
+decay-copy, or on a move-constructed descendant of it. The copy is intended to refer to the same 
+underlying storage and be otherwise interchangeable with the original in every way.</p>
+
+<p>Most initiating functions' argument lifetimes are covered by [async.reqmts.async.lifetime]. As 
+an rvalue reference it falls under the second bullet, which specifies that the object is copied 
+(but doesn't say decay-copied).</p>
+
+<p>The proposed resolution adds a postcondition for <code>DynamicBuffer</code> move construction, and 
+specifies that <code><em>DECAY_COPY</em>(b)</code> be used for each of these functions. The following 
+two alternative resolutions may also be considered:</p>
+
+<ul>
+<li><p>Add an extra bullet to [async.reqmts.async.lifetime] to cover rvalue parameters (but specifically exclude CompletionTokens).</p></li>
+<li><p>Change the <code>DynamicBuffer</code> arguments to be by-value. (And also change the corresponding synchronous operations to be consistent.)</p></li>
+</ul>
+
+<p>However, the proposed resolution below is presented as a change that minimizes the scope of the impact.</p>
+
+<p><i>[2018-06-18 after reflector discussion]</i></p>
+
+<p>Priority set to 3</p>
+
+
+<p id="res-3072"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/n4711">N4711</a>.
+</p>
+
+<ol>
+<li>
+<p>Edit 16.2.4 [networking.ts::buffer.reqmts.dynamicbuffer] as indicated:</p>
+<blockquote>
+<p>-3- In Table 14, <code>x</code> denotes a value of type <code>X</code>, <code>x1</code> denotes a 
+(possibly const) value of type <code>X</code>, <del>and</del><ins><code>mx1</code> denotes an 
+xvalue of type <code>X</code>,</ins> <code>n</code> denotes a (possibly const) value of type 
+<code>size_t</code><ins>, and <code>u</code> denotes an identifier</ins>.</p>
+
+<table border="1">
+<caption>Table 14 &mdash; DynamicBuffer requirements</caption>
+<tr style="text-align:center">
+<th>expression</th>
+<th>type</th>
+<th>assertion/note pre/post-conditions</th>
+</tr>
+<tr>
+<td>
+<ins><code>X u(mx1);</code></ins>
+</td>
+<td></td>
+<td><ins><em>post:</em></ins>
+<ul>
+<li><ins><code>u.size()</code> is equal to the prior value of <code>mx1.size()</code>.</ins></li>
+<li><ins><code>u.max_size()</code> is equal to the prior value of <code>mx1.max_size()</code>.</ins></li>
+<li><ins><code>u.capacity()</code> is equal to the prior value of <code>mx1.capacity()</code>.</ins></li>
+<li><ins><code>u.data()</code> satisfies the ConstBufferSequence requirements (16.2.2 [buffer.reqmts.constbuffersequence]) as if copy constructed from the prior value of <code>mx1.data()</code>.</ins></li>
+<li><ins>All valid const or mutable buffer sequences that were previously obtained using <code>mx1.data()</code> or <code>mx1.prepare()</code> remain valid.</ins></li>
+</ul>
+</td>
+</tr>
+</table>
+</blockquote>
+</li>
+
+<li>
+<p>Edit 17.6 [networking.ts::buffer.async.read] as indicated:</p>
+<blockquote>
+<p>-11- <ins>Let <code>bd</code> be the result of <code><em>DECAY_COPY</em>(b)</code>.</ins> Data is placed into the dynamic buffer (16.2.4 [buffer.reqmts.dynamicbuffer]) object <code><del>b</del><ins>bd</ins></code>. A mutable buffer sequence (16.2.1 [buffer.reqmts.mutablebuffersequence]) is obtained prior to each <code>read_some</code> call using <code>b<ins>d</ins>.prepare(N)</code>, where <code>N</code> is an unspecified value less than or equal to <code>b<ins>d</ins>.max_size() - b<ins>d</ins>.size()</code>. [<em>Note:</em> Implementations are encouraged to use <code>b<ins>d</ins>.capacity()</code> when determining <code>N</code>, to minimize the number of <code>read_some</code> calls performed on the stream. <em>-- end note</em>] After each <code>read_some</code> call, the implementation performs <code>b<ins>d</ins>.commit(n)</code>, where <code>n</code> is the return value from <code>read_some</code>.</p>
+
+<p><em>[&hellip;]</em></p>
+
+<p>-13- The synchronous read operation continues until:</p>
+<ul>
+<li><p><code>b<ins>d</ins>.size() == b<ins>d</ins>.max_size()</code>; or</p></li>
+<li><p>the completion condition returns <code>0</code>.</p></li>
+</ul>
+</blockquote>
+</li>
+
+<li>
+<p>Edit 17.8 [networking.ts::buffer.async.write] as indicated:</p>
+<blockquote>
+<p>-11- <ins>Let <code>bd</code> be the result of <code><em>DECAY_COPY</em>(b)</code>.</ins> Data is 
+written from the dynamic buffer (16.2.4 [buffer.reqmts.dynamicbuffer]) object 
+<code>b<ins>d</ins></code>. A constant buffer sequence (16.2.2 [buffer.reqmts.constbuffersequence]) 
+is obtained using <code>b<ins>d</ins>.data()</code>. After the data has been written to the stream, 
+the implementation performs <code>b<ins>d</ins>.consume(n)</code>, where <code>n</code> is the number 
+of bytes successfully written.</p>
+
+<p><em>[&hellip;]</em></p>
+
+<p>-13- The asynchronous write operation continues until:</p>
+<ul>
+<li><p><code>b<ins>d</ins>.size() == 0</code>; or</p></li>
+<li><p>the completion condition returns <code>0</code>.</p></li>
+</ul>
+</blockquote>
+</li>
+
+<li>
+<p>Edit 17.10 [networking.ts::buffer.async.read.until] as indicated:</p>
+<blockquote>
+<p>-3- <em>Effects:</em> <ins>Let <code>bd</code> be the result of 
+<code><em>DECAY_COPY</em>(b)</code>.</ins> Initiates an asynchronous operation to read data from 
+the buffer-oriented asynchronous read stream (17.1.2 [buffer.stream.reqmts.asyncreadstream]) object 
+<code>stream</code> by performing zero or more asynchronous read_some operations on the stream, until 
+the readable bytes of the dynamic buffer (16.2.4 [buffer.reqmts.dynamicbuffer]) object 
+<code>b<ins>d</ins></code> contain the specified delimiter <code>delim</code>.</p>
+
+<p>-4- Data is placed into the dynamic buffer object <code>b<ins>d</ins></code>. A mutable buffer 
+sequence (16.2.1 [buffer.reqmts.mutablebuffersequence]) is obtained prior to each 
+<code>async_read_some</code> call using <code>b<ins>d</ins>.prepare(N)</code>, where <code>N</code> 
+is an unspecified value such that <code>N &lt;= max_size() - size()</code>. [<em>Note:</em> 
+Implementations are encouraged to use <code>b<ins>d</ins>.capacity()</code> when determining 
+<code>N</code>, to minimize the number of asynchronous read_some operations performed on the 
+stream. &mdash; <em>end note</em>] After the completion of each asynchronous <code>read_some</code> 
+operation, the implementation performs <code>b<ins>d</ins>.commit(n)</code>, where <code>n</code> 
+is the value passed to the asynchronous <code>read_some</code> operation's completion handler.</p>
+
+<p>-5- The asynchronous <code>read_until</code> operation continues until:</p>
+<ul>
+<li><p>the readable bytes of <code>b<ins>d</ins></code> contain the delimiter <code>delim</code>; or</p></li>
+<li><p><code>b<ins>d</ins>.size() == b<ins>d</ins>.max_size()</code>; or</p></li>
+<li><p>an asynchronous <code>read_some</code> operation fails.</p></li>
+</ul>
+
+<p><em>[&hellip;]</em></p>
+
+<p>-8- On completion of the asynchronous operation, if the readable bytes of <code>b<ins>d</ins></code> 
+contain the delimiter, <code>ec</code> is set such that <code>!ec</code> is <code>true</code>. 
+Otherwise, if <code>b<ins>d</ins>.size() == b<ins>d</ins>.max_size()</code>, <code>ec</code> is set such 
+that <code>ec == stream_errc::not_found</code>. If <code>b<ins>d</ins>.size() &lt; 
+b<ins>d</ins>.max_size()</code>, <code>ec</code> is the <code>error_code</code> from the most recent 
+asynchronous <code>read_some</code> operation. <code>n</code> is the number of readable bytes in 
+<code>b<ins>d</ins></code> up to and including the delimiter, if present, otherwise <code>0</code>.</p>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+</body>
+</html>

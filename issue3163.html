@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 3163: [networking.ts] Buffer sequence iterator equivalency</title>
+<meta property="og:title" content="Issue 3163: [networking.ts] Buffer sequence iterator equivalency">
+<meta property="og:description" content="C++ library issue. Status: NAD">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue3163.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#NAD">NAD</a> status.</em></p>
+<h3 id="3163"><a href="lwg-closed.html#3163">3163</a>. [networking.ts] Buffer sequence iterator equivalency</h3>
+<p><b>Section:</b> 16.2 [networking.ts::buffer.reqmts] <b>Status:</b> <a href="lwg-active.html#NAD">NAD</a>
+ <b>Submitter:</b> Vinnie Falco <b>Opened:</b> 2018-10-07 <b>Last modified:</b> 2020-09-06</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#networking.ts::buffer.reqmts">issues</a> in [networking.ts::buffer.reqmts].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#NAD">NAD</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses: networking.ts</b>
+<p>
+Buffer sequence iterators in [networking.ts] differ from the current
+standard iterator requirements in that the value returned upon
+dereferencing is not required to be a reference type. This change is
+vital for allowing authors to create useful, lazily-evaluated views
+which meet the requirements of buffer sequences. Unfortunately the
+updated language is incompatible with the standard iterator requirements
+for equality testing, because the addresses of value types returned by
+buffer sequence iterators may not be stable. The change proposed in
+this defect report defines a new metric for buffer sequence iterator
+equality.
+</p>
+
+<p>11-2018 Status to NAD after discussion on the reflector.</p>
+
+
+<p id="res-3163"><b>Proposed resolution:</b></p>
+<p>This wording is relative to the <a href="https://wg21.link/n4734">N4734</a>.</p>
+
+<ol>
+<li>
+<p>Modify 16.2.1 [networking.ts::buffer.reqmts.mutablebuffersequence], Table 12 
+"MutableBufferSequence requirements", as indicated:</p>
+<blockquote>
+
+<table border="1">
+<caption>Table 12 &mdash; MutableBufferSequence requirements</caption>
+<tr style="text-align:center">
+<th>expression</th>
+<th>return type</th>
+<th>assertion/note<br/>pre/post-condition</th>
+</tr>
+<tr>
+<td>
+<code>net::buffer_sequence_begin(x)<br/>
+net::buffer_sequence_end(x)</code>
+</td>
+<td>
+An iterator type whose <code>reference</code> type<br/> 
+is convertible to <code>mutable_buffer</code> and which<br/> 
+satisfies all the requirements for bidirectional<br/> 
+iterators (C++ 2014 [bidirectional.iterators]) except that:<br/>
+<ol style="list-style-type:lower-alpha">
+<li>there is no requirement that <code>operator-&gt;</code> is provided, and</li>
+<li>there is no requirement that <code>reference</code><br/> 
+ be a reference type<del>.</del><ins>, and</ins></li>
+<li><ins>for iterators <code>a</code> and <code>b</code><br/> 
+there is no requirement that <code>a == b</code> if and<br/> 
+only if <code>*a</code> and <code>*b</code> are bound to the<br/>
+same object, and</ins></li>
+<li><ins>
+  <code>a == b</code> if and only if<br/>
+  <code>distance(buffer_sequence_begin(x), a) == distance(buffer_sequence_begin(x), b)</code>
+</ins></li>
+</ol>
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+</table>
+
+</blockquote>
+</li>
+
+<li>
+<p>Modify 16.2.2 [networking.ts::buffer.reqmts.constbuffersequence], Table 13
+"ConstBufferSequence requirements", as indicated:</p>
+<blockquote>
+
+<table border="1">
+<caption>Table 13 &mdash; ConstBufferSequence requirements</caption>
+<tr style="text-align:center">
+<th>expression</th>
+<th>return type</th>
+<th>assertion/note<br/>pre/post-condition</th>
+</tr>
+<tr>
+<td>
+<code>net::buffer_sequence_begin(x)<br/>
+net::buffer_sequence_end(x)</code>
+</td>
+<td>
+An iterator type whose <code>reference</code> type is convertible to<br/>
+<code>const_buffer</code> and which satisfies all the requirements for<br/>
+bidirectional iterators (C++ 2014 [bidirectional.iterators]) except that:<br/>
+<ol style="list-style-type:lower-alpha">
+<li>there is no requirement that <code>operator-&gt;</code> is provided, and</li>
+<li>there is no requirement that <code>reference</code> be a reference<br/>
+  type<del>.</del><ins>, and</ins></li>
+<li><ins>for iterators <code>a</code> and <code>b</code> there is no<br/> 
+  requirement that <code>a == b</code> if and only if <code>*a</code> and<br/> 
+  <code>*b</code> are bound to the same object, and</ins></li>
+<li><ins>
+  <code>a == b</code> if and only if<br/>
+  <code>distance(buffer_sequence_begin(x), a) == distance(buffer_sequence_begin(x), b)</code>
+</ins></li>
+</ol>
+
+</td>
+<td>
+[&hellip;]
+</td>
+</tr>
+</table>
+
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+</body>
+</html>
