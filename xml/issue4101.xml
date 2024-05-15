@@ -6,7 +6,7 @@
 <section><sref ref="[ostream.inserters.arithmetic]"/></section>
 <submitter>Jonathan Wakely</submitter>
 <date>10 May 2024</date>
-<priority>99</priority>
+<priority>3</priority>
 
 <discussion>
 <p>
@@ -48,9 +48,7 @@ unspecified whether the cast to `double` preserves the sign of a NaN?
 If not, should we add a note about the surprising behaviour?
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4981"/>.
 </p>
@@ -70,6 +68,46 @@ it performed the following code fragment:
 <ins>
 [<i>Note ?</i>: When `val` is a NaN value, the conversion to `double`
 can alter the sign and payload. &mdash; <i>end note</i>]
+</ins>
+</blockquote>
+</li>
+</ol>
+</superseded>
+
+<note>2024-05-15; Reflector poll</note>
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<note>2024-05-15; Peter Dimov provides improved wording</note>
+<p>Jonathan observes that the same problem exists for
+<code>operator&lt;&lt;(<em>extended-floating-point-type</em>)</code>.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+<ol>
+<li>
+<p>Modify <sref ref="[ostream.inserters.arithmetic]"/> as indicated:</p>
+<blockquote>
+-3-
+When `val` is of type `float` the formatting conversion occurs as if
+it performed the following code fragment:
+<pre><code>
+  bool failed = use_facet&lt;
+    num_put&lt;charT, ostreambuf_iterator&lt;charT, traits&gt;&gt;
+      >(getloc()).put(*this, *this, fill(),
+        <del>static_cast&lt;double&gt;(val)</del><ins><em>dval</em></ins>).failed();
+</code></pre>
+<ins>
+where <code><em>dval</em></code> is `val` converted to type `double`
+as if by <code>static_cast&lt;double&gt;(val)</code>,
+except that the sign and payload of NaN values may be preserved
+rather than discarded.
 </ins>
 </blockquote>
 </li>
