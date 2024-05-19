@@ -1,0 +1,120 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4103" status="New">
+<title><tt>ranges::unique_copy</tt>'s constraints for the case where <code>result</code> is an
+    <code>input_iterator</code> are not quite right</title>
+<section><sref ref="[alg.unique]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>14 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When <code>r</code> is only an <code>input_range</code> and <code>result</code> is also an
+<code>input_iterator</code>, <code>ranges::unique_copy</code> writes the elements of <code>r</code> 
+into <code>result</code> and reads the value of <code>result</code> in the next iteration.
+<p/>
+However, in this case, the function only requires that the <code>value_type</code> of <code>r</code> 
+and the <code>value_type</code> of <code>result</code> are the same, which seems too loose because 
+the <code>value_type</code> is not particularly useful in the ranges world compared to the
+<code>reference</code>, which is also reflected in the fact that the implementation applies the 
+compare function on both dereferenced values (<a href="https://godbolt.org/z/jWTnsdGYv">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+int main() {
+  auto r = std::views::istream&lt;bool&gt;(std::cin);
+  std::vector&lt;bool&gt; v(10);
+  auto proj = [](std::same_as&lt;bool&gt; auto b) { return b; }; // ban vector&lt;bool&gt;::reference
+  std::ranges::unique_copy(r, v.begin(), {}, proj);        // <span style="color:red;font-weight:bolder">hard error in stdlibc++, libc++ and MSVC-STL</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[algorithm.syn]"/>, header <tt>&lt;algorithm&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote><pre>
+#include &lt;initializer_list&gt;     // <i>see <a href="https://wg21.link/initializer.list.syn">[initializer.list.syn]</a></i>
+
+namespace std {
+  [&hellip;]
+  namespace ranges {
+    template&lt;class I, class O&gt;
+      using unique_copy_result = in_out_result&lt;I, O&gt;;
+
+    template&lt;input_iterator I, sentinel_for&lt;I&gt; S, weakly_incrementable O, class Proj = identity,
+             indirect_equivalence_relation&lt;projected&lt;I, Proj&gt;&gt; C = ranges::equal_to&gt;
+      requires indirectly_copyable&lt;I, O&gt; &amp;&amp;
+               (forward_iterator&lt;I&gt; ||
+                (input_iterator&lt;O&gt; &amp;&amp; <del>same_as&lt;iter_value_t&lt;I&gt;, iter_value_t&lt;O&gt;&gt;</del>
+                 <ins>indirect_equivalence_relation&lt;C, projected&lt;I, Proj&gt;, projected&lt;O, Proj&gt;&gt;</ins>) ||
+                indirectly_copyable_storable&lt;I, O&gt;)
+      constexpr unique_copy_result&lt;I, O&gt;
+        unique_copy(I first, S last, O result, C comp = {}, Proj proj = {});
+    template&lt;input_range R, weakly_incrementable O, class Proj = identity,
+             indirect_equivalence_relation&lt;projected&lt;iterator_t&lt;R&gt;, Proj&gt;&gt; C = ranges::equal_to&gt;
+      requires indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt; &amp;&amp;
+               (forward_iterator&lt;iterator_t&lt;R&gt;&gt; ||
+                (input_iterator&lt;O&gt; &amp;&amp; <del>same_as&lt;range_value_t&lt;R&gt;, iter_value_t&lt;O&gt;&gt;</del>
+                 <ins>indirect_equivalence_relation&lt;C, projected&lt;iterator_t&lt;R&gt;, Proj&gt;,
+                                                  projected&lt;O, Proj&gt;&gt;</ins>) ||
+                indirectly_copyable_storable&lt;iterator_t&lt;R&gt;, O&gt;)
+      constexpr unique_copy_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+        unique_copy(R&amp;&amp; r, O result, C comp = {}, Proj proj = {});
+  }
+  [&hellip;]
+}
+</pre></blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.unique]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_iterator I, sentinel_for&lt;I&gt; S, weakly_incrementable O, class Proj = identity,
+         indirect_equivalence_relation&lt;projected&lt;I, Proj&gt;&gt; C = ranges::equal_to&gt;
+  requires indirectly_copyable&lt;I, O&gt; &amp;&amp;
+           (forward_iterator&lt;I&gt; ||
+            (input_iterator&lt;O&gt; &amp;&amp; <del>same_as&lt;iter_value_t&lt;I&gt;, iter_value_t&lt;O&gt;&gt;</del>
+             <ins>indirect_equivalence_relation&lt;C, projected&lt;I, Proj&gt;, projected&lt;O, Proj&gt;&gt;</ins>) ||
+            indirectly_copyable_storable&lt;I, O&gt;)
+  constexpr ranges::unique_copy_result&lt;I, O&gt;
+    ranges::unique_copy(I first, S last, O result, C comp = {}, Proj proj = {});
+template&lt;input_range R, weakly_incrementable O, class Proj = identity,
+         indirect_equivalence_relation&lt;projected&lt;iterator_t&lt;R&gt;, Proj&gt;&gt; C = ranges::equal_to&gt;
+  requires indirectly_copyable&lt;iterator_t&lt;R&gt;, O&gt; &amp;&amp;
+           (forward_iterator&lt;iterator_t&lt;R&gt;&gt; ||
+           (input_iterator&lt;O&gt; &amp;&amp; <del>same_as&lt;range_value_t&lt;R&gt;, iter_value_t&lt;O&gt;&gt;</del>
+            <ins>indirect_equivalence_relation&lt;C, projected&lt;iterator_t&lt;R&gt;, Proj&gt;,
+                                             projected&lt;O, Proj&gt;&gt;</ins>) ||
+            indirectly_copyable_storable&lt;iterator_t&lt;R&gt;, O&gt;)
+  constexpr ranges::unique_copy_result&lt;borrowed_iterator_t&lt;R&gt;, O&gt;
+    ranges::unique_copy(R&amp;&amp; r, O result, C comp = {}, Proj proj = {});
+</pre>
+<blockquote>
+<p>
+-6- Let <tt>pred</tt> be <tt>equal_to{}</tt> for the overloads in namespace <tt>std</tt> with no parameter 
+<tt>pred</tt>, [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
