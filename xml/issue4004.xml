@@ -42,13 +42,14 @@ According to the above interpretation, <i>A</i> is an operation performed by the
 </p>
 <blockquote><pre>
 std::atomic&lt;int&gt; x{0};
+
 Thread 1:
 int expected = 0;
-x.compare_exchange_strong(expected, 1, memory_order::release, memory_order::relaxed ); //#1
+x.compare_exchange_strong(expected, 1, memory_order::release, memory_order::relaxed); // #1
 
 Thread 2:
 int expected = 1;
-while(x.compare_exchange_strong( expected, 2, memory_order::acquire, memory_order::relaxed )){} // #2
+while(x.compare_exchange_strong(expected, 2, memory_order::acquire, memory_order::relaxed)){} // #2
 </pre></blockquote>
 <p>
 Assuming the RMW operations are successful in the two threads, I think <tt>#1</tt> intends to perform a 
@@ -71,6 +72,30 @@ and only uses "store" and "load" informally. Maybe just add something saying
 "reads are also called loads and writes are also called stores".
 </p>
 
+<note>2024-05-15; jim x comments and expands the discussion</note>
+<p>
+This is an addition to this issue, consider this example:
+</p>
+<blockquote><pre>
+std::atomic&lt;int&gt; x{0};
+
+Thread 1:
+int expected = 0;
+x.compare_exchange_strong(expected, 1, memory_order::acq_rel, memory_order::relaxed); // #1
+
+Thread 2:
+int expected = 1;
+while(x. compare_exchange_strong(expected, 2, memory_order::acq_rel, memory_order::relaxed)){} // #2
+</pre></blockquote>
+<p>
+<tt>memory_order::acq_rel</tt> performs a release operation when the operation is a store and is 
+an acquire operation when the operation is a load. It is unclear what operations <tt>#1</tt> and 
+<tt>#2</tt> are considered when they succeed, as pointed out in the original issue, we still don't 
+specify whether RMW is classified as load or store operation or can be both.
+<p/>
+We should specify how the <tt>success</tt> order affects the RMW when it is viewed as a load or store 
+operation.
+</p>
 </discussion>
 
 <resolution>
