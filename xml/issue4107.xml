@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4107" status="New">
+<title>Map formatter may conflict with user-defined specializations of <tt>pair</tt>/<tt>tuple</tt> formatters</title>
+<section><sref ref="[format.range.fmtmap]"/></section>
+<submitter>Victor Zverovich</submitter>
+<date>18 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following <a href="https://www.godbolt.org/z/e6Pr537EY">example</a>:
+</p>
+<blockquote><pre>
+#include &lt;format&gt;
+#include &lt;map&gt;
+#include &lt;print&gt;
+
+struct x {};
+
+template&lt;typename K&gt;
+struct std::formatter&lt;std::pair&lt;K, x&gt;&gt; : std::formatter&lt;std::string_view&gt; {
+  auto format(const std::pair&lt;K, x&gt;&amp; p, auto&amp; ctx) const {
+    return std::format_to(ctx.out(), "x/x");
+  }
+};
+
+int main() {
+  std::print("{}", std::map&lt;x, x&gt;());
+}
+</pre></blockquote>
+<p>
+It doesn't compile because the formatter for maps requires the element formatter to have 
+<tt>set_brackets</tt> and <tt>set_separator</tt> (<sref ref="[format.range.fmtmap]"/>):
+</p>
+<blockquote><pre>
+<i>underlying_</i>.underlying().set_brackets({}, {});
+<i>underlying_</i>.underlying().set_separator(<i>STATICALLY-WIDEN</i>&lt;charT&gt;(": "));
+</pre></blockquote>
+<p>
+The specialization <tt>std::formatter&lt;std::pair&lt;K, x&gt;&gt;</tt> itself is allowed according to 
+<sref ref="[namespace.std]"/>:
+</p>
+<blockquote>
+<p>
+Unless explicitly prohibited, a program may add a template specialization for any standard library class 
+template to namespace <tt>std</tt> provided that
+</p>
+<ul>
+<li><p>the added declaration depends on at least one program-defined type, and</p></li>
+<li><p>the specialization meets the standard library requirements for the original template.</p></li>
+</ul>
+</blockquote>
+<p>
+but it's unclear what exactly the part "the specialization meets the standard library requirements for 
+the original template" means for this formatter. Does it mean that the specialization must provide 
+<tt>set_brackets</tt> and <tt>set_separator</tt> and does the output have to be consistent with the main 
+template? The latter would render the specialization useless. On the other hand if users are allowed to 
+customize pair and tuple formatting the current specification of the map formatter is broken.
+<p/>
+The correct resolution appears to be to not restrict user-defined formatter specializations of <tt>pair</tt>s 
+and <tt>tuple</tt>s, and make map be responsible for its own structural formatting rather than delegating 
+part of it to other formatters in an arbitrary way. This resolution has been applied to {fmt}'s implementation 
+of range formatting to address <a href="https://github.com/fmtlib/fmt/issues/3685">#3685</a>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[format.args]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;ranges::input_range R, class charT&gt;
+  struct <i>range-default-formatter</i>&lt;range_format::map, R, charT&gt; {
+  private:
+    using <i>maybe-const-map</i> = <i>fmt-maybe-const</i>&lt;R, charT&gt;;            // <i>exposition only</i>
+    using <i>element-type</i> =                                          // <i>exposition only</i>
+      remove_cvref_t&lt;ranges::range_reference_t&lt;<i>maybe-const-map</i>&gt;&gt;;
+    <del>range_formatter&lt;<i>element-type</i>, charT&gt; <i>underlying_</i>;             // <i>exposition only</i></del>
+    <ins>using <i>key-type</i> = tuple_element_t&lt;0, <i>element-type</i>&gt;;            // <i>exposition only</i>
+    using <i>value-type</i> = tuple_element_t&lt;1, <i>element-type</i>&gt;;          // <i>exposition only</i>
+    formatter&lt;<i>key-type</i>, charT&gt; <i>key-formatter_</i>;                    // <i>exposition only</i>
+    formatter&lt;<i>value-type</i>, charT> <i>value-formatter_</i>;                // <i>exposition only</i></ins>
+
+  public:
+    constexpr <i>range-default-formatter</i>();
+    
+    template&lt;class ParseContext&gt;
+      constexpr typename ParseContext::iterator
+        parse(ParseContext&amp; ctx);
+        
+    template&lt;class FormatContext&gt;
+      typename FormatContext::iterator
+        format(<i>maybe-const-map</i>&amp; r, FormatContext&amp; ctx) const;
+  };
+}
+</pre>
+</blockquote>
+<pre>
+constexpr <i>range-default-formatter</i>();
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: Either:
+</p>
+<ol style="list-style-type:none">
+<li><p>(1.1) &mdash; <tt><i>element-type</i></tt> is a specialization of <tt>pair</tt>, or</p></li>
+<li><p>(1.2) &mdash; <tt><i>element-type</i></tt> is a specialization of <tt>tuple</tt> and 
+<tt>tuple_size_v&lt;<i>element-type</i>&gt; == 2</tt>.</p></li>
+</ol>
+<p>
+<del>-2- <i>Effects</i>: Equivalent to:</del>
+</p>
+<blockquote><pre>
+<del><i>underlying_</i>.set_brackets(<i>STATICALLY-WIDEN</i>&lt;charT&gt;("{"), <i>STATICALLY-WIDEN</i>&lt;charT&gt;("}"));
+<i>underlying_</i>.underlying().set_brackets({}, {});
+<i>underlying_</i>.underlying().set_separator(<i>STATICALLY-WIDEN</i>&lt;charT&gt;(": "));</del>
+</pre></blockquote>
+</blockquote>
+<pre>
+template&lt;class ParseContext&gt;
+  constexpr typename ParseContext::iterator
+    parse(ParseContext&amp; ctx);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: <del>Equivalent to: <tt>return <i>underlying_</i>.parse(ctx);</tt></del>
+<ins>Parses the format specifiers as a <i>range-format-spec</i> and stores the parsed specifiers in <tt>*this</tt>.</ins>
+<p/>
+<ins>If <tt><i>key-formatter_</i>.set_debug_format()</tt> is a valid expression, and there is no <i>range-underlying-spec</i>, 
+then calls <tt><i>key-formatter_</i>.set_debug_format()</tt>.</ins>
+<p/>
+<ins>If <tt><i>value-formatter_</i>.set_debug_format()</tt> is a valid expression, and there is no <i>range-underlying-spec</i>, 
+then calls <tt><i>value-formatter_</i>.set_debug_format()</tt>.</ins>
+<p/>
+<ins>-?- <i>Returns</i>: An iterator past the end of the <i>range-format-spec</i>.</ins>
+</p>
+</blockquote>
+<pre>
+template&lt;class FormatContext&gt;
+  typename FormatContext::iterator
+    format(<i>maybe-const-map</i>&amp; r, FormatContext&amp; ctx) const;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects</i>: <del>Equivalent to: <tt>return <i>underlying_</i>.format(r, ctx);</tt></del>
+<ins>Writes the following into <tt>ctx.out()</tt>, adjusted according to the <i>range-format-spec</i>:</ins>
+</p>
+<ol style="list-style-type:none">
+<li><p><ins>&mdash; <tt><i>STATICALLY-WIDEN</i>&lt;charT&gt;("{")</tt> unless the <tt>n</tt> option is specified,</ins></p></li>
+<li><p><ins>&mdash; for each element <tt>e</tt> of the range <tt>r</tt>:</ins></p>
+<ol style="list-style-type:none">
+<li><p><ins>&mdash; the result of writing <tt>get&lt;0&gt;(e)</tt> via <tt><i>key-formatter_</i></tt>,</ins></p></li>
+<li><p><ins>&mdash; <tt><i>STATICALLY-WIDEN</i>&lt;charT&gt;(": ")</tt>,</ins></p></li>
+<li><p><ins>&mdash; the result of writing <tt>get&lt;1&gt;(e)</tt> via <tt><i>value-formatter_</i></tt>,</ins></p></li>
+<li><p><ins>&mdash; <tt><i>STATICALLY-WIDEN</i>&lt;charT&gt;(", ")</tt>, unless <tt>e</tt> is the last element of <tt>r</tt>, and</ins></p></li>
+</ol>
+</li>
+<li><p><ins>&mdash; <tt><i>STATICALLY-WIDEN</i>&lt;charT&gt;("}")</tt> unless the <tt>n</tt> option is specified.</ins></p></li>
+</ol>
+<p>
+<ins>-?- <i>Returns</i>: An iterator past the end of the output range.</ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
