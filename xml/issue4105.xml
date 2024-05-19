@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4105" status="New">
+<title><tt>ranges::ends_with</tt>'s <i>Returns</i> misses difference casting</title>
+<section><sref ref="[alg.ends.with]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>17 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <i>Returns</i> of the ranges version of <code>ranges::ends_with</code> are specified as
+<code>ranges::equal(ranges::drop_view(ranges::ref_view(r1), N1 - N2), r2, ...)</code> which is not quite right
+when <code>N2</code> is an integer-class type and <code>N1</code> is an integer type, because in this case
+<code>N1 - N2</code> will be an integer-class type which cannot be implicitly converted to the 
+<code>difference_type</code> of <code>r1</code> leading to the construction of <code>drop_view</code> 
+being ill-formed.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[alg.ends.with]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;input_range R1, input_range R2, class Pred = ranges::equal_to, class Proj1 = identity,
+         class Proj2 = identity&gt;
+  requires (forward_range&lt;R1&gt; || sized_range&lt;R1&gt;) &amp;&amp;
+           (forward_range&lt;R2&gt; || sized_range&lt;R2&gt;) &amp;&amp;
+           indirectly_comparable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, Pred, Proj1, Proj2&gt;
+  constexpr bool ranges::ends_with(R1&amp;&amp; r1, R2&amp;&amp; r2, Pred pred = {},
+                                   Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+-3- Let <code>N1</code> be <code>ranges::distance(r1)</code> and <code>N2</code> be
+<code>ranges::distance(r2)</code>.
+<p/>
+-4- <i>Returns</i>: <code>false</code> if <code>N1 &lt; N2</code>, otherwise
+</p>
+<blockquote><pre>
+ranges::equal(ranges::drop_view(ranges::ref_view(r1), N1 - <ins>static_cast&lt;decltype(N1)&gt;(</ins>N2<ins>)</ins>), r2, pred, proj1, proj2)
+</pre></blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
