@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4106" status="New">
+<title><tt>basic_format_args</tt> should not be default-constructible</title>
+<section><sref ref="[format.args]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>17 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It's unclear why <tt>basic_format_args</tt> originally provided a default constructor and its actual use cases,
+all three major libraries declare them as <tt>default</tt>, which allows value initialization of 
+<tt>basic_format_args</tt> at compile time.
+<p/>
+This does not fully conform to the current wording as its signature does not have the <tt>constexpr</tt>
+specifier.
+<p/>
+Additionally, the current wording only initializes the <tt>size_</tt> member in the default constructor, which
+may lead to undefined behavior when copying <tt>basic_format_args</tt> as uninitialized <tt>data_</tt> member 
+is copied. There is also an implementation divergence (<a   href="https://godbolt.org/z/nYEje7zzj">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;format&gt;
+constexpr std::format_args fmt_args; // <span style="color:red;font-weight:bolder">only well-formed in MSVC-STL</span>
+</pre></blockquote>
+<p>
+One option is to add default member initializers for all members and <tt>default</tt> the default constructor 
+to best match the status quo, which guarantees that <tt>basic_format_args</tt> is <tt>constexpr</tt>-able.
+<p/>
+However, given that <tt>basic_format_args</tt> has different implementation details in the three libraries, 
+its actual members may not be <tt>size_</tt> and <tt>data_</tt>. It is unnecessary to ensure that all
+the internal members are initialized when default-constructed <tt>basic_format_args</tt>, indicating that not
+providing one is reasonable.
+<p/>
+The proposed solution is to prefer the more aggressive one.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[format.args]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Context&gt;
+  class basic_format_args {
+    size_t size_;                               // <i>exposition only</i>
+    const basic_format_arg&lt;Context&gt;* data_;     // <i>exposition only</i>
+
+  public:
+    <del>basic_format_args() noexcept;</del>
+
+    template&lt;class... Args&gt;
+      basic_format_args(const <i>format-arg-store</i>&lt;Context, Args...&gt;&amp; store) noexcept;
+
+    basic_format_arg&lt;Context&gt; get(size_t i) const noexcept;
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+<del>basic_format_args() noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-2- <i>Effects</i> Initializes <tt>size_</tt> with <tt>0</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
