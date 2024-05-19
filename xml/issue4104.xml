@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4104" status="New">
+<title><tt>basic_const_iterator&lt;volatile int*&gt;</tt> is not a <tt>contiguous_iterator</tt></title>
+<section><sref ref="[const.iterators]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>14 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Although <tt>volatile int*</tt> satisfies <tt>contiguous_iterator</tt>, due to the formula design of
+<tt>iter_const_reference_t</tt>, its result for the former will be <tt>int</tt>, which makes 
+<tt>basic_const_iterator&lt;volatile int*&gt;</tt> no longer a <tt>contiguous_iterator</tt> even though its
+<tt>iterator_concept</tt> is defined as <tt>contiguous_iterator_tag</tt> and it has a valid 
+<tt>operator-&gt;()</tt> that returns <tt>const volatile int*</tt>.
+<p/>
+This seems to defeat the purpose of <tt>basic_const_iterator</tt> to preserve the behavior of the underlying 
+iterator (except for indirection operators). The same goes for 
+<tt>basic_const_iterator&lt;const volatile int*&gt;</tt>:
+</p>
+<blockquote><pre>
+#include &lt;iterator&gt;
+#include &lt;span&gt;
+
+int main() {
+  int i = 42;
+
+  const volatile int* p = &amp;i;
+  static_assert(std::contiguous_iterator&lt;decltype(p)&gt;);
+  std::span sp1{p, 1}; // ok
+  
+  std::basic_const_iterator it{p};
+  static_assert(std::same_as&lt;decltype(it.operator-&gt;()), const volatile int*&gt;);
+  static_assert(std::same_as&lt;decltype(it)::iterator_concept, std::contiguous_iterator_tag&gt;);
+  static_assert(std::contiguous_iterator&lt;decltype(it)&gt;); // <span style="color:red;font-weight:bolder">failed</span>
+  std::span sp2{it, 1}; // <span style="color:red;font-weight:bolder">failed</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
