@@ -56,6 +56,26 @@ but GCC thinks the first example would still be ambiguous
 (it seems to depend on how list-initialization handles explicit constructors,
 which has implementation divergence).
 </p>
+<p>
+Maybe we should have a deleted constructor matching string literals:
+<pre><code>
+template&lt;size_t N1, size_t N2&gt;
+basic_string_view(const charT(&amp;)[N1], const charT(&amp;)[N2]) = delete;
+</code></pre>
+Or to handle both `const char[N]` and `char[N]`:
+<pre><code>
+template&lt;class A1, class A2&gt;
+requires (rank_v&lt;A1&gt; == 1) &amp;&amp; (rank_v&lt;A2&gt; == 1)
+basic_string_view(A1&amp;, A2&amp;) = delete;
+</code></pre>
+Both options would prevent this currently valid (but weird) code:
+<pre><code>
+const char arr[] = "str";
+std::string_view s(arr, arr); // s.size() == 0 and s.data() == arr
+</code></pre>
+That seems acceptable, because `std::string_view s(arr, 0)`
+is simpler and clearer anyway.
+</p>
 </discussion>
 
 <resolution>
