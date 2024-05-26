@@ -1,0 +1,144 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4109" status="New">
+<title>Instantiating templates in &sect;[rand] with <tt>int8_t</tt>/<tt>uint8_t</tt> is undefined behavior</title>
+<section><sref ref="[rand.req.genl]"/></section>
+<submitter>Peter Dimov</submitter>
+<date>25 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+As pointed out in LWG issue <iref ref="2326"/> (closed as NAD) and 
+<a href="https://www.reddit.com/r/cpp/comments/1czwa5h/is_instantiating_stduniform_int_distributionuint8/">on reddit</a>, 
+instantiating e.g. <tt>uniform_int_distribution&lt;uint8_t&gt;</tt> is undefined behavior 
+because of the requirement <sref ref="[rand.req.genl]"/> bullet (1.5):
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+-1- Throughout this subclause <sref ref="[rand]"/>, the effect of instantiating a template:
+</p>
+<ol style="list-style-type:none">
+<li><p>[&hellip;]</p></li>
+<li><p>(1.4) &mdash; that has a template type parameter named <tt>RealType</tt> is undefined 
+unless the corresponding template argument is cv-unqualified and is one of <tt>float</tt>, 
+<tt>double</tt>, or <tt>long double</tt>.</p></li>
+<li><p>(1.5) &mdash; that has a template type parameter named <tt>IntType</tt> is undefined unless 
+the corresponding template argument is cv-unqualified and is one of <tt>short</tt>, <tt>int</tt>, 
+<tt>long</tt>, <tt>long long</tt>, <tt>unsigned short</tt>, <tt>unsigned int</tt>, <tt>unsigned long</tt>, 
+or <tt>unsigned long long</tt>.</p></li>
+<li><p>(1.6) &mdash; that has a template type parameter named <tt>UIntType</tt> is undefined unless 
+the corresponding template argument is cv-unqualified and is one of <tt>unsigned short</tt>, 
+<tt>unsigned int</tt>, <tt>unsigned long</tt>, or <tt>unsigned long long</tt>.</p></li>
+</ol>
+</blockquote>
+<p>
+This is, in my opinion, a defect; such uses should either be rejected
+at compile time (made ill-formed), or permitted (as 2326 proposes.)
+<p/>
+UB here has undesirable safety implications, because it's possible to
+write code that produces a random, or a seemingly random, sequence
+of <tt>uint8_t</tt> numbers on platform A, but an arbitrarily non-random
+sequence on platform B (e.g. all zeroes.)
+<p/>
+If that sequence is then used in e.g. a cryptographic algorithm, bad
+things will happen on platform B, and the tests on platform A won't
+catch the issue.
+</p>
+
+<note>2024-05-26; Daniel comments</note>
+<p>
+I think that all violations of the bullets <sref ref="[rand.req.genl]"/> (1.4), (1.5), and (1.6)
+are missed opportunities of <i>Mandates</i> (That is: Make the program ill-formed), because
+they can be all checked (easily) at compile-time, regardless whether we agree on
+the question to support <tt>int8_t</tt>/<tt>uint8_t</tt> (Violations of (1.1), (1.2), and (1.3)
+still have to be remain undefined because of additional runtime requirements imposed).
+<p/>
+Given that I also think that we should consider to either normatively extend all of (1.4), (1.5), 
+and (1.6) to corresponding <i>extended floating point</i> types and <i>extended (unsigned) integer types</i>, 
+or to the minimum make these extended types conditionally-supported with implementation-defined 
+semantics (A word of power that is used at several places).
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting Note:</i> Two mutually exclusive options are prepared, depicted below by <b>Option A</b> and 
+<b>Option B</b>, respectively.] 
+</p>
+</blockquote>
+
+<p>
+<b>Option A:</b> As suggested in issue LWG <iref ref="2326"/>
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[rand.req.genl]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Throughout this subclause <sref ref="[rand]"/>, the effect of instantiating a template:
+</p>
+<ol style="list-style-type:none">
+<li><p>[&hellip;]</p></li>
+<li><p>(1.4) &mdash; that has a template type parameter named <tt>RealType</tt> is undefined 
+unless the corresponding template argument is cv-unqualified and is one of <tt>float</tt>, 
+<tt>double</tt>, or <tt>long double</tt>.</p></li>
+<li><p>(1.5) &mdash; that has a template type parameter named <tt>IntType</tt> is undefined unless 
+the corresponding template argument is cv-unqualified and is <ins>a standard integer type 
+(<sref ref="[basic.fundamental]"/>)</ins><del>one of <tt>short</tt>, <tt>int</tt>, 
+<tt>long</tt>, <tt>long long</tt>, <tt>unsigned short</tt>, <tt>unsigned int</tt>, <tt>unsigned long</tt>, 
+or <tt>unsigned long long</tt></del>.</p></li>
+<li><p>(1.6) &mdash; that has a template type parameter named <tt>UIntType</tt> is undefined unless 
+the corresponding template argument is cv-unqualified and is <ins>a standard unsigned integer type 
+(<sref ref="[basic.fundamental]"/>)</ins><del>one of <tt>unsigned short</tt>, 
+<tt>unsigned int</tt>, <tt>unsigned long</tt>, or <tt>unsigned long long</tt></del>.</p></li>
+</ol>
+</blockquote>
+
+</li>
+
+</ol>
+
+<p>
+<b>Option B:</b> Make ill-formed:
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[rand.req.genl]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Throughout this subclause <sref ref="[rand]"/>, the effect of instantiating a template:
+</p>
+<ol style="list-style-type:none">
+<li><p>[&hellip;]</p></li>
+<li><p>(1.4) &mdash; that has a template type parameter named <tt>RealType</tt> is undefined 
+unless the corresponding template argument is cv-unqualified and is one of <tt>float</tt>, 
+<tt>double</tt>, or <tt>long double</tt>.</p></li>
+<li><p>(1.5) &mdash; that has a template type parameter named <tt>IntType</tt> <ins>renders the 
+program ill-formed</ins><del>is undefined</del> unless the corresponding template argument is 
+cv-unqualified and is one of <tt>short</tt>, <tt>int</tt>, <tt>long</tt>, <tt>long long</tt>, 
+<tt>unsigned short</tt>, <tt>unsigned int</tt>, <tt>unsigned long</tt>, or 
+<tt>unsigned long long</tt>.</p></li>
+<li><p>(1.6) &mdash; that has a template type parameter named <tt>UIntType</tt> <ins>renders the 
+program ill-formed</ins><del>is undefined</del> unless the corresponding template argument is 
+cv-unqualified and is one of <tt>unsigned short</tt>, <tt>unsigned int</tt>, <tt>unsigned long</tt>, 
+or <tt>unsigned long long</tt>.</p></li>
+</ol>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
