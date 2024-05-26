@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4108" status="New">
+<title><tt>lazy_split_view</tt> should be <tt>sized_range</tt> when pattern is empty <tt><i>tiny-range</i></tt></title>
+<section><sref ref="[range.lazy.split.view]"/><sref ref="[range.split.view]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>23 May 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+When the pattern range is empty, <tt>lazy_split_view</tt> will split each element into individual subranges, 
+which means its size is equal to the size of the underlying range.
+<p/>
+Since we already have a <tt><i>tiny-range</i></tt> that can determine whether the range is empty by its type, 
+it seems valuable to provide a <tt>size</tt> for <tt>lazy_split_view</tt> in this case, given that we already 
+specifically checked for it by <tt>Pattern::size() == 0</tt> in <tt><i>inner-iterator</i>::operator++()</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[range.lazy.split.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;auto&gt; struct <i>require-constant</i>;                        // <i>exposition only</i>
+
+  template&lt;class R&gt;
+  concept <i>tiny-range</i> =                                           // <i>exposition only</i>
+     sized_range&lt;R&gt; &amp;&amp;
+     requires { typename <i>require-constant</i>&lt;remove_reference_t&lt;R&gt;::size()&gt;; } &amp;&amp;
+     (remove_reference_t&lt;R&gt;::size() &lt;= 1);
+  
+  template&lt;input_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; view&lt;Pattern&gt; &amp;&amp;
+             indirectly_comparable&lt;iterator_t&lt;V&gt;, iterator_t&lt;Pattern&gt;, ranges::equal_to&gt; &amp;&amp;
+             (forward_range&lt;V&gt; || <i>tiny-range</i>&lt;Pattern&gt;)
+  class lazy_split_view : public view_interface&lt;lazy_split_view&lt;V, Pattern&gt;&gt; {
+    [&hellip;]
+    <ins>constexpr auto size()
+      requires sized_range&lt;V&gt; &amp;&amp;
+               <i>tiny-range</i>&lt;Pattern&gt; &amp;&amp; (Pattern::size() == 0) {
+      return ranges::size(<i>base_</i>);
+    }</ins>
+
+    <ins>constexpr auto size() const
+      requires sized_range&lt;const V&gt; &amp;&amp;
+               <i>tiny-range</i>&lt;Pattern&gt; &amp;&amp; (Pattern::size() == 0) {
+      return ranges::size(<i>base_</i>);
+    }</ins>
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[range.split.view]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;forward_range V, forward_range Pattern&gt;
+    requires view&lt;V&gt; &amp;&amp; view&lt;Pattern&gt; &amp;&amp;
+             indirectly_comparable&lt;iterator_t&lt;V&gt;, iterator_t&lt;Pattern&gt;, ranges::equal_to&gt;
+  class split_view : public view_interface&lt;split_view&lt;V, Pattern&gt;&gt; {
+    [&hellip;]
+    <ins>constexpr auto size()
+      requires sized_range&lt;V&gt; &amp;&amp;
+               <i>tiny-range</i>&lt;Pattern&gt; &amp;&amp; (Pattern::size() == 0) {
+      return ranges::size(<i>base_</i>);
+    }</ins>
+
+    <ins>constexpr auto size() const
+      requires sized_range&lt;const V&gt; &amp;&amp;
+               <i>tiny-range</i>&lt;Pattern&gt; &amp;&amp; (Pattern::size() == 0) {
+      return ranges::size(<i>base_</i>);
+    }</ins>
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
