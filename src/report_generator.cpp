@@ -183,7 +183,7 @@ R"(<!DOCTYPE html>
 <meta property="og:description" content=")" << lwg::replace_reserved_char(desc, '"', "&quot;") << R"(">
 <meta property="og:url" content="https://cplusplus.github.io/LWG/)" << url_filename << R"(">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image" content="http://cplusplus.github.io/LWG/images/cpp_logo.png">
 <meta property="og:image:alt" content="C++ logo">)";
    }
 
