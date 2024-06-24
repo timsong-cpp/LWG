@@ -130,9 +130,7 @@ else
 During Core review in Varna, Hubert suggested creating `T[1]` for the array case.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4971"/>.
 </p>
@@ -162,6 +160,71 @@ when treated as an unevaluated operand (<sref ref="[expr.context]"/>).
 <blockquote><pre>
 <ins>if constexpr (is_array_v&lt;T&gt;)
   return ::new (<i>voidify</i>(*location)) T[1]{{std::forward&lt;Args&gt;(args)...}};
+else</ins>
+  return ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</superseded>
+
+<note>St. Louis 2024-06-24; Jonathan provides improved wording</note>
+<p>
+Why not support unbounded arrays, deducing the bound from `sizeof...(Args)`?
+<br/>
+JW: There's no motivation to support that here in `construct_at`.
+It isn't possible to create unbounded arrays via allocators,
+nor via any of the `uninitialized_xxx` algorithms. Extending `construct_at`
+that way seems like a design change, not restoring support for something
+that used to work with allocators and then got broken in C++20.
+</p>
+<p>
+Tim observed that the proposed resolution is ill-formed if `T` has an
+explicit default constructor. Value-initialization would work for that case,
+and there seems to be little motivation for supplying arguments to
+initialize the array. In C++17 the `allocator_traits::construct` case only
+supported value-initialization.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[specialized.construct]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class... Args&gt;
+  constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+
+namespace ranges {
+  template&lt;class T, class... Args&gt;
+    constexpr T* construct_at(T* location, Args&amp;&amp;... args);
+}
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints:</i>
+<ins><tt>is_unbounded_array_v&lt;T&gt;</tt> is <tt>false</tt>.</ins>
+The expression <tt>::new (declval&lt;void*&gt;()) T(declval&lt;Args&gt;()...)</tt> is well-formed
+when treated as an unevaluated operand (<sref ref="[expr.context]"/>).
+</p>
+<p>
+<ins>-?- <i>Mandates</i>:
+If <code>is_array_v&lt;T&gt;</code> is `true`, `sizeof...(Args)` is zero.
+</ins>
+</p>
+<p>
+-2- <i>Effects:</i> Equivalent to:
+</p>
+<blockquote><pre>
+<ins>if constexpr (is_array_v&lt;T&gt;)
+  return ::new (<i>voidify</i>(*location)) T[1]();
 else</ins>
   return ::new (<i>voidify</i>(*location)) T(std::forward&lt;Args&gt;(args)...);
 </pre></blockquote>
