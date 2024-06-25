@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4113" status="New">
+<title>Disallow <code>has_unique_object_representations&lt;Incomplete[]&gt;</code></title>
+<section><sref ref="[meta.unary.prop]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>25 Jun 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The type completeness requirements for `has_unique_object_representations` say:
+<blockquote>
+`T` shall be a complete type, <i>cv</i> `void`, or an array of unknown bound.
+</blockquote>
+</p>
+<p>
+This implies that the trait works for all arrays of unknown bound,
+whether the element type is complete or not. That seems to be incorrect,
+because <code>has_unique_object_representations_v&lt;Incomplete[]&gt;</code>
+is required to have the same result as
+<code>has_unique_object_representations_v&lt;Incomplete&gt;</code>
+which is ill-formed if `Incomplete` is an incomplete class type.
+</p>
+
+<p>
+I think we need the element type to be complete to be able to give an answer.
+Alternatively, if the intended result for an array of unknown bound is false
+(maybe because there can be no objects of type `T[]`, or because we can't
+know that two objects declared as `extern T a[];` and `extern T b[];` have
+the same number of elements?) then the condition for the trait needs to be
+special-cased as `false` for arrays of unknown bound.
+The current spec is inconsistent, we can't allow arrays of unknown bound
+and apply the current rules to determine the trait's result.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[meta.unary.prop]"/> as indicated:</p>
+
+<blockquote>
+<table style="border: 1px solid; border-spacing: 1.5em">
+<thead style="text-align: center">
+<tr><th>Template</th><th>Condition</th><th>Preconditions</th></tr>
+</thead>
+<tbody style="vertical-align: top">
+<tr><td>&hellip;</td><td>&hellip;</td><td>&hellip;</td></tr>
+<tr>
+<td>
+<pre><code>template&lt;class T&gt;
+struct has_unique_object_representations;</code></pre>
+</td>
+<td>
+For an array type `T`, the same result as
+<code>has_unique_object_representations_v&lt;remove_all_extents_t&lt;T&gt;&gt;</code>,
+otherwise <i>see below</i>.
+</td>
+<td>
+<ins><code>remove_all_extents_t&lt;T&gt;</code></ins>
+<del><code>T</code></del>
+shall be a complete type<del>,</del>
+<ins>or</ins> <i>cv</i> `void`<del>, or an array of unknown bound</del>.
+</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: We could use <code>remove_extent_t&lt;T&gt;</code>
+to remove just the first array dimension, because only that first one can
+have an unknown bound.
+The proposed resolution uses <code>remove_all_extents_t&lt;T&gt;</code>
+for consistency with the <b>Condition</b> column.]
+</p>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
