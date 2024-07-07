@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4114" status="New">
+<title><tt>elements_view::<i>iterator</i>::operator*</tt> missing conditional <tt>noexcept</tt> specification</title>
+<section><sref ref="[range.elements.iterator]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>02 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<tt>views::elements</tt>, which can be seen as a specialization of <tt>views::transform</tt>, 
+is used to <i>transform</i> the original tuple into its elements.
+<p/>
+Since neither has a specialization for <tt>iter_move</tt>, the customization point is dispatched 
+to the default implementation. However, unlike the latter, <tt>elements_view::<i>iterator</i>::operator*</tt> 
+does not have a <tt>noexcept</tt> specification, which makes calls to <tt>iter_move</tt> never 
+<tt>noexcept</tt>, which seems to be an oversight (<a href="https://godbolt.org/z/aGe8EP6Wd">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+std::vector v{std::pair{1, "a"}, {2, "b"}};
+
+auto r1 = v | std::views::keys;
+auto i1 = r1.begin();
+static_assert(noexcept(*i1));                        // <span  style="color:#C80000;font-weight:bold">failed</span>
+static_assert(noexcept(std::ranges::iter_move(i1))); // <span  style="color:#C80000;font-weight:bold">failed</span>
+
+auto get_key = [](auto&amp; t) noexcept -&gt; auto&amp; { return std::get&lt;0&gt;(t); };
+auto r2 = v | std::views::transform(get_key);
+auto i2 = r2.begin();
+static_assert(noexcept(*i2));
+static_assert(noexcept(std::ranges::iter_move(i2)));
+</pre></blockquote>
+<p>
+The proposed resolution is aligned with the <i>strengthened</i> implementation of MSVC-STL.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[range.elements.iterator]"/> as indicated:</p>
+
+<blockquote><pre>
+namespace std::ranges {
+  template&lt;input_range V, size_t N&gt;
+    requires view&lt;V&gt; &amp;&amp; <i>has-tuple-element</i>&lt;range_value_t&lt;V&gt;, N&gt; &amp;&amp;
+             <i>has-tuple-element</i>&lt;remove_reference_t&lt;range_reference_t&lt;V&gt;&gt;, N&gt; &amp;&amp;
+             <i>returnable-element</i>&lt;range_reference_t&lt;V&gt;, N&gt;
+  template&lt;bool Const&gt;
+  class elements_view&lt;V, N&gt;::<i>iterator</i> {
+    [&hellip;]
+
+    static constexpr decltype(auto) <i>get-element</i>(const iterator_t&lt;<i>Base</i>&gt;&amp; i)<del>;</del>     // <i>exposition only</i>
+      <ins>noexcept(noexcept(std::get&lt;N&gt;(*i))) requires is_reference_v&lt;range_reference_t&lt;<i>Base</i>&gt;&gt; {
+      return std::get&lt;N&gt;(*i);
+    }</ins>
+    <ins>
+    static constexpr decltype(auto) <i>get-element</i>(const iterator_t&lt;<i>Base</i>&gt;&amp; i)      // <i>exposition only</i>
+      noexcept(noexcept(std::get&lt;N&gt;(*i)) &amp;&amp;
+               is_nothrow_move_constructible_v&lt;tuple_element_t&lt;N, range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;) {
+      using E = remove_cv_t&lt;tuple_element_t&lt;N, range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;;
+      return static_cast&lt;E&gt;(std::get&lt;N&gt;(*i));
+    }</ins>
+
+  public:
+    [&hellip;]
+
+    constexpr decltype(auto) operator*() const
+      <ins>noexcept(noexcept(<i>get-element</i>(<i>current_</i>)))</ins>
+    { return <i>get-element</i>(<i>current_</i>); }
+
+    [&hellip;]
+  };
+}
+</pre></blockquote>
+<p>
+[&hellip;]
+</p>
+<pre><del>static constexpr decltype(auto) <i>get-element</i>(const iterator_t&lt;<i>Base</i>&gt;&amp; i);</del></pre>
+<p>
+<del>-3- <i>Effects</i>: Equivalent to:</del>
+</p>
+<blockquote><pre>
+<del>if constexpr (is_reference_v&lt;range_reference_t&lt;<i>Base</i>&gt;&gt;) {
+  return std::get&lt;N&gt;(*i);
+} else {
+  using E = remove_cv_t&lt;tuple_element_t&lt;N, range_reference_t&lt;<i>Base</i>&gt;&gt;&gt;;
+  return static_cast&lt;E&gt;(std::get&lt;N&gt;(*i));
+}</del>
+</pre></blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
