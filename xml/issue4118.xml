@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4118" status="New">
+<title>How should `duration` formatters format custom `rep` types?</title>
+<section><sref ref="[time.format]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>08 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <code>formatter&lt;chrono::duration&lt;Rep, Period&gt;, charT&gt;</code>
+partial specialization needs to be able to format the `Rep` type, because
+the `%Q` conversion specifier says to format the value returned by `.count()`
+which is of type `Rep`. This implies that the `Rep` type must be formattable,
+although the precise method of formatting it is not specified. Presumably
+either <code>format("{}", d.count())</code> or
+<code>ostrm &lt;&lt; d.count()</code> needs to work.
+</p>
+
+<p>
+<sref ref="[format.formatter.spec]"/> p2 (2.3) says:
+<blockquote>
+For each `charT`, for each cv-unqualified arithmetic type `ArithmeticT`
+other than `char`, `wchar_t`, `char8_t`, `char16_t`, or `char32_t`,
+a specialization:
+<code>template&lt;&gt; struct formatter&lt;ArithmeticT, charT&gt;;</code>
+</blockquote>
+However, nothing prevents the excluded types being used as the `rep` for a
+`chrono::duration`.
+This means you can use <code>chrono::duration&lt;wchar_t&gt;</code> and
+<code>chrono::duration&lt;char8_t&gt;</code> as durations,
+but you can't format them to `char` strings.
+</p>
+
+<p>
+I think only the `%Q` conversion specifier formats the `rep` type directly
+(without converting durations to formattable types like `hours` or `seconds`),
+and so I don't think this problem exists for other chrono `formatter`
+specializations, because `%Q` can only be used for durations
+(that's not <i>entirely</i> clear, since `%q` and `%Q` are specified to format
+"the duration's unit suffix" and "the duration's numeric value",
+but presumably that means they can only be used for `duration` types).
+</p>
+
+<p>
+Should the specialization of `formatter` for `chrono::duration` be constrained
+to require that the `rep` type can be formatted?
+Or should the `%Q` conversion specifier say that the numeric value is
+formatted by inserting into an `ostream` (which would treat `wchar_t` and
+`char8_t` rep types as characters, not integers)?
+Or should `%Q` say that the numeric value is converted to an integral type,
+which we know how to format?
+</p>
+
+<p>
+This is somewhat related to issue <iref num="953"/>, since it's unclear
+which operations "a class emulating an arithmetic type" needs to support.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4981"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[meta.unary.prop]"/> as indicated:</p>
+
+<blockquote>
+<table style="border: 1px solid; border-spacing: 1.5em">
+<thead style="text-align: center">
+<tr><th>Specifier</th><th>Replacement</th></tr>
+</thead>
+<tbody style="vertical-align: top">
+<tr><td>&hellip;</td><td>&hellip;</td><td>&hellip;</td></tr>
+<tr>
+<td> `%Q` </td>
+<td>
+The duration’s numeric value (as if extracted via `.count()`
+<ins>and converted to `intmax_t`</ins>
+).
+</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
