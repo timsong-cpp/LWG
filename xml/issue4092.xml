@@ -43,9 +43,7 @@ Seems unlikely to be a problem in practice.
 Proposed resolution would make the two `operator==` overloads ambiguous.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4981"/>.
 </p>
@@ -87,6 +85,80 @@ friend constexpr bool operator==(
 <blockquote>
 <p>
 -1- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
+are each <tt>false</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</superseded>
+
+<note>2024-07-09; Hewill provides improved wording</note>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[common.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;input_or_output_iterator I, sentinel_for&lt;I&gt; S&gt;
+    requires (!same_as&lt;I, S&gt; &amp;&amp; copyable&lt;I&gt;)
+  class common_iterator {
+  public:
+    [&hellip;]
+    template&lt;<del>class</del><ins>common_with&lt;I&gt;</ins> I2, sentinel_for&lt;I&gt; S2&gt;
+      requires sentinel_for&lt;S, I2&gt;
+    friend constexpr bool operator==(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+    template&lt;<del>class</del><ins>common_with&lt;I&gt;</ins> I2, sentinel_for&lt;I&gt; S2&gt;
+      requires sentinel_for&lt;S, I2&gt; &amp;&amp; equality_comparable_with&lt;I, I2&gt;
+    friend constexpr bool operator==(
+      const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[common.iter.cmp]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;<del>class</del><ins>common_with&lt;I&gt;</ins> I2, sentinel_for&lt;I&gt; S2&gt;
+  requires sentinel_for&lt;S, I2&gt;
+friend constexpr bool operator==(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
+are each <tt>false</tt>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;<del>class</del><ins>common_with&lt;I&gt;</ins> I2, sentinel_for&lt;I&gt; S2&gt;
+  requires sentinel_for&lt;S, I2&gt; &amp;&amp; equality_comparable_with&lt;I, I2&gt;
+friend constexpr bool operator==(
+  const common_iterator&amp; x, const common_iterator&lt;I2, S2&gt;&amp; y);
+</pre>
+<blockquote>
+<p>
+-3- <i>Preconditions</i>: <tt>x.v_.valueless_by_exception()</tt> and <tt>y.v_.valueless_by_exception()</tt> 
 are each <tt>false</tt>.
 <p/>
 [&hellip;]
