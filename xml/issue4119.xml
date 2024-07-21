@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4119" status="New">
+<title><code>generator::promise_type::yield_value(ranges::elements_of&lt;R, Alloc&gt;)</code>'s nested <code>generator</code> may be ill-formed</title>
+<section><sref ref="[coro.generator.promise]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>11 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The nested coroutine is specified to return <code>generator&lt;yielded, ranges::range_value_t&lt;R&gt;, Alloc&gt;</code> 
+which can be problematic as the value type of <code>R</code> is really irrelevant to <code>yielded</code>, 
+unnecessarily violating the <code>generator</code>'s <i>Mandates</i> (<a href="https://godbolt.org/z/PzGP3G7rr">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;generator&gt;
+#include &lt;vector&gt;
+
+std::generator&lt;std::span&lt;int&gt;&gt; f() {
+  std::vector&lt;int&gt; v;
+  co_yield v; // ok
+}
+
+std::generator&lt;std::span&lt;int&gt;&gt; g() {
+  std::vector&lt;std::vector&lt;int&gt;&gt; v;
+  co_yield std::ranges::elements_of(v); // <span style="color:red;font-weight:bolder">hard error</span>
+}
+</pre></blockquote>
+<p>
+This proposed resolution is to change the second template parameter from <code>range_value_t&lt;R&gt;</code> 
+to <code>void</code> since that type doesn't matter to us.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[coro.generator.promise]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;ranges::input_range R, class Alloc&gt;
+  requires convertible_to&lt;ranges::range_reference_t&lt;R&gt;, yielded&gt;
+  auto yield_value(ranges::elements_of&lt;R, Alloc&gt; r);
+</pre>
+<blockquote>
+<p>
+-13- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+auto nested = [](allocator_arg_t, Alloc, ranges::iterator_t&lt;R&gt; i, ranges::sentinel_t&lt;R&gt; s)
+  -&gt; generator&lt;yielded, <del>ranges::range_value_t&lt;R&gt;</del><ins>void</ins>, Alloc&gt; {
+    for (; i != s; ++i) {
+      co_yield static_cast&lt;yielded&gt;(*i);
+    }
+  };
+return yield_value(ranges::elements_of(nested(
+  allocator_arg, r.allocator, ranges::begin(r.range), ranges::end(r.range))));
+</pre></blockquote>
+[&hellip;]
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
