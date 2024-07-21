@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4122" status="New">
+<title>Ill-formed <tt>operator&lt;=&gt;</tt> can cause hard error when instantiating <tt>std::inplace_vector</tt></title>
+<section><sref ref="[range.utility.conv.general]"/></section>
+<submitter>Jiang An</submitter>
+<date>20 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+This is almost the same problem as LWG <iref ref="4071"/> except that it happens to <tt>std::inplace_vector</tt>. 
+As the <tt>operator&lt;=&gt;</tt> overload for <tt>std::inplace_vector</tt> is a non-template function whose return 
+type (<tt><i>synth-three-way-result</i>&lt;T&gt;</tt>) is not deduced, when the return type is ill-formed, hard 
+error occurs in the instantiation of the enclosing <tt>std::inplace_vector&lt;T, N&gt;</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[inplace.vector.overview]"/>, class template <tt>std::inplace_vector</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T, size_t N&gt;
+  class inplace_vector {
+  public:
+    [&hellip;]
+    constexpr friend bool operator==(const inplace_vector&amp; x,
+                                     const inplace_vector&amp; y);
+    constexpr friend <del><i>synth-three-way-result</i>&lt;T&gt;</del><ins>auto</ins>
+      operator&lt;=&gt;(const inplace_vector&amp; x, const inplace_vector&amp; y)<del>;</del><ins>
+        requires requires (const T t) { <i>synth-three-way</i>(t, t); } 
+      {
+        return lexicographical_compare_three_way(x.begin(), x.end(), y.begin(), y.end(),
+                                                 <i>synth-three-way</i>);
+      }</ins>
+    constexpr friend void swap(inplace_vector&amp; x, inplace_vector&amp; y)
+      noexcept(N == 0 || (is_nothrow_swappable_v&lt;T&gt; &amp;&amp;
+                          is_nothrow_move_constructible_v&lt;T&gt;))
+    { x.swap(y); }
+  };
+};
+</pre>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
