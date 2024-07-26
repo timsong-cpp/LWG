@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4124" status="New">
+<title>Cannot format `zoned_time` with resolution coarser than seconds</title>
+<section><sref ref="[time.format]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>26 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The
+<code>std::formatter&lt;std::chrono::zoned_time&lt;Duration, TimeZonePtr&gt;&gt;</code>
+specialization calls `tp.get_local_time()` for the object it passes to its
+base class' `format` function. But `get_local_time()` does not return a
+<code>local_time&lt;Duration&gt;</code>, it returns
+<code>local_time&lt;common_type_t&lt;Duration, seconds&gt;&gt;</code>.
+The base class' `format` function is only defined for
+<code>local_time&lt;Duration&gt;</code>.
+That means this is ill-formed, even though the static assert passes:
+<pre><code>using namespace std::chrono;
+  static_assert( std::formattable&lt;zoned_time&lt;minutes&gt;, char&gt; );
+  zoned_time&lt;minutes&gt; zt;
+  (void) std::format("{}", zt); // error: cannot convert local_time&lt;seconds&gt; to local_time&lt;minutes&gt;
+</code></pre>
+</p>
+
+<p>
+Additionally, it's not specified what output you should get for:
+<pre><code>`std::format("{}", local_time_format(zt.get_local_time()));`
+</code></pre>
+<sref ref="[time.format]"/> p7 says it's formatted as if by streaming to an
+`ostringstream`,
+but there is no <code>operator&lt;&lt;</code> for <i>`local-time-format-t`</i>.
+Presumably it should give the same result as <code>operator&lt;&lt;</code> for 
+a `zoned_time`, i.e. `"{:L%F %T %Z}"` with padding adjustments etc.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[time.format]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;classDuration, class charT&gt;
+  struct formatter&lt;chrono::local-time-format-t &lt;Duration&gt;, charT&gt;;
+</pre>
+<p>-17-
+Let `f` be a <code><i>locale-time-format-t</i>&lt;Duration&gt;</code> object
+passed to `formatter::format`.
+</p>
+<p>-18- <i>Remarks</i>:
+If `%Z` is used,
+it is replaced with `*f.abbrev` if `f.abbrev` is not a null pointer value.
+If `%Z` is used and `f.abbrev` is a null pointer value,
+an exception of type `format_error` is thrown.
+If `%z` (or a modified variant of `%z`) is used,
+it is formatted with the value of `*f.offset_sec` if `f.offset_sec` is
+not a null pointer value.
+If `%z` (or a modified variant of `%z`) is used and `f.offset_sec`
+is a null pointer value, then an exception of type `format_error` is thrown.
+<ins>If the <i>chrono-specs</i> is omitted, `f` is formatted as if by
+`format(loc, "{} {:L%Z}", f.time, f)`, where `loc` is the formatting locale.
+</ins>
+</p>
+<note>Drafting note: The inserted text above is not correct, as it doesn't
+account for padding etc.</note>
+<pre>
+  template&lt;class Duration, class TimeZonePtr, class charT&gt;
+  struct formatter&lt;chrono::zoned_time&lt;Duration, TimeZonePtr&gt;, charT&gt;
+      : formatter&lt;chrono::<i>local-time-format-t</i>&lt;<ins>common_type_t&lt;</ins>Duration<ins>, seconds&gt;</ins>&gt;, charT&gt; {
+    template&lt;class FormatContext&gt;
+      typename FormatContext::iterator
+      format(const chrono::zoned_time&lt;Duration, TimeZonePtr&gt;&amp; tp, FormatContext&amp; ctx) const;
+  };
+</pre>
+<pre>
+template&lt;class FormatContext&gt;
+  typename FormatContext::iterator
+    format(const chrono::zoned_time&lt;Duration, TimeZonePtr&gt;&amp; tp, FormatContext&amp; ctx) const;
+</pre>
+<p>-19- <i>Effects</i>: Equivalent to:
+<blockquote>
+<pre>
+sys_info info = tp.get_info();
+return formatter&lt;chrono::<i>local-time-format-t</i>&lt;<ins>common_type_t&lt;</ins>Duration<ins>, seconds&gt;</ins>&gt;, charT&gt;::
+         format({tp.get_local_time(), &amp;info.abbrev, &amp;info.offset}, ctx);
+</pre>
+</blockquote>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
