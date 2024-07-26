@@ -53,6 +53,37 @@ into the core wording, not the library wording.
 </p>
 
 <note>2018-04-02 Priority set to 3 after discussion on the reflector.</note>
+
+<note>2024-07-26; Jonathan comments</note>
+<p>
+In C89 and C99 the spec for `exit` in C said
+"If more than one call to the exit function is executed by a program,
+the behavior is undefined."
+Since C11 that was updated to also talk about `at_quick_exit`, saying
+"If a program calls the `exit` function more than once,
+or calls the `quick_exit` function in addition to the `exit` function,
+the behavior is undefined." The spec for `quick_exit` is similar.
+</p>
+<p>
+That answers most of the questions here. An `atexit` or `at_quick_exit`
+handler cannot call `exit` or `quick_exit`, because if a handler is running
+then it means that `exit` or `quick_exit` has already been called,
+and calling either of them again would be undefined.
+It doesn't matter whether an `atexit` handler installs an `at_quick_exit`
+handler, because once `exit` handlers start running
+it would be undefined to call `quick_exit`, and vice versa. So you should never
+have a situation where both sets of handlers are running.
+</p>
+<p>
+There is a <a href="https://austingroupbugs.net/view.php?id=1845">suggestion</a>
+to relax this in POSIX so that calling `exit` or `quick_exit` again from other
+threads would not be UB but would just block until the process exits,
+which should happen eventually assuming exit handlers make forward progress
+(calling `exit` or `quick_exit` from a handler would still be UB).
+</p>
+<p>
+Why does C++ not make it undefined to call `exit` twice? Can we change that?
+</p>
 </discussion>
 
 <resolution>
