@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4125" status="New">
+<title><tt>move_iterator</tt>'s default constructor should be constrained</title>
+<section><sref ref="[move.iterator]"/><sref ref="[move.iter.cons]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>22 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Although it is unclear why <paper num="P2325"/> did not apply to <tt>move_iterator</tt>, there is 
+implementation divergence among the current libraries (<a href="https://godbolt.org/z/WdoPcjjv4">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;istream&gt;
+#include &lt;iterator&gt;
+#include &lt;ranges&gt;
+
+using R = std::ranges::istream_view&lt;int&gt;;
+using I = std::ranges::iterator_t&lt;R&gt;;
+using MI = std::move_iterator&lt;I&gt;;
+static_assert(std::default_initializable&lt;MI&gt;); // <span  style="color:#C80000;font-weight:bold">libstdc++ passes, libc++ fails</span>
+</pre></blockquote>
+<p>
+As libc++ additionally requires that its default constructors satisfy <code>is_constructible_v&lt;Iterator&gt;</code>.
+<p/>
+Although this is not current standard-conforming behavior, such constraint does make sense since <code>move_iterator</code> 
+only requires the underlying iterator to be <code>input_iterator</code> which may not be <code>default_initializable</code>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[move.iterator]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Iterator&gt;
+  class move_iterator {
+  public:
+    [&hellip;]
+    constexpr move_iterator() <ins>requires default_initializable&lt;Iterator&gt; = default</ins>;
+    [&hellip;]
+  private:
+    Iterator current <ins>= Iterator()</ins>;   // <i>exposition only</i>
+  };
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[move.iter.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<del>constexpr move_iterator();</del>
+</pre>
+<blockquote>
+<p>
+<del>-1- <i>Effects</i>: Value-initializes <tt>current</tt>.</del>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+
+</issue>
