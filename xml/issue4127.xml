@@ -1,0 +1,322 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4127" status="New">
+<title>The Standard Library should not use predicates of the form <code>pred(*i) != false</code></title>
+<section><sref ref="[func.search.bm]"/><sref ref="[func.search.bmh]"/>
+<sref ref="[associative.reqmts.general]"/><sref ref="[list.ops]"/>
+<sref ref="[alg.find]"/><sref ref="[alg.find.first.of]"/>
+<sref ref="[alg.adjacent.find]"/><sref ref="[alg.count]"/>
+<sref ref="[alg.mismatch]"/><sref ref="[alg.search]"/>
+<sref ref="[alg.sorting.general]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>25 Jul 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <code><i>boolean-testable</i></code> concept introduced in <paper num="P1964R2"/> 
+places appropriate constraints on boolean-ish types, so that <code>!pred(x)</code> or 
+<code>i != last &amp;&amp; pred(*i)</code> always has a valid definition.
+<p/>
+Subsequently, <paper num="P2167R3"/> applied this concept to <sref ref="[algorithms.requirements]"/> 
+p6, requiring that <code>decltype(pred(*first))</code> should model <code><i>boolean-testable</i></code>.
+<p/>
+However, <code><i>boolean-testable</i></code> does not guarantee that 
+<code>pred(*i) != false</code> is valid, because the type may overload <code>operator==</code>.
+It is necessary to replace this form of expression with an appropriate one as we do in 
+<a href="https://wg21.link/P1964R2#wording">P1964R2</a>.
+</p>
+
+<note>2024-07-27; Daniel comments</note>
+<p>
+I would recommend to add a wrapping "<tt><ins>bool(</ins>pred([&hellip;])<ins>)</ins></tt>" and possibly 
+even extend to "<tt><ins>bool(</ins>pred([&hellip;])<ins>)</ins></tt> <ins>is <tt>true</tt></ins>"
+following our usual wording convention, since an English phrase of the form "if <tt>pred([&hellip;])</tt>" 
+where <tt>pred([&hellip;])</tt> is potential non-<tt>bool</tt> and the English "if" is not a C++ language 
+<tt>if</tt> (with built-in conversion semantics) doesn't sound like a meaningful phrase to me.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[func.search.bm]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+boyer_moore_searcher(RandomAccessIterator1 pat_first,
+                     RandomAccessIterator1 pat_last,
+                     Hash hf = Hash(),
+                     BinaryPredicate pred = BinaryPredicate());
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: The value type of <code>RandomAccessIterator1</code> meets the
+<i>Cpp17DefaultConstructible</i>, the <i>Cpp17CopyConstructible</i>, and the 
+<i>Cpp17CopyAssignable</i> requirements.
+<p/>
+-2- Let <code>V</code> be <code>iterator_traits&lt;RandomAccessIterator1&gt;::value_type</code>.
+For any two values <code>A</code> and <code>B</code> of type <code>V</code>, if
+<code>pred(A, B) <del>== true</del></code>, then <code>hf(A) == hf(B)</code> is 
+<code>true</code>.
+</p>
+[&hellip;]
+<p>
+-7- <i>Returns</i>: A pair of iterators <code>i</code> and <code>j</code> such that
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; <code>i</code> is the first iterator in the range [<code>first</code>,
+<code>last - (pat_last_ - pat_first_)</code>) such that for every non-negative integer 
+<code>n</code> less than <code>pat_last_ - pat_first_</code> the following condition holds: 
+<code>pred(*(i + n), *(pat_first_ + n)) <del>!= false</del></code>, and
+</p>
+</li>
+<li>
+<p>[&hellip;]</p>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[func.search.bmh]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+boyer_moore_horspool_searcher(RandomAccessIterator1 pat_first,
+                              RandomAccessIterator1 pat_last,
+                              Hash hf = Hash(),
+                              BinaryPredicate pred = BinaryPredicate());
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: The value type of <code>RandomAccessIterator1</code> meets the
+<i>Cpp17DefaultConstructible</i>, <i>Cpp17CopyConstructible</i>, and <i>Cpp17CopyAssignable</i>
+requirements.
+<p/>
+-2- Let <code>V</code> be <code>iterator_traits&lt;RandomAccessIterator1&gt;::value_type</code>.
+For any two values <code>A</code> and <code>B</code> of type <code>V</code>, if  
+<code>pred(A, B) <del>== true</del></code>, then <code>hf(A) == hf(B)</code> is <code>true</code>.
+</p>
+[&hellip;]
+<p>
+-7- <i>Returns</i>: A pair of iterators <code>i</code> and <code>j</code> such that
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(7.1) &mdash; <code>i</code> is the first iterator in the range [<code>first</code>,
+<code>last - (pat_last_ - pat_first_)</code>) such that for every non-negative integer <code>n</code> 
+less than <code>pat_last_ - pat_first_</code> the following condition holds: 
+<code>pred(*(i + n), *(pat_first_ + n)) <del>!= false</del></code>, and 
+</p></li>
+<li>
+<p>[&hellip;]</p>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[associative.reqmts.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- The phrase "equivalence of keys" means the equivalence relation imposed by the comparison object.
+That is, two keys <code>k1</code> and <code>k2</code> are considered to be equivalent if for the 
+comparison object <code>comp</code>, <code><ins>!</ins>comp(k1, k2) <del>== false</del> &amp;&amp; 
+<ins>!</ins>comp(k2, k1) <del>== false</del></code>.
+</p>
+[&hellip;]
+<p>
+-177- The fundamental property of iterators of associative containers is that they iterate through 
+the containers in the non-descending order of keys where non-descending is defined by the comparison 
+that was used to construct them. For any two dereferenceable iterators <code>i</code> and <code>j</code> 
+such that distance from <code>i</code> to <code>j</code> is positive, the following condition holds:
+</p>
+<pre><blockquote><ins>!</ins>value_comp(*j, *i) <del>== false</del></blockquote></pre>
+<p>
+-178- For associative containers with unique keys the stronger condition holds:
+</p>
+<pre><blockquote>value_comp(*i, *j) <del>!= false</del></blockquote></pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[list.ops]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+size_type remove(const T&amp; value);
+template&lt;class Predicate&gt; size_type remove_if(Predicate pred);
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects</i>: Erases all the elements in the list referred to by a list iterator 
+<code>i</code> for which the following conditions hold: <code>*i == value, pred(*i) 
+<del>!= false</del></code>. Invalidates only the iterators and references to
+the erased elements.
+<p/>
+-16- <i>Returns</i>: The number of elements erased.
+<p/>
+-17- <i>Throws</i>: Nothing unless an exception is thrown by <code>*i == value</code> or
+<code>pred(*i) <del>!= false</del></code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.find]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li>
+<p>(1.1) &mdash; <code>*i == value</code> for <code>find</code>;</p>
+</li>
+<li>
+<p>(1.2) &mdash; <code>pred(*i) <del>!= false</del></code> for <code>find_if</code>;</p>
+</li>
+<li>
+<p>(1.3) &mdash; <code><ins>!</ins>pred(*i) <del>== false</del></code> for <code>find_if_not</code>;
+</p>
+</li>
+[&hellip;]
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.find.first.of]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(1.1) &mdash; <code>*i == *j</code> for the overloads with no parameter <code>pred</code>;
+</p></li>
+<li><p>
+(1.2) &mdash; <code>pred(*i, *j) <del>!= false</del></code> for the overloads with a parameter
+<code>pred</code> and no parameter <code>proj1</code>;
+</p></li>
+[&hellip;]
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.adjacent.find]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(1.1) &mdash; <code>*i == *(i + 1)</code> for the overloads with no parameter <code>pred</code>;
+</p></li>
+<li><p>
+(1.2) &mdash; <code>pred(*i, *(i + 1)) <del>!= false</del></code> for the overloads with a 
+parameter <code>pred</code> and no parameter <code>proj1</code>;
+</p></li>
+[&hellip;]
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.count]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(1.1) &mdash; <code>*i == value</code> for the overloads with no parameter <code>pred</code> 
+or <code>proj</code>;
+</p></li>
+<li><p>
+(1.2) &mdash; <code>pred(*i) <del>!= false</del></code> for the overloads with a parameter
+<code>pred</code> but no parameter <code>proj</code>;
+</p></li>
+[&hellip;]
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.mismatch]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(2.1) &mdash; <code>!(*(first1 + n) == *(first2 + n))</code> for the overloads with no 
+parameter <code>pred</code>;
+</p></li>
+<li><p>
+(2.2) &mdash; <code><ins>!</ins>pred(*(first1 + n), *(first2 + n)) <del>== false</del></code> 
+for the overloads with a parameter <code>pred</code> and no parameter <code>proj1</code>;
+</p></li>
+[&hellip;]
+</ol>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.search]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <i>Returns</i>: The first iterator <code>i</code> in the range [<code>first1</code>,
+<code>last1 - (last2-first2)</code>) such that for every non-negative integer <code>n</code> 
+less than <code>last2 - first2</code> the following corresponding conditions hold:
+<code>*(i + n) == *(first2 + n), pred(*(i + n), *(first2 + n)) <del>!= false</del></code>.
+Returns <code>first1</code> if [<code>first2</code>, <code>last2</code>) is empty, otherwise 
+returns <code>last1</code> if no such iterator is found.
+</p>
+[&hellip;]
+<p>
+-6- <i>Returns</i>: The first iterator <code>i</code> in the range [<code>first</code>,
+<code>last-count</code>) such that for every non-negative integer <code>n</code> less than 
+<code>count</code> the following corresponding conditions hold: <code>*(i + n) == value, 
+pred(*(i + n), value) <del>!= false</del></code>. Returns <code>last</code> if no such 
+iterator is found.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.sorting.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- For all algorithms that take <code>Compare</code>, there is a version that uses 
+<code>operator&lt;</code> instead. That is, <code>comp(*i, *j) <del>!= false</del></code> 
+defaults to <code>*i &lt; *j <del>!= false</del></code>. For algorithms other than those 
+described in <sref ref="[alg.binary.search]"/>, <code>comp</code> shall induce a strict 
+weak ordering on the values.
+</p>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
