@@ -6,7 +6,7 @@
 <section><sref ref="[time.format]"/></section>
 <submitter>Jonathan Wakely</submitter>
 <date>08 Jul 2024</date>
-<priority>99</priority>
+<priority>3</priority>
 
 <discussion>
 <p>
@@ -58,32 +58,48 @@ which we know how to format?
 This is somewhat related to issue <iref ref="953"/>, since it's unclear
 which operations "a class emulating an arithmetic type" needs to support.
 </p>
+
+
+<note>2024-07-31; Reflector poll</note>
+<p>
+Set priority to 3 after reflector poll.
+</p>
+<p>
+"Don't convert to an integer type, that would be wrong for
+<code>duration&lt;long double&gt;</code> and could overflow for
+<code>duration&lt;BigInt&gt;</code>."
+</p>
+<p>"`%Q` could format using `+d.count()`"</p>
+<p>
+Some requests to disallow using code unit types as duration reps,
+e.g. <code>duration&lt;char&gt;</code>. Alternatively it just shouldn't
+be formattable. Alternatively, don't bother preventing dumb things.
+</p>
+<p>
+There's a similar issue in <code>operator&lt;&lt;</code> for
+`duration`, which writes `d.count()` to the stream. For a custom rep type
+that might be ill-formed. For character types it might print as a character
+not an integer.
+</p>
+
 </discussion>
 
 <resolution>
 <p>
-This wording is relative to <paper num="N4981"/>.
+This wording is relative to <paper num="N4986"/>.
 </p>
 <ol>
-<li><p>Modify <sref ref="[tab:time.format.spec]"/> as indicated:</p>
+<li><p>Modify <sref ref="[time.syn]"/> as indicated:</p>
 
 <blockquote>
-<table style="border: 1px solid; border-spacing: 1.5em">
-<thead style="text-align: center">
-<tr><th>Specifier</th><th>Replacement</th></tr>
-</thead>
-<tbody style="vertical-align: top">
-<tr><td>&hellip;</td><td>&hellip;</td><td>&hellip;</td></tr>
-<tr>
-<td> `%Q` </td>
-<td>
-The duration’s numeric value (as if extracted via `.count()`
-<ins>and converted to `intmax_t`</ins>
-).
-</td>
-</tr>
-</tbody>
-</table>
+<pre><code>
+namespace std {
+  template&lt;class Rep, class Period, class charT&gt;
+    <ins>requires formattable&lt;Rep, charT&gt;</ins>
+    struct formatter&lt;chrono::duration&lt;Rep, Period&gt;, charT&gt;;
+  template&lt;class Duration, class charT&gt;
+    struct formatter&lt;chrono::sys_time&lt;Duration&gt;, charT&gt;;
+</code></pre>
 </blockquote>
 </li>
 </ol>
