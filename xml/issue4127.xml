@@ -48,9 +48,7 @@ but the use of 'E' should say 'is true'".
 the proposed resolution needs updating.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4986"/>.
 </p>
@@ -319,6 +317,409 @@ iterator is found.
 </li>
 
 <li><p>Modify <sref ref="[alg.sorting.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- For all algorithms that take <code>Compare</code>, there is a version that uses 
+<code>operator&lt;</code> instead. That is, <code>comp(*i, *j) <del>!= false</del></code> 
+defaults to <code>*i &lt; *j <del>!= false</del></code>. For algorithms other than those 
+described in <sref ref="[alg.binary.search]"/>, <code>comp</code> shall induce a strict 
+weak ordering on the values.
+</p>
+</blockquote>
+
+</li>
+
+</ol>
+</superseded>
+
+<note>2024-08-03; Daniel provides improved wording</note>
+<p>
+The current wording is inconsistent in regard to explicit conversion to <tt>bool</tt>
+and lack of them in cases of expressions whose value is required to satisfy the
+<tt><i>boolean-testable</i></tt> constraints. To realize a consistent results for
+all subclause references touched by the changes required by this issue I decided
+that any <i>E</i> <b>definition</b> remains unconverted but and that every <i>E</i>
+<b>evaluation</b> is interpreted as if an implied <tt>bool</tt> expression based
+on the reflector preference of that simplified approach.
+<p/>
+Nonetheless, during the wording preparation I noticed that the wording in the 
+<i>Throws</i>: element <sref ref="[list.ops]"/> p17 is seriously <b>missing</b> the 
+additional extra conversion to <tt>bool</tt> for both expressions, because the 
+<tt><i>boolean-testable</i></tt> requirements do not impose a no-throw requirement for 
+that conversion, and they must therefore be included here.
+<p/>
+This problem will be handled by a separate issue, because the rationale for this change is 
+different from the actual target of this issue and not related to the other consistency 
+adjustments done by the wording below.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to 
+<a href="https://github.com/cplusplus/draft/actions/runs/10187945524/artifacts/1762181277">https://github.com/cplusplus/draft/actions/runs/10187945524</a>
+(A preview of the next working draft following <paper num="N4986"/>).
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[func.search.bm]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+boyer_moore_searcher(RandomAccessIterator1 pat_first,
+                     RandomAccessIterator1 pat_last,
+                     Hash hf = Hash(),
+                     BinaryPredicate pred = BinaryPredicate());
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: The value type of <code>RandomAccessIterator1</code> meets the
+<i>Cpp17DefaultConstructible</i>, <i>Cpp17CopyConstructible</i>, and 
+<i>Cpp17CopyAssignable</i> requirements.
+<p/>
+-2- Let <code>V</code> be <code>iterator_traits&lt;RandomAccessIterator1&gt;::value_type</code>.
+For any two values <code>A</code> and <code>B</code> of type <code>V</code>, if
+<code>pred(A, B) <del>== true</del></code> <ins>is <tt>true</tt></ins>, then 
+<code>hf(A) == hf(B)</code> is <code>true</code>.
+</p>
+[&hellip;]
+</blockquote>
+<pre>
+template&lt;class RandomAccessIterator2&gt;
+  pair&lt;RandomAccessIterator2, RandomAccessIterator2&gt;
+    operator()(RandomAccessIterator2 first, RandomAccessIterator2 last) const;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Returns</i>: A pair of iterators <code>i</code> and <code>j</code> such that
+</p>
+<ol style="list-style-type: none">
+<li><p>(7.1) &mdash; <code>i</code> is the first iterator in the range [<code>first</code>,
+<code>last - (pat_last_ - pat_first_)</code>) such that for every non-negative integer 
+<code>n</code> less than <code>pat_last_ - pat_first_</code> the following condition holds: 
+<code>pred(*(i + n), *(pat_first_ + n)) <del>!= false</del></code> <ins>is <tt>true</tt></ins>, and
+</p>
+</li>
+<li><p>(7.2) &mdash; <tt>j == next(i, distance(pat_first_, pat_last_))</tt> <ins>is <tt>true</tt></ins>.
+</p>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[func.search.bmh]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+boyer_moore_horspool_searcher(RandomAccessIterator1 pat_first,
+                              RandomAccessIterator1 pat_last,
+                              Hash hf = Hash(),
+                              BinaryPredicate pred = BinaryPredicate());
+</pre>
+<blockquote>
+<p>
+-1- <i>Preconditions</i>: The value type of <code>RandomAccessIterator1</code> meets the
+<i>Cpp17DefaultConstructible</i>, <i>Cpp17CopyConstructible</i>, and <i>Cpp17CopyAssignable</i>
+requirements.
+<p/>
+-2- Let <code>V</code> be <code>iterator_traits&lt;RandomAccessIterator1&gt;::value_type</code>.
+For any two values <code>A</code> and <code>B</code> of type <code>V</code>, if  
+<code>pred(A, B) <del>==</del> <ins>is</ins> true</code>, then <code>hf(A) == hf(B)</code> is 
+<code>true</code>.
+</p>
+[&hellip;]
+</blockquote>
+<pre>
+template&lt;class RandomAccessIterator2&gt;
+  pair&lt;RandomAccessIterator2, RandomAccessIterator2&gt;
+    operator()(RandomAccessIterator2 first, RandomAccessIterator2 last) const;
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-7- <i>Returns</i>: A pair of iterators <code>i</code> and <code>j</code> such that
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(7.1) &mdash; <code>i</code> is the first iterator in the range [<code>first</code>,
+<code>last - (pat_last_ - pat_first_)</code>) such that for every non-negative integer <code>n</code> 
+less than <code>pat_last_ - pat_first_</code> the following condition holds: 
+<code>pred(*(i + n), *(pat_first_ + n)) <del>!= false</del></code> <ins>is <tt>true</tt></ins>, and 
+</p></li>
+<li><p>(7.2) &mdash; <tt>j == next(i, distance(pat_first_, pat_last_))</tt> <ins>is <tt>true</tt></ins>.
+</p>
+</li>
+</ol>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[associative.reqmts.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-3- The phrase "equivalence of keys" means the equivalence relation imposed by the comparison object.
+That is, two keys <code>k1</code> and <code>k2</code> are considered to be equivalent if for the 
+comparison object <code>comp</code>, <code><ins>!</ins>comp(k1, k2) <del>== false</del> &amp;&amp; 
+<ins>!</ins>comp(k2, k1) <del>== false</del></code> <ins>is <tt>true</tt></ins>.
+</p>
+[&hellip;]
+<p>
+-177- The fundamental property of iterators of associative containers is that they iterate through 
+the containers in the non-descending order of keys where non-descending is defined by the comparison 
+that was used to construct them. For any two dereferenceable iterators <code>i</code> and <code>j</code> 
+such that distance from <code>i</code> to <code>j</code> is positive, the following condition holds:
+</p>
+<blockquote><p><tt><ins>!</ins>value_comp(*j, *i) <del>== false</del></tt> <ins>is <tt>true</tt>.</ins></p></blockquote>
+<p>
+-178- For associative containers with unique keys the stronger condition holds:
+</p>
+<blockquote><p><tt>value_comp(*i, *j) <del>!= false</del></tt> <ins>is <tt>true</tt>.</ins></p></blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[list.ops]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+size_type remove(const T&amp; value);
+template&lt;class Predicate&gt; size_type remove_if(Predicate pred);
+</pre>
+<blockquote>
+<p>
+-15- <i>Effects</i>: Erases all the elements in the list referred to by a list iterator 
+<code>i</code> for which the following conditions hold: <tt>*i == value</tt> 
+<ins>is <tt>true</tt></ins>, <tt>pred(*i) <del>!= false</del></tt> <ins>is <tt>true</tt></ins>. 
+Invalidates only the iterators and references to the erased elements.
+<p/>
+-16- <i>Returns</i>: The number of elements erased.
+<p/>
+-17- <i>Throws</i>: Nothing unless an exception is thrown by <code>*i == value</code> or
+<code>pred(*i) <del>!= false</del></code>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.find]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: Sub-bullets (1.4), (1.5), and (1.6) below regarding
+<tt>invoke</tt> expressions are similarly required model <tt><i>boolean-testable</i></tt>,
+as specified by concept <tt>predicate</tt> (<sref ref="[concept.predicate]"/>), therefore
+the explicit conversion is removed here for consistency]
+</p>
+</blockquote>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li>
+<p>(1.1) &mdash; <code>*i == value</code> for <code>find</code>;</p>
+</li>
+<li>
+<p>(1.2) &mdash; <code>pred(*i) <del>!= false</del></code> for <code>find_if</code>;</p>
+</li>
+<li>
+<p>(1.3) &mdash; <code><ins>!</ins>pred(*i) <del>== false</del></code> for <code>find_if_not</code>;</p>
+</li>
+<li>
+<p>(1.4) &mdash; <tt><del>bool(</del>invoke(proj, *i) == value<del>)</del></tt> for <tt>ranges::find</tt>;</p>
+</li>
+<li>
+<p>(1.5) &mdash; <tt><del>bool(</del>invoke(pred, invoke(proj, *i))<del>)</del></tt> for <tt>ranges::find_if</tt>;</p>
+</li>
+<li>
+<p>(1.6) &mdash; <tt><del>bool(</del>!invoke(pred, invoke(proj, *i))<del>)</del></tt> for <tt>ranges::find_if_not</tt>.</p>
+</li>
+</ol>
+<p>
+-2- <i>Returns</i>: The first iterator <tt>i</tt> in the range <tt>[first, last)</tt> for which 
+<i>E</i> is <tt>true</tt>. Returns <tt>last</tt> if no such iterator is found.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.find.first.of]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(1.1) &mdash; <code>*i == *j</code> for the overloads with no parameter <code>pred</code>;
+</p></li>
+<li><p>
+(1.2) &mdash; <code>pred(*i, *j) <del>!= false</del></code> for the overloads with a parameter
+<code>pred</code> and no parameter <code>proj1</code>;
+</p></li>
+<li><p>
+(1.3) &mdash; <tt><del>bool(</del>invoke(pred, invoke(proj1, *i), invoke(proj2, *j))<del>)</del></tt> 
+for the overloads with parameters <tt>pred</tt> and <tt>proj1</tt>.
+</p>
+</li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+-3- <i>Returns</i>: The first iterator <tt>i</tt> in the range <tt>[first1, last1)</tt> such that 
+for some iterator <tt>j</tt> in the range <tt>[first2, last2)</tt> <i>E</i> <del>holds</del> 
+<ins>is <tt>true</tt></ins>. Returns <tt>last1</tt> if <tt>[first2, last2)</tt> is empty or if no 
+such iterator is found.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.adjacent.find]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(1.1) &mdash; <code>*i == *(i + 1)</code> for the overloads with no parameter <code>pred</code>;
+</p></li>
+<li><p>
+(1.2) &mdash; <code>pred(*i, *(i + 1)) <del>!= false</del></code> for the overloads with a 
+parameter <code>pred</code> and no parameter <code>proj</code>;
+</p></li>
+<li><p>
+(1.3) &mdash; <tt><del>bool(</del>invoke(pred, invoke(proj, *i), invoke(proj, *(i + 1)))<del>)</del></tt> 
+for the overloads with both parameters <tt>pred</tt> and <tt>proj</tt>.
+</p></li>
+</ol>
+<p>
+-2- <i>Returns</i>: The first iterator <tt>i</tt> such that both <tt>i</tt> and <tt>i + 1</tt> are 
+in the range <tt>[first, last)</tt> for which <i>E</i> <del>holds</del> <ins>is <tt>true</tt></ins>.
+Returns <tt>last</tt> if no such iterator is found.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.count]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(1.1) &mdash; <code>*i == value</code> for the overloads with no parameter <code>pred</code> 
+or <code>proj</code>;
+</p></li>
+<li><p>
+(1.2) &mdash; <code>pred(*i) <del>!= false</del></code> for the overloads with a parameter
+<code>pred</code> but no parameter <code>proj</code>;
+</p></li>
+<li><p>
+(1.3) &mdash; <tt>invoke(proj, *i) == value</tt> for the overloads with a parameter <tt>proj</tt> 
+but no parameter <tt>pred</tt>;
+</p></li>
+<li><p>
+(1.4) &mdash; <tt><del>bool(</del>invoke(pred, invoke(proj, *i))<del>)</del></tt> for the 
+overloads with both parameters <tt>proj</tt> and <tt>pred</tt>.
+</p></li>
+</ol>
+<p>
+-2- <i>Effects</i>: Returns the number of iterators <tt>i</tt> in the range <tt>[first, last)</tt> 
+for which <i>E</i> <del>holds</del> <ins>is <tt>true</tt></ins>.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.mismatch]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-2- Let <i>E</i> be:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(2.1) &mdash; <code>!(*(first1 + n) == *(first2 + n))</code> for the overloads with no 
+parameter <code>pred</code>;
+</p></li>
+<li><p>
+(2.2) &mdash; <code><ins>!</ins>pred(*(first1 + n), *(first2 + n)) <del>== false</del></code> 
+for the overloads with a parameter <code>pred</code> and no parameter <code>proj1</code>;
+</p></li>
+<li><p>
+(2.3) &mdash; <tt>!invoke(pred, invoke(proj1, *(first1 + n)), invoke(proj2, *(first2 + n)))</tt> 
+for the overloads with both parameters <tt>pred</tt> and <tt>proj1</tt>.
+</p></li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+-4- <i>Returns</i>: <tt>{ first1 + n, first2 + n }</tt>, where <tt>n</tt> is the smallest integer 
+in [<tt>0</tt>, <i>N</i>) such that <i>E</i> <del>holds</del> <ins>is <tt>true</tt></ins>,
+or <i>N</i> if no such integer exists.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.search]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <i>Returns</i>: The first iterator <code>i</code> in the range [<code>first1</code>,
+<code>last1 - (last2-first2)</code>) such that for every non-negative integer <code>n</code> 
+less than <code>last2 - first2</code> the following corresponding conditions hold:
+<tt>*(i + n) == *(first2 + n)</tt> <ins>is <tt>true</tt></ins>, 
+<tt>pred(*(i + n), *(first2 + n)) <del>!= false</del></tt> <ins>is <tt>true</tt></ins>.
+Returns <code>first1</code> if [<code>first2</code>, <code>last2</code>) is empty, otherwise 
+returns <code>last1</code> if no such iterator is found.
+</p>
+[&hellip;]
+<p>
+-6- Let <i>E</i> be <tt>pred(*(i + n), value) <del>!= false</del></tt> for the overloads with 
+a parameter <tt>pred</tt>, and <tt>*(i + n) == value</tt> otherwise.
+<p/>
+-7- <i>Returns</i>: The first iterator <i>i</i> in the range <tt>[first, last - count)</tt> 
+such that for every non-negative integer <tt>n</tt> less than <tt>count</tt> the condition <i>E</i> 
+is <tt>true</tt>. Returns <tt>last</tt> if no such iterator is found.
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[alg.sorting.general]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: The wording below does not require extra "is <tt>true</tt>" added to
+the adjusted expressions. This is comparable to the <i>E</i> cases above, since
+<sref ref="[alg.sorting.general]"/> p2 already points out:
+</p>
+<blockquote><p>
+The return value of the function call operation applied to an object of type <tt>Compare</tt>,
+when converted to <tt>bool</tt>, yields <tt>true</tt> if the first argument of the call is 
+less than the second, and <tt>false</tt> otherwise.
+</p></blockquote>
+<p>
+]
+</p>
+</blockquote>
 
 <blockquote>
 <p>
