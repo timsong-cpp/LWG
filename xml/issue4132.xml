@@ -1,0 +1,154 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4132" status="New">
+<title><i>Throws</i> specifications need to include <tt><i>boolean-testable</i></tt> operations</title>
+<section><sref ref="[associative.reqmts.general]"/><sref ref="[list.ops]"/>
+<sref ref="[forward.list.ops]"/></section>
+<submitter>Daniel Krügler</submitter>
+<date>03 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The standard provides various <i>Throws</i>: elements whose specification refers to boolean-like 
+expressions, for example <sref ref="[list.ops]"/> says:
+</p>
+<blockquote><p>
+-17- <i>Throws</i>: Nothing unless an exception is thrown by <tt>*i == value</tt> or
+<tt>pred(*i) != false</tt>.
+</p></blockquote>
+<p>
+The expressions <tt>*i == value</tt> (by [tab:cpp17.equalitycomparable]) and <tt>pred(*i)</tt> 
+(by <sref ref="[algorithms.requirements]"/>) both require to have a type that models 
+<tt><i>boolean-testable</i></tt>, so their actual evaluation potentially requires an additional 
+conversion to <tt>bool</tt> (The part "<tt>!= false</tt>" was not guaranteed to realize that as 
+pointed out by LWG <iref ref="4127"/> and will therefore be removed by that issue).
+<p/>
+The <tt><i>boolean-testable</i></tt> requirements (<sref ref="[concept.booleantestable]"/>) doesn't 
+say anything about potential exceptions thrown by this conversion, so we must assume that this 
+conversion allows an exception to be thrown.
+<p/>
+An additional problem arises by the fact that the <tt><i>boolean-testable</i></tt> requirements
+do not require that the implicit and explicit conversion to <tt>bool</tt> have to behave 
+consistently in regard to exceptions. <sref ref="[concept.convertible]"/> only says 
+that "The implicit and explicit conversions are required to produce equal results". But
+since we don't want to restrict implementations to a specific <tt>bool</tt> conversion,
+the <i>Throws</i> wording should include it in a manner that applies to any form.
+<p/>
+Besides the obviously necessary conversion to <tt>bool</tt> we should not restrict 
+implementations in regard to the potential usage of other <tt><i>boolean-testable</i></tt> 
+operations, e.g. negation, which could potentially also throw an exception.
+<p/>
+Therefore the wording for the affected <i>Throws</i>: elements somehow needs to mention 
+<tt><i>boolean-testable</i></tt> operations to cover the effective operation that is 
+involved here without actually restricting existing implementations unnecessarily.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[associative.reqmts.general]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+a.merge(a2)
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-116- <i>Throws</i>: Nothing unless the <ins>evaluation of the</ins> comparison object 
+<ins>including all selected <tt><i>boolean-testable</i></tt> (<sref ref="[concept.booleantestable]"/>) 
+operations</ins> throws.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[forward.list.ops]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+size_type remove(const T&amp; value);
+template&lt;class Predicate&gt; size_type remove_if(Predicate pred);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-15- <i>Throws</i>: Nothing unless an exception is thrown by the equality comparison or the 
+predicate <ins>evaluation including all selected <tt><i>boolean-testable</i></tt> 
+(<sref ref="[concept.booleantestable]"/>) operations</ins>.
+</p>
+</blockquote>
+<p>
+[&hellip;]
+</p>
+<pre>
+size_type unique();
+template&lt;class BinaryPredicate&gt; size_type unique(BinaryPredicate binary_pred);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-22- <i>Throws</i>: Nothing unless an exception is thrown by the predicate 
+<ins>evaluation including all selected <tt><i>boolean-testable</i></tt> 
+(<sref ref="[concept.booleantestable]"/>) operations</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[list.ops]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: The adjustment of p17 is presented as if issue LWG <iref ref="4127"/> 
+proposed wording has already been applied]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+size_type remove(const T&amp; value);
+template&lt;class Predicate&gt; size_type remove_if(Predicate pred);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-17- <i>Throws</i>: Nothing unless an exception is thrown by <tt>*i == value</tt> or
+<tt>pred(*i)</tt> <ins>including all selected <tt><i>boolean-testable</i></tt> 
+(<sref ref="[concept.booleantestable]"/>) operations</ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+<pre>
+size_type unique();
+template&lt;class BinaryPredicate&gt; size_type unique(BinaryPredicate binary_pred);
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-24- <i>Throws</i>: Nothing unless an exception is thrown by the predicate 
+<ins>evaluation including all selected <tt><i>boolean-testable</i></tt> 
+(<sref ref="[concept.booleantestable]"/>) operations</ins>.
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
