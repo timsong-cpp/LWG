@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4135" status="New">
+<title>The helper lambda of <code>std::erase</code> for <code>list</code> should specify return type as
+  <code>bool</code></title>
+<section><sref ref="[forward.list.erasure]"/><sref ref="[list.erasure]"/></section>
+<submitter>Hewill Kang</submitter>
+<date>07 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<code>std::erase</code> for <code>list</code> is specified to return
+<code>erase_if(c, [&amp;](auto&amp; elem) { return elem == value; })</code>.
+However, the template parameter <code>Predicate</code> of <code>erase_if</code> only requires that the
+type of <code>decltype(pred(...))</code> satisfies <code><i>boolean-testable</i></code>, i.e., the
+return type of <code>elem == value</code> is not necessarily <code>bool</code>.
+<p/>
+This means it's worth explicitly specifying the lambda's return type as <code>bool</code> to avoid some 
+pedantic cases (<a href="https://godbolt.org/z/xPvYYnvY6">demo</a>):
+</p>
+<blockquote><pre>
+#include &lt;list&gt;
+
+struct Bool {
+  Bool(const Bool&amp;) = delete;
+  operator bool() const;
+};
+
+struct Int {
+  Bool&amp; operator==(Int) const;
+};
+
+int main() {
+  std::list&lt;Int&gt; l;
+  std::erase(l, Int{}); // <span  style="color:#C80000;font-weight:bold">unnecessary hard error</span>
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[forward.list.erasure]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class Allocator, class U = T&gt;
+  typename forward_list&lt;T, Allocator&gt;::size_type
+    erase(forward_list&lt;T, Allocator&gt;&amp; c, const U&amp; value);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Equivalent to:
+  <code>return erase_if(c, [&amp;](<ins>const</ins> auto&amp; elem) <ins>-&gt; bool</ins> { return elem == value; });</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[list.erasure]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T, class Allocator, class U = T&gt;
+  typename list&lt;T, Allocator&gt;::size_type
+    erase(list&lt;T, Allocator&gt;&amp; c, const U&amp; value);
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects</i>: Equivalent to:
+  <code>return erase_if(c, [&amp;](<ins>const</ins> auto&amp; elem) <ins>-&gt; bool</ins> { return elem == value; });</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
