@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4136" status="New">
+<title>Specify behavior of [linalg] Hermitian algorithms on diagonal with nonzero imaginary part</title>
+<section><sref ref="[linalg.general]"/></section>
+<submitter>Mark Hoemmen</submitter>
+<date>09 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Mathematically, the diagonal elements of a Hermitian matrix must all
+have zero imaginary part (if they are complex numbers). <sref ref="[linalg.general]"/> 
+paragraphs 3 and 4 govern the behavior of [linalg]
+functions that operate on "symmetric," "Hermitian," or "triangular"
+matrices. All such functions only access the specified triangle
+(lower or upper) of the matrix. Whatever is in the other triangle of
+the matrix doesn't matter; it's not even accessed. That gives
+well-defined behavior for "symmetric" and "triangular" matrices.
+However, both triangles include the diagonal. What should the
+"Hermitian" functions do if they encounter a diagonal element with
+nonzero imaginary part?
+<p/>
+The current wording says that both the operation performed and the
+matrix itself are Hermitian, but does not clarify what happens if the
+latter is not true. For example, <sref ref="[linalg.algs.blas2.hemv]"/> 
+says that <tt>hermitian_matrix_vector_product</tt> performs a 
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Hermitian matrix-vector product, taking into account the <tt>Triangle</tt> 
+parameter that applies to the Hermitian matrix <tt>A</tt> (<sref ref="[linalg.general]"/>).
+</p>
+</blockquote>
+<p>
+Language like this appears in the specifications of all the functions 
+whose names start with <tt>hermitian</tt>. The implication is that if 
+the diagonal has an element with nonzero imaginary part, then the matrix 
+is not Hermitian and therefore a precondition of the function has been violated.  
+The result is undefined behavior.
+<p/>
+We can get rid of this undefined behavior by defining what happens in
+this case. It turns out that Chapter 2 of the BLAS Standard already
+does this: It says that the Hermitian algorithms do not access the
+imaginary parts of diagonal elements. The reference Fortran BLAS
+implementations of <tt>CHEMV</tt> (single-precision Complex HErmitian
+Matrix-Vector product) and <tt>ZHEMV</tt> (double-precision complex 
+HErmitian Matrix-Vector product) follow the BLAS Standard. <tt>CHEMV</tt> 
+uses <tt>real(A(j,j))</tt> and <tt>ZHEMV</tt> uses <tt>dble(A(j,j))</tt>, 
+which means that the BLAS routines only access the real part of each diagonal 
+element.
+<p/>
+The clear design intent of <paper num="P1673R13"/> was to imitate the 
+behavior of the BLAS Standard and reference BLAS unless otherwise specified.  
+Thus, we propose to specify this behavior in the wording; we do not think 
+this requires LEWG re-review.
+<p/>
+In my view, it's fine to retain the existing wording like that in
+<sref ref="[linalg.algs.blas2.hemv]"/>, that refers to a "Hermitian matrix".  
+The matrix defined by the revised [linalg.general] instructions is
+unambiguously a Hermitian matrix. Just like the "other triangle" of a
+symmetric or triangular matrix does not affect the behavior of
+[linalg] symmetric resp. triangular algorithms, the wording fix here
+will ensure that any imaginary parts of diagonal elements will not
+affect the behavior of [linalg] Hermitian algorithms.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[linalg.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-4- For any function <tt>F</tt> that takes a parameter named <tt>t</tt>, <tt>t</tt> 
+applies to accesses done through the parameter preceding <tt>t</tt> in the parameter 
+list of <tt>F</tt>. Let <tt>m</tt> be such an access-modified function parameter. 
+<tt>F</tt> will only access the triangle of <tt>m</tt> specified by <tt>t</tt>. 
+<ins>For accesses of diagonal elements <tt>m[i, i]</tt>, <tt>F</tt> will use the value
+<tt><i>real-if-needed</i>(m[i, i])</tt> if the name of <tt>F</tt> starts with 
+<tt>hermitian</tt>.</ins>
+For accesses <tt>m[i, j]</tt> outside the triangle specified by <tt>t</tt>, <tt>F</tt> 
+will use the value [&hellip;]
+</p>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
