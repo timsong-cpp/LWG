@@ -1,0 +1,239 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4134" status="New">
+<title>Issue with Philox algorithm specification</title>
+<section><sref ref="[rand.eng.philox]"/></section>
+<submitter>Ilya A. Burylov</submitter>
+<date>06 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <paper num="P2075R6"/> proposal introduced the Philox engine and described the algorithm closely 
+following the <a href="https://www.thesalmons.org/john/random123/papers/random123sc11.pdf">original paper</a> 
+(further Random123sc11).
+<p/>
+Matt Stephanson implemented P2075R6 and the 10000'th number did not match. Further investigation revealed 
+several places in Random123sc11 algorithm description, which either deviate from the reference implementation 
+written by Random123sc11 authors or loosely defined, which opens the way for different interpretations.
+<p/>
+All major implementations of the Philox algorithm (NumPy, Intel MKL, Nvidia cuRAND, etc.) match the 
+reference implementation written by Random123sc11 authors and we propose to align wording with that.
+<p/>
+The rationale of proposed changes:
+</p>
+<ol>
+<li><p>Random123sc11 refers to the permutation step as "the inputs are permuted using the Threefish 
+N-word P-box", thus the P2075R6 permutation table ([tab:rand.eng.philox.f]) is taken from 
+Threefish algorithm. But the permutation for N=4 in this table does not match the reference 
+implementations. It's worth noting that while Random123sc11 described the Philox algorithm for N=8 
+and N=16, there are no known reference implementations of it either provided by authors or 
+implemented by other libraries. We proposed to drop N=8 and N=16 for now and update 
+the permutation indices for N=4 to match the reference implementation. Note: the proposed resolution 
+allows extending N &gt; 4 cases in the future.</p></li>
+<li><p>The original paper describes the S-box update for X values in terms of <tt>L'</tt> and 
+<tt>R'</tt> but does not clarify their ordering as part of the counter. In order to match Random123sc11 
+reference implementation the ordering should be swapped.</p></li>
+<li><p>Philox alias templates should be updated, because the current ordering of constants matches the 
+specific optimization in the reference Random123sc11 implementation and not the generic algorithm 
+description.</p></li>
+</ol>
+<p>
+All proposed modifications below are confirmed by:
+</p>
+<ul>
+<li><p>Philox algorithm coauthor Mark Moraes who is planning to publish errata for the original Random123sc11 
+Philox paper.</p></li>
+<li><p>Matt Stephanson, who originally found the mismatch in P2075R6</p></li>
+<li><p>The <a href="https://github.com/rarutyun/iso_cpp_papers/blob/main/rng/philox/philox.hpp">updated 
+reference implementation</a>.</p></li>
+</ul>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[rand.eng.philox]"/>, [tab:rand.eng.philox.f] as indicated (This effectively reduces
+16 data columns to 4 data columns and 4 data rows to 2 data rows):</p>
+
+<blockquote>
+<table border="1">
+<caption>Table 101 &mdash; Values for the word permutation <i>f</i><sub><i>n</i></sub>(<i>j</i>) [tab:rand.eng.philox.f]</caption>
+<tr>
+  <th rowspan="2" colspan="2"><i>f</i><sub><i>n</i></sub>(<i>j</i>)</th>
+  <th colspan="16" align="center"><tt><i>j</i></tt></th>
+</tr>
+<tr>
+  <th>0</th>
+  <th>1</th>
+  <th>2</th>
+  <th>3</th>
+  <th><del>4</del></th>
+  <th><del>5</del></th>
+  <th><del>6</del></th>
+  <th><del>7</del></th>
+  <th><del>8</del></th>
+  <th><del>9</del></th>
+  <th><del>10</del></th>
+  <th><del>11</del></th>
+  <th><del>12</del></th>
+  <th><del>13</del></th>
+  <th><del>14</del></th>
+  <th><del>15</del></th>
+</tr>
+
+<tr>
+  <th rowspan="5"><i>n</i></th>
+</tr>
+<tr>
+  <th>2</th>
+    <td>0</td>
+    <td>1</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+</tr>
+<tr>
+  <th>4</th>
+    <td><ins>2</ins><del>0</del></td>
+    <td><ins>1</ins><del>3</del></td>
+    <td><ins>0</ins><del>2</del></td>
+    <td><ins>3</ins><del>1</del></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+</tr>
+<tr>
+  <th><del>8</del></th>
+    <td><del>2</del></td>
+    <td><del>1</del></td>
+    <td><del>4</del></td>
+    <td><del>7</del></td>
+    <td><del>6</del></td>
+    <td><del>5</del></td>
+    <td><del>0</del></td>
+    <td><del>3</del></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+</tr>
+<tr>  
+  <th><del>16</del></th>
+    <td><del>0</del></td>
+    <td><del>9</del></td>
+    <td><del>2</del></td>
+    <td><del>13</del></td>
+    <td><del>6</del></td>
+    <td><del>11</del></td>
+    <td><del>4</del></td>
+    <td><del>15</del></td>
+    <td><del>10</del></td>
+    <td><del>7</del></td>
+    <td><del>12</del></td>
+    <td><del>3</del></td>
+    <td><del>14</del></td>
+    <td><del>5</del></td>
+    <td><del>8</del></td>
+    <td><del>1</del></td>
+</tr>
+</table> 
+
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[rand.eng.philox]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-4- [&hellip;]
+</p>
+<ol style="list-style-type: none">
+<li><p>(4.1) &mdash; [&hellip;]</p></li>
+<li><p>(4.2) &mdash; The following computations are applied to the elements of the <i>V</i> sequence:</p>
+<blockquote>
+<p>
+<i>X</i><sub>2<i>k</i>+0</sub> = <ins>mulhi</ins><del>mullo</del>(<i>V</i><sub>2<i>k</i><del>+1</del></sub>,<i>M</i><sub><i>k</i></sub>,<i>w</i>)
+<ins>xor <i>key</i><sup><i>q</i></sup><sub><i>k</i></sub> xor <i>V</i><sub>2<i>k</i>+1</sub></ins>
+<p/>
+<i>X</i><sub>2<i>k</i>+1</sub> = <ins>mullo</ins><del>mulhi</del>(<i>V</i><sub>2<i>k</i><del>+1</del></sub>,<i>M</i><sub><i>k</i></sub>,<i>w</i>)
+ <del>xor <i>key</i><sup><i>q</i></sup><sub><i>k</i></sub> xor <i>V</i><sub>2<i>k</i></sub></del>
+</p>
+</blockquote>
+</li>
+</ol>
+<p>
+-5- [&hellip;]
+<p/>
+-6- <i>Mandates</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p>(6.1) &mdash; [&hellip;]</p></li>
+<li><p>(6.2) &mdash; <tt>n == 2 || n == 4 <del>|| n == 8 || n == 16</del></tt> is <tt>true</tt>, and</p></li>
+<li><p>(6.3) &mdash; [&hellip;]</p></li>
+<li><p>(6.4) &mdash; [&hellip;]</p></li>
+</ol>
+
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[rand.predef]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+using philox4x32 =
+      philox_engine&lt;uint_fast32_t, 32, 4, 10,
+       <ins>0xCD9E8D57</ins><del>0xD2511F53</del>, 0x9E3779B9, <ins>0xD2511F53</ins><del>0xCD9E8D57</del>, 0xBB67AE85&gt;;
+</pre>
+<blockquote>
+<p>
+-11- <i>Required behavior</i>: The 10000<sup>th</sup> consecutive invocation a default-constructed 
+object of type <tt>philox4x32</tt> produces the value <tt>1955073260</tt>.
+</p>
+</blockquote>
+<pre>
+using philox4x64 =
+      philox_engine&lt;uint_fast64_t, 64, 4, 10,
+       <ins>0xCA5A826395121157</ins><del>0xD2E7470EE14C6C93</del>, 0x9E3779B97F4A7C15, <ins>0xD2E7470EE14C6C93</ins><del>0xCA5A826395121157</del>, 0xBB67AE8584CAA73B&gt;;
+</pre>
+<blockquote>
+<p>
+-12- <i>Required behavior</i>: The 10000<sup>th</sup> consecutive invocation a default-constructed 
+object of type <tt>philox4x64</tt> produces the value 3409172418970261260.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
