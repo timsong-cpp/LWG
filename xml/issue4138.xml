@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4138" status="New">
+<title><tt>is_within_lifetime</tt> should mandate <tt>is_object</tt></title>
+<section><sref ref="[meta.const.eval]"/></section>
+<submitter>Corentin</submitter>
+<date>09 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<blockquote><pre>
+int f();
+std::is_within_lifetime&lt;int()&gt;(f);
+</pre></blockquote>
+<p>
+This is currently well-formed, and only fails when evaluated because 
+<tt>is_within_lifetime</tt> is not constrained. However talking of lifetime 
+of a non-object does not make sense, and the lack of constraint makes the 
+implementation and use of that function and underlying built-in more 
+convoluted than necessary.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[meta.type.synop]"/>, header <tt>&lt;type_traits&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+// <i><sref ref="[meta.const.eval]"/>, constant evaluation context</i>
+constexpr bool is_constant_evaluated() noexcept;
+<ins>template&lt;class T&gt;</ins>
+consteval bool is_within_lifetime(const <ins>T</ins><del>auto</del>*) noexcept;
+</pre>
+</blockquote>
+
+</li>
+
+
+<li><p>Modify <sref ref="[meta.const.eval]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+<ins>template&lt;class T&gt;</ins>
+consteval bool is_within_lifetime(const <ins>T</ins><del>auto</del>* p) noexcept;
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Mandates</i>: <tt>is_object_v&lt;T&gt;</tt> is <tt>true</tt>.</ins>
+<p/>
+-3- <i>Returns</i>: <tt>true</tt> if <tt>p</tt> is a pointer to an object that is 
+within its lifetime (<sref ref="[basic.life]"/>); otherwise, <tt>false</tt>.
+<p/>
+-4- <i>Remarks</i>: During the evaluation of an expression <tt>E</tt> as a core 
+constant expression, a call to this function is ill-formed unless <tt>p</tt> 
+points to an object that is usable in constant expressions or whose complete
+object's lifetime began within <tt>E</tt>.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</resolution>
+
+</issue>
