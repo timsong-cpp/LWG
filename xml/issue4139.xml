@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4139" status="New">
+<title>&sect;[time.zone.leap] recursive constraint in <tt>&lt;=&gt;</tt></title>
+<section><sref ref="[time.zone.leap]"/></section>
+<submitter>Corentin</submitter>
+<date>18 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider
+</p>
+<blockquote><pre>
+decltype(std::declval&lt;std::chrono::leap_second&amp;>() &lt;=&gt; std::chrono::system_clock::now())
+</pre></blockquote>
+<p>
+There is a <tt>&lt;=&gt;</tt> operator for leap second defined as
+</p>
+<blockquote><pre>
+template&lt;class Duration&gt;
+  requires three_way_comparable_with&lt;sys_seconds, sys_time&lt;Duration&gt;&gt;
+  constexpr auto operator&lt;=&gt;(const leap_second&amp; x, const sys_time&lt;Duration&gt;&amp; y) noexcept;
+</pre></blockquote>
+<p>
+In order to resolve this overload, we need to check the constraints.
+<tt>three_way_comparable_with</tt> will end up checking that <tt>sys_seconds{} &lt; sys_time&lt;Duration&gt;{}</tt> 
+is a valid expression. 
+To do that, we run overload resolution, find a bunch of <tt>operator&lt;=&gt;</tt>, including the <tt>leap_second</tt> 
+overload mentioned above.
+We check its constraints... and we find ourselves doing that recursively.
+<p/>
+This problem currently doesn't manifest in production compilers because of a number of 
+<a href="https://lists.isocpp.org/core/2023/03/14041.php">non-conforming behaviors of 
+all implementations</a>, but surfaced while fixing some of these issues in clang.
+<p/>
+libstdc++ also does not suffer from this issue because <tt>leap_seconds</tt> comparisons operators are all hidden 
+friends (in fact, libstdc++ define hidden friends comparison operators for most of the objects in chrono, which is 
+nice!)
+<p/>
+Suggested resolution:
+<p/>
+Specify that <tt>leap_seconds</tt> operators are hidden friends. This would avoid the recursion, and would be easier 
+on compilers.
+</p>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
