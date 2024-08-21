@@ -208,9 +208,7 @@ finding itself in that context.
 Set priority to 3 after reflector poll.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4901"/>.
 </p>
@@ -372,6 +370,170 @@ y = b;</ins>
 </li>
 
 </ol>
+</superseded>
+
+<note>2024-08-21; Jonathan provides improved wording</note>
+<p>
+Rebase on the current draft, change "exchanges the contents" to
+"exchanges the denoted values", and don't split the subclause into
+new subclauses.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+
+<li><p>Add to the synopsis in <sref ref="[vector.bool.pspc]"/> p1:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// bit reference</i>
+class reference {
+  friend class vector;
+  constexpr reference() noexcept;
+
+public:
+  constexpr reference(const reference&amp;) = default;
+  constexpr ~reference();
+  constexpr operator bool() const noexcept;
+  constexpr reference&amp; operator=(bool x) noexcept;
+  constexpr reference&amp; operator=(const reference&amp; x) noexcept;
+  constexpr const reference&amp; operator=(bool x) const noexcept;
+  constexpr void flip() noexcept;   <i>// flips the bit</i>
+  
+<ins>  friend constexpr void swap(reference x, reference y) noexcept;
+  friend constexpr void swap(reference x, bool&amp; y) noexcept;
+  friend constexpr void swap(bool&amp; x, reference y) noexcept;</ins>
+};
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Remove the static <tt>swap</tt> function from the same synopsis:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+constexpr void swap(vector&amp;)
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_swap::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+<del>static constexpr void swap(reference x, reference y) noexcept;</del>
+constexpr void flip() noexcept;    <i>// flips all bits</i>
+constexpr void clear() noexcept;
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify the paragraphs below the synopsis as shown:</p>
+
+<blockquote>
+<p>
+-4- <tt>reference</tt> is a class that simulates the behavior of references of a single bit in <tt>vector&lt;bool&gt;</tt>. 
+The conversion function returns <tt>true</tt> when the bit is set, and <tt>false</tt> otherwise. The assignment 
+operators set the bit when the argument
+<del>is (convertible to)</del>
+<ins>converts to</ins>
+<tt>true</tt> and clear it otherwise. 
+<tt>flip</tt> reverses the state of the bit.
+</p>
+<pre>
+<ins>constexpr void reference::flip() noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> <tt>*this = !*this;</tt></ins>
+</p>
+</blockquote>
+<pre><ins>
+ constexpr void swap(reference x, reference y) noexcept;
+ constexpr void swap(reference x, bool&amp; y) noexcept;
+ constexpr void swap(bool&amp; x, reference y) noexcept;
+</ins></pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Exchanges the values denoted by <tt>x</tt> and <tt>y</tt> as if by:</ins>
+</p>
+<blockquote><pre>
+<ins>bool b = x;
+x = y;
+y = b;</ins>
+</pre></blockquote>
+</blockquote>
+
+<pre>
+constexpr void flip() noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Effects:</i> Replaces each element in the container with its complement.
+</p>
+</blockquote>
+<pre>
+ <del>constexpr static void swap(reference x, reference y) noexcept;</del>
+</pre>
+<blockquote>
+<p>
+<del>-6- <i>Effects:</i> Exchanges the contents of <tt>x</tt> and <tt>y</tt> as if by:</del>
+</p>
+<blockquote><pre>
+<del>bool b = x;
+x = y;
+y = b;</del>
+</pre></blockquote>
+</blockquote>
+<pre>
+template&lt;class Allocator&gt; struct hash&lt;vector&lt;bool, Allocator&gt;&gt;;
+</pre>
+<blockquote>
+<p>
+-7- The specialization is enabled (<sref ref="[unord.hash]"/>).
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Create a new subclause [depr.vector.bool.swap] after <sref ref="[depr.format]"/></p>
+
+<blockquote>
+<p>
+<ins><b>D.? Deprecated <tt>vector&lt;bool, Allocator&gt;</tt> swap [depr.vector.bool.swap]</b></ins>
+<p/>
+<ins>-?- The following member is declared in addition to those members specified in <sref ref="[vector.bool]"/>:</ins>
+</p>
+<pre>
+<ins>namespace std {
+  template&lt;class Allocator&gt; class vector&lt;bool, Allocator&gt; {
+  public:
+    constexpr static void swap(reference x, reference y) noexcept;
+  };
+}</ins>
+</pre>
+<pre>
+<ins>constexpr static void swap(reference x, reference y) noexcept;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Exchanges the values denoted by <tt>x</tt> and <tt>y</tt> as if by:</ins>
+</p>
+<blockquote><pre>
+<ins>bool b = x;
+x = y;
+y = b;</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
 </resolution>
 
 </issue>
