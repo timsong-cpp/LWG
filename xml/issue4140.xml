@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4140" status="New">
+<title>Useless default constructor for <code>bitset&lt;N&gt;::reference</code></title>
+<section><sref ref="[template.bitset.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>21 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The standard shows a private default constructor for
+<code>bitset&lt;N&gt;::reference</code>
+but does not define its semantics, and nothing in the spec refers to it.
+It was present in C++98, then in C++11 it got `noexcept` added to it,
+and in C++23 it was made `constexpr` by <paper num="P2417R2"/>. That's quite
+a lot of churn for an unusuable member function with no definition.
+</p>
+<p>
+In libstdc++ it's declared as private, but never defined.
+In libc++ it doesn't exist at all.
+In MSVC it is private and defined (and presumably used somewhere).
+There's no reason for the standard to declare it.
+Implementers can define it as private if they want to, or not.
+The spec doesn't need to say anything for that to be true.
+</p>
+<p>
+I suspect it was added as private originally so that it didn't look like
+`reference` should have an implicitly-defined default constructor,
+which would have been the case in previous standards with no other
+constructors declared.
+However, C++20 added <code>reference(const reference&amp;) = default;</code>
+which suppresses the implicit default constructor, so it's useless now.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[meta.type.synop]"/>, header <tt>&lt;type_traits&gt;</tt> synopsis, as indicated:</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;size_t N&gt; class bitset {
+  public:
+    <i>// bit reference</i>
+    class reference {
+      friend class bitset;
+      <del>constexpr reference() noexcept;</del>
+
+      public:
+      constexpr reference(const reference&amp;) = default;
+      constexpr ~reference();
+      constexpr reference&amp; operator=(bool x) noexcept;                <i>// for</i> b[i] = x;
+      constexpr reference&amp; operator=(const reference&amp;) noexcept;  <i>// for</i> b[i] = b[j];
+      constexpr bool operator~() const noexcept;                          <i>// flips the bit</i>
+      constexpr operator bool() const noexcept;                           <i>// for</i> x = b[i];
+      constexpr reference&amp; flip() noexcept;                           <i>// for</i> b[i].flip();
+    };
+</pre>
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
