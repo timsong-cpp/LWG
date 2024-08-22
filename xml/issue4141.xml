@@ -1,0 +1,160 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4141" status="New">
+<title>Improve prohibitions on "additional storage"</title>
+<section>
+<sref ref="[optional.optional.general]"/>
+<sref ref="[variant.variant.general]"/>
+<sref ref="[expected.object.general]"/>
+<sref ref="[expected.void.general]"/>
+</section>
+<submitter>Jonathan Wakely</submitter>
+<date>22 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+`optional`, `variant` and `expected` all use similar wording to require
+their contained value to be a subobject, rather than dynamically allocated
+and referred to by a pointer, e.g.
+<blockquote>
+When an instance of `optional<T>` contains a value,
+it means that an object of type `T`, referred to as the
+optional object’s <i>contained value</i>,
+is allocated within the storage of the optional object.
+Implementations are not permitted to use additional storage,
+such as dynamic memory, to allocate its contained value.
+</blockquote>
+</p>
+
+<p>
+During the LWG reviews of <paper num="P2300"/> in St. Louis, concerns were
+raised about the form of this wording and whether it's normatively meaningful.
+Except for the special case of standard-layout class types, the standard has
+very few requirements on where or how storage for subobjects is allocated.
+The library should not be trying to dictate more than the language guarantees.
+It would be better to refer to wording from <sref ref="[intro.object]"/>
+such as <i>subobject</i>, <i>provides storage</i>, or <i>nested within</i>.
+Any of these terms would provide the desired properties, without using
+different (and possibly inconsistent) terminology.
+</p>
+<p>
+Using an array of bytes to <i>provide storage</i> for the contained value would
+make it tricky to meet the constexpr requirements of types like `optional`.
+This means in practice, the most restrictive of these terms, <i>subobject</i>,
+is probably accurate and the only plausible implementation strategy.
+However, I don't see any reason to outlaw other implementation strategies that
+might be possible in future (say, with a constexpr type cast, or non-standard
+compiler-specific instrinics).
+For this reason, the proposed resolution below uses <i>nested within</i>,
+which provides the desired guarantee without imposing additional restrictions
+on implementations.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[optional.optional.general]"/> as indicated:</p>
+
+<blockquote class="note">
+[<i>Drafting note</i>:
+This edit modifies the same paragraph as <iref ref="4015"/>,
+but that other issue intentionally doesn't touch the affected sentence here
+(except for removing the italics on "contained value").
+The intention is that the merge conflict can be resolved in the obvious way.]
+</blockquote>
+
+<blockquote>
+<p>
+-1-
+Any instance of <code>optional&lt;T&gt;</code> at any given time either
+contains a value or does not contain a value.
+When an instance of <code>optional&lt;T&gt;</code> <i>contains a value</i>,
+it means that an object of type <code>T</code>,
+referred to as the optional object's <i>contained value</i>,
+is
+<del>allocated within the storage of</del>
+<ins>nested within (<sref ref="[intro.object]"/>)</ins>
+the optional object.
+<del>
+Implementations are not permitted to use additional storage,
+such as dynamic memory, to allocate its contained value.
+</del>
+When an object of type <code>optional&lt;T&gt;</code>
+is contextually converted to <code>bool</code>,
+the conversion returns `true` if the object contains a value;
+otherwise the conversion returns `false`.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[variant.variant.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1-
+Any instance of <code>variant</code> at any given time either
+holds a value of one of its alternative types or holds no value.
+When an instance of <code>variant</code> holds a value of alternative type `T`,
+it means that a value of type <code>T</code>,
+referred to as the `variant` object's <i>contained value</i>,
+is
+<del>allocated within the storage of</del>
+<ins>nested within (<sref ref="[intro.object]"/>)</ins>
+the `variant` object.
+<del>
+Implementations are not permitted to use additional storage,
+such as dynamic memory, to allocate the contained value.
+</del>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[expected.object.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1-
+Any object of type <code>expected&lt;T, E&gt;</code> either contains
+a value of type `T` or a value of type `E`
+<del>within its own storage</del>
+<ins>nested within (<sref ref="[intro.object]"/>) it</ins>.
+<del>
+Implementations are not permitted to use additional storage,
+such as dynamic memory,
+to allocate the object of type `T` or the object of type `E`.
+</del>
+Member <i><code>has_val</code></i> indicates whether the
+<code>expected&lt;T, E&gt;</code> object contains an object of type `T`.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[expected.void.general]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1-
+Any object of type <code>expected&lt;T, E&gt;</code> either represents
+a value of type `T`, or contains a value of type `E`
+<del>within its own storage</del>
+<ins>nested within (<sref ref="[intro.object]"/>) it</ins>.
+<del>
+Implementations are not permitted to use additional storage,
+such as dynamic memory, to allocate the object of type `E`.
+</del>
+Member <i><code>has_val</code></i> indicates whether the
+<code>expected&lt;T, E&gt;</code> represents a value of type `T`.
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
