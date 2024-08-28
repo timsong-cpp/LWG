@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4142" status="New">
+<title><code>format_parse_context::check_dynamic_spec</code> should require at least one type</title>
+<section><sref ref="[format.parse.ctx]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>28 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The <i>Mandates</i>: conditions for `format_parse_context::check_dynamic_spec`
+are:
+<blockquote>
+-14- <i>Mandates</i>:
+The types in `Ts...` are unique. Each type in `Ts...` is one of `bool`,
+`char_type`, `int`, `unsigned int`, `long long int`, `unsigned long long int`,
+`float`, `double`, `long double`, `const char_type*`,
+<code>basic_string_view&lt;char_type&gt;</code>, or `const void*`.
+</blockquote>
+</p>
+<p>
+There seems to be no reason to allow `Ts` to be an empty pack,
+that's not useful. There is no valid arg-id value that can be passed to it
+if the list of types is empty, since `arg(n)` will never be one of the types
+in an empty pack. So it's never a constant expression if the pack is empty.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[format.parse.ctx]"/> as indicated:</p>
+
+<pre><code>template&lt;class... Ts&gt;
+  constexpr void check_dynamic_spec(size_t id) noexcept;
+</code></pre>
+<blockquote>
+<p>
+-14- <i>Mandates</i>:
+<ins>`sizeof...(Ts)` &ge; 1.</ins>
+The types in `Ts...` are unique. Each type in `Ts...` is one of `bool`,
+`char_type`, `int`, `unsigned int`, `long long int`, `unsigned long long int`,
+`float`, `double`, `long double`, `const char_type*`,
+<code>basic_string_view&lt;char_type&gt;</code>, or `const void*`.
+</p>
+<p>
+-15- <i>Remarks</i>:
+A call to this function is a core constant expression only if:
+<ol style="list-style-type: none">
+<li>(15.1) &mdash; <code>id &lt; num_args_</code> is `true` and</li>
+<li>(15.2) &mdash; the type of the corresponding format argument
+(after conversion to <code>basic_format_arg&lt;Context&gt;</code>)
+is one of the types in `Ts...`.</li>
+</ol>
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
