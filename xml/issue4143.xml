@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4143" status="New">
+<title><tt>execution::set_value/set_error/set_stopped/start</tt> should always return <tt>void</tt></title>
+<section><sref ref="[exec.set.value]"/><sref ref="[exec.set.error]"/>
+<sref ref="[exec.set.stopped]"/><sref ref="[exec.opstate.start]"/></section>
+<submitter>Jiang An</submitter>
+<date>20 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In editorial issue <a href="https://github.com/cplusplus/draft/issues/7222">#7222</a>, 
+it was observed that currently <tt>execution::start</tt> may have a non-<tt>void</tt> 
+return value, which possibly interacts with overloaded <tt>operator,</tt>. But the 
+return value of <tt>execution::start</tt> doesn't seem used anywhere.
+<p/>
+In addition to <tt>execution::start</tt>, the return values of <tt>execution::set_value</tt>, 
+<tt>execution::set_error</tt>, and <tt>execution::set_stopped</tt> also seem never used, 
+and the return type of these CPOs are always <tt>void</tt> in 
+<a href="https://github.com/NVIDIA/stdexec">stdexec</a>. Perhaps it would be better to 
+specified in the standard that these CPOs always return <tt>void</tt>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[exec.set.value]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <tt>set_value</tt> is a value completion function (<sref ref="[exec.async.ops]"/>). 
+Its associated completion tag is <tt>set_value_t</tt>. The expression <tt>set_value(rcvr, vs...)</tt> 
+for a subexpression <tt>rcvr</tt> and pack of subexpressions <tt>vs</tt> is ill-formed if 
+<tt>rcvr</tt> is an lvalue or an rvalue of const type. Otherwise, it is expression-equivalent to 
+<tt><i>MANDATE-NOTHROW</i>(<ins>void(</ins>rcvr.set_value(vs...)<ins>)</ins>)</tt>.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[exec.set.error]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <tt>set_error</tt> is an error completion function (<sref ref="[exec.async.ops]"/>). 
+Its associated completion tag is <tt>set_error_t</tt>. The expression <tt>set_error(rcvr, err)</tt> 
+for some subexpressions <tt>rcvr</tt> and <tt>err</tt> is ill-formed if <tt>rcvr</tt> is an
+lvalue or an rvalue of const type. Otherwise, it is expression-equivalent to 
+<tt><i>MANDATE-NOTHROW</i>(<ins>void(</ins>rcvr.set_error(err)<ins>)</ins>)</tt>.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[exec.set.stopped]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- <tt>set_stopped</tt> is a stopped completion function (<sref ref="[exec.async.ops]"/>). 
+Its associated completion tag is <tt>set_stopped_t</tt>. The expression <tt>set_stopped(rcvr)</tt> 
+for a subexpression <tt>rcvr</tt> is ill-formed if <tt>rcvr</tt> is an lvalue or an rvalue of
+const type. Otherwise, it is expression-equivalent to 
+<tt><i>MANDATE-NOTHROW</i>(<ins>void(</ins>rcvr.set_stopped()<ins>)</ins>)</tt>.
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[exec.opstate.start]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The name <tt>start</tt> denotes a customization point object that starts (<sref ref="[exec.async.ops]"/>) 
+the asynchronous operation associated with the operation state object. For a subexpression <tt>op</tt>, 
+the expression <tt>start(op)</tt> is ill-formed if <tt>op</tt> is an rvalue. Otherwise, it is 
+expression-equivalent to <tt><i>MANDATE-NOTHROW</i>(<ins>void(</ins>op.start()<ins>)</ins>)</tt>.
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
