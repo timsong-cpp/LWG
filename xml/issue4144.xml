@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4144" status="New">
+<title>Disallow <code>unique_ptr&lt;T&amp;, D&gt;</code></title>
+<section><sref ref="[unique.ptr.single.general]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>30 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It seems that we currently allow nonsensical specializations of `unique_ptr`
+such as <code>unique_ptr&lt;int&amp;, D&gt;</code>
+and <code>unique_ptr&lt;void()const, D&gt;</code>
+(a custom deleter that defines `D::pointer` is needed, because otherwise
+the `pointer` type would default to invalid types like
+<code>int&amp;*</code> or <code>void(*)()const</code>).
+There seems to be no reason to support these "unique pointer to reference"
+and "unique pointer to abominable function type" specializations,
+or any specialization for a type that you couldn't form a raw pointer to.
+</p>
+
+<p>
+Prior to C++17, the major library implementations rejected such specializations
+as a side effect of the constraints for the
+<code>unique_ptr(auto_ptr&lt;U&gt;&amp;&amp;)</code> constructor
+being defined in terms of <code>is_convertible&lt;U*, T*&gt;</code>.
+This meant that overload resolution for any constructor of `unique_ptr`
+would attempt to form the type `T*` and fail if that was invalid.
+With the removal of `auto_ptr` in C++17, that constructor was removed
+and now <code>unique_ptr&lt;int&amp;, D&gt;</code> can be instantiated
+(assuming any zombie definition of `auto_ptr` is not enabled by the library).
+This wasn't intentional, but just an accident caused by not explicitly
+forbidding such types.
+</p>
+
+<p>
+Discussion on the LWG reflector led to near-unanimous support for explicitly
+disallowing these specializations for non-pointable types.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[unique.ptr.single.general]"/> as indicated:</p>
+<blockquote>
+<p><ins>-?-
+A program that instantiates the definition of
+<code>unique_ptr&lt;T, D&gt;</code>
+is ill-formed if `T*` is an invalid type.
+<br/>
+[<em>Note</em>:
+This prevents the intantiation of specializations such as
+<code>unique_ptr&lt;T&amp;, D&gt;</code>
+and <code>unique_ptr&lt;int() const, D&gt;</code>.
+&mdash; <em>end note</em>]
+</ins>
+</p>
+<p>-1-
+The default type for the template parameter `D` is `default_delete`.
+A client-supplied template argument `D` shall be a function object type
+(<sref ref="[function.objects]"/>), lvalue reference to function,
+or lvalue reference to function object type for which,
+given a value `d` of type `D` and a value `ptr` of type
+<code>unique_ptr&lt;T, D&gt;::pointer</code>,
+the expression `d(ptr)` is valid and has the effect of disposing of the pointer
+as appropriate for that deleter.
+</p>
+<p>-2-
+If the deleter’s type `D` is not a reference type,
+`D` shall meet the <em>Cpp17Destructible</em> requirements (Table 35).
+</p>
+<p>-3-
+If the <i>qualified-id</i> <code>remove_reference_t&lt;D&gt;::pointer</code>
+is valid and denotes a type (<sref ref="[temp.deduct]"/>),
+then <code>unique_ptr&lt;T, D&gt;::pointer</code>
+shall be a synonym for <code>remove_reference_t&lt;D&gt;::pointer</code>.
+Otherwise <code>unique_ptr&lt;T, D&gt;::pointer</code> shall be a synonym for
+<code>element_type*</code>.
+The type <code>unique_ptr&lt;T, D&gt;::pointer</code> shall meet the
+<em>Cpp17NullablePointer</em> requirements (Table 36).
+</p>
+<p>-4-
+[<em>Example 1</em>:
+ Given an allocator type `X` (<sref ref="[allocator.requirements.general]"/>)
+and letting `A` be a synonym for <code>allocator_traits&lt;X&gt;</code>,
+the types `A::pointer`, `A::const_pointer`, `A::void_pointer`,
+and `A::const_void_pointer` may be used as
+<code>unique_ptr&lt;T, D&gt;::pointer</code>.
+&mdash; <em>end example</em>]
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
