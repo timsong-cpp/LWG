@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4146" status="New">
+<title>&sect;[format.formatter.spec]/3 unconditionally enables nonlocking for container adaptors</title>
+<section><sref ref="[format.formatter.spec]"/><sref ref="[container.adaptors.format]"/></section>
+<submitter>Casey Carter</submitter>
+<date>31 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[format.formatter.spec]"/>/3 says that the library provides a specialization of 
+`enable_nonlocking_formatter_optimization` with value `true` corresponding to each library-provided 
+specialization of `formatter`, unless otherwise specified. Although it actually states 
+"for each type `T`", the intent is that partial specializations are also provided corresponding to 
+library-provided partial specializations of formatter.
+<p/>
+<sref ref="[container.adaptors.format]"/>/1 says the library provides a partial specialization of 
+`formatter` for each of the container adaptor templates `priority_queue`, `queue`, and `stack`. 
+Together with <sref ref="[format.formatter.spec]"/>/3, that means that e.g. 
+<tt>enable_nonlocking_formatter_optimization&lt;stack&lt;T&gt;&gt; == true</tt>. Formatting a stack of 
+that type will enable the nonlocking optimization even if 
+<tt>enable_nonlocking_formatter_optimization&lt;T&gt; == false</tt>. To avoid this, the author of `T` 
+must partially specialize `enable_nonlocking_formatter_optimization` to `false` for all container 
+adaptors when they adapt a container of `T`.
+<p/>
+It is clearly not the design intent that programmers must explicitly opt out of the nonlocking 
+optimization, so this is a defect that LWG should correct. Since <paper num="P3235R3"/> was applied 
+as a Defect Report to C++23, the resolution of this issue should be so applied as well.
+<p/>
+<b>Suggested Resolution:</b>
+<p/>
+LEWG was reticent to apply the optimization to general ranges &mdash; ostensibly due to the possibility 
+of deadlock in program-defined iterator operations &mdash; but apparently unconcerned about the iterators 
+of program-defined containers nor the fancy pointers of program-defined allocators. It seems consistent 
+with that design to ignore the "container" part of "container adaptors" and only pay attention to the 
+elements that are going to be formatted. (I have prototyped this resolution on MSVCSTL, albeit slightly 
+modified since neither MSVC nor Clang like this partial specialization form.)
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[container.adaptors.format]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- For each of <tt>queue</tt>, <tt>priority_queue</tt>, and <tt>stack</tt>, the library provides the 
+following <del>formatter</del> specialization<ins>s</ins> where <tt><i>adaptor-type</i></tt> is the 
+name of the template:
+</p>
+<blockquote><pre>
+namespace std {
+  template&lt;class charT, class T, formattable&lt;charT&gt; Container, class... U&gt;
+  struct formatter&lt;<i>adaptor-type</i>&lt;T, Container, U...&gt;, charT&gt; {
+    [&hellip;]
+  };
+
+  <ins>template&lt;class T, class Container, class... U&gt;</ins>
+  <ins>constexpr bool enable_nonlocking_formatter_optimization&lt;<i>adaptor-type</i>&lt;T, Container, U...&gt;&gt; =</ins>
+    <ins>enable_nonlocking_formatter_optimization&lt;T&gt;;</ins>
+}
+</pre></blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
