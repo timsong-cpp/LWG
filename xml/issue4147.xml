@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4147" status="New">
+<title>Precondition on <tt>inplace_vector::emplace</tt></title>
+<section><sref ref="[sequence.reqmts]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>26 Aug 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Inserting into the middle of an <tt>inplace_vector</tt>, just like inserting into the middle of a 
+<tt>vector</tt> or <tt>deque</tt>, requires that we construct the new element out-of-line, shift 
+down the trailing elements (<i>Cpp17MoveAssignable</i>), and then move-construct the new element 
+into place (<i>Cpp17MoveInsertable</i>). <paper num="P0843R14"/> failed to make this change, but 
+it should have.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[sequence.reqmts]"/> as indicated:</p>
+
+<blockquote><pre>
+a.emplace(p, args)
+</pre>
+<blockquote>
+<p>
+-19- <i>Result</i>: <tt>iterator</tt>.
+<p/>
+-20- <i>Preconditions</i>: <tt>T</tt> is <i>Cpp17EmplaceConstructible</i> into <tt>X</tt> 
+from <tt>args</tt>. For <tt>vector</tt><ins>, inplace_vector,</ins> and <tt>deque</tt>, 
+<tt>T</tt> is also <i>Cpp17MoveInsertable</i> into <tt>X</tt> and <i>Cpp17MoveAssignable</i>.
+<p/>
+-21- <i>Effects</i>: Inserts an object of type <tt>T</tt> constructed with 
+<tt>std::forward&lt;Args&gt;(args)...</tt> before <tt>p</tt>.
+<p/>
+[<i>Note 1</i>: <tt>args</tt> can directly or indirectly refer to a value in <tt>a</tt>. 
+&mdash; <i>end note</i>]
+<p/>
+-22- <i>Returns</i>: An iterator that points to the new element constructed from <tt>args</tt> 
+into <tt>a</tt>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
