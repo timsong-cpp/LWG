@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4148" status="New">
+<title><code>unique_ptr::operator*</code> should not allow dangling references</title>
+<section><sref ref="[unique.ptr.single.observers]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>02 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+If <code>unique_ptr&lt;T,D&gt;::element_type*</code> and <code>D::pointer</code>
+are not the same type, it's possible for `operator*()` to return a dangling
+reference that has undefined behaviour.
+</p>
+<pre><code>
+  struct deleter {
+    using pointer = long*;
+    void operator()(pointer) const {}
+  };
+  long l = 0;
+  std::unique_ptr&lt;const int, deleter&gt; p(&amp;l);
+  int i = *p; <i><strong>// undefined</strong></i>
+</code></pre>
+<p>
+We should make this case ill-formed.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[unique.ptr.single.observers]"/> as indicated:</p>
+<blockquote>
+<pre>
+constexpr add_lvalue_reference_t&lt;T&gt; operator*() const noexcept(noexcept(*declval&lt;pointer&gt;()));
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Mandates</i>:
+<code>reference_converts_from_temporary_v&lt;add_lvalue_reference_t&lt;T&gt;,
+decltype(*declval&lt;pointer&gt;())&gt;</code>
+is `false`.
+</ins>
+</p>
+<p>
+-1- <i>Preconditions</i>: `get() != nullptr` <ins>is `true`</ins>.
+</p>
+<p>
+-2- <i>Returns</i>: `*get()`.
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
