@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4149" status="New">
+<title>User defined macros without standard headers (294 redux)</title>
+<section><sref ref="[macro.names]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>05 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Issue <iref ref="294"/> changed <sref ref="[macro.names]"/> from:
+<blockquote>
+A translation unit that includes a header shall not contain any macros that
+define names declared or defined in that header. Nor shall such a translation
+unit define macros for names lexically identical to keywords.
+</blockquote>
+to:
+<blockquote>
+A translation unit that includes a standard library header shall not
+`#define` or `#undef` names declared in any standard library header.
+<p>
+A translation unit shall not `#define` or `#undef` names lexically identical
+to keywords.
+</p>
+</blockquote>
+</p>
+<p>
+Note that the second sentence of the original says "such a translation unit"
+when prohibiting things like `#define while`. This means the prohibition only
+applies to "a translation unit that includes a header".
+The replacement has the prohibition in a separate paragraph and does not
+clearly say that it only applies when a header is included.
+</p>
+<p>
+The issue discussion seems clear that the concern is about C++ headers
+including other unspecified headers, which is allowed in C++ (though not in C).
+There is no justification for broadening the second sentence to apply
+unconditionally. Such a rule would belong in <sref ref="[cpp]"/> anyway,
+not in library wording. That overreach doesn't appear to have been intended,
+and we should clarify what the library is prohibiting.
+</p>
+<p>
+It was pointed out on the reflector that it's not enough to only prohibit
+defining such macros <i>after</i> including headers, because in some cases
+that could still break the library header. For example, the library macro
+`assert` typically uses `void` and so `#define void ...` would break `assert`
+even if it happens after including <code>&lt;cassert&gt;</code>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4986"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[macro.names]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- A translation unit that includes a standard library header shall not
+`#define` or `#undef` names declared in any standard library header.
+</p>
+<p>
+-2- A translation unit
+<ins>that includes a standard library header</ins>
+shall not `#define` or `#undef` names lexically identical to keywords,
+to the identifiers listed in Table 4,
+or to the <i>attribute-tokens</i> described in <sref ref="[dcl.attr]"/>,
+except that the names `likely` and `unlikely` may be defined as
+function-like macros (<sref ref="[cpp.replace]"/>).
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
