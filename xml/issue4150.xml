@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4150" status="New">
+<title>The preconditions on <tt>run_loop::run()</tt> are too strict</title>
+<section><sref ref="[exec.run.loop.members]"/></section>
+<submitter>Eric Niebler</submitter>
+<date>05 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+From <a href="https://github.com/cplusplus/sender-receiver/issues/280">sender-receiver/issues #280</a>:
+<p/>
+The precondition on <tt>run_loop::run()</tt> is that the <tt><i>state</i></tt> is <i>starting</i>. 
+Given that <tt>run_loop::finish()</tt> puts the loop in the <i>finishing</i> state, the implication 
+is that one cannot call <tt>finish()</tt> before calling <tt>run()</tt>.
+<p/>
+However, in most cases <tt>sync_wait</tt> is calling <tt>finish()</tt> on its <tt>run_loop</tt> 
+before calling run<tt>()</tt>, violating this precondition. <tt>sync_wait</tt> does the following:
+</p>
+<blockquote><pre>
+run_loop loop;
+auto op = connect(sndr, sync_wait_receiver{&amp;loop});
+start(op);
+
+loop.run();
+</pre></blockquote>
+<p>
+If <tt>sndr</tt> completes synchronously, the <tt>sync_wait_receiver</tt> will call <tt>finish()</tt> 
+on the loop before <tt>loop.run()</tt> is called, violating <tt>run</tt>'s precondition.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[exec.run.loop.members]"/> as indicated:</p>
+
+<blockquote><pre>
+void run();
+</pre>
+<blockquote>
+<p>
+-5- <i>Preconditions</i>: <tt><i>state</i></tt> is <i>starting</i> <ins>or <i>finishing</i></ins>.
+<p/>
+-6- <i>Effects</i>: Sets the <tt><i>state</i></tt> to <i>running</i>. Then, equivalent to:
+</p>
+<blockquote><pre>
+while (auto* op = pop-front ()) {
+  op-&gt;execute ();
+}
+</pre></blockquote>
+<p>
+-7- <i>Remarks</i>: When <tt><i>state</i></tt> changes, it does so without introducing data races.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
