@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4151" status="New">
+<title>Precondition of <tt>inplace_vector::swap</tt></title>
+<section><sref ref="[inplace.vector.modifiers]"/></section>
+<submitter>Arthur O'Dwyer</submitter>
+<date>07 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Right now <tt>inplace_vector::swap</tt> has only a declaration in the class synopsis; it doesn't 
+specify what the behavior of <tt>swap</tt> for <tt>inplace_vector</tt>s actually is. So I think 
+the behavior ends up being governed by <sref ref="[container.reqmts]"/>, which are written from 
+the point of view of a container that manages an external heap allocation so that swapping 
+containers doesn't touch the elements at all, just changes their ownership.
+<p/>
+<tt>inplace_vector::swap</tt> actually works more like <tt>array::swap</tt>, which has its own 
+specification in <sref ref="[array.members]"/>, where it is defined in terms of <tt>std::swap_ranges</tt>. 
+The <tt>std::swap_ranges</tt> algorithm (<sref ref="[alg.swap]"/>) has a precondition! This 
+precondition is missing from <tt>inplace_vector::swap</tt>.
+<p/>
+That is, I think we currently have no wording that explains why
+</p>
+<blockquote><pre>
+std::pmr::monotonic_buffer_resource mr1;
+std::inplace_vector&lt;std::pmr::vector&lt;int&gt;, 2&gt; v1, v2;
+v1.emplace_back(1, &amp;mr1);
+v2.emplace_back(1);
+v1.swap(v2);
+</pre></blockquote>
+<p>
+is undefined behavior. The current spec seems to say this Just Works, even though it physically 
+cannot work because <tt>v1[0]</tt> and <tt>v2[0]</tt> don't dynamically meet the semantic requirements 
+of being "swappable with" each other, and <tt>v1.swap(v2)</tt> is necessarily going to try to swap them.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[inplace.vector.modifiers]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: It is suggested to add the new wording to the end of the existing
+subclause]
+</p>
+</blockquote>
+
+<blockquote><pre>
+<ins>constexpr void swap(inplace_vector&amp; x) noexcept(N == 0 ||
+  (is_nothrow_swappable_v&lt;T&gt; &amp;&amp; is_nothrow_move_constructible_v&lt;T&gt;));</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Preconditions</i>: Let <tt><i>M</i></tt> be <tt>min(size(), x.size())</tt>. For each 
+non-negative integer <tt><i>n</i> &lt; <i>M</i></tt>, <tt>(*this)[<i>n</i>]</tt> is swappable with 
+(<sref ref="[swappable.requirements]"/>) <tt>x[<i>n</i>]</tt>.</ins>
+<p/> 
+<ins>-?- <i>Effects</i>: Exchanges the contents of <tt>*this</tt> and <tt>x</tt>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
