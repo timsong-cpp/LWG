@@ -16,16 +16,16 @@
 noexcept(is_nothrow_copy_constructible_v&lt;<i>reference</i>&gt;)
 </pre></blockquote>
 <p>
-When <tt><i>reference</i></tt> is an rvalue reference type, <tt>is_nothrow_copy_constructible_v&lt;<i>reference</i>&gt;</tt> 
-is <tt>false</tt> (because <tt><i>reference</i></tt> is not copy constructible), which means <tt>operator*</tt> 
+When <tt><i>reference</i></tt> is an rvalue reference type, <tt>is_nothrow_copy_constructible_v&lt;<i>reference</i>&gt;</tt>
+is <tt>false</tt> (because <tt><i>reference</i></tt> is not copy constructible), which means <tt>operator*</tt>
 is not <tt>noexcept</tt>.
 <p/>
-However, <tt>operator*</tt> doesn't perform any potentially-throwing operation in this case. It's effect is 
-equivalent to <tt>return static_cast&lt;<i>reference</i>&gt;(*p.<i>value_</i>);</tt> (where the type of <tt>p.<i>value_</i></tt> 
-is effectively <tt>add_pointer_t&lt;<i>reference</i>&gt;</tt>). Neither the dereference nor the cast to rvalue 
+However, <tt>operator*</tt> doesn't perform any potentially-throwing operation in this case. It's effect is
+equivalent to <tt>return static_cast&lt;<i>reference</i>&gt;(*p.<i>value_</i>);</tt> (where the type of <tt>p.<i>value_</i></tt>
+is effectively <tt>add_pointer_t&lt;<i>reference</i>&gt;</tt>). Neither the dereference nor the cast to rvalue
 reference can throw an exception.
 <p/>
-I think the expression inside the noexcept-specifier should be changed to 
+I think the expression inside the noexcept-specifier should be changed to
 <tt>noexcept(static_cast&lt;<i>reference</i>&gt;(*p.<i>value_</i>))</tt>.
 </p>
 
@@ -36,9 +36,44 @@ Set priority to 3 after reflector poll.
 "Maybe add <code>is_reference_v&lt;reference&gt; || ...</code>"
 </p>
 
+<note>2024-09-16; Casey provides wording</note>
+<p>
+In the prioritization thread, LWG discussed a couple of alternatives without much enthusiasm. One
+of the alternatives was to simply remove the <i>noexcept-specifier</i>, which seems to be the most
+efficient use of LWG's time.
+</p>
+
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[coro.generator.iterator]"/> as indicated:</p>
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class Ref, class Val, class Allocator&gt;
+  class generator&lt;Ref, Val, Allocator&gt;::<i>iterator</i> {
+    [&hellip;]
+    <i>reference</i> operator*() const <del>noexcept(is_nothrow_copy_constructible_v&lt;reference&gt;)</del>;
+    [&hellip;]
+  };
+}
+</pre>
+[&hellip;]
+<p>-3- <i>Returns</i>: <tt>*this</tt>.</p>
+<pre>
+<i>reference</i> operator*() const <del>noexcept(is_nothrow_copy_constructible_v&lt;<i>reference</i>&gt;l)</del>;
+</pre>
+<p>-4- <i>Preconditions</i>: For some generator object <tt>x</tt>, <i><tt>coroutine_</tt></i> is in <tt>*x.<i>active_</i></tt> and
+<tt>x.<i>active_</i>-&gt;top()</tt> refers to a suspended coroutine with promise object <tt>p</tt>.</p>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
