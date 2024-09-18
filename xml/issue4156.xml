@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4156" status="New">
+<title><code>error_category</code> messages have unspecified encoding</title>
+<section><sref ref="[section.ref.here]"/></section>
+<submitter>Victor Zverovich</submitter>
+<date>18 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[syserr.errcat.overview]"/> says:
+<blockquote>
+The class `error_category` serves as a base class for types used to identify
+the source and encoding of a particular category of error code.
+</blockquote>
+</p>
+<p>
+However, it actually fails to identify any encodings and, remarkably,
+this is the only place in the whole diagnostics section that mentions the
+word "encoding". The definition of `error_category::message`
+(<sref ref="[syserr.errcat.virtuals]"/> p5) just says:
+<blockquote>
+<pre><code>virtual string message(int ev) const = 0;</code></pre>
+<p>
+<i>Returns</i>:
+A string that describes the error condition denoted by `ev`.
+</p>
+</blockquote>
+This makes it pretty much impossible to reliably use the provided API
+for its intended purpose.
+</p>
+<p>
+There is also implementation divergence:
+some implementations use variants of `strerror` which return messages
+in the current C locale encoding,
+but at least one major implementation doesn't use the current C locale:
+<a href="https://github.com/microsoft/STL/issues/4711">MSVC STL issue 4711</a>.
+</p>
+<p>
+Using the current C locale is obviously problematic.
+First, it is inconsistent with other C++ APIs that normally use C++ locales.
+Second, because it is a global state, it may change
+(possibly from another thread)
+between the time the message is obtained and the time it needs to be consumed,
+which may lead to mojibake.
+At the very least there should be a mechanism that captures the encoding
+information in a race-free manner and communicates it to the caller
+if the locale encoding is used
+although it is better not to use it in the first place.
+</p>
+<p>
+This is somewhat related to LWG <iref ref="4087"/>
+but should probably be addressed first because it may affect
+how some exceptions are defined.
+</p>
+<p>
+The proposed resolution is similar to the one of LWG <iref ref="4087"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[syserr.errcat.virtuals]"/> as indicated:</p>
+<blockquote>
+<pre><code>virtual string message(int ev) const = 0;</code></pre>
+<p>
+<i>Returns</i>:
+A string <ins>in the ordinary literal encoding</ins>
+that describes the error condition denoted by `ev`.
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
