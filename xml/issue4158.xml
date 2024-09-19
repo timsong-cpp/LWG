@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4158" status="New">
+<title><code>packaged_task::operator=</code> should abandon its shared state</title>
+<section><sref ref="[futures.task.members]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>19 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The `packaged_task` move assignment operator is specified to release
+the previous shared state. This means it releases ownership, but does
+not make the shared state ready. Any future that shares ownership of the
+shared state will never receive a result, because the provider is gone.
+This means that any thread that waits on the future will block forever.
+</p>
+<p>
+There is a note on `packaged_task::reset()` which claims that assignment
+abandons the state, which is not supported by any normative wording:
+</p>
+<blockquote>
+<pre>void reset();</pre>
+<p>
+-26- <i>Effects</i>:
+As if `*this = packaged_task(std::move(f))`,
+where `f` is the task stored in `*this`.
+</p>
+<p>
+[<i>Note 2</i>: This constructs a new shared state for `*this`.
+The old state is abandoned (<sref ref="[futures.state]"/>).
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+<p>
+Presumably, the intended behaviour of assignment was to abandon the
+shared state,
+i.e.  make it ready with a `broken_promise` error, and then release it.
+That is what the `std::promise` move assignment does
+(see <sref ref="[futures.promise]"/> p9).
+Both libstdc++ and libc++ abandon the state, despite what the standard says.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[futures.task.members]"/> as indicated:</p>
+<blockquote>
+<pre>
+packaged_task&amp; operator=(packaged_task&amp;&amp; rhs) noexcept;
+</pre>
+<p>-11- <i>Effects</i>:
+<ol style="list-style-type: none">
+<li>(11.1) &mdash;
+<del>Releases</del> <ins>Abandons</ins>
+any shared state (<sref ref="[futures.state]"/>);
+</li>
+<li>(11.2) &mdash;
+calls `packaged_task(std::move(rhs)).swap(*this)`.
+</li>
+</ol>
+</p>
+<p><ins>-?- <i>Returns</i>: `*this`.</ins></p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
