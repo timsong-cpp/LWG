@@ -15,7 +15,7 @@ representable in <tt>ToDuration</tt> for which <tt>t &gt;= d</tt>".
 <p/>
 This means that <tt>chrono::ceil&lt;chrono::microseconds&gt;(chrono::duration&lt;float, milli&gt;(m)).count()</tt>
 is required to be the smallest integer <tt>n</tt> such that <tt>(float)n == m*1000.0f</tt>, which might be less
-than the mathematically correct value of <tt>m x 1000</tt>.
+than the mathematically correct value of <tt>m &times; 1000</tt>.
 <p/>
 (The specific values below assume <tt>float</tt> uses the IEEE binary32 format and default rounding, but
 similar problems will exist for other formats, even if the specific values are different.)
@@ -50,9 +50,108 @@ The same problem almost certainly exists for <tt>chrono::floor</tt> in reverse.
 <p>
 Set priority to 3 during reflector discussions.
 </p>
+<note>2024-09-05; Jonathan adds a note</note>
+<p>
+Another problem discovered by STL occurs when the result is floating-point.
+We can't just add 1. In fact, there is no requirement for whole-numberness.
+</p>
+<p>
+For example, when converting from `double` to `float`:
+<pre>
+<code>chrono::floor&lt;duration&lt;float&gt;&gt;(duration&lt;double&gt;(0.1))</code>
+</pre>
+This produces the result <code>duration&lt;float&gt;(-0.9f)</code>
+with the reference implementation in <paper num="P0092R1"/>,
+and the implementations in libstdc++, libc++, and MSVC.
+This is because <code>0.1f &lt;= 0.1</code> is false,
+so the result is <code>duration&lt;float&gt;(0.1f - 1.0f)</code>,
+which is not the greatest value representable that is not greater than `1.0`.
+The correct result according to the standard would be
+<code>duration&lt;float&gt;(nexttoward(0.1f, -HUGE_VAL))</code>,
+but we can't use `nexttoward` for arbitrary `treat_as_floating_point` types,
+only for `float`, `double` and `long double`.
+</p>
+<p>
+STL found cases where
+<code>ceil&lt;duration&lt;float&gt;&gt;(duration&lt;double&gt;(x))</code>
+produces a value that is lower than `x`, e.g. for `x = 13421771263.0`
+the result is `13421770752.0f`.
+</p>
+<p>
+A possible resolution for this problem would be to make `ceil` and `floor`
+behave exactly like `duration_cast` when the result is a floating-point type.
+This would still permit a `ceil` that is smaller than the input
+(and a `floor` result that is larger) but that's just a consequence of
+converting to a floating-point type with less precision.
+We could also specify that for non-floating-point result types,
+the effects should be what all known implementations do.
+That would mean the behaviour is at least predictable and explainable,
+even if the result is not always the correct mathematical value.
+</p>
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+<ol>
+<li><p>Modify <sref ref="[time.duration.cast]"/> as indicated:</p>
+<blockquote>
+<pre>
+template&lt;class ToDuration, class Rep, class Period&gt;
+  constexpr ToDuration floor(const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<p>-4-
+<i>Constraints</i>: `ToDuration` is a specialization of `duration`.
+</p>
+<p>-5-
+<del>
+<i>Returns</i>:
+The greatest result `t` representable in `ToDuration` for which
+<code>t &lt;= d</code>.
+</del>
+</p>
+<p>
+<ins><i>Effects</i>: Equivalent to:</ins>
+<pre><code><ins>auto t = duration_cast&lt;ToDuration&gt;(d);
+if constexpr (treat_as_floating_point_v&lt;typename ToDuration::rep&gt;)
+  return t;
+else if (t &lt;= d)
+  return t;
+else
+  return --t;
+</ins></code></pre>
+</p>
+
+<pre>
+template&lt;class ToDuration, class Rep, class Period&gt;
+  constexpr ToDuration ceil(const duration&lt;Rep, Period&gt;&amp; d);
+</pre>
+<p>-6-
+<i>Constraints</i>: `ToDuration` is a specialization of `duration`.
+</p>
+<p>-7-
+<del>
+<i>Returns</i>:
+The least result `t` representable in `ToDuration` for which
+<code>t &gt;= d</code>.
+</del>
+</p>
+<p>
+<ins><i>Effects</i>: Equivalent to:</ins>
+<pre><code><ins>auto t = duration_cast&lt;ToDuration&gt;(d);
+if constexpr (treat_as_floating_point_v&lt;typename ToDuration::rep&gt;)
+  return t;
+else if (t &lt;= d)
+  return t;
+else
+  return ++t;
+</ins></code></pre>
+</p>
+</blockquote>
+</li>
+</ol>
+
 </resolution>
 
 </issue>
