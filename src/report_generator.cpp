@@ -337,7 +337,7 @@ void print_issue(std::ostream & out, lwg::issue const & iss, lwg::section_map & 
          // Absolute link so that copying only the big lists elsewhere doesn't result in broken links.
          if(type == print_issue_type::in_list) {
               out << "<h3 id=\"" << iss.num << "\"><a href=\"#" << iss.num << "\">" << iss.num << "</a>";
-              out << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << iss.num << "\">" << "(i)</a></sup>";
+              out << "<sup><a href=\"https://cplusplus.github.io/LWG/issue" << iss.num << "\">(i)</a></sup>";
          }
          else {
               out << "<p><em>This page is a snapshot from the LWG issues list, see the "
@@ -865,7 +865,7 @@ void report_generator::make_sort_by_section(std::vector<issue>& issues, fs::path
       }
       std::string const msn{major_section(section_db[i->tags[0]])};
       auto idattr = spaces_to_underscores(msn);
-      out << "<h2 id=\"Section_" << idattr << "\">" << "Section " << msn << " (" << (j-i) << " issues)</h2>\n";
+      out << "<h2 id=\"Section_" << idattr << "\">Section " << msn << " (" << (j-i) << " issues)</h2>\n";
       if (active_only) {
          out << "<p><a href=\"lwg-index.html#Section_" << idattr << "\">(view all issues)</a></p>\n";
       }
