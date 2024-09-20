@@ -431,6 +431,9 @@ void format_issue_as_html(lwg::issue & is,
                }
                else {
                   r = make_html_anchor(*n);
+                  r += "<sup><a href=\"https://cplusplus.github.io/LWG/issue";
+                  r += std::to_string(num);
+                  r += "\" title=\"Latest snapshot\">(i)</a></sup>";
                }
 
                j -= i - 1;
