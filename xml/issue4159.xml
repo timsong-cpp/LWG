@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4159" status="New">
+<title>Uses-allocator construction mechanisms should be opted out for node handles</title>
+<section><sref ref="[container.node.overview]"/><sref ref="[allocator.uses.trait]"/></section>
+<submitter>Jiang An</submitter>
+<date>21 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, node handle types (<sref ref="[container.node]"/>) have the member 
+<tt>allocator_type</tt> type alias, which makes <tt>std::uses_allocator</tt> report 
+<tt>true</tt> for them. However, they don't have allocator-extended constructors, 
+and it's unclear to me whether it's better to make them have such constructors.
+<p/>
+The status quo renders the following seemingly reasonable program ill-formed.
+</p>
+<blockquote><pre>
+#include &lt;set&gt;
+#include &lt;map&gt;
+
+int main() {
+  std::pmr::set&lt;int&gt; s{1};
+  std::pmr::map&lt;int, decltype(s)::node_type&gt; m;
+  m.emplace(1, s.extract(1));
+}
+</pre></blockquote>
+<p>
+Perhaps we should consistently treat node handles not uses-allocator-constructible.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[container.node.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-4- If a user-defined specialization of <tt>pair</tt> exists for <tt>pair&lt;const Key, T&gt;</tt> 
+or <tt>pair&lt;Key, T&gt;</tt>, where <tt>Key</tt> is the container's <tt>key_type</tt> and 
+<tt>T</tt> is the container's <tt>mapped_type</tt>, the behavior of operations involving node handles
+is undefined.
+<p/>
+<ins>-?- For each node handle type <tt>NH</tt> and any type <tt>A</tt>, if 
+<tt>uses_allocator&lt;NH, A&gt;</tt> is not a program-defined specialization, it meets the 
+<i>Cpp17BinaryTypeTrait</i> requirements (<sref ref="[meta.rqmts]"/>) and its base characteristic 
+is <tt>false_type</tt>.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
