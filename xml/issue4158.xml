@@ -77,7 +77,17 @@ calls `packaged_task(std::move(rhs)).swap(*this)`.
 <note>2024-10-02; Jonathan provides improved wording</note>
 <p>
 Following reflector discussion, remove the "Releases any shared state" text
-completely. The remaining effects imply that the state will be abandoned anyway.</p>
+completely.
+The remaining effects imply that the state will be abandoned anyway.
+This makes it safe against self-assignment.
+</p>
+
+<note>2024-10-02; LWG telecon</note>
+<p>
+Agreed to change `promise` the same way, which is safe for self-assignment
+and matches what all three of libstdc++, libc++ and MSVC do today.
+Ask SG1 to review.
+</p>
 
 </discussion>
 
@@ -86,6 +96,21 @@ completely. The remaining effects imply that the state will be abandoned anyway.
 This wording is relative to <paper num="N4988"/>.
 </p>
 <ol>
+
+<li><p>Modify <sref ref="[futures.promise]"/> as indicated:</p>
+<blockquote>
+<pre>
+promise&amp; operator=(promise&amp;&amp; rhs) noexcept;
+</pre>
+<p>-2- <i>Effects</i>:
+<del>
+Abandons any shared state (<sref ref="[futures.state]"/>) and then as if
+</del>
+<ins>Equivalent to</ins>
+`promise(std::move(rhs)).swap(*this)`.
+</p>
+</blockquote>
+</li>
 <li><p>Modify <sref ref="[futures.task.members]"/> as indicated:</p>
 <blockquote>
 <pre>
