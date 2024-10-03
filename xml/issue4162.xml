@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4162" status="New">
+<title>Worst time complexity of non-parallel versions of <tt>nth_element</tt> is underspecified</title>
+<section><sref ref="[alg.nth.element]"/></section>
+<submitter>Jiang An</submitter>
+<date>29 Sep 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, <sref ref="[alg.nth.element]"/> doesn't specify the worst time complexity for <tt>nth_element</tt> 
+without <tt>ExecutionPolicy</tt> parameter, which seemingly allows a complexity that is 
+<tt>&#x1d4aa;(<i>N</i><sup>2</sup>)</tt> or even worse. Presumably we should make the worst time complexity 
+consistent between parallel and non-parallel versions. For <tt>sort</tt>, LWG <iref ref="713"/> already 
+strengthened complexity requirements.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[alg.nth.element]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class RandomAccessIterator&gt;
+  constexpr void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
+                             RandomAccessIterator last);
+template&lt;class ExecutionPolicy, class RandomAccessIterator&gt;
+  void nth_element(ExecutionPolicy&amp;&amp; exec,
+                   RandomAccessIterator first, RandomAccessIterator nth,
+                   RandomAccessIterator last);
+template&lt;class RandomAccessIterator, class Compare&gt;
+  constexpr void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
+                             RandomAccessIterator last, Compare comp);
+template&lt;class ExecutionPolicy, class RandomAccessIterator, class Compare&gt;
+  void nth_element(ExecutionPolicy&amp;&amp; exec,
+                   RandomAccessIterator first, RandomAccessIterator nth,
+                   RandomAccessIterator last, Compare comp);
+template&lt;random_access_iterator I, sentinel_for&lt;I&gt; S, class Comp = ranges::less,
+         class Proj = identity&gt;
+  requires sortable&lt;I, Comp, Proj&gt;
+  constexpr I
+    ranges::nth_element(I first, I nth, S last, Comp comp = {}, Proj proj = {});
+</pre>
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-5- <i>Complexity</i>: <del>For the overloads with no <tt>ExecutionPolicy</tt>, linear on average. 
+For the overloads with an <tt>ExecutionPolicy</tt>,</del> <tt>&#x1d4aa;(<i>N</i>)</tt> applications 
+of the predicate<del>,</del> and <tt>&#x1d4aa;(<i>N</i> log <i>N</i>)</tt> swaps, where <tt><i>N</i> =
+last - first</tt>. <ins>For the overloads with no <tt>ExecutionPolicy</tt>, <tt>&#x1d4aa;(<i>N</i>)</tt>
+on average.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</resolution>
+
+</issue>
