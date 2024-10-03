@@ -13,13 +13,13 @@
 In <sref ref="[re.grammar]"/> paragraph 2:
 </p>
 <blockquote><p>
-<tt>basic_regex</tt> member functions shall not call any locale dependent C or C++ API, including the formatted 
+<tt>basic_regex</tt> member functions shall not call any locale dependent C or C++ API, including the formatted
 string input functions. Instead they shall call the appropriate traits member function to achieve the required effect.
 </p></blockquote>
 <p>
-Yet, the required interface for a regular expression traits class (<sref ref="[re.req]"/>) does not appear to have 
-any reliable method for determining whether a character as encoded for the locale associated with the traits 
-instance is the same as a character represented by a <em>UnicodeEscapeSequence</em>, e.g., assuming a sane 
+Yet, the required interface for a regular expression traits class (<sref ref="[re.req]"/>) does not appear to have
+any reliable method for determining whether a character as encoded for the locale associated with the traits
+instance is the same as a character represented by a <em>UnicodeEscapeSequence</em>, e.g., assuming a sane
 <tt>ru_RU.koi8r</tt> locale:
 </p>
 <blockquote><pre>
@@ -30,7 +30,7 @@ instance is the same as a character represented by a <em>UnicodeEscapeSequence</
 const char data[] = "\xB3";
 const char matchCyrillicCaptialLetterYo[] = R"(\u0401)";
 
-int main(void) 
+int main(void)
 {
   try {
     std::regex myRegex;
@@ -57,6 +57,24 @@ The implementation I tried prints:
 <p>
 Which means that the character class matching worked, but not the matching to the <em>UnicodeEscapeSequence</em>.
 </p>
+
+<note>2024-10-03; Jonathan comments</note>
+<p>
+<code>std::basic_regex&lt;charT&gt;</code> only properly supports
+matching single code units that fit in `charT`.
+There's nothing in the spec that supports matching code points that
+require multiple code units, let alone checking whether a character
+in an arbitrary encoding corresponds to any given Unicode code point.
+<sref ref="[re.grammar]"/> paragraph 12 appears to be an attempt to
+allow implementations to fail to match here, but is insufficient.
+When <code>is_unsigned_v&lt;char&gt;</code> is true, the CV of the
+<i>UnicodeEscapeSequence</i> `"\u0080"` is not greater than `CHAR_MAX`,
+but that doesn't help because U+0080 is encoded as two bytes in UTF-8.
+Being able to represent `0x80` as `char` does not mean the CV can be
+matched as a single `char`.
+The API is unsuitable for Unicode-aware strings.
+</p>
+
 </discussion>
 
 <resolution>
