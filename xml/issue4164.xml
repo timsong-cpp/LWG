@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4164" status="New">
+<title>Missing guarantees for `forward_list` modifiers</title>
+<section><sref ref="[forward.list.modifiers]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>05 Oct 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The new `std::list` members added by <paper num="p1206r7"/>,
+<code>insert_range(const_iterator, R&amp;&amp;)</code>,
+<code>prepend_range(R&amp;&amp;)</code>, and
+<code>append_range(R&amp;&amp;)</code>,
+have the same exception safety guarantee as
+`std::list::insert(const_iterator, InputIterator, InputIterator)`, which is:
+<blockquote>
+<i>Remarks</i>:
+Does not affect the validity of iterators and references.
+If an exception is thrown, there are no effects.
+</blockquote>
+</p>
+<p>
+This guarantee was achieved for the new `list` functions simply by placing
+them in the same set of declarations as the existing `insert` overloads,
+at the start of <sref ref="[list.modifiers]"/>.
+</p>
+
+<p>
+However, the new `std::forward_list` members,
+<code>insert_range_after(const_iterator, R&amp;&amp;)</code> and
+<code>prepend_range(R&amp;&amp;)</code>,
+do not have the same guarantee as `forward_list::insert_after`.
+This looks like an omission caused by the fact that `insert_after`'s
+exception safety guarantee is given in a separate paragraph at the start
+of <sref ref="[forward.list.modifiers]"/>:
+<blockquote>
+None of the overloads of `insert_after`
+shall affect the validity of iterators and references,
+and `erase_after` shall invalidate only iterators and references
+to the erased elements.
+If an exception is thrown during `insert_after` there shall be no effect.
+</blockquote>
+</p>
+
+<p>
+I think we should give similar guarantees for `insert_range_after`
+and `prepend_range`.
+The change might also be appropriate for `emplace_after` as well.
+A "no effects" guarantee is already given for `push_front` and `emplace_front`
+in <sref ref="[container.reqmts]"/> p66, although that doesn't say anything
+about iterator invalidation so we might want to add that to
+<sref ref="[forward.list.modifiers]"/> too.
+</p>
+
+</discussion>
+
+<resolution>
+<p>This wording is relative to <paper num="n4988"/>.</p>
+
+<ol>
+<li>
+<p>Change <sref ref="[forward.list.modifiers]"/> as indicated:</p>
+<blockquote>
+None of the <del>overloads of `insert_after` shall</del>
+<ins>member functions in this subclause that insert elements</ins>
+affect the validity of iterators and references,
+and `erase_after` <del>shall invalidate</del> <ins>invalidates</ins>
+only iterators and references to the erased elements.
+If an exception is thrown
+<del>during `insert_after`</del>
+<ins>by any of these member functions that insert elements</ins>
+there <del>shall be</del> <ins>is</ins> no effect
+<ins>on the `forward_list`</ins>.
+</blockquote>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
