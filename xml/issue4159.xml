@@ -6,13 +6,13 @@
 <section><sref ref="[container.node]"/><sref ref="[allocator.uses.trait]"/></section>
 <submitter>Jiang An</submitter>
 <date>21 Sep 2024</date>
-<priority>99</priority>
+<priority>3</priority>
 
 <discussion>
 <p>
-Currently, node handle types (<sref ref="[container.node]"/>) have the member 
-<tt>allocator_type</tt> type alias, which makes <tt>std::uses_allocator</tt> report 
-<tt>true</tt> for them. However, they don't have allocator-extended constructors, 
+Currently, node handle types (<sref ref="[container.node]"/>) have the member
+<tt>allocator_type</tt> type alias, which makes <tt>std::uses_allocator</tt> report
+<tt>true</tt> for them. However, they don't have allocator-extended constructors,
 and it's unclear to me whether it's better to make them have such constructors.
 <p/>
 The status quo renders the following seemingly reasonable program ill-formed.
@@ -30,6 +30,47 @@ int main() {
 <p>
 Perhaps we should consistently treat node handles not uses-allocator-constructible.
 </p>
+<note>2024-10-09; Reflector poll</note>
+<p>
+Set priority to 3 after reflector poll.
+</p>
+<p>
+"Strike the carve outs for program-defined specializations."
+If it's broken for <code>uses_allocator&lt;NH, A&gt;</code> to be true
+when `NH` is not a program-defined type, then we don't want to allow users
+to make it true for a program-defined `A`, that would still be broken.
+</p>
+
+<superseded>
+<p>
+This wording is relative to <paper num="N4988"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[container.node.overview]"/> as indicated:</p>
+
+<blockquote>
+<p>
+[&hellip;]
+<p/>
+-4- If a user-defined specialization of <tt>pair</tt> exists for <tt>pair&lt;const Key, T&gt;</tt>
+or <tt>pair&lt;Key, T&gt;</tt>, where <tt>Key</tt> is the container's <tt>key_type</tt> and
+<tt>T</tt> is the container's <tt>mapped_type</tt>, the behavior of operations involving node handles
+is undefined.
+<p/>
+<ins>-?- For each node handle type <tt>NH</tt> and any type <tt>A</tt>, if
+<tt>uses_allocator&lt;NH, A&gt;</tt> is not a program-defined specialization, it meets the
+<i>Cpp17BinaryTypeTrait</i> requirements (<sref ref="[meta.rqmts]"/>) and its base characteristic
+is <tt>false_type</tt>.</ins>
+</p>
+</blockquote>
+</li>
+</ol>
+</superseded>
+
+<note>2024-10-09; Adjust wording as requested in reflector poll</note>
+
+
 </discussion>
 
 <resolution>
@@ -44,15 +85,15 @@ This wording is relative to <paper num="N4988"/>.
 <p>
 [&hellip;]
 <p/>
--4- If a user-defined specialization of <tt>pair</tt> exists for <tt>pair&lt;const Key, T&gt;</tt> 
-or <tt>pair&lt;Key, T&gt;</tt>, where <tt>Key</tt> is the container's <tt>key_type</tt> and 
+-4- If a user-defined specialization of <tt>pair</tt> exists for <tt>pair&lt;const Key, T&gt;</tt>
+or <tt>pair&lt;Key, T&gt;</tt>, where <tt>Key</tt> is the container's <tt>key_type</tt> and
 <tt>T</tt> is the container's <tt>mapped_type</tt>, the behavior of operations involving node handles
 is undefined.
 <p/>
-<ins>-?- For each node handle type <tt>NH</tt> and any type <tt>A</tt>, if 
-<tt>uses_allocator&lt;NH, A&gt;</tt> is not a program-defined specialization, it meets the 
-<i>Cpp17BinaryTypeTrait</i> requirements (<sref ref="[meta.rqmts]"/>) and its base characteristic 
-is <tt>false_type</tt>.</ins>
+<ins>-?- For each node handle type <tt>NH</tt> and any type <tt>A</tt>,
+<tt>uses_allocator&lt;NH, A&gt;</tt> meets the
+<i>Cpp17BinaryTypeTrait</i> requirements (<sref ref="[meta.rqmts]"/>)
+and its base characteristic is <tt>false_type</tt>.</ins>
 </p>
 </blockquote>
 </li>
