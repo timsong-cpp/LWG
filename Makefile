@@ -72,13 +72,13 @@ endef
 WG21 := $(HOME)/src/cplusplus
 DRAFT := $(WG21)/draft
 NET := $(WG21)/networking-ts
-filter-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}{{\(Clause\|Annex\) \([^}]*\)}.*/\1 \3/' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
+filter-annex-f := grep -v '\\newlabel{\(fig\|tab\):' | sed 's/^.*\.aux://' | sed 's/^\\newlabel{\([^}]*\)}{{\([^}]*\)}.*/\1 \2/' | grep -v '^\\' | sed 's/\(Clause\|Annex\) //' | sort
 filter-net-ts-annex-f := sed 's/\\newlabel{\([^}]*\)}.*TitleReference {\([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Clause \([^}]*\)}.*/\1 \2/' | sed 's/\\newlabel{\([^}]*\)}.*Annex \([^}]*\)}.*/\1 \2/' | grep -v "aux:tab:" | grep -v "aux:fig:" | sed 's/\(.*\).aux://' | grep -v '^\\' | sort
 
 # Before running this, rebuild the C++ draft at the desired commit.
 # That ensures the .aux files match the content of the relevant draft.
 meta-data/annex-f: $(wildcard $(DRAFT)/source/*.aux)
-	test -d "$(DRAFT)" && grep newlabel $^ | $(filter-annex-f) > $@
+	test -d "$(DRAFT)" && grep '^\\newlabel{' $^ | $(filter-annex-f) > $@
 
 net-ts-sources := $(wildcard $(NET)/src/*.aux)
 # This target has no prerequisites, so it won't complain if the net-ts sources
