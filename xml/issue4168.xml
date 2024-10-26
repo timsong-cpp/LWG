@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4168" status="New">
+<title>`std::start_lifetime_as` inadvertently has undefined behavior due to use of `std::bit_cast`</title>
+<section><sref ref="[obj.lifetime]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>23 Oct 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the motivating example from 
+<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2590r2.pdf">P2590R2: Explicit lifetime management</a>:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<pre>
+struct X { int a, b; };
+
+X* make_x() {
+  X* p = std::start_lifetime_as&lt;X&gt;(myMalloc(sizeof(struct X));
+  p-&gt;a = 1;
+  p-&gt;b = 2;
+  return p;
+}
+</pre>
+</blockquote>
+<p>
+Assuming that `myMalloc` does not initialize the bytes of storage, this example has undefined behavior because 
+the value of the resulting object of trivially copyable type `X` is determined as if by calling 
+<tt>std::bit_cast&lt;X&gt;(a)</tt> for the implicitly-created object `a` of type `X` 
+(<sref ref="[obj.lifetime]"/> paragraph 3), whose object representation is filled with indeterminate bytes 
+obtained from `myMalloc`. Such a call to `std::bit_cast` has undefined behavior because `std::bit_cast` 
+does not tolerate the creation of an `int` where bits in the value representation are indeterminate 
+(<sref ref="[bit.cast]"/> paragraph 2), and such an `int` is the smallest enclosing object of some of the 
+indeterminate bits.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4993"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[obj.lifetime]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Editor's note</i>: The proposed resolution does not alter the behavior for erroneous bits. Therefore, 
+a call to <tt>std::start_lifetime_as</tt> may have erroneous behavior when used on storage with indeterminate 
+bits, despite not accessing that storage. An alternative resolution would be to produce objects whose value 
+is erroneous.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+template&lt;class T&gt;
+  T* start_lifetime_as(void* p) noexcept;
+template&lt;class T&gt;
+  const T* start_lifetime_as(const void* p) noexcept;
+template&lt;class T&gt;
+  volatile T* start_lifetime_as(volatile void* p) noexcept;
+template&lt;class T&gt;
+  const volatile T* start_lifetime_as(const volatile void* p) noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Mandates</i>: [&hellip;]
+<p/>
+-2- <i>Preconditions</i>: [&hellip;]
+<p/>
+-3- <i>Effects</i>: Implicitly creates objects (<sref ref="[intro.object]"/>) within the denoted region 
+consisting of an object <tt><i>a</i></tt> of type `T` whose address is `p`, and objects nested within 
+<tt><i>a</i></tt>, as follows: The object representation of <tt><i>a</i></tt> is the contents of the 
+storage prior to the call to `start_lifetime_as`. The value of each created object <tt><i>o</i></tt> 
+of trivially copyable type (<sref ref="[basic.types.general]"/>) `U` is determined in the same manner 
+as for a call to <tt>bit_cast&lt;U&gt;(E)</tt> (<sref ref="[bit.cast]"/>), where `E` is an lvalue of 
+type `U` denoting <tt><i>o</i></tt>, except that the storage is not accessed <ins>and that 
+for each indeterminate bit <tt><i>b</i></tt> in the value representation of the result, the smallest 
+object containing that bit <tt><i>b</i></tt> has indeterminate value where the behavior would otherwise 
+be undefined</ins>. The value of any other created object is unspecified.
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+</issue>
