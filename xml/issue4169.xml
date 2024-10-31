@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4169" status="New">
+<title><tt>std::atomic&ltT&gt;</tt>'s default constructor should be constrained</title>
+<section><sref ref="[atomics.types.operations]"/></section>
+<submitter>Giuseppe D'Angelo</submitter>
+<date>15 Oct 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The current wording for `std::atomic`'s default constructor in
+<sref ref="[atomics.types.operations]"/> specifies:
+</p>
+<blockquote>
+<pre>
+constexpr atomic() noexcept(is_nothrow_default_constructible_v&lt;T&gt;);
+</pre>
+<blockquote>
+<p>
+<i>Mandates</i>: <tt>is_default_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.
+</p>
+</blockquote>
+</blockquote>
+<p>
+This wording has been added by <paper num="P0883R2"/> for C++20, which changed
+`std::atomic`'s default constructor to always value-initialize. Before,
+the behavior of this constructor was not well specified (this was LWG
+issue <iref ref="2334"/>).
+<p/>
+The usage of a <i>Mandates</i> element in the specification has as a
+consequence that <tt>std::atomic&lt;T&gt;</tt> is always default constructible, even
+when <tt>T</tt> is not. For instance:
+</p>
+<blockquote>
+<pre>
+// not default constructible:
+struct NDC { NDC(int) {} };
+
+static_assert(std::is_default_constructible&lt;std::atomic&lt;NDC&gt;&gt;); // OK
+</pre>
+</blockquote>
+<p>
+The above check is OK as per language rules, but this is user-hostile:
+actually using <tt>std::atomic&lt;NDC&gt;</tt>'s default constructor results in an
+error, despite the detection saying otherwise.
+<p/>
+Given that <tt>std::atomic&lt;T&gt;</tt> already requires <tt>T</tt> to be complete anyhow
+(<sref ref="[atomics.types.generic.general]"/> checks for various type properties
+which require completeness) it would be more appropriate to use a
+constraint instead, so that <tt>std::atomic&lt;T&gt;</tt> is default constructible if
+and only if <tt>T</tt> also is.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4993"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[atomics.types.operations]"/> as indicated:</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: There is implementation divergence at the moment; libstdc++ already
+implements the proposed resolution and has done so for a while.]
+</p>
+</blockquote>
+
+<blockquote>
+<pre>
+constexpr atomic() noexcept(is_nothrow_default_constructible_v&lt;T&gt;);
+</pre>
+<blockquote>
+<p>
+-1- <i><ins>Constraints</ins><del>Mandates</del></i>: <tt>is_default_constructible_v&lt;T&gt;</tt> is <tt>true</tt>.
+<p/>
+-2- <i>Effects</i>: [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+</issue>
