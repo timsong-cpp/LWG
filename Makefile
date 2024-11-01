@@ -116,15 +116,16 @@ dates: meta-data/dates
 
 # Generate file with issue number and unix timestamp of last change.
 meta-data/dates: xml/issue[0-9]*.xml
-	for i in xml/issue[0-9]*.xml ; do \
+	@echo "Refreshing 'Last modified' timestamps for issues..."
+	@for i in xml/issue[0-9]*.xml ; do \
 	  n="$${i#xml/issue}" ; n="$${n%.xml}" ; \
 	  grep -s -q "^$$n " $@ && test $$i -ot $@ && continue ; \
 	  echo $$i >&2 ; \
 	  git log -1 --pretty="format:$$n %ct%n" $$i ; \
 	done > $@.new
-	cat $@ $@.new | sort -n -r | sort -n -k 1 -u > $@.tmp
-	rm $@.new
-	$(call update,$@)
+	@cat $@ $@.new | sort -n -r | sort -n -k 1 -u > $@.tmp
+	@rm $@.new
+	@$(call update,$@)
 
 
 new-papers:
