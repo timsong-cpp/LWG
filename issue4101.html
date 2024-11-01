@@ -7,7 +7,7 @@
 <meta property="og:description" content="C++ library issue. Status: New">
 <meta property="og:url" content="https://cplusplus.github.io/LWG/issue4101.html">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://isocpp.org/assets/images/cpp_logo.png">
+<meta property="og:image" content="http://cplusplus.github.io/LWG/images/cpp_logo.png">
 <meta property="og:image:alt" content="C++ logo">
 <style>
   p {text-align:justify}
@@ -64,14 +64,14 @@
 <p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#New">New</a> status.</em></p>
 <h3 id="4101"><a href="lwg-active.html#4101">4101</a>. LWG 117 loses the sign for negative NaN on some architectures</h3>
 <p><b>Section:</b> 31.7.6.3.2 <a href="https://wg21.link/ostream.inserters.arithmetic">[ostream.inserters.arithmetic]</a> <b>Status:</b> <a href="lwg-active.html#New">New</a>
- <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2024-05-10 <b>Last modified:</b> 2024-05-13</p>
-<p><b>Priority: </b>Not Prioritized
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2024-05-10 <b>Last modified:</b> 2024-05-15</p>
+<p><b>Priority: </b>3
 </p>
 <p><b>View all other</b> <a href="lwg-index.html#ostream.inserters.arithmetic">issues</a> in [ostream.inserters.arithmetic].</p>
 <p><b>View all issues with</b> <a href="lwg-status.html#New">New</a> status.</p>
 <p><b>Discussion:</b></p>
 <p>
-LWG <a href="lwg-defects.html#117" title="basic_ostream uses nonexistent num_put member functions (Status: CD1)">117</a> fixed insertion of a <code class='backtick'>float</code> into an ostream by
+LWG <a href="lwg-defects.html#117" title="basic_ostream uses nonexistent num_put member functions (Status: CD1)">117</a><sup><a href="https://cplusplus.github.io/LWG/issue117" title="Latest snapshot">(i)</a></sup> fixed insertion of a <code class='backtick'>float</code> into an ostream by
 requiring a cast to <code class='backtick'>double</code>. This gives a surprising result on RISC-V when
 inserting a negative NaN, because RISC-V floating-point instructions do
 not preserve the sign or payload of NaN values. This means that
@@ -109,9 +109,9 @@ unspecified whether the cast to <code class='backtick'>double</code> preserves t
 If not, should we add a note about the surprising behaviour?
 </p>
 
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
 
-
-<p id="res-4101"><b>Proposed resolution:</b></p>
 <p>
 This wording is relative to <a href="https://wg21.link/N4981" title=" Working Draft, Programming Languages — C++">N4981</a>.
 </p>
@@ -131,6 +131,48 @@ it performed the following code fragment:
 <ins>
 [<i>Note ?</i>: When <code class='backtick'>val</code> is a NaN value, the conversion to <code class='backtick'>double</code>
 can alter the sign and payload. &mdash; <i>end note</i>]
+</ins>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2024-05-15; Reflector poll]</i></p>
+
+<p>
+Set priority to 3 after reflector poll.
+</p>
+
+<p><i>[2024-05-15; Peter Dimov provides improved wording]</i></p>
+
+<p>Jonathan observes that the same problem exists for
+<code>operator&lt;&lt;(<em>extended-floating-point-type</em>)</code>.
+</p>
+
+
+
+<p id="res-4101"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N4981" title=" Working Draft, Programming Languages — C++">N4981</a>.
+</p>
+<ol>
+<li>
+<p>Modify 31.7.6.3.2 <a href="https://wg21.link/ostream.inserters.arithmetic">[ostream.inserters.arithmetic]</a> as indicated:</p>
+<blockquote>
+-3-
+When <code class='backtick'>val</code> is of type <code class='backtick'>float</code> the formatting conversion occurs as if
+it performed the following code fragment:
+<pre><code>
+  bool failed = use_facet&lt;
+    num_put&lt;charT, ostreambuf_iterator&lt;charT, traits&gt;&gt;
+      >(getloc()).put(*this, *this, fill(),
+        <del>static_cast&lt;double&gt;(val)</del><ins><em>dval</em></ins>).failed();
+</code></pre>
+<ins>
+where <code><em>dval</em></code> is <code class='backtick'>val</code> converted to type <code class='backtick'>double</code>
+as if by <code>static_cast&lt;double&gt;(val)</code>,
+except that the sign and payload of NaN values may be preserved
+rather than discarded.
 </ins>
 </blockquote>
 </li>
