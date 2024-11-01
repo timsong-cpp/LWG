@@ -10,22 +10,21 @@
 
 <discussion>
 <p>
-The design intent of the `contiguous_iterator` concept is that iterators can be converted 
-to pointers that denote the same sequence of elements. Practically, that means that a common range 
-`[i, j)` or counted range `i + [0, n)` can be processed with extremely efficient 
-low-level C or assembly code that operates on `[to_address(i), to_address(j))` (respectively 
-`to_address(i) + [0, n)`). A value-initialized iterator `I{}` can be used to denote the empty 
-ranges `[I{}, I{})` and `I{} + [0, 0)`. While the existing semantic requirements of 
-`contiguous_iterator` enable us to convert both dereferenceable and past-the-end iterators with 
-`to_address` converting such ranges to pointer ranges requires either (1) `to_address(I{})` 
-is well-defined and equality preserving so e.g. `copy(i, j)` can directly dispatch to 
-`__vectorized_copy(to_address(j), to_address(i), j - i)` when it detects contiguous iterators 
-to types that can be trivially copied, or (2) we have to introduce a branch guarding such calls 
-with `i != j` (or <tt>n &gt; 0</tt> for counted ranges). 
-<p/>
-Since we already require `to_address` to be equality-preserving, we need only require 
-`to_address(I{})` to be well-defined. It's then easily demonstrable that 
-`to_address(I{}) == to_address(I{})` and `to_address(I{}) == to_address(I{)) + 0` hold.
+The design intent of the `contiguous_iterator` concept is that iterators can be converted
+to pointers denoting the same sequence of elements. This enables a common range `[i, j)`
+or counted range `i + [0, n)` to be processed with extremely efficient low-level C
+or assembly code that operates on `[to_address(i), to_address(j))` (respectively
+`to_address(i) + [0, n)`).
+</p><p>
+A value-initialized iterator `I{}` can be used to denote the empty ranges `[I{}, I{})`
+and `I{} + [0, 0)`. While the existing semantic requirements of `contiguous_iterator` enable us
+to convert both dereferenceable and past-the-end iterators with `to_address`, converting
+ranges involving value-initialized iterators to pointer ranges additionally needs
+`to_address(I{})` to be well-defined. Note that `to_address` is already implicitly
+equality-preserving for `contiguous_iterator` arguments. Given this additional requirement
+`to_address(I{}) == to_address(I{})` and `to_address(I{}) == to_address(I{)) + 0`
+both hold, so the two types of empty ranges involving value-initialized iterators convert
+to empty pointer ranges as desired.
 </p>
 </discussion>
 
@@ -56,8 +55,8 @@ template&lt;class I&gt;
 </pre>
 </blockquote>
 <p>
--2- Let `a` and `b` be dereferenceable iterators and `c` be a non-dereferenceable iterator of type 
-`I` such that `b` is reachable from `a` and `c` is reachable from `b`, and let `D` be 
+-2- Let `a` and `b` be dereferenceable iterators and `c` be a non-dereferenceable iterator of type
+`I` such that `b` is reachable from `a` and `c` is reachable from `b`, and let `D` be
 <tt>iter_difference_t&lt;I&gt;</tt>. The type `I` models `contiguous_iterator` only if
 </p>
 
@@ -66,9 +65,9 @@ template&lt;class I&gt;
 <li><p>(2.2) &mdash; `to_address(b) == to_address(a) + D(b - a)`,</p></li>
 <li><p>(2.3) &mdash; `to_address(c) == to_address(a) + D(c - a)`,</p></li>
 <li><p><ins>(2.?) &mdash; `to_address(I{})` is well-defined,</ins></p></li>
-<li><p>(2.4) &mdash; `ranges::iter_move(a)` has the same type, value category, and effects as 
+<li><p>(2.4) &mdash; `ranges::iter_move(a)` has the same type, value category, and effects as
 `std::move(*a)`, and</p></li>
-<li><p>(2.5) &mdash; if `ranges::iter_swap(a, b)` is well-formed, it has effects equivalent to 
+<li><p>(2.5) &mdash; if `ranges::iter_swap(a, b)` is well-formed, it has effects equivalent to
 `ranges::swap(*a, *b)`.</p></li>
 </ol>
 </blockquote>
