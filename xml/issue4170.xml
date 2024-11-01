@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4170" status="New">
+<title>`contiguous_iterator` should require `to_address(I{})`</title>
+<section><sref ref="[iterator.concept.contiguous]"/></section>
+<submitter>Casey Carter</submitter>
+<date>01 Nov 2024</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The design intent of the `contiguous_iterator` concept is that iterators can be converted 
+to pointers that denote the same sequence of elements. Practically, that means that a common range 
+`[i, j)` or counted range `i + [0, n)` can be processed with extremely efficient 
+low-level C or assembly code that operates on `[to_address(i), to_address(j))` (respectively 
+`to_address(i) + [0, n)`). A value-initialized iterator `I{}` can be used to denote the empty 
+ranges `[I{}, I{})` and `I{} + [0, 0)`. While the existing semantic requirements of 
+`contiguous_iterator` enable us to convert both dereferenceable and past-the-end iterators with 
+`to_address` converting such ranges to pointer ranges requires either (1) `to_address(I{})` 
+is well-defined and equality preserving so e.g. `copy(i, j)` can directly dispatch to 
+`__vectorized_copy(to_address(j), to_address(i), j - i)` when it detects contiguous iterators 
+to types that can be trivially copied, or (2) we have to introduce a branch guarding such calls 
+with `i != j` (or <tt>n &gt; 0</tt> for counted ranges). 
+<p/>
+Since we already require `to_address` to be equality-preserving, we need only require 
+`to_address(I{})` to be well-defined. It's then easily demonstrable that 
+`to_address(I{}) == to_address(I{})` and `to_address(I{}) == to_address(I{)) + 0` hold.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N4993"/>.
+</p>
+
+<ol>
+<li><p>Modify <sref ref="[iterator.concept.contiguous]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- The `contiguous_iterator` concept provides a guarantee that the denoted elements are stored contiguously
+in memory.
+</p>
+<blockquote>
+<pre>
+template&lt;class I&gt;
+  concept contiguous_iterator =
+    random_access_iterator&lt;I&gt; &amp;&amp;
+    derived_from&lt;<i>ITER_CONCEPT</i>(I), contiguous_iterator_tag&gt; &amp;&amp;
+    is_lvalue_reference_v&lt;iter_reference_t&lt;I&gt;&gt; &amp;&amp;
+    same_as&lt;iter_value_t&lt;I&gt;, remove_cvref_t&lt;iter_reference_t&lt;I&gt;&gt;&gt; &amp;&amp;
+    requires(const I&amp; i) {
+      { to_address(i) } -&gt; same_as&lt;add_pointer_t&lt;iter_reference_t&lt;I&gt;&gt;&gt;;
+    };
+</pre>
+</blockquote>
+<p>
+-2- Let `a` and `b` be dereferenceable iterators and `c` be a non-dereferenceable iterator of type 
+`I` such that `b` is reachable from `a` and `c` is reachable from `b`, and let `D` be 
+<tt>iter_difference_t&lt;I&gt;</tt>. The type `I` models `contiguous_iterator` only if
+</p>
+
+<ol style="list-style-type: none">
+<li><p>(2.1) &mdash; `to_address(a) == addressof(*a)`,</p></li>
+<li><p>(2.2) &mdash; `to_address(b) == to_address(a) + D(b - a)`,</p></li>
+<li><p>(2.3) &mdash; `to_address(c) == to_address(a) + D(c - a)`,</p></li>
+<li><p><ins>(2.?) &mdash; `to_address(I{})` is well-defined,</ins></p></li>
+<li><p>(2.4) &mdash; `ranges::iter_move(a)` has the same type, value category, and effects as 
+`std::move(*a)`, and</p></li>
+<li><p>(2.5) &mdash; if `ranges::iter_swap(a, b)` is well-formed, it has effects equivalent to 
+`ranges::swap(*a, *b)`.</p></li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
+</resolution>
+</issue>
