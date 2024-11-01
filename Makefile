@@ -114,33 +114,37 @@ meta-data/section.data: meta-data/annex-f meta-data/networking-section.data bin/
 
 dates: meta-data/dates
 
-# Generate file with issue number and unix timestamp of last change.
-meta-data/dates: xml/issue[0-9]*.xml
-	@echo "Refreshing 'Last modified' timestamps for issues..."
-	@for i in xml/issue[0-9]*.xml ; do \
-	  n="$${i#xml/issue}" ; n="$${n%.xml}" ; \
-	  grep -s -q "^$$n " $@ && test $$i -ot $@ && continue ; \
-	  echo $$i >&2 ; \
-	  git log -1 --pretty="format:$$n %ct%n" $$i ; \
-	done > $@.new
-	@cat $@ $@.new | sort -n -r | sort -n -k 1 -u > $@.tmp
-	@rm $@.new
-	@$(call update,$@)
+optcmd = $(shell command -v $(1) || echo :)
 
+# Generate file with issue number and unix timestamp of last change.
+python := $(call optcmd,python)
+meta-data/dates: xml/issue[0-9]*.xml bin/make_dates.py
+	@echo "Refreshing 'Last modified' timestamps for issues..."
+	@if [ "$(python)" = ":" ]; then \
+	  for i in xml/issue[0-9]*.xml ; do \
+	    n="$${i#xml/issue}" ; n="$${n%.xml}" ; \
+	    grep -s -q "^$$n " $@ && test $$i -ot $@ && continue ; \
+	    echo $$i >&2 ; \
+	    git log -1 --pretty="format:$$n %ct%n" $$i ; \
+	  done > $@.new; \
+	  cat $@ $@.new | sort -n -r | sort -n -k 1 -u > $@.tmp; \
+	  rm $@.new; \
+	  $(call update,$@); \
+	else \
+	  git whatchanged --no-show-signature --pretty=%ct | $(python) bin/make_dates.py > $@; \
+	fi
 
 new-papers:
 	rm -f meta-data/index.json meta-data/paper_titles.txt
 	$(MAKE) meta-data/paper_titles.txt
 
-optcmd = $(shell command -v $(1) || echo :)
-
-# If python is not installed then create an empty meta-data/paper_titles.txt
+# If curl is not installed then create an empty meta-data/paper_titles.txt
 meta-data/index.json:
 	$(call optcmd,curl) https://wg21.link/index.json > $@
 
 # If python is not installed then create an empty meta-data/paper_titles.txt
 meta-data/paper_titles.txt: | meta-data/index.json
-	$(call optcmd,python) bin/make_paper_titles.py $| > $@
+	$(python) bin/make_paper_titles.py $| > $@
 
 .PRECIOUS: meta-data/dates
 .PRECIOUS: meta-data/paper_titles.txt
