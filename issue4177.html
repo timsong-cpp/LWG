@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue 4177: &sect;[atomics.order] p8 "circularly depend on their own computation" is unclear for loop</title>
+<meta property="og:title" content="Issue 4177: &sect;[atomics.order] p8 &quot;circularly depend on their own computation&quot; is unclear for loop">
+<meta property="og:description" content="C++ library issue. Status: SG1">
+<meta property="og:url" content="https://cplusplus.github.io/LWG/issue4177.html">
+<meta property="og:type" content="website">
+<meta property="og:image" content="http://cplusplus.github.io/LWG/images/cpp_logo.png">
+<meta property="og:image:alt" content="C++ logo">
+<style>
+  p {text-align:justify}
+  li {text-align:justify}
+  pre code.backtick::before { content: "`" }
+  pre code.backtick::after { content: "`" }
+  blockquote.note
+  {
+    background-color:#E0E0E0;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  ins {background-color:#A0FFA0}
+  del {background-color:#FFA0A0}
+  table.issues-index { border: 1px solid; border-collapse: collapse; }
+  table.issues-index th { text-align: center; padding: 4px; border: 1px solid; }
+  table.issues-index td { padding: 4px; border: 1px solid; }
+  table.issues-index td:nth-child(1) { text-align: right; }
+  table.issues-index td:nth-child(2) { text-align: left; }
+  table.issues-index td:nth-child(3) { text-align: left; }
+  table.issues-index td:nth-child(4) { text-align: left; }
+  table.issues-index td:nth-child(5) { text-align: center; }
+  table.issues-index td:nth-child(6) { text-align: center; }
+  table.issues-index td:nth-child(7) { text-align: left; }
+  table.issues-index td:nth-child(5) span.no-pr { color: red; }
+  @media (prefers-color-scheme: dark) {
+     html {
+        color: #ddd;
+        background-color: black;
+     }
+     ins {
+        background-color: #225522
+     }
+     del {
+        background-color: #662222
+     }
+     a {
+        color: #6af
+     }
+     a:visited {
+        color: #6af
+     }
+     blockquote.note
+     {
+        background-color: rgba(255, 255, 255, .10)
+     }
+  }
+</style>
+</head>
+<body>
+<hr>
+<p><em>This page is a snapshot from the LWG issues list, see the <a href="lwg-active.html">Library Active Issues List</a> for more information and the meaning of <a href="lwg-active.html#SG1">SG1</a> status.</em></p>
+<h3 id="4177"><a href="lwg-active.html#4177">4177</a>. &sect;[atomics.order] p8 "circularly depend on their own computation" is unclear for loop</h3>
+<p><b>Section:</b> 32.5.4 <a href="https://wg21.link/atomics.order">[atomics.order]</a> <b>Status:</b> <a href="lwg-active.html#SG1">SG1</a>
+ <b>Submitter:</b> jim x <b>Opened:</b> 2024-11-29 <b>Last modified:</b> 2025-02-07</p>
+<p><b>Priority: </b>4
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#atomics.order">active issues</a> in [atomics.order].</p>
+<p><b>View all other</b> <a href="lwg-index.html#atomics.order">issues</a> in [atomics.order].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#SG1">SG1</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+32.5.4 <a href="https://wg21.link/atomics.order">[atomics.order]</a> p8 and p9 gave two paradigmatic examples of how "circularly depend on 
+their own computation" means. However, consider this example:
+</p>
+<blockquote><pre>
+std::atomic&lt;int&gt; x = 0, y = 2;
+
+// thread 1:
+if (y.load(relaxed) == 1) { // #1
+  x.store(1, relaxed); // #2
+}
+
+//thread 2:
+int pre = x.load(relaxed); // #3
+while (pre != 0) {
+  if (x.compare_exchange_strong(pre, pre + 1, acquire, relaxed)) {  // #4
+    break;
+  }
+}
+y.store(1, relaxed); // #5
+</pre></blockquote>
+<p>
+when both <code class='backtick'>#1</code> and <code class='backtick'>#3</code> read <code class='backtick'>1</code>, is this a kind of OOTA? <code class='backtick'>#3</code> depends on <code class='backtick'>#2</code>, <code class='backtick'>#2</code> depends on <code class='backtick'>#1</code>, 
+<code class='backtick'>#1</code> depends on <code class='backtick'>#5</code>, and the execution of <code class='backtick'>#5</code> depends on the exiting of the loop, which in turn initially 
+depends on <code class='backtick'>pre</code>.
+<p/>
+The loop can never execute, exit after certain iterations, or be a long-time-running without exiting 
+(i.e. <code class='backtick'>cmpxchg</code> keeps failing). So, it is unclear whether the execution of <code class='backtick'>#5</code> depends on the loop. 
+However, it resembles the <code class='backtick'>spin-loop</code> (a failed <code class='backtick'>cmpxchg</code> is a pure load with a relaxed load), and the 
+subsequent codes won't execute until the loop exits. So, the scenario of spin-lock seems to agree that 
+the code after a loop depends on the loop(regardless of whether the loop can quickly exit or be a 
+long-time-run loop).
+<p/>
+From this perspective, the <code class='backtick'>while</code> case is something like the <code class='backtick'>if</code>, for <code class='backtick'>if</code>, the condition is not 
+<code class='backtick'>true</code>, and the code thereof cannot be executed. Similarly, a code after a while cannot be executed 
+if the loop doesn't exit.
+<p/>
+<b>Suggested resolution:</b>
+<p/>
+ Either accurately specify what "circularly depend on their own computation" means, or add a paradigmatic 
+ example regarding loop to indicate what it means.
+</p>
+
+<p><i>[Additional discussion from submitter:]</i></p>
+
+<p>
+I meant, that for a classic spin-lock, the code after the loop won't be
+executed until the loop exits, and the operation is just a pure load with
+relaxed memory order during the busy wait.
+The loop for a spin-lock can have three possible cases:
+<ol>
+<li>CAS immediately succeeds </li>
+<li>the loop exits after certain times of iterations</li>
+<li>the loop cannot be exited(e.g. the lock is not released)</li>
+</ol>
+</p>
+<p>
+The compiler cannot assume which case the loop for the spin-lock is.
+The code after the loop won't be reordered(during the busy waiting with
+a relaxed memory order); otherwise, implementing the spin-lock would be
+an issue based on the assumption that the codes after the loop wouldn't
+be reached when the loop was busy waiting.
+</p>
+<p>
+In this example, the loop has the same possible cases as the loop
+in the spin-lock. So, the execution of <code class='backtick'>#5</code> seems to depend on the loop
+and the loop depends on the <code class='backtick'>pre</code>. why I mention the spin-lock just is to
+justify that the code after the loop won't be reordered in both compile-time
+and runtime even though the condition of the loop is a pure load with a relaxed
+memory order(otherwise, the foundation for which the busy-waiting of a
+spink-lock is based on won't be true.). So, the loop has a similar effect
+to the <code class='backtick'>if</code> statement on the control flow: the code in the block of
+the <code class='backtick'>if</code> statement won't be executed if the condition is false, as well,
+the code after the loop won't be executed if the loop hasn't yet exited.
+</p>
+
+<p><i>[2025-02-07; Reflector poll]</i></p>
+
+<p>
+Set priority to 4 after reflector poll. Send to SG1.
+</p>
+<p>
+"Should the example use <code class='backtick'>unsigned</code> so there's no chance of UB due to <code class='backtick'>int</code>
+overflowing?"
+</p>
+<p>
+"Contrived example showing well-known fact that OOTA prohibition is just
+hand-waving. <a href="https://wg21.link/N3786" title=" Prohibiting &quot;out of thin air&quot; results in C++14">N3786</a> introduced the current wording and made
+no secret of that. <a href="https://wg21.link/P1217" title=" Out-of-thin-air, revisited, again">P1217</a> explored the issue further,
+as have other SG1 papers. Hard problems. Solutions welcome. Don't think this
+is the place to focus however."
+</p>
+
+
+
+<p id="res-4177"><b>Proposed resolution:</b></p>
+<p>
+</p>
+
+
+
+
+
+</body>
+</html>
