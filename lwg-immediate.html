@@ -62,7 +62,7 @@
 </tr>
 <tr>
 <td align="left">Date:</td>
-<td align="left">Revised 2025-10-27 at 12:36:16 UTC
+<td align="left">Revised 2025-11-04 at 19:55:27 UTC
 </td>
 </tr>
 <tr>
@@ -75,5 +75,1431 @@
 </tr>
 </table>
 <h2>Immediate Issues</h2>
+<hr>
+<h3 id="4230"><a href="#4230">4230</a><sup><a href="https://cplusplus.github.io/LWG/issue4230">(i)</a></sup>. <code>simd&lt;complex&gt;::real/imag</code> is overconstrained</h3>
+<p><b>Section:</b> 29.10.8.4 <a href="https://wg21.link/simd.complex.access">[simd.complex.access]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Matthias Kretz <b>Opened:</b> 2025-03-18 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>2
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+29.10.8.4 <a href="https://wg21.link/simd.complex.access">[simd.complex.access]</a> overconstrains the arguments to <code class='backtick'>real</code> and <code class='backtick'>imag</code>.
+<code>complex&lt;T&gt;::real/imag</code> allows conversions to <code class='backtick'>T</code> whereas <code>simd&lt;complex&lt;T&gt;&gt;</code>
+requires basically an exact match (<code>same_as&lt;simd&lt;T&gt;&gt;</code> modulo ABI tag differences).
+</p>
+<blockquote><pre>
+complex&lt;double&gt; c = {};
+c.real(1.f); // OK
+
+simd&lt;complex&lt;double&gt;&gt; sc = {};
+sc.real(simd&lt;float&gt;(1.f)); // <span style="color:red;font-weight:bolder">ill-formed, should be allowed</span>
+</pre></blockquote>
+<p>
+The design intent was to match the <code>std::complex&lt;T&gt;</code> interface. In which case
+the current wording doesn't match that intent. <code class='backtick'>complex</code> doesn't say <code>real(same_as&lt;T&gt; auto)</code> 
+but 'real(T)', which allows conversions.
+<p/>
+This issue is also present in the <code class='backtick'>basic_simd(real, imag)</code> constructor. It deduces the type for the 
+real/imag arguments instead of using a dependent type derived from <code class='backtick'>value_type</code> and ABI tag.
+</p>
+<blockquote><pre>
+// OK:
+complex&lt;double&gt; c{1., 1.f};
+
+// <span style="color:red;font-weight:bolder">Ill-formed, should be allowed</span>:
+simd&lt;complex&lt;double&gt;&gt; sc0(1., 1.);
+simd&lt;complex&lt;double&gt;, 4&gt; sc1(simd&lt;double, 4&gt;(1.), simd&lt;float, 4&gt;(1.f));
+</pre></blockquote>
+
+<p><i>[2025-06-13; Reflector poll]</i></p>
+
+<p>
+Set priority to 2 after reflector poll.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N5008" title=" Working Draft, Programming Languages — C++">N5008</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 29.10.7.1 <a href="https://wg21.link/simd.overview">[simd.overview]</a>, class template <code class='backtick'>basic_simd</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::datapar {
+  template&lt;class T, class Abi&gt; class basic_simd {
+  public:
+    using value_type = T;
+    using mask_type = basic_simd_mask&lt;sizeof(T), Abi&gt;;
+    using abi_type = Abi;
+    
+    <ins>using <i>real-type</i> = rebind_t&lt;typename T::value_type, basic_simd&gt; <i>// exposition-only</i></ins>
+    
+    <i>// 29.10.7.2 <a href="https://wg21.link/simd.ctor">[simd.ctor]</a>, basic_simd constructors</i>   
+    [&hellip;]
+    <del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+      constexpr explicit(<i>see below</i>) basic_simd(const <ins><i>real-type</i></ins><del>V</del>&amp; reals, const <ins><i>real-type</i></ins><del>V</del>&amp; imags = {}) noexcept;
+    [&hellip;]
+    <i>// 29.10.8.4 <a href="https://wg21.link/simd.complex.access">[simd.complex.access]</a>, basic_simd complex-value accessors</i>
+    constexpr <ins><i>real-type</i></ins><del>auto</del> real() const noexcept;
+    constexpr <ins><i>real-type</i></ins><del>auto</del> imag() const noexcept;
+    <del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+      constexpr void real(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+    <del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+      constexpr void imag(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 29.10.7.2 <a href="https://wg21.link/simd.ctor">[simd.ctor]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+  constexpr explicit(<i>see below</i>) basic_simd(const <ins><i>real-type</i></ins><del>V</del>&amp; reals, const <ins><i>real-type</i></ins><del>V</del>&amp; imags = {}) noexcept;
+</pre>
+<blockquote>
+<p>
+-19- <i>Constraints</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><del>(19.1) &mdash;</del> <code><i>simd-complex</i>&lt;basic_simd&gt;</code> is modeled<ins>.</ins><del>, and</del></p></li>
+<li><p><del>(19.2) &mdash; <code class='backtick'>V::size() == size()</code> is <code class='backtick'>true</code>.</del></p></li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+-21- <i>Remarks</i>: The expression inside <code class='backtick'>explicit</code> evaluates to <code class='backtick'>false</code> if and only if the 
+floating-point conversion rank of <code class='backtick'>T::value_type</code> is greater than or equal to the floating-point 
+conversion rank of <code><ins><i>real-type</i></ins><del>V</del>::value_type</code>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.10.8.4 <a href="https://wg21.link/simd.complex.access">[simd.complex.access]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <ins><i>real-type</i></ins><del>auto</del> real() const noexcept;
+constexpr <ins><i>real-type</i></ins><del>auto</del> imag() const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints</i>: <code><i>simd-complex</i>&lt;basic_simd&gt;</code> is modeled.
+<p/>
+-2- <i>Returns</i>: An object of type <code><ins><i>real-type</i></ins><del>rebind_t&lt;typename T::value_type, basic_simd&gt;</del></code> 
+where the <code><i>i</i></code><sup>th</sup> element is initialized to the result of 
+<code><i>cmplx-func</i>(operator[](<i>i</i>))</code> for all <code><i>i</i></code> in the range 
+<code class='backtick'>[0, size())</code>, where <code><i>cmplx-func</i></code> is the corresponding function from 
+<code>&lt;complex&gt;</code>.
+</p>
+</blockquote>
+<pre>
+<del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+  constexpr void real(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+<del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+  constexpr void imag(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Constraints</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><del>(3.1) &mdash;</del> <code><i>simd-complex</i>&lt;basic_simd&gt;</code> is modeled<ins>.</ins><del>,</del></p></li>
+<li><p><del>(3.2) &mdash; <code>same_as&lt;typename V::value_type, typename T::value_type&gt;</code> is modeled, and</del></p></li>
+<li><p><del>(3.3) &mdash; <code class='backtick'>V::size() == size()</code> is <code class='backtick'>true</code>.</del></p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</blockquote>
+
+<p><i>[2025-07-21; Matthias Kretz comments]</i></p>
+
+<p>
+The currently shown P/R says:
+</p>
+<blockquote><p>
+<i>Remarks</i>: The expression inside <code class='backtick'>explicit</code> evaluates to <code class='backtick'>false</code> if and only if
+the floating-point conversion rank of <code class='backtick'>T::value_type</code> is greater than or equal
+to the floating-point conversion rank of <code><i>real-type</i>::value_type</code>.
+</p></blockquote>
+<p>
+But, by construction, <code><i>real-type</i>::value_type</code> is the same as <code class='backtick'>T::value_type</code>. 
+So we get an elaborately worded <code class='backtick'>explicit(false)</code> here (which is correct).
+Consequently, the proposed resolution needs to strike <code class='backtick'>explicit(&lt;i&gt;see below&lt;/i&gt;)</code>
+from 29.10.7.1 <a href="https://wg21.link/simd.overview">[simd.overview]</a> and 29.10.7.2 <a href="https://wg21.link/simd.ctor">[simd.ctor]</a> and drop the Remarks paragraph (21).
+</p>
+
+<p><i>[Kona 2025-11-04; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4230"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+
+<ol>
+
+<li><p>Modify 29.10.7.1 <a href="https://wg21.link/simd.overview">[simd.overview]</a>, class template <code class='backtick'>basic_vec</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::simd {
+  template&lt;class T, class Abi&gt; class basic_vec {
+    <ins>using <i>real-type</i> = <i>see below</i>; <i>// exposition-only</i></ins>
+  public:
+    using value_type = T;
+    using mask_type = basic_mask&lt;sizeof(T), Abi&gt;;
+    using abi_type = Abi;
+    using iterator = <i>simd-iterator</i>&lt;basic_vec&gt;;
+    using const_iterator = <i>simd-iterator</i>&lt;const basic_vec&gt;;
+    
+    <i>// 29.10.7.2 <a href="https://wg21.link/simd.ctor">[simd.ctor]</a>, basic_vec constructors</i>   
+    [&hellip;]
+    <del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+      constexpr <del>explicit(<i>see below</i>)</del> basic_vec(const <ins><i>real-type</i></ins><del>V</del>&amp; reals, const <ins><i>real-type</i></ins><del>V</del>&amp; imags = {}) noexcept;
+    [&hellip;]
+    <i>// 29.10.8.4 <a href="https://wg21.link/simd.complex.access">[simd.complex.access]</a>, basic_vec complex-value accessors</i>
+    constexpr <ins><i>real-type</i></ins><del>auto</del> real() const noexcept;
+    constexpr <ins><i>real-type</i></ins><del>auto</del> imag() const noexcept;
+    <del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+      constexpr void real(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+    <del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+      constexpr void imag(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+<p>-2- <i>Recommended practice</i>: [&hellip;]</p>
+<blockquote>[<i>Note 1</i>: &hellip;]</blockquote>
+<p>-?- <ins>
+If <code class='backtick'>T</code> is a specialization of <code class='backtick'>complex</code>, <i><code class='backtick'>real-type</code></i> denotes the same type
+as <code>rebind_t&lt;typename T::value_type, basic_vec&lt;T, Abi&gt;&gt;</code>,
+otherwise an unspecified non-array object type.
+</ins>
+</p>
+</blockquote>
+</li>
+
+<li><p>Modify 29.10.7.2 <a href="https://wg21.link/simd.ctor">[simd.ctor]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+<del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+  constexpr <del>explicit(<i>see below</i>)</del> 
+    basic_vec(const <ins><i>real-type</i></ins><del>V</del>&amp; reals, const <ins><i>real-type</i></ins><del>V</del>&amp; imags = {}) noexcept;
+</pre>
+<blockquote>
+<p>
+-19- <i>Constraints</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><del>(19.1) &mdash;</del> <code><i>simd-complex</i>&lt;basic_vec&gt;</code> is modeled<ins>.</ins><del>, and</del></p></li>
+<li><p><del>(19.2) &mdash; <code class='backtick'>V::size() == size()</code> is <code class='backtick'>true</code>.</del></p></li>
+</ol>
+<p>
+[&hellip;]
+<p/>
+<del>-21- <i>Remarks</i>: The expression inside <code class='backtick'>explicit</code> evaluates to <code class='backtick'>false</code> if and only if the 
+floating-point conversion rank of <code class='backtick'>T::value_type</code> is greater than or equal to the floating-point 
+conversion rank of <code>V::value_type</code>.</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 29.10.8.4 <a href="https://wg21.link/simd.complex.access">[simd.complex.access]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr <ins><i>real-type</i></ins><del>auto</del> real() const noexcept;
+constexpr <ins><i>real-type</i></ins><del>auto</del> imag() const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints</i>: <code><i>simd-complex</i>&lt;basic_vec&gt;</code> is modeled.
+<p/>
+-2- <i>Returns</i>: An object of type <code><ins><i>real-type</i></ins><del>rebind_t&lt;typename T::value_type, basic_vec&gt;</del></code> 
+where the <code><i>i</i></code><sup>th</sup> element is initialized to the result of 
+<code><i>cmplx-func</i>(operator[](<i>i</i>))</code> for all <code><i>i</i></code> in the range 
+<code class='backtick'>[0, size())</code>, where <code><i>cmplx-func</i></code> is the corresponding function from 
+<code>&lt;complex&gt;</code>.
+</p>
+</blockquote>
+<pre>
+<del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+  constexpr void real(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+<del>template&lt;<i>simd-floating-point</i> V&gt;</del>
+  constexpr void imag(const <ins><i>real-type</i></ins><del>V</del>&amp; v) noexcept;
+</pre>
+<blockquote>
+<p>
+-3- <i>Constraints</i>:
+</p>
+<ol style="list-style-type: none">
+<li><p><del>(3.1) &mdash;</del> <code><i>simd-complex</i>&lt;basic_vec&gt;</code> is modeled<ins>.</ins><del>,</del></p></li>
+<li><p><del>(3.2) &mdash; <code>same_as&lt;typename V::value_type, typename T::value_type&gt;</code> is modeled, and</del></p></li>
+<li><p><del>(3.3) &mdash; <code class='backtick'>V::size() == size()</code> is <code class='backtick'>true</code>.</del></p></li>
+</ol>
+<p>
+[&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3 id="4251"><a href="#4251">4251</a><sup><a href="https://cplusplus.github.io/LWG/issue4251">(i)</a></sup>. Move assignment for <code class='backtick'>indirect</code> unnecessarily requires copy construction</h3>
+<p><b>Section:</b> 20.4.1.5 <a href="https://wg21.link/indirect.assign">[indirect.assign]</a>, 20.4.2.5 <a href="https://wg21.link/polymorphic.assign">[polymorphic.assign]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2025-05-01 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+The move assignment operator for <code class='backtick'>indirect</code> says:
+<blockquote>
+<i>Mandates</i>: <code>is_copy_constructible_t&lt;T&gt;</code> is <code class='backtick'>true</code>.
+</blockquote>
+
+However, the only way it ever construct an object is:
+<blockquote>
+constructs a new owned object with the owned object of <code class='backtick'>other</code> as the argument
+as an rvalue
+</blockquote>
+and that only ever happens when <code><i>alloc</i> == other.<i>alloc</i></code>
+is false.
+</p>
+<p>
+It seems like we should require <code class='backtick'>is_move_constructible_v</code> instead,
+and only if the allocator traits mean we need to construct an object.
+(Technically move-constructible might not be correct, because the allocator's
+<code class='backtick'>construct</code> member might use a different constructor).
+</p>
+<p>
+Additionally, the noexcept-specifier for the move assignment doesn't match
+the effects. The noexcept-specifier says it can't throw if POCMA is true,
+but nothing in the effects says that ownership can be transferred in that case;
+we only do a non-throwing transfer when the allocators are equal.
+I think we <i>should</i> transfer ownership when POCMA is true,
+which would make the noexcept-specifier correct.
+</p>
+
+<p><i>[2025-06-12; Reflector poll]</i></p>
+
+<p>
+Set priority to 1 after reflector poll.
+</p>
+<p>
+Similar change needed for <code class='backtick'>std::polymorphic</code>.
+</p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N5008" title=" Working Draft, Programming Languages — C++">N5008</a>.
+</p>
+<ol>
+
+<li><p>Modify 20.4.1.5 <a href="https://wg21.link/indirect.assign">[indirect.assign]</a> as indicated:</p>
+<blockquote>
+<pre><code>
+constexpr indirect&amp; operator=(indirect&amp;&amp; other)
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</code></pre>
+<blockquote>
+<p>
+-5- <i>Mandates</i>:
+<ins>
+If
+<code>allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value</code>
+is <code class='backtick'>false</code>
+and
+<code>allocator_traits&lt;Allocator&gt;::is_always_equal::value</code>
+is <code class='backtick'>false</code>,
+</ins>
+<code>is_<del>copy</del><ins>move</ins>_constructible_t&lt;T&gt;</code> is <code class='backtick'>true</code>.
+</p>
+<p>
+-6- <i>Effects</i>:
+If <code class='backtick'>addressof(other) == this</code> is <code class='backtick'>true</code>, there are no effects.
+Otherwise:
+<ol style="list-style-type:none">
+<li>(6.1) &mdash;
+The allocator needs updating if
+<code>allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value</code>
+is <code class='backtick'>true</code>.
+</li>
+<li>(6.2) &mdash;
+If <code class='backtick'>other</code> is valueless, <code class='backtick'>*this</code> becomes valueless<del> and the owned object
+in <code class='backtick'>*this</code>, if any, is destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated</del>.
+</li>
+<li>(6.3) &mdash;
+Otherwise,
+<ins>if the allocator needs updating or</ins>
+if <code><i>alloc</i> == other.<i>alloc</i></code> is <code class='backtick'>true</code>,
+<del>
+swaps the owned objects in <code class='backtick'>*this</code> and <code class='backtick'>other</code>;
+the owned object in <code class='backtick'>other</code>, if any, is then destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated
+</del>
+<ins><code class='backtick'>*this</code> takes ownership of the owned object of <code class='backtick'>other</code></ins>.
+</li>
+<li>(6.4) &mdash;
+Otherwise, constructs a new owned object with the owned object of <code class='backtick'>other</code>
+as the argument as an rvalue, using either the allocator in <code class='backtick'>*this</code>
+or the allocator in <code class='backtick'>other</code> if the allocator needs updating.
+</li>
+<li>(6.5) &mdash;
+The previously owned object in <code class='backtick'>*this</code>, if any, is destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated.
+</li>
+<li>(6.6) &mdash;
+If the allocator needs updating,
+the allocator in <code class='backtick'>*this</code> is replaced with a copy of the allocator in <code class='backtick'>other</code>.
+</li>
+</ol>
+</p>
+<p>-7- <i>Postcondition</i>: <code class='backtick'>other</code> is valueless.</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2025-11-03; Tomasz provides wording.]</i></p>
+
+
+<p><i>[Kona 2025-11-03; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4251"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+<ol>
+
+<li><p>Modify 20.4.1.5 <a href="https://wg21.link/indirect.assign">[indirect.assign]</a> as indicated:</p>
+<blockquote>
+<pre><code>
+constexpr indirect&amp; operator=(indirect&amp;&amp; other)
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</code></pre>
+<blockquote>
+<p>
+-5- <i>Mandates</i>:
+<ins>
+If
+<code>allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value</code>
+is <code class='backtick'>false</code>
+and
+<code>allocator_traits&lt;Allocator&gt;::is_always_equal::value</code>
+is <code class='backtick'>false</code>,
+</ins>
+<code>is_<del>copy</del><ins>move</ins>_constructible_t&lt;T&gt;</code> is <code class='backtick'>true</code>.
+</p>
+<p>
+-6- <i>Effects</i>:
+If <code class='backtick'>addressof(other) == this</code> is <code class='backtick'>true</code>, there are no effects.
+Otherwise:
+<ol style="list-style-type:none">
+<li>(6.1) &mdash;
+The allocator needs updating if
+<code>allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value</code>
+is <code class='backtick'>true</code>.
+</li>
+<li>(6.2) &mdash;
+If <code class='backtick'>other</code> is valueless, <code class='backtick'>*this</code> becomes valueless<del> and the owned object
+in <code class='backtick'>*this</code>, if any, is destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated</del>.
+</li>
+<li>(6.3) &mdash;
+Otherwise,
+<ins>if the allocator needs updating or</ins>
+if <code><i>alloc</i> == other.<i>alloc</i></code> is <code class='backtick'>true</code>,
+<del>
+swaps the owned objects in <code class='backtick'>*this</code> and <code class='backtick'>other</code>;
+the owned object in <code class='backtick'>other</code>, if any, is then destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated
+</del>
+<ins><code class='backtick'>*this</code> takes ownership of the owned object of <code class='backtick'>other</code></ins>.
+</li>
+<li>(6.4) &mdash;
+Otherwise, constructs a new owned object with the owned object of <code class='backtick'>other</code>
+as the argument as an rvalue, using <del>either</del> the allocator in <code class='backtick'>*this</code>
+<del>or the allocator in <code class='backtick'>other</code> if the allocator needs updating</del>.
+</li>
+<li>(6.5) &mdash;
+The previously owned object in <code class='backtick'>*this</code>, if any, is destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated.
+</li>
+<li>(6.6) &mdash;
+If the allocator needs updating,
+the allocator in <code class='backtick'>*this</code> is replaced with a copy of the allocator in <code class='backtick'>other</code>.
+</li>
+</ol>
+</p>
+<p>-7- <i>Postcondition</i>: <code class='backtick'>other</code> is valueless.</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify 20.4.2.5 <a href="https://wg21.link/polymorphic.assign">[polymorphic.assign]</a> as indicated:</p>
+<blockquote>
+<pre><code>
+constexpr polymorphic&amp; operator=(polymorphic&amp;&amp; other)
+  noexcept(allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value ||
+           allocator_traits&lt;Allocator&gt;::is_always_equal::value);
+</code></pre>
+<blockquote>
+<p>
+-5- <i>Mandates</i>:
+If
+<ins>
+<code>allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value</code>
+is <code class='backtick'>false</code>
+and
+</ins>
+<code>allocator_traits&lt;Allocator&gt;::is_always_equal::value</code>
+is <code class='backtick'>false</code>,
+<code class='backtick'>T</code> is complete type.
+</p>
+<p>
+-6- <i>Effects</i>:
+If <code class='backtick'>addressof(other) == this</code> is <code class='backtick'>true</code>, there are no effects.
+Otherwise:
+<ol style="list-style-type:none">
+<li>(6.1) &mdash;
+The allocator needs updating if
+<code>allocator_traits&lt;Allocator&gt;::propagate_on_container_move_assignment::value</code>
+is <code class='backtick'>true</code>.
+</li>
+<li><ins>(6.?) &mdash; If <code class='backtick'>other</code> is valueless, <code class='backtick'>*this</code> becomes valueless.</ins></li>
+<li>(6.2) &mdash;
+<ins>Otherwise, if the allocator needs updating or</ins><del>If</del>
+<code><i>alloc</i> == other.<i>alloc</i></code> is <code class='backtick'>true</code>,
+<del>
+swaps the owned objects in <code class='backtick'>*this</code> and <code class='backtick'>other</code>;
+the owned object in <code class='backtick'>other</code>, if any, is then destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated
+</del>
+<ins><code class='backtick'>*this</code> takes ownership of the owned object of <code class='backtick'>other</code></ins>.
+</li>
+<li>(6.3) &mdash;
+<del>Otherwise, if <code class='backtick'>alloc != other.alloc</code> is <code class='backtick'>true</code>; if <code class='backtick'>other</code> is not valueless, 
+a new owned object is constructed in <code class='backtick'>*this</code> using <code>allocator_traits::construct</code>
+with the owned object from</del>
+<ins>Otherwise, constructs a new owned object with the owned object of</ins>
+<code class='backtick'>other</code> as the argument as an rvalue, using <del>either</del> the allocator in <code class='backtick'>*this</code>
+<del>or the allocator in <code class='backtick'>other</code> if the allocator needs updating</del>.
+</li>
+<li>(6.4) &mdash;
+The previously owned object in <code class='backtick'>*this</code>, if any, is destroyed using
+<code>allocator_traits&lt;Allocator&gt;::destroy</code>
+and then the storage is deallocated.
+</li>
+<li>(6.5) &mdash;
+If the allocator needs updating,
+the allocator in <code class='backtick'>*this</code> is replaced with a copy of the allocator in <code class='backtick'>other</code>.
+</li>
+</ol>
+</p>
+[&hellip;]
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+<hr>
+<h3 id="4304"><a href="#4304">4304</a><sup><a href="https://cplusplus.github.io/LWG/issue4304">(i)</a></sup>. <code>std::optional&lt;<i>NonReturnable</i>&amp;&gt;</code> is ill-formed due to <code class='backtick'>value_or</code></h3>
+<p><b>Section:</b> 22.5.4.6 <a href="https://wg21.link/optional.ref.observe">[optional.ref.observe]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Jiang An <b>Opened:</b> 2025-07-25 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<p>
+Currently, if <code class='backtick'>T</code> is an array type or a function type, instantiation of <code>std::optional&lt;T&amp;&gt;</code> 
+is still ill-formed, because the return type of its <code class='backtick'>value_or</code> member function is specified as 
+<code>remove_cv_t&lt;T&gt;</code>, which is invalid as a return type.
+<p/>
+However, we don't exclude such <code>T&amp;</code> from valid contained types. Given only <code class='backtick'>value_or</code> is 
+problematic here, perhaps we can avoid providing it if <code class='backtick'>T</code> is not returnable.
+</p>
+
+<p><i>[2025-10-16; Reflector poll]</i></p>
+
+<p>
+Set priority to 1 after reflector poll.
+</p>
+<p>
+Why not just add <i>Constraints</i>: and use <code>decay_t&lt;T&gt;</code>
+for the return type, instead of "not always present" which is currently
+only used for member types, not member functions.
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 22.5.4.1 <a href="https://wg21.link/optional.optional.ref.general">[optional.optional.ref.general]</a>, header <code>&lt;iterator&gt;</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt;
+  class optional&lt;T&amp;&gt; {
+    [&hellip;]
+    constexpr T&amp; value() const; // freestanding-deleted
+    template&lt;class U = remove_cv_t&lt;T&gt;&gt;
+      constexpr remove_cv_t&lt;T&gt; value_or(U&amp;&amp; u) const; <ins>// <i>not always present</i></ins>
+    [&hellip;]
+  };
+}
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify 22.5.4.6 <a href="https://wg21.link/optional.ref.observe">[optional.ref.observe]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class U = remove_cv_t&lt;T&gt;&gt; constexpr remove_cv_t&lt;T&gt; value_or(U&amp;&amp; u) const;
+</pre>
+<blockquote>
+<p>
+-8- Let <code class='backtick'>X</code> be <code>remove_cv_t&lt;T&gt;</code>.
+<p/>
+-9- <i>Mandates</i>: <code>is_constructible_v&lt;X, T&amp;&gt; &amp;&amp; is_convertible_v&lt;U, X&gt;</code> is <code class='backtick'>true</code>.
+<p/>
+-10- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+return has_value() ? *<i>val</i> : static_cast&lt;X&gt;(std::forward&lt;U&gt;(u));
+</pre></blockquote>
+<p>
+<ins>-?- <i>Remarks</i>: This function template is present if and only if <code class='backtick'>T</code> is a non-array object type.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2025-10-16; Jonathan provides new wording]</i></p>
+
+
+
+<p><i>[Kona 2025-11-03; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4304"><b>Proposed resolution:</b></p>
+
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 22.5.4.6 <a href="https://wg21.link/optional.ref.observe">[optional.ref.observe]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class U = remove_cv_t&lt;T&gt;&gt; constexpr remove_cv_t&lt;T&gt; value_or(U&amp;&amp; u) const;
+</pre>
+<blockquote>
+<p>
+<ins>
+-?- <i>Constraints</i>:
+<code class='backtick'>T</code> is a non-array object type.
+</ins>
+</p>
+<p>
+-8- Let <code class='backtick'>X</code> be <code>remove_cv_t&lt;T&gt;</code>.
+<p/>
+-9- <i>Mandates</i>: <code>is_constructible_v&lt;X, T&amp;&gt; &amp;&amp; is_convertible_v&lt;U, X&gt;</code> is <code class='backtick'>true</code>.
+<p/>
+-10- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+return has_value() ? *<i>val</i> : static_cast&lt;X&gt;(std::forward&lt;U&gt;(u));
+</pre></blockquote>
+<p>
+<ins>
+-?- <i>Remarks</i>:
+The return type is unspecified if <code class='backtick'>T</code> is an array type or a non-object type.
+[<i>Note ?</i>: This is to avoid the declaration being ill-formed.
+<i>&mdash; end note</i>]
+</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3 id="4376"><a href="#4376">4376</a><sup><a href="https://cplusplus.github.io/LWG/issue4376">(i)</a></sup>. ABI tag in return type of [simd.mask.unary] is overconstrained</h3>
+<p><b>Section:</b> 29.10.9.4 <a href="https://wg21.link/simd.mask.unary">[simd.mask.unary]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Matthias Kretz <b>Opened:</b> 2025-09-15 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#simd.mask.unary">active issues</a> in [simd.mask.unary].</p>
+<p><b>View all other</b> <a href="lwg-index.html#simd.mask.unary">issues</a> in [simd.mask.unary].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/873">DE 298</a></b>
+<p>
+29.10.9.4 <a href="https://wg21.link/simd.mask.unary">[simd.mask.unary]</a> spells out the return type with the ABI tag of 
+the <code class='backtick'>basic_mask</code> specialization. That's problematic / overconstrained.
+</p>
+<ol>
+<li><p>Consider Intel SandyBridge/IvyBridge-like targets:
+</p>
+<blockquote><pre>
+vec&lt;float&gt;::size() -&gt; 8
+vec&lt;int&gt;::size() -&gt; 4
+mask&lt;float&gt;::size() -&gt; 8
+</pre></blockquote>
+<p>
+The ABI tag in this case encodes for <code>vec&lt;float&gt;</code> that one object holds 8
+elements and is passed via <em>one</em> register. <code>vec&lt;int&gt;</code> uses a 
+different ABI tag that says 4 elements passed via <em>one</em> register. 
+<code>vec&lt;int, 8&gt;</code>'s ABI tag says 8 elements passed via <em>two</em> registers.
+<p/>
+Now what should <code>+mask&lt;float&gt;()</code> return? The working draft says it must 
+return a <code>basic_vec&lt;int, mask&lt;float&gt;::abi_type&gt;</code>. And 
+<code>mask&lt;float&gt;::abi_type</code> is constrained to be the same as 
+<code>vec&lt;float&gt;::abi_type</code>. The working draft thus makes it
+impossible to implement ABI tags that encode number of elements + number of
+registers (+ bit-masks vs. vector-masks, but that's irrelevant for this
+issue). Instead, an ABI tag would have to encode the native SIMD width of all
+vectorizable types. And that's unnecessarily making compatible types
+incompatible. Also we make it harder to add to the set of vectorizable types
+in the future.</p></li>
+<li><p>The issue is even worse for an implementation that implements
+<code>vec&lt;complex&lt;T&gt;&gt;</code> using different ABI tags. Encoding 
+whether the value-type is complex into the ABI is useful because it impacts 
+how the mask is stored (<code>mask&lt;complex&lt;float&gt;, 8&gt;</code> is 
+internally stored as a 16-element bit-mask (for interleaved <code class='backtick'>complex</code>), while 
+<code>mask&lt;double, 8&gt;</code> is stored as an 8-element bit-mask). The ABI 
+tag can also be used to implement interleaved vs. contiguous storage, which 
+is useful for different architectures. If we require 
+<code>+mask&lt;complex&lt;float&gt;&gt;()</code> to be of a different type than 
+any <code>vec&lt;long long&gt;</code> would ever be, that's just brittle and 
+unnecessary template bloat.</p></li>
+</ol>
+
+<p><i>[2025-10-17; Reflector poll.]</i></p>
+
+<p>
+Set priority to 1 after reflector poll.
+</p>
+<p>
+"Should be addressed together with <a href="lwg-active.html#4238" title="simd_mask&lt;complex&lt;double&gt;&gt;::operator+/-/~ return a disabled simd specialization (Status: New)">4238</a><sup><a href="https://cplusplus.github.io/LWG/issue4238" title="Latest snapshot">(i)</a></sup>."
+</p>
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> LWG <a href="lwg-active.html#4238" title="simd_mask&lt;complex&lt;double&gt;&gt;::operator+/-/~ return a disabled simd specialization (Status: New)">4238</a><sup><a href="https://cplusplus.github.io/LWG/issue4238" title="Latest snapshot">(i)</a></sup> is closely related.]
+</p>
+</blockquote>
+
+<ol>
+
+<li><p>Modify 29.10.2 <a href="https://wg21.link/simd.expos">[simd.expos]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+using <i>simd-size-type</i> = <i>see below</i>;                      // <i>exposition only</i>
+template&lt;size_t Bytes&gt; using <i>integer-from</i> = <i>see below</i>; // <i>exposition only</i>
+
+template&lt;class T, class Abi&gt;
+  constexpr <i>simd-size-type</i> <i>simd-size-v</i> = <i>see below</i>;               // <i>exposition only</i>
+template&lt;class T&gt; constexpr size_t <i>mask-element-size</i> = <i>see below</i>; // <i>exposition only</i>
+
+<ins>template &lt;size_t Bytes, class Abi&gt;
+  using <i>simd-vec-from-mask-t</i> = <i>see below</i>;                         // <i>exposition only</i></ins>
+[&hellip;]
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 29.10.2.1 <a href="https://wg21.link/simd.expos.defn">[simd.expos.defn]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class T&gt; constexpr size_t <i>mask-element-size</i> = <i>see below</i>; // <i>exposition only</i>
+</pre>
+<blockquote>
+<p>
+-4- <code><i>mask-element-size</i>&lt;basic_mask&lt;Bytes, Abi&gt;&gt;</code> has the value <code class='backtick'>Bytes</code>.
+</p>
+</blockquote>
+<pre>
+<ins>template &lt;size_t Bytes, class Abi&gt;
+  using <i>simd-vec-from-mask-t</i> = <i>see below</i>;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <code><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</code> is an alias for an enabled 
+specialization of <code class='backtick'>basic_vec</code> if and only if <code>basic_mask&lt;Bytes, Abi&gt;</code> is a 
+data-parallel type and <code><i>integer-from</i>&lt;Bytes&gt;</code> is valid and a vectorizable type.</ins>
+<p/>
+<ins>-?- <code><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;::size() == basic_mask&lt;Bytes, Abi&gt;::size()</code>
+is <code class='backtick'>true</code>.</ins>
+<p/>
+<ins>-?- <code>typename <i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;::value_type</code> is 
+<code><i>integer-from</i>&lt;Bytes&gt;</code></ins>
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+<li><p>Modify 29.10.9.1 <a href="https://wg21.link/simd.mask.overview">[simd.mask.overview]</a>, class template <code class='backtick'>basic_mask overview</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::simd {
+  template&lt;size_t Bytes, class Abi&gt; class basic_mask {
+  public:
+    [&hellip;]
+    // <i>29.10.9.4 <a href="https://wg21.link/simd.mask.unary">[simd.mask.unary]</a>, basic_mask unary operators</i>
+    constexpr basic_mask operator!() const noexcept;
+    constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</ins> operator+() const noexcept;
+    constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</ins> operator-() const noexcept;
+    constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</ins> operator~() const noexcept;    
+    [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 29.10.9.4 <a href="https://wg21.link/simd.mask.unary">[simd.mask.unary]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr basic_mask operator!() const noexcept;
+constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</ins> operator+() const noexcept;
+constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</ins> operator-() const noexcept;
+constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>simd-vec-from-mask-t</i>&lt;Bytes, Abi&gt;</ins> operator~() const noexcept;    
+</pre>
+<blockquote>
+<p>
+-1- Let <code><i>op</i></code> be the operator.
+<p/>
+-2- <i>Returns</i>: [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol></blockquote>
+
+<p><i>[2025-11-04; Matthias Kretz provides new wording]</i></p>
+
+<p>
+This also resolves <a href="lwg-active.html#4238" title="simd_mask&lt;complex&lt;double&gt;&gt;::operator+/-/~ return a disabled simd specialization (Status: New)">4238</a><sup><a href="https://cplusplus.github.io/LWG/issue4238" title="Latest snapshot">(i)</a></sup> and addresses 
+<a href="https://github.com/cplusplus/nbballot/issues/872">DE 297</a>.
+</p>
+
+<p><i>[Kona 2025-11-04; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4376"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 29.10.9.1 <a href="https://wg21.link/simd.mask.overview">[simd.mask.overview]</a>, class template <code class='backtick'>basic_mask overview</code> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std::simd {
+  template&lt;size_t Bytes, class Abi&gt; class basic_mask {
+  public:
+    [&hellip;]
+    // <i>29.10.9.4 <a href="https://wg21.link/simd.mask.unary">[simd.mask.unary]</a>, basic_mask unary operators</i>
+    constexpr basic_mask operator!() const noexcept;
+    constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>see below</i></ins> operator+() const noexcept;
+    constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>see below</i></ins> operator-() const noexcept;
+    constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>see below</i></ins> operator~() const noexcept;
+    [&hellip;]
+}
+</pre>
+</blockquote>
+
+</li>
+
+<li><p>Modify 29.10.9.4 <a href="https://wg21.link/simd.mask.unary">[simd.mask.unary]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr basic_mask operator!() const noexcept;
+constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>see below</i></ins> operator+() const noexcept;
+constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>see below</i></ins> operator-() const noexcept;
+constexpr <del>basic_vec&lt;<i>integer-from</i>&lt;Bytes&gt;, Abi&gt;</del><ins><i>see below</i></ins> operator~() const noexcept;
+</pre>
+<blockquote>
+<p>
+-1- Let <code><i>op</i></code> be the operator.
+<p/>
+-2- <i>Returns</i>: A data-parallel object where the <i>i</i>-th element is initialized to the
+results of applying <code><i>op</i></code> to <code>operator[](<i>i</i>)</code> for all <i>i</i> in the
+range of [0, <code>size()</code>).
+<p/>
+<ins>-?- <i>Remarks</i>: If there exists a vectorizable signed integer type <code>I</code> such that
+<code>sizeof(I) == Bytes</code> is <code class='backtick'>true</code>, <code>operator+</code>, <code>operator-</code>, and <code>operator~</code>
+return an enabled specialization <code>R</code> of <code>basic_vec</code> such that <code>R::value_type</code>
+denotes <code><i>integer-from</i>&lt;Bytes&gt;</code> and <code>R::size() == size()</code> is <code>true</code>.
+Otherwise, these operators are defined as deleted and their return types are unspecified.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3 id="4424"><a href="#4424">4424</a><sup><a href="https://cplusplus.github.io/LWG/issue4424">(i)</a></sup>. <code class='backtick'>meta::define_aggregate</code> should require a class type</h3>
+<p><b>Section:</b> 21.4.16 <a href="https://wg21.link/meta.reflection.define.aggregate">[meta.reflection.define.aggregate]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Jakub Jelinek <b>Opened:</b> 2025-10-20 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>1
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.reflection.define.aggregate">active issues</a> in [meta.reflection.define.aggregate].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.reflection.define.aggregate">issues</a> in [meta.reflection.define.aggregate].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/757">US 125-188</a></b>
+<p>
+The <code class='backtick'>meta::define_aggregate</code> function doesn't say what happens if <i>C</i>
+does not represent a class type.
+</p>
+<p>It's also unclear whether it should work
+with aliases to class types, e.g.
+<pre>struct S; using A = S; ... meta::define_aggregate(^^A, {});</pre>
+</p>
+<p>
+And what happens if you try to define a cv-qualified type:
+<pre>struct S; meta::define_aggregate(^^const S, {});</pre>
+Should this be an error, or inject a definition of the unqualified type?
+</p>
+
+<p><i>[2025-10-23; Reflector poll.]</i></p>
+
+<p>
+Set priority to 1 after reflector poll.
+</p>
+
+<p><i>[Kona 2025-11-03; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+<p><strong>Previous resolution [SUPERSEDED]:</strong></p>
+<blockquote class="note">
+
+	
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 21.4.16 <a href="https://wg21.link/meta.reflection.define.aggregate">[meta.reflection.define.aggregate]</a> as indicated:</p>
+
+<blockquote>
+<p>-7-
+Let <i>C</i> be the class represented by 
+<code><ins>dealias(</ins>class_type<ins>)</ins></code>
+and <i>r<sub>K</sub></i> be the <i>K</i><sup>th</sup> reflection value
+in <code class='backtick'>mdescrs</code>.
+For every <i>r<sub>K</sub></i> in <code class='backtick'>mdescrs</code>,
+let (<i>T<sub>K</sub></i>, <i>N<sub>K</sub></i>, <i>A<sub>K</sub></i>,
+<i>W<sub>K</sub></i>, <i>NUA<sub>K</sub></i>)
+be the corresponding data member description represented by
+<i>r<sub>K</sub></i>.
+</p>
+<p>-8- <i>Constant when</i>:
+<ul style="list-style-type: none">
+<li><ins>(8.?) &mdash;
+<code class='backtick'>dealias(class_type)</code> represents a class type;
+</ins>
+</li>
+<li>(8.1) &mdash;
+<i>C</i> is incomplete from every point in the evaluation context;
+</li>
+</ul>
+</p>
+</blockquote>
+</li>
+</ol>
+</blockquote>
+
+<p><i>[2025-10-24; LWG telecon. Jonathan updates wording]</i></p>
+
+<p>Make a minimal change for now, can add support for aliases later.</p>
+
+
+
+<p id="res-4424"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 21.4.16 <a href="https://wg21.link/meta.reflection.define.aggregate">[meta.reflection.define.aggregate]</a> as indicated:</p>
+
+<blockquote>
+<p>-7-
+Let <i>C</i> be the <del>class</del> <ins>type</ins> represented by
+<code>class_type</code>
+and <i>r<sub>K</sub></i> be the <i>K</i><sup>th</sup> reflection value
+in <code class='backtick'>mdescrs</code>.
+For every <i>r<sub>K</sub></i> in <code class='backtick'>mdescrs</code>,
+let (<i>T<sub>K</sub></i>, <i>N<sub>K</sub></i>, <i>A<sub>K</sub></i>,
+<i>W<sub>K</sub></i>, <i>NUA<sub>K</sub></i>)
+be the corresponding data member description represented by
+<i>r<sub>K</sub></i>.
+</p>
+<p>-8- <i>Constant when</i>:
+<ul style="list-style-type: none">
+<li><ins>(8.?) &mdash;
+<code class='backtick'>class_type</code> represents a cv-unqualified class type;
+</ins>
+</li>
+<li>(8.1) &mdash;
+<i>C</i> is incomplete from every point in the evaluation context;
+</li>
+</ul>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+<hr>
+<h3 id="4427"><a href="#4427">4427</a><sup><a href="https://cplusplus.github.io/LWG/issue4427">(i)</a></sup>. <code class='backtick'>meta::dealias</code> needs to work with things that aren't entities</h3>
+<p><b>Section:</b> 21.4.7 <a href="https://wg21.link/meta.reflection.queries">[meta.reflection.queries]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Jonathan Wakely <b>Opened:</b> 2025-10-24 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#meta.reflection.queries">active issues</a> in [meta.reflection.queries].</p>
+<p><b>View all other</b> <a href="lwg-index.html#meta.reflection.queries">issues</a> in [meta.reflection.queries].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses US 99-205</b>
+<p>
+Several uses of <code class='backtick'>dealias</code> assume that it can be used with reflections that
+represent direct base class relationships, which are not entities.
+The spec for <code class='backtick'>dealias</code> says that such uses should fail with an exception.
+</p>
+<p>
+In the 2025-10-24 LWG telecon it was agreed that <code class='backtick'>dealias</code> should just
+be the identity function for non-entities.
+</p>
+
+<p><i>[Kona 2025-11-03; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4427"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 21.4.7 <a href="https://wg21.link/meta.reflection.queries">[meta.reflection.queries]</a> as indicated:</p>
+
+<blockquote>
+<pre>consteval info dealias(info r);</pre>
+<blockquote>
+<p>-49- <i>Returns</i>:
+<ins>If <code class='backtick'>r</code> represents an entity, then a</ins>
+<del>A</del>
+reflection representing the underlying entity of what <code class='backtick'>r</code> represents.
+<ins>Otherwise, <code class='backtick'>r</code>.</ins>
+</p>
+<p>[<i>Example 5</i>: <br/>
+... <br/>
+<i>&mdash; end example</i>]
+</p>
+<p><del>-50- <i>Throws</i>:
+<code class='backtick'>meta::exception</code> unless <code class='backtick'>r</code> represents an entity.
+</del>
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3 id="4429"><a href="#4429">4429</a><sup><a href="https://cplusplus.github.io/LWG/issue4429">(i)</a></sup>. <code>meta::alignment_of</code> should exclude data member description of bit-field</h3>
+<p><b>Section:</b> 21.4.11 <a href="https://wg21.link/meta.reflection.layout">[meta.reflection.layout]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Tomasz Kamiński <b>Opened:</b> 2025-10-24 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/988">US 109-170</a></b>
+<p>
+21.4.11 <a href="https://wg21.link/meta.reflection.layout">[meta.reflection.layout]</a> p#8
+This should similarly disallow data member descriptions of bit-fields.
+</p>
+<p><i>[Kona 2025-11-03; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4429"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 21.4.11 <a href="https://wg21.link/meta.reflection.layout">[meta.reflection.layout]</a> as indicated:</p>
+
+<pre>
+consteval size_t alignment_of(info r);	
+</pre>
+<blockquote>
+<p>-7- <i>Returns</i>: [&hellip;]
+</p>
+<p>-8- <i>Throws</i>: <code class='backtick'>meta::exception</code> unless all of the following conditions are met:
+<ul style="list-style-type: none">
+<li>(8.1) &mdash;
+<code class='backtick'>dealias(r)</code> is a reflection of a type, object, variable of non-reference type,
+non-static data member that is not a bit-field, direct base class relationship,
+or data member description <ins><i>(T,N,A,W,NUA)</i> (11.4.1 <a href="https://wg21.link/class.mem.general">[class.mem.general]</a>)
+where <i>W</i> is ⊥.</ins>.
+</li>
+<li>(8.2) &mdash;
+If <code class='backtick'>dealias(r)</code> represents a type, then <code class='backtick'>is_complete_type(r)</code> is true.
+</li>
+</ul>
+</p>
+</blockquote>
+</li>
+</ol>
+
+
+
+
+
+
+<hr>
+<h3 id="4440"><a href="#4440">4440</a><sup><a href="https://cplusplus.github.io/LWG/issue4440">(i)</a></sup>. Forward declarations of entities need also in entries</h3>
+<p><b>Section:</b> 17.3.2 <a href="https://wg21.link/version.syn">[version.syn]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Tomasz Kamiński <b>Opened:</b> 2025-11-03 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View other</b> <a href="lwg-index-open.html#version.syn">active issues</a> in [version.syn].</p>
+<p><b>View all other</b> <a href="lwg-index.html#version.syn">issues</a> in [version.syn].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses US 65-116</b>
+<p>
+There are forward declarations of entities from <code>&lt;spanstream&gt;</code> and
+<code>&lt;syncstream&gt;</code> in <code>&lt;iosfwd&gt;</code> so their feature macros
+should be added to that header too. Proposed change: Add <code>&lt;iosfwd&gt;</code>
+to the "also in" entries for <code class='backtick'>__cpp_lib_char8_t</code>, <code class='backtick'>__cpp_lib_spanstream</code>, and
+<code class='backtick'>__cpp_lib_syncbuf</code>.
+</p>
+
+<p><i>[Kona 2025-11-04; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4440"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 17.3.2 <a href="https://wg21.link/version.syn">[version.syn]</a> as indicated:</p>
+
+<blockquote>
+<pre>
+#define __cpp_lib_char8_t                           201907L
+  // freestanding, also in &lt;atomic&gt;, &lt;filesystem&gt;, <ins>&lt;iosfwd&gt;,</ins> &lt;istream&gt;, &lt;limits&gt;, &lt;locale&gt;, &lt;ostream&gt;, &lt;string&gt;,
+  // &lt;string_view&gt;
+[&hellip;]
+#define __cpp_lib_spanstream                        202106L // also in <ins>&lt;iosfwd&gt;,</ins> &lt;spanstream&gt;
+[&hellip;]
+#define __cpp_lib_syncbuf                           201803L // also in <ins>&lt;iosfwd&gt;,</ins> &lt;syncstream&gt;
+</pre>
+</blockquote>
+</li>
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3 id="4441"><a href="#4441">4441</a><sup><a href="https://cplusplus.github.io/LWG/issue4441">(i)</a></sup>. <code>ranges::rotate</code> do not handle sized-but-not-sized-sentinel ranges correctly</h3>
+<p><b>Section:</b> 26.7.11 <a href="https://wg21.link/alg.rotate">[alg.rotate]</a>, 26.8.2.3 <a href="https://wg21.link/partial.sort">[partial.sort]</a>, 26.8.3 <a href="https://wg21.link/alg.nth.element">[alg.nth.element]</a>, 26.8.6 <a href="https://wg21.link/alg.merge">[alg.merge]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Tomasz Kamiński <b>Opened:</b> 2025-11-03 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all other</b> <a href="lwg-index.html#alg.rotate">issues</a> in [alg.rotate].</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses US 161-258</b>
+<p>These do not handle sized-but-not-sized-sentinel ranges correctly.</p>
+
+<p><i>[Kona 2025-11-03; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4441"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 26.7.11 <a href="https://wg21.link/alg.rotate">[alg.rotate]</a> as indicated:</p>
+
+<pre>
+template&lt;execution-policy Ep, <i>sized-random-access-range</i> R&gt;
+  requires permutable&lt;iterator_t&lt;R&gt;&gt;
+  borrowed_subrange_t&lt;R&gt; ranges::rotate(Ep&amp;&amp; exec, R&amp;&amp; r, iterator_t&lt;R&gt; middle);
+
+</pre>
+<blockquote>
+<p>-6- <i>Effects</i> Equivalent to:
+<code>return ranges::rotate(std::forward&lt;Ep&gt;(exec), ranges::begin(r), middle,
+<del>ranges::end(r)</del><ins>ranges::begin(r) + ranges::distance(r)</ins>);</code>
+</p>
+</blockquote>
+
+[&hellip;]
+
+<pre>
+template&lt;execution-policy Ep, <i>sized-random-access-range</i> R, <i>sized-random-access-range</i> OutR&gt;
+  requires indirectly_copyable&lt;iterator_t&lt;R&gt;, iterator_t&lt;OutR&gt;&gt;
+  ranges::rotate_copy_truncated_result&lt;borrowed_iterator_t&lt;R&gt;, borrowed_iterator_t&lt;OutR&gt;&gt;
+	  ranges::rotate_copy(Ep&amp;&amp; exec, R&amp;&amp; r, iterator_t&lt;R&gt; middle, OutR&amp;&amp; result_r);
+</pre>
+<blockquote>
+<p>-18- <i>Effects</i> Equivalent to:
+<code>return ranges::rotate(std::forward&lt;Ep&gt;(exec), ranges::begin(r), middle,
+<del>ranges::end(r)</del><ins>ranges::begin(r) + ranges::distance(r)</ins>,
+ranges::begin(result_r), <del>ranges::end(result_r)</del><ins>ranges::begin(result_r) + ranges::distance(result_r)</ins>);</code>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify 26.8.2.3 <a href="https://wg21.link/partial.sort">[partial.sort]</a> as indicated:</p>
+
+<pre>
+template&lt;execution-policy Ep, <i>sized-random-access-range</i> R,
+         class Comp = ranges::less, class Proj = identity&gt;
+  requires sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+  borrowed_iterator_t&lt;R&gt;
+    ranges::partial_sort(Ep&amp;&amp; exec, R&amp;&amp; r, iterator_t&lt;R&gt; middle, Comp comp = {},
+                         Proj proj = {});
+</pre>
+<blockquote>
+<p>-7- <i>Effects</i> Equivalent to:
+<code>return ranges::partial_sort(std::forward&lt;Ep&gt;(exec), ranges::begin(r), middle,
+<del>ranges::end(r)</del><ins>ranges::begin(r) + ranges::distance(r)</ins>, comp, proj);</code>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify 26.8.3 <a href="https://wg21.link/alg.nth.element">[alg.nth.element]</a> as indicated:</p>
+
+<pre>
+template&lt;execution-policy Ep, <i>sized-random-access-range</i> R, class Comp = ranges::less,
+         class Proj = identity&gt;
+  requires sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+  borrowed_iterator_t&lt;R&gt;
+    ranges::nth_element(Ep&amp;&amp; exec, R&amp;&amp; r, iterator_t&lt;R&gt; nth, Comp comp = {}, Proj proj = {});
+</pre>
+<blockquote>
+<p>-7- <i>Effects</i> Equivalent to:
+<code>return ranges::nth_element(std::forward&lt;Ep&gt;(exec), ranges::begin(r), nth,
+<del>ranges::end(r)</del><ins>ranges::begin(r) + ranges::distance(r)</ins>, comp, proj);</code>
+</p>
+</blockquote>
+
+</li>
+
+<li><p>Modify 26.8.6 <a href="https://wg21.link/alg.merge">[alg.merge]</a> as indicated:</p>
+
+<pre>
+template&lt;execution-policy Ep, <i>sized-random-access-range</i> R, class Comp = ranges::less,
+         class Proj = identity&gt;
+  requires sortable&lt;iterator_t&lt;R&gt;, Comp, Proj&gt;
+  borrowed_iterator_t&lt;R&gt;
+    ranges::inplace_merge(Ep&amp;&amp; exec, R&amp;&amp; r, iterator_t&lt;R&gt; middle, Comp comp = {},
+                          Proj proj = {});
+</pre>
+<blockquote>
+<p>-14- <i>Effects</i> Equivalent to:
+<code>return ranges::inplace_merge(std::forward&lt;Ep&gt;(exec), ranges::begin(r), middle,
+<del>ranges::end(r)</del><ins>ranges::begin(r) + ranges::distance(r)</ins>, comp, proj);</code>
+</p>
+</blockquote>
+
+</li>
+
+
+</ol>
+
+
+
+
+
+
+<hr>
+<h3 id="4442"><a href="#4442">4442</a><sup><a href="https://cplusplus.github.io/LWG/issue4442">(i)</a></sup>. Clarify <code class='backtick'>expr</code> and <code class='backtick'>fn</code> for <code class='backtick'>meta::reflect_object</code> and <code class='backtick'>meta::reflect_function</code></h3>
+<p><b>Section:</b> 21.4.14 <a href="https://wg21.link/meta.reflection.result">[meta.reflection.result]</a> <b>Status:</b> <a href="lwg-active.html#Immediate">Immediate</a>
+ <b>Submitter:</b> Tomasz Kamiński <b>Opened:</b> 2025-11-04 <b>Last modified:</b> 2025-11-04</p>
+<p><b>Priority: </b>Not Prioritized
+</p>
+<p><b>View all issues with</b> <a href="lwg-status.html#Immediate">Immediate</a> status.</p>
+<p><b>Discussion:</b></p>
+<b>Addresses <a href="https://github.com/cplusplus/nbballot/issues/748">US 118-179</a></b>
+<p>This should talk about the object/function designated by <code class='backtick'>expr</code>/<code class='backtick'>fn</code>, rather than <code class='backtick'>expr</code>/<code class='backtick'>fn</code>.</p>
+
+<p><i>[Kona 2025-11-04; approved by LWG. Status changed: New &rarr; Immediate.]</i></p>
+
+
+
+<p id="res-4442"><b>Proposed resolution:</b></p>
+<p>
+This wording is relative to <a href="https://wg21.link/N5014">N5014</a>.
+</p>
+
+<ol>
+
+<li><p>Modify 21.4.14 <a href="https://wg21.link/meta.reflection.result">[meta.reflection.result]</a> as indicated:</p>
+
+<pre>
+template&lt;class T&gt;
+  consteval info reflect_object(T&amp; expr);
+</pre>
+<blockquote>
+<p>-7- <i>Mandates</i>: <code class='backtick'>T</code> is an object type.</p>
+<p>-8- <i>Returns</i>: A reflection of the object designated by <code class='backtick'>expr</code>.</p>
+<p>-9- <i>Throws</i>: <code class='backtick'>meta::exception</code>
+<del>unless <code class='backtick'>expr</code> is</del>
+<ins>if <code class='backtick'>E</code> is not</ins>
+suitable for use as a constant template argument
+for a constant template parameter of type <code>T&amp;</code> (13.4.3 <a href="https://wg21.link/temp.arg.nontype">[temp.arg.nontype]</a>)
+<ins>, where <code class='backtick'>E</code> is an lvalue constant expression that computes the object that <code class='backtick'>expr</code> refers to</ins>.</p>
+</blockquote>
+
+<pre>
+template&lt;class T&gt;
+  consteval info reflect_function(T&amp; fn);
+</pre>
+<blockquote>
+<p>-10- <i>Mandates</i>: <code class='backtick'>T</code> is an function type.</p>
+<p>-11- <i>Returns</i>: A reflection of the function designated by <code class='backtick'>fn</code>.</p>
+<p>-12- <i>Throws</i>: <code class='backtick'>meta::exception</code>
+<del>unless <code class='backtick'>fn</code> is</del>
+<ins>if <code class='backtick'>F</code> is not</ins>
+suitable for use as a constant template argument
+for a constant template parameter of type <code>T&amp;</code> (13.4.3 <a href="https://wg21.link/temp.arg.nontype">[temp.arg.nontype]</a>)
+<ins>, where <code class='backtick'>F</code> is an lvalue constant expression that computes the function that <code class='backtick'>fn</code> refers to</ins>.</p>
+</blockquote>
+
+</li>
+
+</ol>
+
+
+
+
+
+
 </body>
 </html>
