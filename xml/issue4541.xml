@@ -1,0 +1,120 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4541" status="New">
+<title>Unclear behavior for parsing locale-dependent format</title>
+<section>
+<sref ref="[locale.time.get.virtuals]"/><sref ref="[time.parse]"/>
+</section>
+<submitter>S. B. Tam</submitter>
+<date>14 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Both `time_get::do_get` and `chrono::from_stream` can take format specifiers that
+depend on locale-specific information.
+<p/>
+For example, the `%c` specifier corresponds to "the locale's date and time representation."
+It is unclear how the locale's date and time format is determined for the purpose of parsing,
+and this format may vary among implementations. The format may also depend on the
+operating system, the C runtime, and the user's preference.
+<p/>
+In practice, locale-specific information is rarely used for parsing.
+If people want to get a time point from a string, they would require the string to be in
+a specific locale-independent format (e.g. `%F %T`).
+<p/>
+Nonetheless, since locale-dependent specifiers are permitted,
+I believe the standard should clarify what they mean.
+<p/>
+The proposed wording makes them implementation-defined,
+which matches `time_put::do_put` (<sref ref="[locale.time.put.virtuals]"/> p1)
+and also matches the proposed resolution of LWG <iref ref="4285"/>.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[locale.time.get.virtuals]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+iter_type do_get(iter_type s, iter_type end, ios_base&amp; f,
+                 ios_base::iostate&amp; err, tm* t, char format, char modifier) const;
+</pre>
+<blockquote>
+<p>
+-11- <i>Preconditions</i>: `t` points to an object.
+<p/>
+-12- <i>Effects</i>: The function starts by evaluating `err = ios_base::goodbit`. 
+It then reads characters starting at `s` until it encounters an error, or until 
+it has extracted and assigned those `tm` members, and any remaining format characters, 
+corresponding to a conversion specification appropriate for the POSIX function 
+`strptime`, formed by concatenating `'%'`, the modifier character, when non-NUL, 
+and the `format` character<ins>, except that the sequence of characters extracted 
+for those specifiers that are described as depending on the C locale are instead 
+implementation-defined</ins>. When the concatenation fails to yield a complete 
+valid directive the function leaves the object pointed to by `t` unchanged and 
+evaluates `err |= ios_base::failbit`. When `s == end` evaluates to `true` after 
+reading a character the function evaluates `err |= ios_base::eofbit`.
+<p/>
+-13- For complex conversion specifications such as `%c`, `%x`, or `%X`, or 
+conversion specifications that involve the optional modifiers `E` or `O`, when 
+the function is unable to unambiguously determine some or all `tm` members from 
+the input sequence `[s, end)`, it evaluates `err |= ios_base::eofbit`. In such cases 
+the values of those `tm` members are unspecified and may be outside their valid range.
+<p/>
+-14- <i>Returns</i>: An iterator pointing immediately beyond the last character 
+recognized as possibly part of a valid input sequence for the given `format` and 
+`modifier`.
+<p/>
+-15- <i>Remarks</i>: It is unspecified whether multiple calls to `do_get()` with 
+the address of the same `tm` object will update the current contents of the object 
+or simply overwrite its members. Portable programs should zero out the object before 
+invoking the function.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+
+<li><p>Modify <sref ref="[time.parse]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Each `parse` overload specified in this subclause calls `from_stream` unqualified, 
+so as to enable argument-dependent lookup (<sref ref="[basic.lookup.argdep]"/>). In the 
+following paragraphs, let `is` denote an object of type <tt>basic_istream&lt;charT, traits&gt;</tt> 
+and let `I` be <tt>basic_istream&lt;charT, traits&gt;&amp;</tt>, where `charT` and 
+`traits` are template parameters in that context.
+<p/>
+-2- <i>Recommended practice</i>: Implementations should make it difficult to accidentally 
+store or use a manipulator that may contain a dangling reference to a format string, for 
+example by making the manipulators produced by parse immovable and preventing stream 
+extraction into an lvalue of such a manipulator type.
+<p/>
+[&hellip;]
+<p/>
+-17- If the `from_stream` overload fails to parse everything specified by the format string, 
+or if insufficient information is parsed to specify a complete duration, time point, or 
+calendrical data structure, `setstate(ios_base::failbit)` is called on the `basic_istream`.
+<p/>
+<ins>-?- The sequence of characters extracted for those specifiers that are described as 
+depending on a locale are implementation-defined.</ins>
+<p/>
+<b>Table 134 &mdash; Meaning of parse flags [tab:time.parse.spec]</b>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
