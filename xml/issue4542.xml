@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4542" status="New">
+<title>Resuming a coroutine on a different execution agent that is an instance of a `std::thread` is underspecified</title>
+<section>
+<sref ref="[coroutine.handle.resumption]"/>
+</section>
+<submitter>jim x</submitter>
+<date>11 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Consider the following example:
+</p>
+<blockquote><pre>
+#include &lt;atomic&gt;
+#include &lt;cassert&gt;
+#include &lt;coroutine&gt;
+#include &lt;thread&gt;
+
+std::atomic&lt;bool&gt; flag = false;
+int global = 0;
+
+struct Task 
+{
+  struct promise_type 
+  {
+    Task get_return_object() {
+      return {std::coroutine_handle&lt;promise_type&gt;::from_promise(*this)};
+    }
+    std::suspend_never initial_suspend() { return {}; }
+    std::suspend_never final_suspend() noexcept { return {}; }
+    void return_void() {}
+    void unhandled_exception() {}
+  };
+
+  std::coroutine_handle&lt;promise_type&gt; handle;
+
+  Task(std::coroutine_handle&lt;promise_type&gt; h) : handle(h) {}
+  ~Task() {}
+};
+
+struct SuspendOnce 
+{
+  bool suspended = false;
+  bool await_ready() { return suspended; }
+  void await_suspend(std::coroutine_handle&lt;&gt;) { suspended = true; }
+  void await_resume() {}
+};
+
+Task my_coroutine() {
+  co_await SuspendOnce{};
+  flag.store(true, std::memory_order::release); // #2
+}
+
+auto t1 = std::thread([]() {
+  while (!flag.load(std::memory_order::acquire)); //#3
+  assert(global == 1); // #4
+});
+
+int main() {
+  auto task = my_coroutine();
+  auto&amp; h = task.handle;
+  auto t2 = std::thread([&amp;]() {
+    global = 1; // #1
+    h.resume();
+  });
+  t2.join();
+  t1.join();
+}
+</pre></blockquote>
+<p>
+<sref ref="[coroutine.handle.resumption]"/> p1 says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;">
+<p>
+Resuming a coroutine via `resume`, `operator()`, or `destroy` on an execution agent other 
+than the one on which it was suspended has implementation-defined behavior unless each 
+execution agent either is an instance of `std::thread` or `std::jthread`, or is the 
+thread that executes `main`.
+</p>
+</blockquote>
+<p>
+The wording doesn't specify the behavior for the latter case. We want `#1` to be 
+<b>sequenced before</b> `#2`. 
+<p/>
+The sequenced-before is described in terms of two evaluations that are both executed by 
+a single thread. The coroutine is initially executed in the main thread; however, it's resumed 
+in a different thread. The first paragraph doesn't specify the specific behavior; it only says 
+the behavior is implementation-defined if the different execution agent is not an instance of 
+`std::thread` or `std::jthread`, or is the thread that executes `main`.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[coroutine.handle.resumption]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Resuming a coroutine via `resume`, `operator()`, or `destroy` on an execution agent other 
+than the one on which it was suspended has implementation-defined behavior unless each 
+execution agent either is an instance of `std::thread` or `std::jthread`, or is the 
+thread that executes `main`. <ins>Otherwise, the execution of the coroutine is resumed, 
+or the coroutine is destroyed, on the execution agent on which the corresponding member 
+function is invoked.</ins>
+<p/>
+[&hellip;]
+</p>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
