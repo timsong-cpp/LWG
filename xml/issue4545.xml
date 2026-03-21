@@ -1,0 +1,170 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4545" status="New">
+<title>Some converting constructors of `layout_left_padded::mapping` and `layout_right_padded::mapping` are
+missing a representability precondition for the padded stride</title>
+<section>
+<sref ref="[mdspan.layout.leftpad.cons]"/><sref ref="[mdspan.layout.rightpad.cons]"/>
+</section>
+<submitter>Xi Chen</submitter>
+<date>18 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+It appears that these constructors are missing a precondition requiring the incoming padded stride to
+be representable as a value of the destination index_type.
+<p/>
+The existing preconditions check that other.required_span_size() is representable as a value of type
+index_type, but that is not sufficient when the source mapping is empty. In that case,
+other.required_span_size() can be 0 even though the source padded stride is too large for the
+destination index_type. The padded stride is then silently truncated, and that truncation is observable
+through stride().
+<p/>
+Example:
+</p>
+<blockquote><pre>
+#include &lt;mdspan&gt;
+#include &lt;cstdint&gt;
+#include &lt;cassert&gt;
+
+void test() {
+  using Src = std::layout_left_padded&lt;std::dynamic_extent&gt;::mapping&lt;std::extents&lt;uint32_t, 1, 0&gt;&gt;;
+  using Dst = std::layout_left_padded&lt;std::dynamic_extent&gt;::mapping&lt;std::extents&lt;uint8_t, 1, 0&gt;&gt;;
+
+  // src.stride(1) == 256.
+  Src src(std::extents&lt;uint32_t, 1, 0&gt;(), 256);
+
+  // other.required_span_size() is 0, so the existing preconditions are met.
+  // The stored padded stride is then converted to uint8_t and truncated to 0.
+  Dst dst(src);
+
+  assert(dst.stride(1) == 0);
+}
+</pre></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[mdspan.layout.leftpad.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class OtherExtents&gt;
+  constexpr explicit(<i>see below</i>)
+    mapping(const layout_stride::mapping&lt;OtherExtents&gt;&amp; other);
+</pre>
+<blockquote>
+<p>
+-10- <i>Constraints</i>: [&hellip;]
+<p/>
+-11- <i>Preconditions</i>:
+</p>
+<ul style="list-style-type: none">
+<li><p>(11.1) &mdash; [&hellip;]</p></li>
+<li><p>(11.2) &mdash; [&hellip;]</p></li>
+<li><p>(11.3) &mdash; [&hellip;]</p></li>
+<li><p>(11.4) &mdash; `other.required_span_size()` is representable as a value of type <tt><i>index_type</i></tt>.</p></li>
+<li><p><ins>(11.5) &mdash; If <tt><i>rank_</i></tt> is greater than `1` and <tt><i>static-padding-stride</i></tt> 
+equals `dynamic_extent`, `other.stride(1)` is representable as a value of type <tt>index_type</tt>.</ins></p></li>
+</ul>
+<p>
+-12- <i>Effects</i>: [&hellip;]
+<p/>
+-13- <i>Remarks</i>: [&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class LayoutLeftPaddedMapping&gt;
+  constexpr explicit(<i>see below</i>)
+    mapping(const LayoutLeftPaddedMapping&amp; other);
+</pre>
+<blockquote>
+<p>
+-14- <i>Constraints</i>: [&hellip;]
+<p/>
+-15- <i>Mandates</i>: [&hellip;]
+<p/>
+-16- <i>Preconditions</i>:
+</p>
+<ul style="list-style-type: none">
+<li><p>(16.1) &mdash; [&hellip;]</p></li>
+<li><p>(16.2) &mdash; `other.required_span_size()` is representable as a value of type <tt>index_type</tt>.</p></li>
+<li><p><ins>(16.3) &mdash; If <tt><i>rank_</i></tt> is greater than `1` and <tt><i>static-padding-stride</i></tt> 
+equals `dynamic_extent`, `other.stride(1)` is representable as a value of type <tt>index_type</tt>.</ins></p></li>
+</ul>
+<p>
+-17- <i>Effects</i>: [&hellip;]
+<p/>
+-18- <i>Remarks</i>: [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[mdspan.layout.rightpad.cons]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class OtherExtents&gt;
+  constexpr explicit(<i>see below</i>)
+    mapping(const layout_stride::mapping&lt;OtherExtents&gt;&amp; other);
+</pre>
+<blockquote>
+<p>
+-10- <i>Constraints</i>: [&hellip;]
+<p/>
+-11- <i>Preconditions</i>:
+</p>
+<ul style="list-style-type: none">
+<li><p>(11.1) &mdash; [&hellip;]</p></li>
+<li><p>(11.2) &mdash; [&hellip;]</p></li>
+<li><p>(11.3) &mdash; [&hellip;]</p></li>
+<li><p>(11.4) &mdash; `other.required_span_size()` is representable as a value of type <tt>index_type</tt>.</p></li>
+<li><p><ins>(11.5) &mdash; If <tt><i>rank_</i></tt> is greater than `1` and <tt><i>static-padding-stride</i></tt> 
+equals `dynamic_extent`, <tt>other.stride(<i>rank_</i> - 2)</tt> is representable as a value of type <tt>index_type</tt>.</ins></p></li>
+</ul>
+<p>
+-12- <i>Effects</i>: [&hellip;]
+<p/>
+-13- <i>Remarks</i>: [&hellip;]
+</p>
+</blockquote>
+<pre>
+template&lt;class LayoutRightPaddedMapping&gt;
+  constexpr explicit(<i>see below</i>)
+    mapping(const LayoutRightPaddedMapping&amp; other);
+</pre>
+<blockquote>
+<p>
+-14- <i>Constraints</i>: [&hellip;]
+<p/>
+-15- <i>Mandates</i>: [&hellip;]
+<p/>
+-16- <i>Preconditions</i>:
+</p>
+<ul style="list-style-type: none">
+<li><p>(16.1) &mdash; [&hellip;]</p></li>
+<li><p>(16.2) &mdash; `other.required_span_size()` is representable as a value of type <tt>index_type</tt>.</p></li>
+<li><p><ins>(16.3) &mdash; If <tt><i>rank_</i></tt> is greater than `1` and <tt><i>static-padding-stride</i></tt> 
+equals `dynamic_extent`, <tt>other.stride(<i>rank_</i> - 2)</tt> is representable as a value of type <tt>index_type</tt>.</ins></p></li>
+</ul>
+<p>
+-17- <i>Effects</i>: [&hellip;]
+<p/>
+-18- <i>Remarks</i>: [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
