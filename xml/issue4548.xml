@@ -1,0 +1,278 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4548" status="New">
+<title>Parallel `ranges::set_intersection` should not do unnecessary work</title>
+<section>
+<sref ref="[set.intersection]"/>
+</section>
+<submitter>Ruslan Arutyunyan</submitter>
+<date>20 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Serial `ranges::set_intersection` returns `in_in_out_result` and it always goes to the end 
+of both input ranges. However, when either of the input ranges reaches the end, there 
+cannot be intersection anymore, so the algorithm could immediately stop but does not do that. 
+<p/>
+For example, if the first input is `{1}` and second input is <tt>{1, 2, 3, 4, &hellip;, 1000000}</tt> 
+it's clear that the output will be `{1}` after the first iteration of 
+`ranges::set_intersection`. The first input is already exhausted, so the algorithm could stop 
+and return:
+</p>
+<table cellpadding="5">
+<tr valign="top" align="left">
+<td>
+&mdash; `it1` that compared equal with first `last1`,
+</td>
+<td>
+&mdash; `it2` that points to the element equal to 2 in the second input
+(in other words, stop point for the second input), and
+</td>
+<td>
+&mdash; `result_it` that points to past the last written element
+</td>
+</tr>
+</table>
+<p>
+Unfortunately, the algorithm does 999999 "unnecessary" operations just to calculate the iterator 
+that compared equal to `last2`, not to compute an intersection itself.
+<p/>
+Of course, this case is problematic only for non-random access, non-sized ranges. Still, it looks 
+like an oversight because: 
+</p>
+<table cellpadding="5">
+<tr valign="top" align="left">
+<td>
+&mdash; Serial overload can work with input iterators,
+</td>
+<td>
+&mdash; We almost certainly do not want to pessimize the algorithm 
+execution time to just calculate `last1` or `last2`, when the algorithm
+could potentially stop earlier, and
+</td>
+<td>
+&mdash; `std::set_intersection` (not the `ranges` one) stops
+when it hits the end of either input.
+</td>
+</tr>
+</table>
+<p>
+For parallel `ranges::set_intersection` we just copied the current behavior of serial 
+`ranges::set_intersection` because parallel overload requires <tt><i>sized-random-access-range</i></tt>, 
+so it's not a problem to calculate both `last1` and `last2` iterators for a constant time 
+in this case. Then we realized that this problem exists for the serial overload.
+<p/>
+Fixing C++20 `ranges::set_intersection` is a breaking change, unfortunately. However, we 
+can still change the parallel overload to mimic the serial behavior that we want. This is 
+especially beneficial if and when we add serial range algorithms with the 
+range-as-the-output-design aspect.
+<p/>
+The proposed resolution:
+</p>
+<table cellpadding="5">
+<tr valign="top" align="left">
+<td>
+&mdash; When the output size is not sufficient to copy all necessary
+elements from both inputs — no changes to the specified parallel
+`ranges::set_intersection` behavior.
+</td>
+<td>
+&mdash; When the output size is sufficient, change the behavior of parallel
+`ranges::set_intersection` to return `last1` or `last2` — whichever input range
+is exhausted first — and a stop point in non-exhausted input range, which is the
+element that is:
+</td>
+<td>
+<ul>
+<li><p>Past the last element of non-exhausted range, if it compared equal with
+the last written element to the output, or otherwise</p></li>
+<li><p>The last element that does not compare equal to
+<tt><i>exhausted-range-last</i> - 1</tt> element.</p></li>
+</ul> 
+</td>
+</tr>
+</table>
+<p>
+The trade-off of the proposed behavior is that the overload with execution policy 
+would return something different at runtime compared to the serial overload. However, 
+if we don't apply the proposed resolution, we will lock ourselves into suboptimal 
+`ranges::set_intersection` implementation by design, even for the future algorithms extension.
+<p/>
+For the behavior illustration purposes please look at the serial implementation of 
+serial `ranges::set_intersection` with range-as-the-output:
+</p>
+<blockquote><pre>
+struct set_intersection_fn
+{
+    template&lt;std::input_iterator I1, std::sentinel_for&lt;I1&gt; S1,
+             std::input_iterator I2, std::sentinel_for&lt;I2&gt; S2,
+             std::input_iterator O, std::sentinel_for&lt;O&gt; OutS,
+             class Comp = std::ranges::less,
+             class Proj1 = std::identity, class Proj2 = std::identity&gt;
+    requires std::mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+    constexpr std::ranges::set_intersection_result&lt;I1, I2, O&gt;
+      operator()(I1 first1, S1 last1, I2 first2, S2 last2,
+                 O result, OutS result_last, Comp comp = {},
+                 Proj1 proj1 = {}, Proj2 proj2 = {}) const
+      {
+        while (first1 != last1 &amp;&amp; first2 != last2)
+        {
+          if (std::invoke(comp, std::invoke(proj1, *first1),
+                                std::invoke(proj2, *first2)))
+            ++first1;
+          else if (std::invoke(comp, std::invoke(proj2, *first2),
+                                     std::invoke(proj1, *first1)))
+            ++first2;
+          else
+          {
+            if (result == result_last)
+              break;
+
+            *result = *first1;
+            ++first1;
+            ++first2;
+            ++result;
+          }
+        }
+        return {std::move(first1), std::move(first2), std::move(result)};
+      }
+
+    template&lt;std::ranges::input_range R1, std::ranges::input_range R2,
+             std::ranges::input_range OutR, class Comp = std::ranges::less,
+             class Proj1 = std::identity, class Proj2 = std::identity&gt;
+    requires std::mergeable&lt;std::ranges::iterator_t&lt;R1&gt;, std::ranges::iterator_t&lt;R2&gt;,
+                            std::ranges::iterator_t&lt;OutR&gt;, Comp, Proj1, Proj2&gt;
+    constexpr std::ranges::set_intersection_result&lt;std::ranges::borrowed_iterator_t&lt;R1&gt;,
+                                                   std::ranges::borrowed_iterator_t&lt;R2&gt;,
+                                                   std::ranges::borrowed_iterator_t&lt;OutR&gt;&gt;
+      operator()(R1&amp;&amp; r1, R2&amp;&amp; r2, OutR&amp;&amp; result, Comp comp = {},
+                 Proj1 proj1 = {}, Proj2 proj2 = {}) const
+      {
+        return (*this)(std::ranges::begin(r1), std::ranges::end(r1),
+                       std::ranges::begin(r2), std::ranges::end(r2),
+                       std::ranges::begin(result), std::ranges::end(result),
+                       std::move(comp), std::move(proj1), std::move(proj2));
+      }
+};
+
+inline constexpr set_intersection_fn set_intersection {};
+</pre></blockquote>
+<p>
+For instance, if the first input is `std::vector v1{2, 4, 5}` the second input is 
+`std::vector v2{1, 2, 3, 4, 5, 6, 7}`, and the output is 
+<tt>std::vector&lt;int&gt; output(3)</tt> then for the call
+</p>
+<blockquote><pre>
+auto [in1, in2, out] = std::ranges::set_difference(v1, v2, output);
+</pre></blockquote>
+<ul>
+<li><p>`output` is `{2, 4, 5}`</p></li>
+<li><p>`in1` points to `v1.end()`</p></li>
+<li><p>`in2` points to `6` in `v2`</p></li>
+<li><p>`out` points to `output.end()`</p></li>
+</ul>
+<p>
+Another example: if the first input is `std::vector v1{1, 2, 3, 4}`
+the second input is `std::vector v2{0, 1, 2, 3, 5, 7}`, and the output 
+is <tt>std::vector&lt;int&gt; output(3)</tt> then for the call
+</p>
+<blockquote><pre>
+auto [in1, in2, out] = std::ranges::set_difference(v1, v2, output);
+</pre></blockquote>
+<ul>
+<li><p>`output` is `{1, 2, 3}`</p></li>
+<li><p>`in1` points to `v1.end()`</p></li>
+<li><p>`in2` points to `5` in `v2`</p></li>
+<li><p>`out` points to `output.end()`</p></li>
+</ul>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[set.intersection]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;input_iterator I1, sentinel_for&lt;I1&gt; S1, input_iterator I2, sentinel_for&lt;I2&gt; S2,
+         weakly_incrementable O, class Comp = ranges::less,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+  constexpr ranges::set_intersection_result&lt;I1, I2, O&gt;
+    ranges::set_intersection(I1 first1, S1 last1, I2 first2, S2 last2, O result,
+                             Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;input_range R1, input_range R2, weakly_incrementable O,
+         class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, O, Comp, Proj1, Proj2&gt;
+  constexpr ranges::set_intersection_result&lt;borrowed_iterator_t&lt;R1&gt;, borrowed_iterator_t&lt;R2&gt;, O&gt;
+    ranges::set_intersection(R1&amp;&amp; r1, R2&amp;&amp; r2, O result,
+                             Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+                             
+template&lt;<i>execution-policy</i> Ep, random_access_iterator I1, sized_sentinel_for&lt;I1&gt; S1,
+         random_access_iterator I2, sized_sentinel_for&lt;I2&gt; S2,
+         random_access_iterator O, sized_sentinel_for&lt;O&gt; OutS, class Comp = ranges::less,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+  ranges::set_intersection_result&lt;I1, I2, O&gt;
+    ranges::set_intersection(Ep&amp;&amp; exec, I1 first1, S1 last1,
+                             I2 first2, S2 last2, O result, OutS result_last,
+                             Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;<i>execution-policy</i> Ep, <i>sized-random-access-range</i> R1, <i>sized-random-access-range</i> R2,
+         <i>sized-random-access-range</i> OutR, class Comp = ranges::less,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, iterator_t&lt;OutR&gt;, Comp, Proj1, Proj2&gt;
+  ranges::set_intersection_result&lt;borrowed_iterator_t&lt;R1&gt;, borrowed_iterator_t&lt;R2&gt;,
+                                  borrowed_iterator_t&lt;OutR&gt;&gt;
+    ranges::set_intersection(Ep&amp;&amp; exec, R1&amp;&amp; r1, R2&amp;&amp; r2, OutR&amp;&amp; result_r, Comp comp = {},
+                             Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+-1- Let: [&hellip;]
+<p/>
+-2- <i>Preconditions</i>: The ranges `[first1, last1)` and `[first2, last2)` are sorted with respect to 
+`comp` and `proj1` or `proj2`, respectively. The resulting range does not overlap with either of the 
+original ranges.
+<p/>
+-3- <i>Effects</i>: Constructs a sorted intersection of the elements from the two ranges; that is, 
+the set of elements that are present in both of the ranges. 
+If `[first1, last1)` contains <tt><i>m</i></tt> elements that are equivalent to each other and 
+`[first2, last2)` contains <tt><i>n</i></tt> elements that are equivalent to them, the first 
+min<tt>(<i>m</i>, <i>n</i>)</tt> elements from the first range are included in the sorted
+intersection. If, of those elements, <tt><i>k</i></tt> elements from the first range are 
+copied to the output range, then the first <tt><i>k</i></tt> elements from the second range are 
+considered <i>skipped</i>. If <tt><i>N</i> &lt; <i>M</i></tt>, a non-copied element is also considered 
+skipped if it compares less than the <tt>(<i>N</i> + 1)</tt><sup>th</sup> element of the sorted 
+intersection. Copies the first <tt><i>N</i></tt> elements of the sorted intersection to the range 
+<tt>[result, result + <i>N</i>)</tt>.
+<p/>
+-4- <i>Returns</i>:
+</p>
+<ul style="list-style-type: none">
+<li><p>(4.1) &mdash; `result_last` for the overloads in namespace `std`.</p></li>
+<li><p>(4.2) &mdash; <tt>{last1, last2, result + <i>N</i>}</tt> for the <ins>non-parallel algorithm</ins> 
+overloads in namespace `ranges`, 
+if <tt><i>N</i></tt> is equal to <tt><i>M</i></tt>.</p></li>
+<li><p><ins>(4.?) &mdash; <tt>{first1 + <i>A</i>, first2 + <i>B</i>, result + <i>N</i>}</tt> for the 
+parallel algorithm overloads in namespace `ranges`, if <tt><i>N</i></tt> is equal to <tt><i>M</i></tt> 
+and where <tt><i>A</i></tt> and <tt><i>B</i></tt> are the numbers of copied or skipped elements in 
+`[first1, last1)` and `[first2, last2)`, respectively.</ins></p></li>
+<li><p>(4.3) &mdash; Otherwise, <tt>{first1 + <i>A</i>, first2 + <i>B</i>, result_last}</tt> for 
+the overloads in namespace `ranges`, where <tt><i>A</i></tt> and <tt><i>B</i></tt> are the numbers 
+of copied or skipped elements in `[first1, last1)` and `[first2, last2)`, respectively.</p></li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
