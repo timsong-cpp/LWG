@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='no'?>
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
-<issue num="3662" status="New">
+<issue num="3662" status="Immediate">
 <title><tt>basic_string::append/assign(NTBS, pos, n)</tt> suboptimal</title>
 <section><sref ref="[string.append]"/><sref ref="[string.assign]"/></section>
 <submitter>Jonathan Wakely</submitter>
@@ -56,9 +56,7 @@ The same problem applies to <tt>assign("...", pos, n)</tt>.
 <p>
 Set priority to 3 after reflector poll.
 </p>
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4901"/>. 
 </p>
@@ -336,6 +334,115 @@ constexpr basic_string&amp; assign(const charT* s);
 </li>
 
 </ol>
+</superseded>
+
+<note>2026-03-23 Croydon; accept Option B and move to Immediate</note>
+<p>
+We would like to make this even more efficient, by not doing
+`char_traits::length(s)` for the whole thing. That would mean that
+`s` does not have to be null-terminated. But would need something
+in `char_traits` like `strnlen`. That's a pre-existing problem though,
+Option B improves on the status quo even if it's not perfect.
+</p>
+
+</discussion>
+
+<resolution>
+
+<p>This wording is relative to <paper num="N5032"/>.</p>
+
+<ol>
+<li><p>Modify <sref ref="[basic.string.general]"/>, class template <tt>basic_string</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+<i>// <sref ref="[string.modifiers]"/>, modifiers</i>
+[&hellip;]
+constexpr basic_string&amp; append(const charT* s, size_type n);
+constexpr basic_string&amp; append(const charT* s);
+<ins>constexpr basic_string&amp; append(const charT* s, size_type pos, size_type n);</ins>
+constexpr basic_string&amp; append(size_type n, charT c);
+[&hellip;]
+constexpr basic_string&amp; assign(const charT* s, size_type n);
+constexpr basic_string&amp; assign(const charT* s);
+<ins>constexpr basic_string&amp; assign(const charT* s, size_type pos, size_type n);</ins>
+constexpr basic_string&amp; assign(size_type n, charT c);
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[string.append]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr basic_string&amp; append(const charT* s, size_type n);
+</pre>
+<blockquote>
+<p>
+-7- <i>Preconditions:</i> <tt>[s, s + n)</tt> is a valid range.
+<p/>
+-8- <i>Effects:</i> Appends a copy of the range <tt>[s, s + n)</tt> to the string.
+<p/>
+-9- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+<pre>
+constexpr basic_string&amp; append(const charT* s);
+</pre>
+<blockquote>
+<p>
+-10- <i>Effects:</i> Equivalent to: <tt>return append(s, traits::length(s));</tt>
+</p>
+</blockquote>
+<pre>
+<ins>constexpr basic_string&amp; append(const charT* s, size_type pos, size_type n);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return append(basic_string_view&lt;charT, traits&gt;(s).substr(pos, n));</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[string.assign]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr basic_string&amp; assign(const charT* s, size_type n);
+</pre>
+<blockquote>
+<p>
+-8- <i>Preconditions:</i> <tt>[s, s + n)</tt> is a valid range.
+<p/>
+-9- <i>Effects:</i> Replaces the string controlled by <tt>*this</tt> with a copy of the range <tt>[s, s + n)</tt>.
+<p/>
+-10- <i>Returns:</i> <tt>*this</tt>.
+</p>
+</blockquote>
+<pre>
+constexpr basic_string&amp; assign(const charT* s);
+</pre>
+<blockquote>
+<p>
+-11- <i>Effects:</i> Equivalent to: <tt>return assign(s, traits::length(s));</tt>
+</p>
+</blockquote>
+<pre>
+<ins>constexpr basic_string&amp; assign(const charT* s, size_type pos, size_type n);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects:</i> Equivalent to: <tt>return assign(basic_string_view&lt;charT, traits&gt;(s).substr(pos, n));</tt></ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
 </resolution>
 
 </issue>
