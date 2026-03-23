@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4551" status="New">
+<title>Fix the customization domain of the `on` algorithm</title>
+<section><sref ref="[exec.on]"/></section>
+<submitter>Eric Niebler</submitter>
+<date>23 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+As currently specified, for the expression `on(sch, sndr)`, the starting domain is the receiver's 
+domain, and the (`set_value`) completion domain is `sndr`'s completion domain, given that it starts 
+on `sndr`. Those are the two domains that will be used to find customizations of `on`, neither 
+of which is the domain of `sch`.
+<p/>
+Presumably, if a user wants to customize `on`, they would expect `on(sch, sndr)` to use the domain 
+of `sch` to find the customization. So there is a gap between what would be least surprising and 
+what is currently specified.
+<p/>
+In <paper num="P3927"/>, we added a <tt>get_completion_domain&lt;T&gt;</tt> query where `T` could 
+be either a completion tag (`set_value_t`, et. al) or `void` (and defaults to `void`), where 
+<tt>get_completion_domain&lt;void&gt;</tt> defaults to <tt>get_completion_domain&lt;set_value_t&gt;</tt>.
+<p/>
+<tt>get_completion_domain&lt;void&gt;(get_env(sndr), env)</tt> is the domain that gets used by 
+`transform_sender` to find a `set_value` sender transform. In other words, 
+`transform_sender(sndr, env)` will, among other things, apply the following transform:
+</p>
+<blockquote><pre>
+auto sndr2 = get_completion_domain&lt;&gt;(get_env(sndr), env)
+                .transform_sender(set_value, forward&lt;Sndr&gt;(sndr), env);
+</pre></blockquote>
+<p>
+We can use this to query to make `transform_sender` use the domain of `sch` to find a customization 
+of `on(sch, sndr)`.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[exec.on]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-9- Let `out_sndr` be a subexpression denoting a sender returned from `on(sch, sndr)` or one equal to such, 
+and let `OutSndr` be the type `decltype((out_sndr))`. <ins>For a pack of subexpressions `env`, 
+<tt>get_completion_domain&lt;&gt;(get_env(out_sndr), env...)</tt> is expression-equivalent to 
+<tt>get_completion_domain&lt;set_value_t&gt;(sch, env...)</tt>.</ins> Let `out_rcvr` be a subexpression 
+denoting a receiver that has an environment of type `Env` such that <tt>sender_in&lt;OutSndr, Env&gt;</tt> 
+is `true`. Let `op` be an lvalue referring to the operation state that results from connecting `out_sndr` 
+with `out_rcvr`. Calling `start(op)` shall [&hellip;]
+</p>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
