@@ -1,0 +1,191 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4554" status="New">
+<title>Remove undefined behaviour from `hive` for invalid limits</title>
+<section><sref ref="[hive.overview]"/></section>
+<submitter>Jonathan Wakely</submitter>
+<date>24 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<b>
+Addresses <a href="https://github.com/cplusplus/nbballot/issues/803">US 139-232</a>
+</b>
+</p>
+
+<p>
+<sref ref="[hive.overview]"/> says:
+<blockquote>
+-5- Limits can be placed on both the minimum and maximum element capacities
+of element blocks, both by users and implementations.
+<ul style="list-style-type: none"><li>...</li><li>
+(5.4) &mdash; If user-specified limits are not within hard limits,
+or if the specified minimum limit is greater than the specified maximum limit,
+the behavior is undefined.
+</li></ul>
+</blockquote>
+</p>
+
+<p>
+The NB comment says:
+<blockquote>
+Paragraph 5.4 allows for UB when the user doesn't manage to keep the block limits
+within bounds and the min below the max, yet no tools are offered to check these
+conditions easily. In terms of providing safe facilities this UB is an easy trap
+to fall into. The methods that allow to set block limits on hive should rather
+check the conditions and throw in case of violation or at least some function
+should be provided to let the user check the conditions easily.
+<p/>
+Proposed change: Adjust all constructors and methods on hive to throw in case
+specified block limits violate the conditions set out here.
+Or at least provide a function to the user to correctly check the condition
+separately.
+</blockquote>
+</p>
+
+<note>2026-03-24; Jonathan adds wording</note>
+<p>
+Could throw when the precondition is violated,
+or make it a <i>Hardened Precondition</i>,
+or ... something else?
+Three options are presented, which are not entirely mutually exclusive.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<p><b>Option A - make `hive` check for invalid limits and throw</b></p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[hive.overview]"/> as indicated:</p>
+<blockquote>
+-5- Limits can be placed on both the minimum and maximum element capacities
+of element blocks, both by users and implementations.
+<ul style="list-style-type: none">
+<li>(5.1) &mdash;
+The minimum limit shall be no larger than the maximum limit.
+</li>
+<li>(5.2) &mdash;
+When limits are not specified by a user during construction,
+the implementation's default limits are used.
+</li>
+<li>(5.3) &mdash;
+The default limits of an implementation are not guaranteed to be the same as
+the minimum and maximum possible capacities for an implementation's element blocks.
+<p>
+[<i>Note 2</i>:
+ To allow latitude for both implementation-specific and user-directed optimization.
+&mdash; <i>end note</i>]
+</p>
+The latter are defined as hard limits.
+The maximum hard limit shall be no larger than
+<code>std::allocator_traits&lt;Allocator&gt;::max_size()</code>.
+</li>
+<li><del>(5.4) &mdash;
+If user-specified limits are not within hard limits,
+or if the specified minimum limit is greater than the specified maximum limit,
+the behavior is undefined.</del>
+</li>
+<li>(5.5) &mdash;
+An element block is said to be <i>within the bounds</i>
+of a pair of minimum/maximum limits when its capacity is greater-or-equal-to
+the minimum limit and less-than-or-equal-to the maximum limit.
+</li>
+</ul>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[hive.cons]"/> as indicated:</p>
+<blockquote><pre>constexpr hive(hive_limits block_limits, const Allocator&);</pre>
+<blockquote>
+<p>-3- <i>Effects</i>:
+Constructs an empty `hive`, using the specified allocator.
+Initializes <i>`current-limits`</i> with `block_limits`.
+</p>
+<p>-4- <i>Complexity</i>: Constant.
+</p>
+<p><ins>-?- <i>Throws</i>:
+`invalid_argument` if `block_limits.min` or `block_limits.max` is outside the
+hard limits, or if `block_limits.min` is greater than `block_limits.max`.
+</ins>
+</p>
+</blockquote>
+<blockquote class="note">
+Similar changes to other constructors and `reshape`
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+<p><b>Option B - provide a helper to make limits valid</b></p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[hive.syn]"/> as indicated:</p>
+<blockquote><pre>
+namespace std {
+  struct hive_limits {
+    size_t min;
+    size_t max;
+    constexpr hive_limits(size_t minimum, size_t maximum) noexcept
+      : min(minimum), max(maximum) {}
+
+    <ins>constexpr hive_limits clamp_to(const hive_limits&amp; lim) const noexcept
+    { return {clamp(min, lim.min, lim.max), clamp(max, lim.min, lim.max)}; }</ins>
+  };
+</pre></blockquote>
+</li>
+</ol>
+
+<p><b>Option C - add a helper to validate limits against hard limits
+and define <i>Preconditions</i> using it.</b></p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[hive.syn]"/> as indicated:</p>
+<blockquote><pre>
+namespace std {
+  struct hive_limits {
+    size_t min;
+    size_t max;
+    constexpr hive_limits(size_t minimum, size_t maximum) noexcept
+      : min(minimum), max(maximum) {}
+
+    <ins>constexpr bool valid_for(const hive_limits&amp; lim) const noexcept
+    { return min &lt;= max &amp;&amp; lim.min &lt;= min &amp;&amp; max &lt;= lim.max; }</ins>
+  };
+</pre></blockquote>
+</li>
+<li>
+<p>Modify <sref ref="[hive.cons]"/> as indicated:</p>
+<blockquote><pre>constexpr hive(hive_limits block_limits, const Allocator&);</pre>
+<blockquote>
+<p><ins>-?- <i>Preconditions</i>:
+`block_limits.valid_for(block_capacity_hard_limits())` is `true`.
+</ins>
+</p>
+<p>-3- <i>Effects</i>:
+Constructs an empty `hive`, using the specified allocator.
+Initializes <i>`current-limits`</i> with `block_limits`.
+</p>
+<p>-4- <i>Complexity</i>: Constant.
+</p>
+</blockquote>
+<blockquote class="note">
+Similar changes to other constructors and `reshape`
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
