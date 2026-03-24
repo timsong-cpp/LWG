@@ -1,0 +1,217 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4552" status="New">
+<title>`compare_exchange_weak` writes a value on spurious failure, not memory contents</title>
+<section>
+<sref ref="[atomics.ref.ops]"/>
+<sref ref="[atomic.types.operations]"/>
+</section>
+<submitter>Jonathan Wakely</submitter>
+<date>24 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<sref ref="[atomic.ref.ops]"/> says:
+<blockquote>
+-27- <i>Remarks</i>:
+A weak compare-and-exchange operation may fail spuriously.
+That is, even when the contents of memory referred to by `expected` and `ptr`
+are equal, it may return `false` and store back to `expected`
+the same memory contents that were originally there.
+</blockquote>
+I think this is missing an update from <paper num="p0528r3"/> which should
+have changed "the same memory contents" to something like "the same value".
+When the comparison succeeds but the weak CAS fails anyway,
+the bits of `exchange` are replaced by the bits copied from `*ptr`.
+Those bits might differ from the original bits of `expected` in their padding.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[atomics.ref.ops]"/> as indicated:</p>
+<blockquote><pre>
+constexpr bool compare_exchange_weak(value_type&amp; expected, value_type desired,
+                                     memory_order order = memory_order::seq_cst) const noexcept;
+
+constexpr bool compare_exchange_strong(value_type&amp; expected, value_type desired,
+                                       memory_order order = memory_order::seq_cst) const noexcept;
+</pre>
+<blockquote>
+<p>-23- <i>Constraints</i>:
+<code>is_const_v&lt;T&gt;</code> is `false`.
+</p>
+<p>-24- <i>Preconditions</i>:
+`failure` is `memory_order::relaxed`, `memory_order::acquire`, or
+`memory_order::seq_cst`.
+</p>
+<p>-25- <i>Effects</i>:
+Retrieves the value in `expected`.
+It then atomically compares the value representation of the value referenced
+by `*ptr` for equality with that previously retrieved from `expected`,
+and if `true`, replaces the value referenced by `*ptr` with that in `desired`.
+If and only if the comparison is `true`, memory is affected according to the
+value of `success`, and if the comparison is `false`,
+memory is affected according to the value of `failure`.
+When only one `memory_order` argument is supplied,
+the value of `success` is `order`, and the value of `failure` is `order`
+except that a value of `memory_order::acq_rel` shall be replaced by
+the value `memory_order::acquire` and a value of `memory_order::release`
+shall be replaced by the value `memory_order::relaxed`.
+If and only if the comparison is `false` then, after the atomic operation,
+the value in `expected` is replaced by the value read from the value
+referenced by `*ptr` during the atomic comparison.
+If the operation returns `true`, these operations are atomic read-modify-write
+operations (<sref ref="[intro.races]"/>) on the value referenced by `*ptr`.
+Otherwise, these operations are atomic load operations on that memory.
+</p>
+<p>-26- <i>Returns</i>: The result of the comparison.</p>
+<p>-27- <i>Remarks</i>:
+A weak compare-and-exchange operation may fail spuriously.
+That is, even when the contents of memory referred to by `expected` and `ptr`
+<del>are</del> <ins>compare</ins> equal,
+it may return `false` and store back to `expected` the same
+<del>memory contents that were</del> <ins>value representation that was</ins>
+originally there.
+</p>
+<p>
+[<i>Note 2</i>:
+This spurious failure enables implementation of compare-and-exchange
+on a broader class of machines, e.g., load-locked store-conditional machines.
+A consequence of spurious failure is that nearly all uses of
+weak compare-and-exchange will be in a loop.
+When a compare-and-exchange is in a loop,
+the weak version will yield better performance on some platforms.
+When a weak compare-and-exchange would require a loop and a strong one would not,
+the strong one is preferable.
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[atomics.types.operations]"/> as indicated:</p>
+<blockquote><pre>
+bool compare_exchange_weak(T&amp; expected, T desired,
+                           memory_order success, memory_order failure) volatile noexcept;
+constexpr bool compare_exchange_weak(T&amp; expected, T desired,
+                           memory_order success, memory_order failure) noexcept;
+bool compare_exchange_strong(T&amp; expected, T desired,
+                             memory_order success, memory_order failure) volatile noexcept;
+constexpr bool compare_exchange_strong(T&amp; expected, T desired,
+                             memory_order success, memory_order failure) noexcept;
+bool compare_exchange_weak(T&amp; expected, T desired,
+                           memory_order order = memory_order::seq_cst) volatile noexcept;
+constexpr bool compare_exchange_weak(T&amp; expected, T desired,
+                           memory_order order = memory_order::seq_cst) noexcept;
+bool compare_exchange_strong(T&amp; expected, T desired,
+                             memory_order order = memory_order::seq_cst) volatile noexcept;
+constexpr bool compare_exchange_strong(T&amp; expected, T desired,
+                             memory_order order = memory_order::seq_cst) noexcept;
+</pre>
+<blockquote>
+<p>-21- <i>Constraints</i>:
+For the `volatile` overload of this function, `is_always_lock_free` is `true`. 
+</p>
+<p>-22- <i>Preconditions</i>:
+`failure` is `memory_order::relaxed`, `memory_order::acquire`, or
+`memory_order::seq_cst`.
+</p>
+<p>-25- <i>Effects</i>:
+Retrieves the value in `expected`.
+It then atomically compares the value representation of the value pointed to
+by `this` for equality with that previously retrieved from `expected`,
+and if `true`, replaces the value pointed to by `this` with that in `desired`.
+If and only if the comparison is `true`, memory is affected according to the
+value of `success`, and if the comparison is `false`,
+memory is affected according to the value of `failure`.
+When only one `memory_order` argument is supplied,
+the value of `success` is `order`, and the value of `failure` is `order`
+except that a value of `memory_order::acq_rel` shall be replaced by
+the value `memory_order::acquire` and a value of `memory_order::release`
+shall be replaced by the value `memory_order::relaxed`.
+If and only if the comparison is `false` then, after the atomic operation,
+the value in `expected` is replaced by the value read from the value
+pointed to by `this` during the atomic comparison.
+If the operation returns `true`, these operations are atomic read-modify-write
+operations
+(<del><sref ref="[intro.multithread]"/></del>
+<ins><sref ref="[intro.races]"/></ins>)
+on the value pointed to by `this`.
+Otherwise, these operations are atomic load operations on that memory.
+</p>
+<p>-24- <i>Returns</i>: The result of the comparison.</p>
+<p>-25- [<i>Note 4</i>:
+For example, the effect of `compare_exchange_strong` on objects without
+padding bits (<sref ref="[basic.types.general]"/>) is
+<blockquote><pre>if (memcmp(this, &amp;expected, sizeof(*this)) == 0)
+  memcpy(this, &amp;desired, sizeof(*this));
+else
+  memcpy(&amp;expected, this, sizeof(*this));
+</pre></blockquote>
+&mdash; <i>end note</i>]
+</p>
+<p>[<i>Example 1</i>:
+The expected use of the compare-and-exchange operations is as follows.
+The compare-and-exchange operations will update expected when another iteration of the loop is needed.
+<blockquote><pre>expected = current.load();
+do {
+  desired = function(expected);
+} while (!current.compare_exchange_weak(expected, desired));
+</pre></blockquote>
+&mdash; <i>end example</i>]
+</p>
+<p>[<i>Example 2</i>:
+Because the expected value is updated only on failure,
+code releasing the memory containing the expected value on success will work.
+For example, list head insertion will act atomically
+and would not introduce a data race in the following code:
+<blockquote><pre>do {
+  p->next = head;                                   <i>// make new list node point to the current head</i>
+} while (!head.compare_exchange_weak(p->next, p));  <i>// try to insert</i>
+</pre></blockquote>
+&mdash; <i>end example</i>]
+</p>
+<p>-26- <ins><i>Recommended practice</i>:</ins>
+Implementations should ensure that weak compare-and-exchange operations
+do not consistently return false unless either the atomic object has value
+different from `expected` or there are concurrent modifications
+to the atomic object.
+</p>
+<p>-27- <i>Remarks</i>:
+A weak compare-and-exchange operation may fail spuriously.
+That is, even when the contents of memory referred to by `expected` and `this`
+<del>are</del> <ins>compare</ins> equal,
+it may return `false` and store back to `expected` the same
+<del>memory contents that were</del> <ins>value representation that was</ins>
+originally there.
+</p>
+<p>
+[<i>Note 2</i>:
+This spurious failure enables implementation of compare-and-exchange
+on a broader class of machines, e.g., load-locked store-conditional machines.
+A consequence of spurious failure is that nearly all uses of
+weak compare-and-exchange will be in a loop.
+When a compare-and-exchange is in a loop,
+the weak version will yield better performance on some platforms.
+When a weak compare-and-exchange would require a loop and a strong one would not,
+the strong one is preferable.
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</blockquote>
+</li>
+</ol>
+
+
+</resolution>
+
+</issue>
