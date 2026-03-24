@@ -21,20 +21,12 @@ it's clear that the output will be `{1}` after the first iteration of
 `ranges::set_intersection`. The first input is already exhausted, so the algorithm could stop 
 and return:
 </p>
-<table cellpadding="5">
-<tr style="vertical-align:top" align="left">
-<td>
-&mdash; `it1` that compared equal with first `last1`,
-</td>
-<td>
-&mdash; `it2` that points to the element equal to 2 in the second input
-(in other words, stop point for the second input), and
-</td>
-<td>
-&mdash; `result_it` that points to past the last written element
-</td>
-</tr>
-</table>
+<ul>
+<li><p>`it1` that compared equal with first `last1`,</p></li>
+<li><p>`it2` that points to the element equal to 2 in the second input
+(in other words, stop point for the second input), and</p></li>
+<li><p>`result_it` that points to past the last written element</p></li>
+</ul>
 <p>
 Unfortunately, the algorithm does 999999 "unnecessary" operations just to calculate the iterator 
 that compared equal to `last2`, not to compute an intersection itself.
@@ -42,22 +34,14 @@ that compared equal to `last2`, not to compute an intersection itself.
 Of course, this case is problematic only for non-random access, non-sized ranges. Still, it looks 
 like an oversight because: 
 </p>
-<table cellpadding="5">
-<tr style="vertical-align:top" align="left">
-<td>
-&mdash; Serial overload can work with input iterators,
-</td>
-<td>
-&mdash; We almost certainly do not want to pessimize the algorithm 
+<ul>
+<li><p>Serial overload can work with input iterators,</p></li>
+<li><p>We almost certainly do not want to pessimize the algorithm 
 execution time to just calculate `last1` or `last2`, when the algorithm
-could potentially stop earlier, and
-</td>
-<td>
-&mdash; `std::set_intersection` (not the `ranges` one) stops
-when it hits the end of either input.
-</td>
-</tr>
-</table>
+could potentially stop earlier, and</p></li>
+<li><p>`std::set_intersection` (not the `ranges` one) stops
+when it hits the end of either input.</p></li>
+</ul>
 <p>
 For parallel `ranges::set_intersection` we just copied the current behavior of serial 
 `ranges::set_intersection` because parallel overload requires <tt><i>sized-random-access-range</i></tt>, 
@@ -71,29 +55,23 @@ range-as-the-output-design aspect.
 <p/>
 The proposed resolution:
 </p>
-<table cellpadding="5">
-<tr style="vertical-align:top" align="left">
-<td>
-&mdash; When the output size is not sufficient to copy all necessary
+<ul>
+<li><p>When the output size is not sufficient to copy all necessary
 elements from both inputs — no changes to the specified parallel
-`ranges::set_intersection` behavior.
-</td>
-<td>
-&mdash; When the output size is sufficient, change the behavior of parallel
+`ranges::set_intersection` behavior.</p></li>
+<li><p>When the output size is sufficient, change the behavior of parallel
 `ranges::set_intersection` to return `last1` or `last2` — whichever input range
 is exhausted first — and a stop point in non-exhausted input range, which is the
-element that is:
-</td>
-<td>
+element that is:</p>
 <ul>
 <li><p>Past the last element of non-exhausted range, if it compared equal with
 the last written element to the output, or otherwise</p></li>
 <li><p>The last element that does not compare equal to
 <tt><i>exhausted-range-last</i> - 1</tt> element.</p></li>
 </ul> 
-</td>
-</tr>
-</table>
+</li>
+</ul>
+
 <p>
 The trade-off of the proposed behavior is that the overload with execution policy 
 would return something different at runtime compared to the serial overload. However, 
