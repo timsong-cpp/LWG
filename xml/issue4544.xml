@@ -112,9 +112,7 @@ auto [in1, in2, out] = std::ranges::set_difference(v1, v2, output);
 <li><p>`in2` points to `7` in `v2`</p></li>
 <li><p>`out` points to `output.end()`</p></li>
 </ul>
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N5032"/>.
 </p>
@@ -247,6 +245,147 @@ is equal to <tt><i>M</i></tt>, where <tt><i>B</i></tt> is  the number of skipped
 `[first2, last2)`.</ins></p></li>
 <li><p><ins>(4.3.2) &mdash; Otherwise, <tt>{ first1 + <i>A</i>, first2 + <i>B</i>, result_last}</tt>, 
 where <tt><i>A</i></tt> and <tt><i>B</i></tt> are the numbers of copied or skipped elements in 
+`[first1, last1)` and `[first2, last2)`, respectively.</ins></p></li>
+</ul>
+</li>
+</ul>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</superseded>
+
+<note>2026-03-24 Croydon; update wording after LWG review</note>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[algorithm.syn]"/>, header <tt>&lt;algorithm&gt;</tt> synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+namespace ranges {
+  template&lt;class I, class O&gt;
+    using set_difference_result = in_out_result&lt;I, O&gt;;
+  <ins>template&lt;class I1, class, I2, class O&gt;
+    using set_difference_truncated_result = in_in_out_result&lt;I1, I2, O&gt;;</ins>
+
+  template&lt;input_iterator I1, sentinel_for&lt;I1&gt; S1, input_iterator I2, sentinel_for&lt;I2&gt; S2,
+           weakly_incrementable O, class Comp = ranges::less,
+           class Proj1 = identity, class Proj2 = identity&gt;
+    requires mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+    constexpr set_difference_result&lt;I1, O&gt;
+      set_difference(I1 first1, S1 last1, I2 first2, S2 last2, O result,
+                     Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+  template&lt;input_range R1, input_range R2, weakly_incrementable O,
+           class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity&gt;
+    requires mergeable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, O, Comp, Proj1, Proj2&gt;
+    constexpr set_difference_result&lt;borrowed_iterator_t&lt;R1&gt;, O&gt;
+      set_difference(R1&amp;&amp; r1, R2&amp;&amp; r2, O result,
+                     Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+
+  template&lt;<i>execution-policy</i> Ep, random_access_iterator I1, sized_sentinel_for&lt;I1&gt; S1,
+           random_access_iterator I2, sized_sentinel_for&lt;I2&gt; S2,
+           random_access_iterator O, sized_sentinel_for&lt;O&gt; OutS, class Comp = ranges::less,
+           class Proj1 = identity, class Proj2 = identity&gt;
+    requires mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+    set_difference<ins>_truncated</ins>_result&lt;I1<ins>, I2</ins>, O&gt;
+      set_difference(Ep&amp;&amp; exec, I1 first1, S1 last1, I2 first2, S2 last2,
+                     O result, OutS result_last, Comp comp = {}, Proj1 proj1 = {},
+                     Proj2 proj2 = {}); // <i>freestanding-deleted</i>
+  template&lt;<i>execution-policy</i> Ep, <i>sized-random-access-range</i> R1, <i>sized-random-access-range</i> R2,
+           <i>sized-random-access-range</i> OutR, class Comp = ranges::less,
+           class Proj1 = identity, class Proj2 = identity&gt;
+    requires mergeable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, iterator_t&lt;OutR&gt;, Comp, Proj1, Proj2&gt;
+    set_difference<ins>_truncated</ins>_result&lt;borrowed_iterator_t&lt;R1&gt;<ins>, borrowed_iterator_t&lt;R2&gt;</ins>, borrowed_iterator_t&lt;OutR&gt;&gt;
+      set_difference(Ep&amp;&amp; exec, R1&amp;&amp; r1, R2&amp;&amp; r2, OutR&amp;&amp; result_r, Comp comp = {},
+                     Proj1 proj1 = {}, Proj2 proj2 = {}); // <i>freestanding-deleted</i>
+}
+[&hellip;]
+</pre>
+</blockquote>
+</li>
+
+<li><p>Modify <sref ref="[set.difference]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+template&lt;input_iterator I1, sentinel_for&lt;I1&gt; S1, input_iterator I2, sentinel_for&lt;I2&gt; S2,
+         weakly_incrementable O, class Comp = ranges::less,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+  constexpr ranges::set_difference_result&lt;I1, O&gt;
+    ranges::set_difference(I1 first1, S1 last1, I2 first2, S2 last2, O result,
+                           Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;input_range R1, input_range R2, weakly_incrementable O,
+         class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, O, Comp, Proj1, Proj2&gt;
+  constexpr ranges::set_difference_result&lt;borrowed_iterator_t&lt;R1&gt;, O&gt;
+    ranges::set_difference(R1&amp;&amp; r1, R2&amp;&amp; r2, O result,
+                           Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;<i>execution-policy</i> Ep, random_access_iterator I1, sized_sentinel_for&lt;I1&gt; S1,
+         random_access_iterator I2, sized_sentinel_for&lt;I2&gt; S2,
+         random_access_iterator O, sized_sentinel_for&lt;O&gt; OutS, class Comp = ranges::less,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;I1, I2, O, Comp, Proj1, Proj2&gt;
+  ranges::set_difference<ins>_truncated</ins>_result&lt;I1<ins>, I2</ins>, O&gt;
+    ranges::set_difference(Ep&amp;&amp; exec, I1 first1, S1 last1,
+                           I2 first2, S2 last2, O result, OutS result_last,
+                           Comp comp = {}, Proj1 proj1 = {}, Proj2 proj2 = {});
+template&lt;<i>execution-policy</i> Ep, <i>sized-random-access-range</i> R1, <i>sized-random-access-range</i> R2,
+         <i>sized-random-access-range</i> OutR, class Comp = ranges::less,
+         class Proj1 = identity, class Proj2 = identity&gt;
+  requires mergeable&lt;iterator_t&lt;R1&gt;, iterator_t&lt;R2&gt;, iterator_t&lt;OutR&gt;, Comp, Proj1, Proj2&gt;
+  ranges::set_difference<ins>_truncated</ins>_result&lt;borrowed_iterator_t&lt;R1&gt;<ins>, borrowed_iterator_t&lt;R2&gt;</ins>, borrowed_iterator_t&lt;OutR&gt;&gt;
+    ranges::set_difference(Ep&amp;&amp; exec, R1&amp;&amp; r1, R2&amp;&amp; r2, OutR&amp;&amp; result_r, Comp comp = {},
+                           Proj1 proj1 = {}, Proj2 proj2 = {});
+</pre>
+<blockquote>
+<p>
+-1- Let: [&hellip;]
+<p/>
+-2- <i>Preconditions</i>: The ranges `[first1, last1)` and `[first2, last2)` are sorted with respect to
+`comp` and `proj1` or `proj2`, respectively. The resulting range does not overlap with either of the
+original ranges.
+<p/>
+-3- <i>Effects</i>: Constructs a sorted difference between the elements from the two ranges; that is,
+the set of elements that are present in the range `[first1, last1)` but not `[first2, last2)`.
+If `[first1, last1)` contains <tt><i>m</i></tt> elements that are equivalent to each other and
+`[first2, last2)` contains <tt><i>n</i></tt> elements that are equivalent to them, the last
+max<tt>(<i>m</i> − <i>n</i>, 0)</tt> elements from `[first1, last1)` are included in the sorted
+difference, in order. <ins>Of those equivalent elements, the first min<tt>(<i>m</i>, <i>n</i>)</tt>
+elements in both ranges are considered <i>skipped</i>. An element from the second range is also
+considered skipped if it compares less than the min<tt>(<i>N</i> + 1, <i>M</i>)</tt><sup>th</sup>
+element of the sorted difference.</ins> Copies the first <tt><i>N</i></tt> elements of the sorted
+difference to the range <tt>[result, result + <i>N</i>)</tt>.
+<p/>
+-4- <i>Returns</i>:
+</p>
+<ul style="list-style-type: none">
+<li><p>(4.1) &mdash; `result_last` for the overloads in namespace `std`.</p></li>
+<li><p>(4.2) &mdash; <tt>{last1, result + <i>N</i>}</tt> for the
+<ins>non-parallel</ins> overloads in namespace `ranges`<del>,
+if <tt><i>N</i></tt> is equal to <tt><i>M</i></tt>.</del></p>
+</li>
+<li><p>(4.3) &mdash; <del>Otherwise, `{j1, result_last}` for the overloads in namespace `ranges`, where
+the iterator `j1` points to the position of the element in `[first1, last1)` corresponding to the
+<tt>(<i>N</i> + 1)</tt><sup>th</sup> element of the sorted difference.</del>
+<ins>For the parallel algorithm overloads in namespace `ranges`:</ins></p>
+<ul style="list-style-type: none">
+<li><p><ins>(4.3.1) &mdash; <tt>{last1, first2 + <i>B</i>, result + <i>N</i>}</tt>, if <tt><i>N</i></tt>
+is equal to <tt><i>M</i></tt>, where <tt><i>B</i></tt> is  the number of skipped elements in
+`[first2, last2)`.</ins></p></li>
+<li><p><ins>(4.3.2) &mdash; Otherwise, <tt>{ first1 + <i>A</i>, first2 + <i>B</i>, result_last}</tt>,
+where <tt><i>A</i></tt> and <tt><i>B</i></tt> are the numbers of copied or skipped elements in
 `[first1, last1)` and `[first2, last2)`, respectively.</ins></p></li>
 </ul>
 </li>
