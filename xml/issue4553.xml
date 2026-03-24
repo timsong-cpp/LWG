@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4553" status="New">
+<title>Wording for FR-025-246 25.7.18.2 Add a `reserve_hint` function to `concat_view`</title>
+<section><sref ref="[range.concat.view]"/></section>
+<submitter>Hui Xie</submitter>
+<date>24 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+LEWG approved the NB comment "FR-025-246 25.7.18.2 Add a `reserve_hint` function to `concat_view`" without wording. This issue
+proposes the wording.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[range.concat.view]"/> as indicated:</p>
+<blockquote><pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp;
+              <i>concatable</i>&lt;Views...&gt;
+  class concat_view : public view_interface&lt;concat_view&lt;Views...&gt;&gt; {
+    [&hellip;]
+    constexpr auto size() requires (sized_range&lt;Views&gt; &amp;&amp; ...);
+    constexpr auto size() const requires (sized_range&lt;const Views&gt; &amp;&amp; ...);
+<ins>    constexpr auto reserve_hint() requires (approximately_sized_range&lt;Views&gt; &amp;&amp; ...);</ins>
+<ins>    constexpr auto reserve_hint() const requires (approximately_sized_range&lt;const Views&gt; &amp;&amp; ...);</ins>
+  };
+}
+[&hellip;]
+
+constexpr auto size() requires (sized_range&lt;Views&gt; &amp;&amp; ...);
+constexpr auto size() const requires (sized_range&lt;const Views&gt; &amp;&amp; ...);
+
+-8- <i>Effects</i>: Equivalent to:
+<blockquote>
+return apply(
+  [](auto... sizes) {
+    using CT = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;decltype(sizes)...&gt;&gt;;
+    return (CT(sizes) + ...);
+  },
+  <i>tuple-transform</i>(ranges::size, <i>views_</i>));
+</blockquote>
+
+<ins>
+constexpr auto reserve_hint() requires (approximately_sized_range&lt;Views&gt; &amp;&amp; ...);
+constexpr auto reserve_hint() const requires (approximately_sized_range&lt;const Views&gt; &amp;&amp; ...);
+
+-9- <i>Effects</i>: Equivalent to:
+<blockquote><ins>
+return apply(
+  [](auto... sizes) {
+    using CT = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;decltype(sizes)...&gt;&gt;;
+    return (CT(sizes) + ...);
+  },
+  <i>tuple-transform</i>(ranges::reserve_hint, <i>views_</i>));
+</ins></blockquote>
+</ins>
+
+</pre></blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
