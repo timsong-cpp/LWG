@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4557" status="New">
+<title>Remove <code>constexpr</code> from <code>owner_less</code> and <code>owner_before</code> </title>
+<section><sref ref="[meta.syn]"/></section>
+<submitter>Tim Song</submitter>
+<date>25 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+<b>
+Addresses <a href="https://github.com/cplusplus/nbballot/issues/717">US 75-138</a>
+</b>
+</p>
+<p>
+LEWG decided to remove `constexpr` from `owner_before` and `owner_less`.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[util.smartptr.shared.general]"/>, class template `shared_ptr` synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; class shared_ptr {
+  public:
+    [&hellip;]
+    template&lt;class U&gt;
+      <del>constexpr</del> bool owner_before(const shared_ptr&lt;U&gt;&amp; b) const noexcept;
+    template&lt;class U&gt;
+      <del>constexpr</del> bool owner_before(const weak_ptr&lt;U&gt;&amp; b) const noexcept;
+    size_t owner_hash() const noexcept;
+    template&lt;class U&gt;
+      constexpr bool owner_equal(const shared_ptr&lt;U&gt;&amp; b) const noexcept;
+    template&lt;class U&gt;
+      constexpr bool owner_equal(const weak_ptr&lt;U&gt;&amp; b) const noexcept;
+  };
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[util.smartptr.shared.obs]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class U&gt; <del>constexpr</del> bool owner_before(const shared_ptr&lt;U&gt;&amp; b) const noexcept;
+template&lt;class U&gt; <del>constexpr</del> bool owner_before(const weak_ptr&lt;U&gt;&amp; b) const noexcept;
+</pre>
+<blockquote>
+<p>
+-19- [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[util.smartptr.weak.general]"/>, class template `weak_ptr` synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T&gt; class weak_ptr {
+  public:
+    [&hellip;]
+    template&lt;class U&gt;
+      <del>constexpr</del> bool owner_before(const shared_ptr&lt;U&gt;&amp; b) const noexcept;
+    template&lt;class U&gt;
+      <del>constexpr</del> bool owner_before(const weak_ptr&lt;U&gt;&amp; b) const noexcept;
+    size_t owner_hash() const noexcept;
+    template&lt;class U&gt;
+      constexpr bool owner_equal(const shared_ptr&lt;U&gt;&amp; b) const noexcept;
+    template&lt;class U&gt;
+      constexpr bool owner_equal(const weak_ptr&lt;U&gt;&amp; b) const noexcept;
+  };
+
+  [&hellip;]
+}
+</pre>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[util.smartptr.weak.obs]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+template&lt;class U&gt; <del>constexpr</del> bool owner_before(const shared_ptr&lt;U&gt;&amp; b) const noexcept;
+template&lt;class U&gt; <del>constexpr</del> bool owner_before(const weak_ptr&lt;U&gt;&amp; b) const noexcept;
+</pre>
+<blockquote>
+<p>
+-4- [&hellip;]
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[util.smartptr.ownerless]"/>, class template `owner_less` synopsis, as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  template&lt;class T = void&gt; struct owner_less;
+
+  template&lt;class T&gt; struct owner_less&lt;shared_ptr&lt;T&gt;&gt; {
+    <del>constexpr</del> bool operator()(const shared_ptr&lt;T&gt;&amp;, const shared_ptr&lt;T&gt;&amp;) const noexcept;
+    <del>constexpr</del> bool operator()(const shared_ptr&lt;T&gt;&amp;, const weak_ptr&lt;T&gt;&amp;) const noexcept;
+    <del>constexpr</del> bool operator()(const weak_ptr&lt;T&gt;&amp;, const shared_ptr&lt;T&gt;&amp;) const noexcept;
+  };
+
+  template&lt;class T&gt; struct owner_less&lt;weak_ptr&lt;T&gt;&gt; {
+    <del>constexpr</del> bool operator()(const weak_ptr&lt;T&gt;&amp;, const weak_ptr&lt;T&gt;&amp;) const noexcept;
+    <del>constexpr</del> bool operator()(const shared_ptr&lt;T&gt;&amp;, const weak_ptr&lt;T&gt;&amp;) const noexcept;
+    <del>constexpr</del> bool operator()(const weak_ptr&lt;T&gt;&amp;, const shared_ptr&lt;T&gt;&amp;) const noexcept;
+  };
+
+  template&lt;&gt; struct owner_less&lt;void&gt; {
+    template&lt;class T, class U&gt;
+      <del>constexpr</del> bool operator()(const shared_ptr&lt;T&gt;&amp;, const shared_ptr&lt;U&gt;&amp;) const noexcept;
+    template&lt;class T, class U&gt;
+      <del>constexpr</del> bool operator()(const shared_ptr&lt;T&gt;&amp;, const weak_ptr&lt;U&gt;&amp;) const noexcept;
+    template&lt;class T, class U&gt;
+      <del>constexpr</del> bool operator()(const weak_ptr&lt;T&gt;&amp;, const shared_ptr&lt;U&gt;&amp;) const noexcept;
+    template&lt;class T, class U&gt;
+      <del>constexpr</del> bool operator()(const weak_ptr&lt;T&gt;&amp;, const weak_ptr&lt;U&gt;&amp;) const noexcept;
+
+    using is_transparent = <i>unspecified</i>;
+  };
+}
+</pre>
+</blockquote>
+</li>
+</ol>
+
+</resolution>
+
+</issue>
