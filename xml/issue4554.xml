@@ -53,9 +53,7 @@ or ... something else?
 Three options are presented, which are not entirely mutually exclusive.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N5032"/>.
 </p>
@@ -185,6 +183,103 @@ Similar changes to other constructors and `reshape`
 </blockquote>
 </li>
 </ol>
+
+</superseded>
+
+<note>2026-03-26; Jonathan and Frank provide new wording</note>
+<p>
+Provide a new static member function on hive which compares a `hive_limits`
+to its hard limits.
+Change behaviour from undefined to erroneous with implementation-defined effects.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[hive.overview]"/> as indicated:</p>
+<blockquote>
+-5- Limits can be placed on both the minimum and maximum element capacities
+of element blocks, both by users and implementations.
+<ul style="list-style-type: none">
+<li>(5.1) &mdash;
+The minimum limit shall be no larger than the maximum limit.
+</li>
+<li>(5.2) &mdash;
+When limits are not specified by a user during construction,
+the implementation's default limits are used.
+</li>
+<li>(5.3) &mdash;
+The default limits of an implementation are not guaranteed to be the same as
+the minimum and maximum possible capacities for an implementation's element blocks.
+<br/>
+[<i>Note 2</i>:
+ To allow latitude for both implementation-specific and user-directed optimization.
+&mdash; <i>end note</i>]
+<br/>
+The latter are defined as hard limits.
+The maximum hard limit shall be no larger than
+<code>std::allocator_traits&lt;Allocator&gt;::max_size()</code>.
+</li>
+<li>(5.4) &mdash;
+If user-specified limits <ins>passed to a `hive` constructor or `reshape`</ins>
+are not within hard limits,
+or if the specified minimum limit is greater than the specified maximum limit,
+the behavior is <del>undefined</del> <ins>erroneous and the effects are
+implementation-defined.</ins>
+<br/>
+<ins>[<i>Note ?</i>:
+This condition can be checked using `is_within_hard_limits`.
+&mdash; <i>end note</i>]</ins>
+</li>
+<li>(5.5) &mdash;
+An element block is said to be <i>within the bounds</i>
+of a pair of minimum/maximum limits when its capacity is greater-or-equal-to
+the minimum limit and less-than-or-equal-to the maximum limit.
+</li>
+</ul>
+</blockquote>
+
+</li>
+
+<li>
+<p>Modify <sref ref="[hive.overview]"/> as indicated:</p>
+<blockquote><pre>
+  constexpr hive_limits block_capacity_limits() const noexcept;
+  static constexpr hive_limits block_capacity_default_limits() noexcept;
+  static constexpr hive_limits block_capacity_hard_limits() noexcept;
+  <ins>static constexpr bool is_within_hard_limits(hive_limits) noexcept;</ins>
+  void reshape(hive_limits block_limits);
+</pre></blockquote>
+</li>
+<li>
+<p>Modify <sref ref="[hive.capacity]"/> as indicated:</p>
+<blockquote>
+<pre>static constexpr hive_limits block_capacity_hard_limits() noexcept;</pre>
+<blockquote>
+<p>
+-19- <i>Returns</i>:
+A `hive_limits` struct with the `min` and `max` members set to
+the implementation’s hard limits.
+</p>
+</blockquote>
+<pre><ins>static constexpr bool is_within_hard_limits(hive_limits lim) noexcept;</ins></pre>
+<blockquote>
+<p><ins>-?- Let `hl` be `block_capacity_hard_limits()`.</ins></p>
+<p><ins>-?- <i>Returns</i>:
+<code>hl.min &lt;= lim.min &amp;&amp; lim.min &lt;= lim.max &amp;&amp; lim.max &lt;= hl.max</code>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
 
 </resolution>
 
