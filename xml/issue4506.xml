@@ -44,9 +44,69 @@ AFAIK this is how to explicitly say it must be constexpr but it can still be tri
 Set priority to 2 after reflector poll.
 </p>
 
+<note>2026-03-26; Tim adds wording</note>
+
 </discussion>
 
 <resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note:</i> <sref ref="[functions.within.classes]"/> can be read to say that the
+functions are constexpr already, but given the note that contradicts this interpretion,
+explicit declarations can't hurt.
+&mdash; <i>end drafting note</i>]
+</p>
+</blockquote>
+
+<ol>
+<li><p>Modify <sref ref="[support.srcloc.class.general]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+namespace std {
+  struct source_location {
+    // source location construction
+    static consteval source_location current() noexcept;
+    constexpr source_location() noexcept;
+
+    <ins>constexpr source_location(const source_location&amp;) = default;</ins>
+    <ins>constexpr source_location(source_location&amp;&amp;) noexcept = default;</ins>
+    <ins>constexpr source_location&amp; operator=(const source_location&amp;) = default;</ins>
+    <ins>constexpr source_location&amp; operator=(source_location&amp;&amp;) noexcept = default;</ins>
+
+    // source location field access
+    constexpr uint_least32_t line() const noexcept;
+    constexpr uint_least32_t column() const noexcept;
+    constexpr const char* file_name() const noexcept;
+    constexpr const char* function_name() const noexcept;
+
+  private:
+    uint_least32_t line_;               // exposition only
+    uint_least32_t column_;             // exposition only
+    const char* file_name_;             // exposition only
+    const char* function_name_;         // exposition only
+  };
+}
+</pre>
+<p>
+- 1- The type `source_location` <del>meets the <i>Cpp17DefaultConstructible</i>,
+<i>Cpp17CopyConstructible</i>, <i>Cpp17CopyAssignable</i>, <i>Cpp17Swappable</i>,
+and <i>Cpp17Destructible</i> requirements 
+(<sref ref="[utility.arg.requirements]"/>, <sref ref="[swappable.requirements]"/>)</del>
+<ins>models `semiregular`</ins>.
+All of the following conditions are `true`: [&hellip;]
+<p/>
+[<i>Note</i> 1: The intent of `source_location` is to have a small size and efficient copying. 
+It is unspecified whether the copy/move constructors and the copy/move assignment operators are trivial <del>and/or constexpr</del>. 
+&mdash; <i>end note</i>]
+</p>
+</blockquote>
+</li>
+</ol>
 </resolution>
 
 </issue>
