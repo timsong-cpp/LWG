@@ -1,0 +1,176 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4559" status="New">
+<title><code>zip_view</code> and <code>cartesian_product_view</code> should provide <code>reserve_hint</code></title>
+<section>
+<sref ref="[range.zip.view]"/>
+<sref ref="[range.cartesian.view]"/>
+</section>
+<submitter>Hewill Kang</submitter>
+<date>27 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Although the original paper <a
+   href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2846r6.pdf">P2846</a> gives a reason for not
+providing <code>reserve_hint</code> for these two views — namely, uncertainty
+about what the best approach is — it seems to me that providing them is indeed intuitively unambiguous. We
+don't need to consider the inconsistency between <code>const</code> and non-<code>const</code> overloads because 
+it's not within reasonable ranges.
+<p/>
+Given that we provided <code>reserve_hint</code> for <code>concat_view</code> to resolve NB comment <a
+   href="https://github.com/cplusplus/nbballot/issues/821">FR-025-246</a>, it seems that only these two views
+are available, but not provided; it's time to do so.</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[range.zip.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0)
+  class zip_view : public view_interface&lt;zip_view&lt;Views...&gt;&gt; {
+    [&hellip;]
+    constexpr auto size() requires (sized_range&lt;Views&gt; &amp;&amp; ...);
+    constexpr auto size() const requires (sized_range&lt;const Views&gt; &amp;&amp; ...);
+
+<ins>    constexpr auto reserve_hint() requires (approximately_sized_range&lt;Views&gt; &amp;&amp; ...);</ins>
+<ins>    constexpr auto reserve_hint() const requires (approximately_sized_range&lt;const Views&gt; &amp;&amp; ...);</ins>
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr auto size() requires (sized_range&lt;Views&gt; &amp;&amp; ...);
+constexpr auto size() const requires (sized_range&lt;const Views&gt; &amp;&amp; ...);
+</pre>
+<blockquote>
+<p>
+-3- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+return apply([](auto... sizes) {
+  using CT = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;decltype(sizes)...&gt;&gt;;
+  return ranges::min({CT(sizes)...});
+}, <i>tuple-transform</i>(ranges::size, <i>views_</i>));
+</pre></blockquote>
+</blockquote>
+<pre>
+<ins>constexpr auto reserve_hint() requires (approximately_sized_range&lt;Views&gt; &amp;&amp; ...);
+constexpr auto reserve_hint() const requires (approximately_sized_range&lt;const Views&gt; &amp;&amp; ...);</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- <i>Effects</i>: Equivalent to:</ins>
+</p>
+<blockquote><pre>
+<ins>return apply([](auto... sizes) {
+  using CT = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;decltype(sizes)...&gt;&gt;;
+  return ranges::min({CT(sizes)...});
+}, <i>tuple-transform</i>(ranges::reserve_hint, <i>views_</i>));</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[range.cartesian.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  template&lt;class... Vs&gt;
+  concept <i>cartesian-product-is-sized</i> =                  // <i>exposition only</i>
+    (sized_range&lt;Vs&gt; &amp;&amp; ...);
+  
+  <ins>template&lt;class... Vs&gt;
+  concept <i>cartesian-product-is-approximately-sized</i> =    // <i>exposition only</i>
+    (approximately_sized_range&lt;Vs&gt; &amp;&amp; ...);</ins>
+  [&hellip;]
+
+  template&lt;input_range First, forward_range... Vs&gt;
+    requires (view&lt;First&gt; &amp;&amp; ... &amp;&amp; view&lt;Vs&gt;)
+  class cartesian_product_view : public view_interface&lt;cartesian_product_view&lt;First, Vs...&gt;&gt; {
+    [&hellip;]
+    constexpr <i>see below</i> size()
+      requires <i>cartesian-product-is-sized</i>&lt;First, Vs...&gt;;
+    constexpr <i>see below</i> size() const
+      requires <i>cartesian-product-is-sized</i>&lt;const First, const Vs...&gt;;
+
+<ins>    constexpr <i>see below</i> reserve_hint()
+      requires <i>cartesian-product-is-approximately-sized</i>&lt;First, Vs...&gt;;
+    constexpr <i>see below</i> reserve_hint() const
+      requires <i>cartesian-product-is-approximately-sized</i>&lt;const First, const Vs...&gt;;</ins>
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr <i>see below</i> size()
+  requires <i>cartesian-product-is-sized</i>&lt;First, Vs...&gt;;
+constexpr <i>see below</i> size() const
+  requires <i>cartesian-product-is-sized</i>&lt;const First, const Vs...&gt;;
+</pre>
+<blockquote>
+<p>
+-7- The return type is an implementation-defined unsigned-integer-like type.
+<p/>
+-8- <i>Recommended practice</i>: The return type should be the smallest unsigned-integer-like type that
+is sufficiently wide to store the product of the maximum sizes of all the underlying ranges, if such 
+a type exists.
+<p/>
+-9- Let <i>p</i> be the product of the sizes of all the ranges in <code><i>bases_</i></code>.
+<p/>
+-10- <i>Preconditions</i>: <i>p</i> can be represented by the return type.
+<p/>
+-11- <i>Returns</i>: <i>p</i>.
+</p>
+</blockquote>
+<pre>
+<ins>constexpr <i>see below</i> reserve_hint()
+  requires <i>cartesian-product-is-approximately-sized</i>&lt;First, Vs...&gt;;
+constexpr <i>see below</i> reserve_hint() const
+  requires <i>cartesian-product-is-approximately-sized</i>&lt;const First, const Vs...&gt;;</ins>
+</pre>
+<blockquote>
+<p>
+<ins>-?- The return type is an implementation-defined unsigned-integer-like type.</ins>
+<p/>
+<ins>-?- <i>Recommended practice</i>: The return type should be the smallest unsigned-integer-like type
+that is sufficiently wide to store the product of the maximum approximately sizes of all the underlying
+ranges, if such a type exists.</ins>
+<p/>
+<ins>-?- Let <i>p</i> be the product of the approximately sizes of all the ranges in
+<code><i>bases_</i></code>.</ins>
+<p/>
+<ins>-?- <i>Preconditions</i>: <i>p</i> can be represented by the return type.</ins>
+<p/>
+<ins>-?- <i>Returns</i>: <i>p</i>.</ins>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
