@@ -2,9 +2,10 @@
 <!DOCTYPE issue SYSTEM "lwg-issue.dtd">
 
 <issue num="4559" status="New">
-<title><code>zip_view</code> and <code>cartesian_product_view</code> should provide <code>reserve_hint</code></title>
+<title><code>zip_view</code>, <code>zip_transform_view</code>, and <code>cartesian_product_view</code> should provide <code>reserve_hint</code></title>
 <section>
 <sref ref="[range.zip.view]"/>
+<sref ref="[range.zip.transform.view]"/>
 <sref ref="[range.cartesian.view]"/>
 </section>
 <submitter>Hewill Kang</submitter>
@@ -82,6 +83,61 @@ constexpr auto reserve_hint() const requires (approximately_sized_range&lt;const
   using CT = <i>make-unsigned-like-t</i>&lt;common_type_t&lt;decltype(sizes)...&gt;&gt;;
   return ranges::min({CT(sizes)...});
 }, <i>tuple-transform</i>(ranges::reserve_hint, <i>views_</i>));</ins>
+</pre></blockquote>
+</blockquote>
+</blockquote>
+</li>
+
+<li>
+<p>Modify <sref ref="[range.zip.transform.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  [&hellip;]
+  namespace std::ranges {
+  template&lt;move_constructible F, input_range... Views&gt;
+    requires (view&lt;Views&gt; &amp;&amp; ...) &amp;&amp; (sizeof...(Views) &gt; 0) &amp;&amp; is_object_v&lt;F&gt; &amp;&amp;
+              regular_invocable&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt; &amp;&amp;
+              <i>can-reference</i>&lt;invoke_result_t&lt;F&amp;, range_reference_t&lt;Views&gt;...&gt;&gt;
+  class zip_transform_view : public view_interface&lt;zip_transform_view&lt;F, Views...&gt;&gt; {
+    [&hellip;]
+    constexpr auto size() requires sized_range&lt;<i>InnerView</i>&gt; {
+      return <i>zip_</i>.size();
+    }
+
+    constexpr auto size() const requires sized_range&lt;const <i>InnerView</i>&gt; {
+      return <i>zip_</i>.size();
+    }
+
+<ins>    constexpr auto reserve_hint() requires approximately_sized_range&lt;<i>InnerView</i>&gt; {
+      return <i>zip_</i>.reserve_hint();
+    }
+
+    constexpr auto reserve_hint() const requires approximately_sized_range&lt;const <i>InnerView</i>&gt; {
+      return <i>zip_</i>.reserve_hint();
+    }</ins>
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+</pre>
+<blockquote>
+<p>
+</p>
+<blockquote><pre>
+</pre></blockquote>
+</blockquote>
+<pre>
+</pre>
+<blockquote>
+<p>
+</p>
+<blockquote><pre>
 </pre></blockquote>
 </blockquote>
 </blockquote>
