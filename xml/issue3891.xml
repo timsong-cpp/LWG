@@ -197,9 +197,7 @@ Removed the use of `value()` in the [expected.object.swap] p2 <i>Effects</i>:
 and added `remove_cv_t` to the local `T` in the `else`-branch.
 </p>
 
-</discussion>
-
-<resolution>
+<superseded>
 <p>
 This wording is relative to <paper num="N4988"/>.
 </p>
@@ -306,6 +304,100 @@ template&lt;class U = T&gt;
 </td>
 </tr>
 </table>
+</blockquote>
+
+</li>
+
+<li><p>Modify <sref ref="[expected.object.swap]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+constexpr void swap(expected&amp; rhs) noexcept(<i>see below</i>);
+</pre>
+<blockquote>
+<p>
+-1- <i>Constraints</i>: [&hellip;]
+<p/>
+-2- <i>Effects</i>: See Table 64 <sref ref="[tab:expected.object.swap]"/>.
+<p/>
+For the case where <tt>rhs.value()</tt> is <tt>false</tt> and <tt>this-&gt;has_value()</tt> is <tt>true</tt>, equivalent to:
+</p>
+<blockquote>
+<pre>
+if constexpr (is_nothrow_move_constructible_v&lt;E&gt;) {
+  E tmp(std::move(rhs.<i>unex</i>));
+  destroy_at(addressof(rhs.<i>unex</i>));
+  try {
+    construct_at(addressof(rhs.<i>val</i>), std::move(<i>val</i>));
+    destroy_at(addressof(<i>val</i>));
+    construct_at(addressof(<i>unex</i>), std::move(tmp));
+  } catch(...) {
+    construct_at(addressof(rhs.<i>unex</i>), std::move(tmp));
+    throw;
+  }
+} else {
+  <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins> tmp(std::move(<i>val</i>));
+  destroy_at(addressof(<i>val</i>));
+  try {
+    construct_at(addressof(<i>unex</i>), std::move(rhs.<i>unex</i>));
+    destroy_at(addressof(rhs.<i>unex</i>));
+    construct_at(addressof(rhs.<i>val</i>), std::move(tmp));
+  } catch (...) {
+    construct_at(addressof(<i>val</i>), std::move(tmp));
+    throw;
+  }
+}
+<i>has_val</i> = false;
+rhs.<i>has_val</i> = true;
+</pre>
+</blockquote>
+</blockquote>
+</blockquote>
+
+</li>
+
+</ol>
+</superseded>
+
+<note>Croydon 2026-03-27; Jonathan provides new wording</note>
+<p>
+LWG review pointed out that using `value()` relies on a freestanding-deleted
+function. The equivalent functions in `optional` just use `val = rhs.val` and
+we can do the same here. If your type satisfies both
+<code>assignable_from&lt;const T&amp;, const T&amp;&gt;</code>
+and <code>assignable_from&lt;T&amp;, const T&amp;&gt;</code>
+but with different semantics, this function might have surprising effects.
+That seems fine.
+</p>
+
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<blockquote class="note">
+<p>
+[<i>Drafting note</i>: When assignment and <tt>swap</tt> need to backup the old value by move construction,
+the source should be considered <i>cv</i>-unqualified, as the backup mechanism is only used internally.]
+</p>
+</blockquote>
+
+<ol>
+
+<li><p>Modify <sref ref="[expected.object.general]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+[&hellip;]
+bool <i>has_val</i>;      // <i>exposition only</i>
+union {
+  <ins>remove_cv_t&lt;</ins>T<ins>&gt;</ins> <i>val</i>;       // <i>exposition only</i>
+  E <i>unex</i>;          // <i>exposition only</i>
+};
+[&hellip;]
+</pre>
 </blockquote>
 
 </li>
