@@ -177,44 +177,45 @@ void <i>consume</i>(receiver auto&amp; rcvr) noexcept;
 </p>
 <ul style="list-style-type: none">
 <li><p>(10.1) &mdash; If this invocation of <tt><i>consume</i></tt> happens before an invocation of 
-<tt><i>complete</i></tt> on `*this` <ins>and no invocation of <tt><i>try-set-stopped</i></tt> on `*this` 
+<tt><i>complete</i></tt> on `*this` <ins>and no invocation of <tt><i>try-cancel</i></tt> on `*this` 
 happened before this invocation of <tt><i>consume</i></tt></ins> then `rcvr` is registered to be 
 completed when <tt><i>complete</i></tt> is subsequently invoked on `*this`;</p></li>
 <li><p><ins>(10.?) &mdash; otherwise, if this invocation of <tt><i>consume</i></tt> happens after an 
-invocation of <tt><i>try-set-stopped</i></tt> on `*this` and no invocation of <tt><i>complete</i></tt> on 
+invocation of <tt><i>try-cancel</i></tt> on `*this` and no invocation of <tt><i>complete</i></tt> on 
 `*this` happened before this invocation of <tt><i>consume</i></tt> then `rcvr` is completed as if by 
 `set_stopped(std::move(rcvr))`;</ins></p></li>
-<li><p>(10.2) &mdash; otherwise, `rcvr` is completed as if by: </p>
-<pre>
-std::move(this-&gt;result).visit(
-  [&amp;rcvr](auto&amp;&amp; tuple) noexcept {
-    if constexpr (!same_as&lt;remove_reference_t&lt;decltype(tuple)&gt;, monostate&gt;) {
-      apply([&amp;rcvr](auto cpo, auto&amp;&amp;... vals) {
-        cpo(std::move(rcvr), std::move(vals)...);
-      }, std::move(tuple));
-    }
-  });
-<ins><i>destroy</i>();</ins>
-</pre>
-</li>
+<li><p>(10.2) &mdash; otherwise, `rcvr` is completed as if by: [&hellip;]</p></li>
 </ul>
 </blockquote>
 <pre>
-<ins>void <i>try-set-stopped()</i> noexcept;</ins>
+<ins>void <i>try-cancel()</i> noexcept;</ins>
 </pre>
 <blockquote>
 <p>
-<ins>
--?- <i>Effects</i>:
-</ins>
-<ul style="list-style-type: none">
-<li><p><ins>(?.1) &mdash; If an invocation of <tt><i>consume</i></tt> on `*this` happens before 
-this invocation of <tt><i>try-set-stopped</i></tt> and no invocation of <tt><i>complete</i></tt> on `*this` 
-happened before this invocation of <tt><i>try-set-stopped</i></tt> then there is a receiver, `rcvr`, registered 
-and that receiver is deregistered and completed as if by <tt><i>consume</i>(rcvr)</tt>;</ins></p></li>
-<li><p><ins>(?.2) &mdash; otherwise, no effects.</ins></p></li>
-</ul>
+<ins>-?- <i>Effects</i>:</ins>
 </p>
+<ul style="list-style-type: none">
+<li><p><ins>(?.1) &mdash; No effects if this invocation of <tt><i>try-cancel</i></tt> happens after 
+an invocation of <tt><i>complete</i></tt> on `*this`;</ins></p></li>
+<li><p><ins>(?.2) &mdash; otherwise, if this invocation of <tt><i>try-cancel</i></tt> happens before 
+an invocation of <tt><i>consume</i></tt> on `*this` then invokes <tt><i>ssource</i>.request_stop()</tt>;</ins></p></li>
+<li><p><ins>(?.3) &mdash; otherwise,</ins></p>
+<ul style="list-style-type: none">
+<li><p><ins>(?.3.1) &mdash; invokes <tt><i>ssource</i>.request_stop()</tt>, and</ins></p></li>
+<li><p><ins>(?.3.2) &mdash; if there is a receiver, `rcvr`, still registered then that receiver is 
+deregistered and completed as if by `set_stopped(std::move(rcvr))`.</ins></p>
+<p>
+<ins>[<i>Note</i>: an invocation of <tt><i>complete</i></tt> on `*this` may have happened after the 
+just-described invocation of <tt><i>ssource</i>.request_stop()</tt> and happened before the check to see 
+if there is a receiver still registered; if so, it would have deregistered and completed the 
+previously-registered receiver. Only one of <tt><i>try-cancel</i></tt> or <tt><i>complete</i></tt> 
+completes the registered receiver and no data races are introduced between the two invocations. &mdash; 
+<i>end note</i>]</ins>
+</p>
+</li>
+</ul>
+</li>
+</ul>
 </blockquote>
 <pre>
 void <i>abandon</i>() noexcept;
@@ -478,45 +479,45 @@ void <i>consume</i>(receiver auto&amp; rcvr) noexcept;
 </p>
 <ul style="list-style-type: none">
 <li><p>(10.1) &mdash; If this invocation of <tt><i>consume</i></tt> happens before an invocation of 
-<tt><i>complete</i></tt> on `*this` <ins>and no invocation of <tt><i>try-cancel</i></tt> on `*this` 
+<tt><i>complete</i></tt> on `*this` <ins>and no invocation of <tt><i>try-set-stopped</i></tt> on `*this` 
 happened before this invocation of <tt><i>consume</i></tt></ins> then `rcvr` is registered to be 
 completed when <tt><i>complete</i></tt> is subsequently invoked on `*this`;</p></li>
 <li><p><ins>(10.?) &mdash; otherwise, if this invocation of <tt><i>consume</i></tt> happens after an 
-invocation of <tt><i>try-cancel</i></tt> on `*this` and no invocation of <tt><i>complete</i></tt> on 
+invocation of <tt><i>try-set-stopped</i></tt> on `*this` and no invocation of <tt><i>complete</i></tt> on 
 `*this` happened before this invocation of <tt><i>consume</i></tt> then `rcvr` is completed as if by 
 `set_stopped(std::move(rcvr))`;</ins></p></li>
-<li><p>(10.2) &mdash; otherwise, `rcvr` is completed as if by: [&hellip;]</p></li>
+<li><p>(10.2) &mdash; otherwise, `rcvr` is completed as if by: </p>
+<pre>
+std::move(this-&gt;result).visit(
+  [&amp;rcvr](auto&amp;&amp; tuple) noexcept {
+    if constexpr (!same_as&lt;remove_reference_t&lt;decltype(tuple)&gt;, monostate&gt;) {
+      apply([&amp;rcvr](auto cpo, auto&amp;&amp;... vals) {
+        cpo(std::move(rcvr), std::move(vals)...);
+      }, std::move(tuple));
+    }
+  });
+<ins><i>destroy</i>();</ins>
+</pre>
+</li>
 </ul>
 </blockquote>
 <pre>
-<ins>void <i>try-cancel()</i> noexcept;</ins>
+<ins>void <i>try-set-stopped()</i> noexcept;</ins>
 </pre>
 <blockquote>
 <p>
-<ins>-?- <i>Effects</i>:</ins>
-</p>
+<ins>
+-?- <i>Effects</i>:
+</ins>
 <ul style="list-style-type: none">
-<li><p><ins>(?.1) &mdash; No effects if this invocation of <tt><i>try-cancel</i></tt> happens after 
-an invocation of <tt><i>complete</i></tt> on `*this`;</ins></p></li>
-<li><p><ins>(?.2) &mdash; otherwise, if this invocation of <tt><i>try-cancel</i></tt> happens before 
-an invocation of <tt><i>consume</i></tt> on `*this` then invokes <tt><i>ssource</i>.request_stop()</tt>;</ins></p></li>
-<li><p><ins>(?.3) &mdash; otherwise,</ins></p>
-<ul style="list-style-type: none">
-<li><p><ins>(?.3.1) &mdash; invokes <tt><i>ssource</i>.request_stop()</tt>, and</ins></p></li>
-<li><p><ins>(?.3.2) &mdash; if there is a receiver, `rcvr`, still registered then that receiver is 
-deregistered and completed as if by `set_stopped(std::move(rcvr))`.</ins></p>
-<p>
-<ins>[<i>Note</i>: an invocation of <tt><i>complete</i></tt> on `*this` may have happened after the 
-just-described invocation of <tt><i>ssource</i>.request_stop()</tt> and happened before the check to see 
-if there is a receiver still registered; if so, it would have deregistered and completed the 
-previously-registered receiver. Only one of <tt><i>try-cancel</i></tt> or <tt><i>complete</i></tt> 
-completes the registered receiver and no data races are introduced between the two invocations. &mdash; 
-<i>end note</i>]</ins>
+<li><p><ins>(?.1) &mdash; If an invocation of <tt><i>consume</i></tt> on `*this` happens before 
+this invocation of <tt><i>try-set-stopped</i></tt> and no invocation of <tt><i>complete</i></tt> on `*this` 
+happened before this invocation of <tt><i>try-set-stopped</i></tt> then there is a receiver, `rcvr`, registered 
+and that receiver is deregistered and completed as if by <tt><i>consume</i>(rcvr)</tt>;</ins></p></li>
+<li><p><ins>(?.2) &mdash; otherwise, no effects.</ins></p></li>
+
+</ul>
 </p>
-</li>
-</ul>
-</li>
-</ul>
 </blockquote>
 <pre>
 void <i>abandon</i>() noexcept;
@@ -561,7 +562,7 @@ namespace std::execution {
       stop_token_of_t&lt;env_of_t&lt;Rcvr&gt;&gt;;
 
     using <i>stop-callback-t</i> =                              // <i>exposition only</i>
-      stop_callback_for_t&lt;stop-token-t, callback&gt;;
+      stop_callback_for_t&lt;<i>stop-token-t</i>, <i>callback</i>&gt;;
 
     struct <i>receiver</i> {                                    // <i>exposition only</i>
       using receiver_concept = receiver_t;
@@ -593,10 +594,8 @@ namespace std::execution {
 
 
     <i>future-operation</i>(StatePtr state, Rcvr rcvr) noexcept // <i>exposition only</i>
-      : <i>rcvr</i>(std::move(rcvr))
-    {
-      <i>state</i> = std::move(state);
-    }
+      : <i>rcvr</i>(std::move(rcvr)), <i>state</i>(std::move(state)), <i>inner</i>(nullptr)
+    {}
 
     <i>future-operation</i>(<i>future-operation</i>&amp;&amp;) = delete;
 
@@ -604,7 +603,7 @@ namespace std::execution {
       constexpr bool nothrow =
           is_nothrow_constructible_v&lt;<i>stop-callback-t</i>, <i>stop-token-t</i>, <i>callback</i>&gt;;
       try {
-	  <i>stopCallback</i>.emplace(get_stop_token(<i>rcvr</i>), callback(<i>state</i>.get()));
+	  <i>stopCallback</i>.emplace(get_stop_token(<i>rcvr</i>), <i>callback</i>(<i>state</i>.get()));
       }
       catch (...) {
         if constexpr (!nothrow) {
@@ -653,7 +652,7 @@ a callable object equivalent to the following lambda:
 with a callable object equivalent to the following lambda:</ins>
 </p>
 <blockquote><pre>
-<ins>[]&lt;class Sndr, class Rcvr&gt;(Sndr&amp;&amp; sndr, Rcvr&amp; rcvr) noexcept {
+<ins>[]&lt;class Sndr, class Rcvr&gt;(Sndr sndr, Rcvr&amp; rcvr) noexcept {
   auto&amp; [_, data] = sndr;
   using state_ptr = remove_cvref_t&lt;decltype(data)&gt;;
   return <i>future-operation</i>&lt;state_ptr, Rcvr&gt;(std::move(data), std::move(rcvr));
