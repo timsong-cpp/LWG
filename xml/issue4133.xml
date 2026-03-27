@@ -30,9 +30,70 @@ Also AS-EXCEPT-PTR can throw for the `error_code` case
 (that might be worth a separate issue though).
 </p>
 
+<note>2026-03-27; Tim adds wording following LWG discussion</note>
+
 </discussion>
 
 <resolution>
+
+
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+
+<li><p>Modify <sref ref="[exec.as.awaitable]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-4- Let `rcvr` be an rvalue expression of type <tt><i>awaitable-receiver</i></tt>, let 
+`crcvr` be a const lvalue that refers to `rcvr`, let `vs` be a pack of subexpressions, 
+and let `err` be an expression of type `Err`. <ins>Let <code><i>MAKE-NOEXCEPT</i>(e)</code>
+for some subexpression `e` be expression-equivalent to 
+<code>[] noexcept -&gt; decltype(auto) { return (e); }()</code>.</ins> Then:
+</p>
+<ol style="list-style-type: none">
+<li><p>(4.1) &mdash; If <tt>constructible_from&lt;<i>result-type</i>, decltype((vs))...&gt;</tt> is satisfied, 
+the expression `set_value(rcvr, vs...)` is equivalent to:
+</p>
+<blockquote><pre>
+try {
+  rcvr.<i>result-ptr</i>-&gt;template emplace&lt;1&gt;(vs...);
+} catch(...) {
+  rcvr.<i>result-ptr</i>-&gt;template emplace&lt;2&gt;(current_exception());
+}
+<ins><i>MAKE-NOEXCEPT(</i></ins>rcvr.<i>continuation</i>.resume()<ins>)</ins>;
+</pre></blockquote>
+<p>
+Otherwise, `set_value(rcvr, vs...)` is ill-formed.</p></li>
+<li><p>(4.2) &mdash; The expression `set_error(rcvr, err)` is equivalent to:</p>
+
+<blockquote><pre>
+<ins>try {</ins>
+  rcvr.<i>result-ptr</i>-&gt;template emplace&lt;2&gt;(<i>AS-EXCEPT-PTR</i>(err));
+<ins>} catch(...) {
+  rcvr.<i>result-ptr</i>-&gt;template emplace&lt;2&gt;(current_exception());
+}</ins>
+<ins><i>MAKE-NOEXCEPT(</i></ins>rcvr.<i>continuation</i>.resume()<ins>)</ins>;
+</pre></blockquote>
+</li>
+<li><p>(4.3) &mdash; The expression `set_stopped(rcvr)` is equivalent to:</p>
+<blockquote><pre>
+<ins><i>MAKE-NOEXCEPT(</i></ins>static_cast&lt;coroutine_handle&lt;&gt;&gt;(rcvr.continuation.promise().unhandled_stopped()).resume()<ins>)</ins>;
+</pre></blockquote>
+</li>
+<li><p>(4.4) &mdash; For any expression `tag` whose type satisfies <code><i>forwarding-query</i></code>
+and for any pack of subexpressions `as`, `get_env(crcvr).query(tag, as...)` is expression-equivalent to:</p>
+<blockquote><pre>
+tag(get_env(as_const(<ins><i>MAKE-NOEXCEPT(</i></ins>crcvr.continuation.promise()<ins>)</ins>)), as...)
+</pre></blockquote>
+</li>
+</ol>
+</blockquote>
+
+</li>
+</ol>
 </resolution>
 
 </issue>
