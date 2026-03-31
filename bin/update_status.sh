@@ -21,5 +21,5 @@ do
 
   # To add a custom comment use something like the following
   # (after changing the text!)
-  # bin/add_note.sh $issue_number --prefix=Tokyo "Status changed: Voting &rarr; WP"
+  # bin/add_note.sh $issue_number --prefix=Croydon "Status changed: New &rarr; Immediate"
 done
