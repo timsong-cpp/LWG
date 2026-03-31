@@ -4,7 +4,7 @@
 
 if [ $# -ne 2 ]
 then
-  echo "Usage: $0 '<Meeting Name> YYYY-MM-DD'" >&2
+  echo "Usage: $0 <Meeting Name> YYYY-MM-DD" >&2
   exit 1
 fi
 
