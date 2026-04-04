@@ -1,0 +1,234 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4560" status="New">
+<title>Explicitly specify effects of <i>precision</i> specification in `duration` formatter</title>
+<section>
+<sref ref="[time.format]"/>
+</section>
+<submitter>Liang Jiaming</submitter>
+<date>27 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, the formatter for chrono types handles fill-align-width-precision besides chrono specifications. 
+On the one hand, the standard regulates in the second paragraph of <sref ref="[time.format]"/> p1 that:
+</p>
+<blockquote>
+<p>
+The productions <i>fill-and-align</i>, <i>width</i>, and <i>precision</i> are described in <sref ref="[format.string]"/>.
+</p>
+</blockquote>
+<p>
+and in <sref ref="[time.format]"/> p7:
+</p>
+<blockquote>
+<p>
+Unless otherwise specified, if the <i>chrono-specs</i> is omitted, the chrono object is formatted as 
+if by streaming it to <tt>basic_ostringstream&lt;charT&gt;</tt> `os` with the formatting locale imbued 
+and copying `os.str()` through the output iterator of the context with additional padding and adjustments 
+as specified by the format specifiers.
+<p/>
+[<i>Example 3:</i>
+</p>
+<pre>
+string s = format("{:=>8}", 42ms);      // value of s is "====42ms"
+</pre>
+<p>
+&mdash; <i>end example</i>]
+</p>
+</blockquote>
+<p>
+which imply that the <i>precision</i> specification takes effects on the final formatted string. On the other hand, 
+the next two statements in <sref ref="[time.format]"/> p1 say that:
+</p>
+<blockquote>
+<p>
+Giving a <i>precision</i> specification in the <i>chrono-format-spec</i> is valid only for types that 
+are specializations of `std::chrono::duration` for which the nested <i>typedef-name</i> `rep` denotes a 
+floating-point type. For all other types, an exception of type `format_error` is thrown if the 
+<i>chrono-format-spec</i> contains a <i>precision</i> specification.
+</p>
+</blockquote>
+<p>
+which imply that the <i>precision</i> specification takes effects on the underlying floating-point 
+representation.
+<p/>
+These two contradictory intentions make unnecessary confusion and divergence in different implementations. 
+Given code example below:
+</p>
+<blockquote><pre>
+std::chrono::duration&lt;float&gt; s = 10ms + 10us + 123ns;
+std::print("from chrono {:.3} | from count {:.3%Q}\n", s);
+</pre></blockquote>
+<p>
+It gives four different outputs in libstdc++, libc++, MS-STL and FMT (i.e. fmtlib/fmt; though it doesn't need 
+to be standard-compliant, we list it here for comparison):
+</p>
+<blockquote>
+<table border="1">
+<tr>
+<th align="left">Implementation</th>
+<th align="left"><tt>{0:.3}</tt></th>
+<th align="left"><tt>{0:.3%Q}</tt></th>
+</tr>
+
+<tr>
+<td>
+<b>libc++</b>
+</td>
+<td>
+<tt>"0.0"</tt>
+</td>
+<td>
+<tt>"0.010010123"</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<b>libstdc++</b>
+</td>
+<td>
+<tt>"0.0100101s"</tt>
+</td>
+<td>
+<tt>"0.010010123"</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<b>MS-STL</b>
+</td>
+<td>
+<tt>"0.0100101s"</tt>
+</td>
+<td>
+<tt>"0.0100101"</tt>
+</td>
+</tr>
+
+<tr>
+<td>
+<b>FMT</b>
+</td>
+<td>
+<tt>"0.010s"</tt>
+</td>
+<td>
+<tt>"0.010"</tt>
+</td>
+</tr>
+
+</table>
+
+</blockquote>
+<p>
+To be specific, the current implementations are as follows:
+</p>
+<ol>
+<li><p>
+No <i>chrono-spec</i>, with <i>precision</i>:
+</p>
+<ul>
+<li><p><b>libc++</b>: Strictly obey <sref ref="[time.format]"/> p7, so the streamed string is truncated as if by 
+`format("{:.3}", "0.0100101s")` and remains the first three characters.</p></li>
+<li><p><b>libstdc++</b>: Ignore the precision.</p></li>
+<li><p><b>MS-STL</b>: Ignore the precision.</p></li>
+<li><p><b>FMT</b>: Apply the <i>precision</i> on the underlying floating-point representation.</p></li>
+</ul>
+</li>
+<li><p>
+`%Q` spec, with <i>precision</i>:
+</p>
+<ul>
+<li><p><b>libc++</b>: Ignore the <i>precision</i> and format representation to string. Note that `format` will 
+apply `to_chars` on floating-point numbers, which forms the shortest recoverable string so `0.010010123` is fully 
+output.</p></li>
+<li><p><b>libstdc++</b>: Ignore the <i>precision</i> and format representation to string.</p></li>
+<li><p><b>MS-STL</b>: Ignore the <i>precision</i>, output count to stream, and format the streamed string. 
+So it outputs 6 significant digits and gives `0.0100101`.</p></li>
+<li><p><b>FMT</b>: Apply the precision on the underlying floating-point representation.</p></li>
+</ul>
+</li>
+</ol>
+<p>
+To bridge the gap among implementations, the standard should explicitly specify the effects of <i>precision</i>. 
+Since the current wording says that <i>precision</i> is only allowed for `duration` with floating-point representation, 
+an intuitive solution is just applying <i>precision</i> on that representation. Otherwise (i.e. the precision 
+is applied on the streamed string), other chrono types like `time_point` should be capable of handling that too, 
+making current constraint seemingly unnecessary.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[time.format]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-1- Each <tt><i>formatter</i></tt> (<sref ref="[format.formatter]"/>) specialization in the chrono library 
+(<sref ref="[time.syn]"/>) meets the <i>Formatter</i> requirements
+(<sref ref="[formatter.requirements]"/>). The `parse` member functions of these formatters interpret the 
+format specification as a <i>chrono-format-spec</i> according to the following syntax:
+<p/>
+[&hellip;]
+<p/>
+The productions <i>fill-and-align</i>, <i>width</i>, and <i>precision</i> are described in 
+<sref ref="[format.string]"/>. Giving a <i>precision</i> specification in the <i>chrono-format-spec</i> 
+is valid only for types that are specializations of `std::chrono::duration` for which the nested 
+<i>typedef-name</i> `rep` denotes a floating-point type<ins>, and the <i>precision</i> specification 
+doesn't take effects unless explicitly specified</ins>. For all other types, an exception of type
+`format_error` is thrown if the <i>chrono-format-spec</i> contains a <i>precision</i> specification. 
+All ordinary multibyte characters represented by <i>literal-char</i> are copied unchanged to the output.
+<p/>
+[&hellip;]
+<p/>
+-7- Unless otherwise specified, if the <i>chrono-specs</i> is omitted, the chrono object is formatted 
+as if by streaming it to <tt>basic_ostringstream&lt;charT&gt; os</tt> with the formatting locale imbued 
+and copying `os.str()` through the output iterator of the context with additional padding and adjustments 
+as specified by the format specifiers.
+</p>
+</blockquote>
+</li>
+
+<li>
+<p>Modify Table 133 &mdash; "Meaning of conversion specifiers" <sref ref="[tab:time.format.spec]"/> as indicated:</p>
+
+<table border="1">
+<caption>Table 133 &mdash; Meaning of conversion specifiers <sref ref="[tab:time.format.spec]"/></caption>
+<tr style="text-align:center">
+<th>Specifier</th>
+<th>Replacement</th>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+<tr>
+<td><tt>%Q</tt></td>
+<td>The `duration`'s numeric value (as if extracted via `.count()`).<br/>
+<ins>The <i>precision</i> specification is applied on that numeric value.</ins>
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<tt>[&hellip;]</tt>
+</td>
+</tr>
+</table>
+
+</li>
+</ol>
+
+</resolution>
+
+</issue>
