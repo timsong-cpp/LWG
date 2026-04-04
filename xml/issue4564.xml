@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4564" status="New">
+<title>Clarify when `constant_of` throws</title>
+<section>
+<sref ref="[meta.reflection.queries]"/>
+</section>
+<submitter>Marek Polacek</submitter>
+<date>31 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+The `constant_of` specification in <sref ref="[meta.reflection.queries]"/> p9 says:
+</p>
+<blockquote style="border-left: 3px solid #ccc;padding-left: 15px;"><p>
+<i>Throws</i>: `meta::exception` unless either `r` represents an annotation or
+<tt>[: <i>R</i> :]</tt> is a valid <i>splice-expression</i> (<sref ref="[expr.prim.splice]"/>).
+</p></blockquote>
+<p>
+But if we have `[:^^X:]` where `X` is a template, the <i>splice-expression</i>
+is valid, but we should still throw, because `constant_of` on a template
+declaration makes no sense. Since we call `reflect_constant` on the splice as per:
+</p>
+<blockquote><pre>
+if constexpr (is_annotation(R)) {
+  return <i>C</i>;
+} else if constexpr (is_array_type(type_of(<i>R</i>))) {
+  return reflect_constant_array([: <i>R</i> :]);
+} else if constexpr (is_function_type(type_of(<i>R</i>))) {
+  return reflect_function([: <i>R</i> :]);
+} else {
+  return reflect_constant([: <i>R</i> :]);
+}
+</pre></blockquote>
+<p>
+the code would be ill-formed anyway, but it seems clearer to say
+something like:
+</p>
+<blockquote><p>
+<i>Throws</i>: `meta::exception` unless either `r` represents an annotation or
+<tt>[: <i>R</i> :]</tt> is a valid <i>splice-expression</i> <ins>that doesn't 
+designate a template</ins>.
+</p></blockquote>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[meta.reflection.queries]"/> as indicated:</p>
+
+<blockquote>
+<pre>
+consteval info constant_of(info r);
+</pre>
+<blockquote>
+<p>
+-7- Let <tt><i>R</i></tt> be a constant expression of type `info` such that 
+<tt><i>R</i> == r</tt> is `true`. If `r` represents an annotation, then let 
+<tt><i>C</i></tt> be its underlying constant.
+<p/>
+-8- <i>Effects</i>: Equivalent to:
+</p>
+<blockquote><pre>
+if constexpr (is_annotation(R)) {
+  return <i>C</i>;
+} else if constexpr (is_array_type(type_of(<i>R</i>))) {
+  return reflect_constant_array([: <i>R</i> :]);
+} else if constexpr (is_function_type(type_of(<i>R</i>))) {
+  return reflect_function([: <i>R</i> :]);
+} else {
+  return reflect_constant([: <i>R</i> :]);
+}
+</pre></blockquote>
+<p>
+-9- <i>Throws</i>: `meta::exception` unless either `r` represents an annotation or 
+<tt>[: <i>R</i> :]</tt> is a valid <i>splice-expression</i> 
+(<sref ref="[expr.prim.splice]"/>) <ins>that doesn't designate a template</ins>.
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+</resolution>
+
+</issue>
