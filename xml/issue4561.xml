@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4561" status="New">
+<title><code>reverse_view</code> does not consider <code><i>simple-view</i></code></title>
+<section>
+<sref ref="[range.reverse.view]"/>
+</section>
+<submitter>Hewill Kang</submitter>
+<date>27 Mar 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+Currently, non-<code>const</code> <code>begin</code>/<code>end</code> for <code>reverse_view</code> 
+are always provided.
+</p>
+<p>
+However, when the underlying range is <code><i>simple-view</i></code> and <code>common_view</code>, 
+we can just provide const <code>begin</code> to reduce the number of template instantiations.
+</p>
+<p>
+And it is also reasonable to only provide <code>const</code> end in the case of 
+<code><i>simple-view</i></code> for the same reason.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5032"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[range.reverse.view]"/> as indicated:</p>
+
+<blockquote>
+<blockquote>
+<pre>
+namespace std::ranges {
+  template&lt;view V&gt;
+    requires bidirectional_range&lt;V&gt;
+  class reverse_view : public view_interface&lt;reverse_view&lt;V&gt;&gt; {
+    [&hellip;]
+    constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin()
+      <ins>requires (!(<i>simple-view</i>&lt;V&gt; &amp;&amp; common_range&lt;const V&gt;))</ins>;
+    <del>constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin() requires common_range&lt;V&gt;;</del>
+    constexpr auto begin() const requires common_range&lt;const V&gt;;
+
+    constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; end() <ins>requires (!<i>simple-view</i>&lt;V&gt;)</ins>;
+    constexpr auto end() const requires <del>common_</del>range&lt;const V&gt;;
+    [&hellip;]
+  };
+  [&hellip;]
+}
+</pre>
+</blockquote>
+[&hellip;]
+<pre>
+constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin()
+  <ins>requires (!(<i>simple-view</i>&lt;V&gt; &amp;&amp; common_range&lt;const V&gt;))</ins>;
+</pre>
+<blockquote>
+<p>
+-2-<i>Returns</i>:
+</p>
+<blockquote><pre>
+make_reverse_iterator(ranges::next(ranges::begin(<i>base_</i>), ranges::end(<i>base_</i>)))
+</pre></blockquote>
+<p>
+-3- <i>Remarks</i>: In order to provide the amortized constant time complexity required by the
+<code>range</code> concept, this function caches the result within the <code>reverse_view</code> 
+for use on subsequent calls.</p>
+</blockquote>
+<pre>
+<del>constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; begin() requires common_range&lt;V&gt;;</del>
+constexpr auto begin() const requires common_range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-4- <i>Effects</i>: Equivalent to: <code>return make_reverse_iterator(ranges::end(<i>base_</i>));</code>
+</p>
+</blockquote>
+<pre>
+constexpr reverse_iterator&lt;iterator_t&lt;V&gt;&gt; end() <ins>requires (!<i>simple-view</i>&lt;V&gt;)</ins>;
+constexpr auto end() const requires <del>common_</del>range&lt;const V&gt;;
+</pre>
+<blockquote>
+<p>
+-5- <i>Effects</i>: Equivalent to: <code>return make_reverse_iterator(ranges::begin(<i>base_</i>));</code>
+</p>
+</blockquote>
+</blockquote>
+</li>
+
+</ol>
+
+</resolution>
+
+</issue>
