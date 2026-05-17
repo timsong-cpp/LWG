@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4579" status="New">
+<title><tt><i>make-state</i>&lt;Rcvr&gt;::<i>state-type</i>::<i>complete</i></tt> uses `Env` which is not in scope</title>
+<section>
+<sref ref="[exec.when.all]"/>
+</section>
+<submitter>Abhinav Agarwal</submitter>
+<date>12 May 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <sref ref="[exec.when.all]"/>, the specification of 
+<tt><i>make-state</i>::<i>state-type</i>::<i>complete</i></tt>
+(paragraph 15, bullet (15.3)) defines <tt><i>sends-stopped</i></tt> 
+as true if and only if there exists an element `S` of `Sndrs` such that
+</p>
+<blockquote><pre>
+completion_signatures_of_t&lt;S, <i>when-all-env</i>&lt;Env&gt;&gt;
+</pre></blockquote>
+<p>
+contains `set_stopped_t()`.
+<p/>
+However, no declaration named `Env` is in scope at this point.
+<tt><i>state-type</i></tt> is specified in the context of 
+<tt><i>make-state</i>&lt;Rcvr&gt;::operator()&lt;Sndrs...&gt;</tt>; 
+the relevant named template parameters there are `Rcvr` and 
+`Sndrs...`. `Env` is a template parameter of
+<tt><i>check-types</i>&lt;Sndr, Env...&gt;</tt>, which is a separate 
+member function whose scope does not extend into <tt><i>make-state</i></tt>.
+<p/>
+Other environment-dependent wording within the <tt><i>make-state</i></tt> 
+scope uses <tt>env_of_t&lt;Rcvr&gt;</tt>:
+</p>
+<ul>
+<li><p>
+The `stop_callback` alias (paragraph 12  within the <tt><i>make-state</i></tt> 
+class template synopsis) uses
+<tt>stop_callback_for_t&lt;stop_token_of_t&lt;env_of_t&lt;Rcvr&gt;&gt;, <i>on-stop-request</i>&gt;</tt>
+</p></li>
+<li><p>
+The `values_tuple` alias (paragraph 13) uses
+<tt>value_types_of_t&lt;Sndrs, <i>FWD-ENV-T</i>(env_of_t&lt;Rcvr&gt;), [&hellip;]&gt;</tt>
+</p></li>
+</ul>
+<p>
+The <tt><i>sends-stopped</i></tt> definition in bullet (15.3) is the only use 
+of bare `Env` in this scope.
+<p/>
+This issue was introduced by <paper num="P3887R1"/> ("Make when_all a Ronseal
+Algorithm"), whose wording contains the same text.
+</p>
+</discussion>
+
+<resolution>
+<p>
+This wording is relative to <paper num="N5046"/>.
+</p>
+
+<ol>
+<li>
+<p>Modify <sref ref="[exec.when.all]"/> as indicated:</p>
+
+<blockquote>
+<p>
+-15- The member <tt>void <i>state-type</i>::<i>complete</i>(Rcvr&amp; rcvr) noexcept</tt> behaves as follows:
+</p>
+<ol style="list-style-type: none">
+<li><p>
+(15.1) &mdash; If `disp` is equal to <tt><i>disposition</i>::<i>started</i></tt>, evaluates: [&hellip;]
+</p></li>
+<li><p>
+(15.2) &mdash; Otherwise, if `disp` is equal to <tt><i>disposition</i>::<i>error</i></tt>, evaluates: [&hellip;]
+</p></li>
+<li><p>
+(15.3) &mdash; Otherwise, evaluates:
+</p>
+<blockquote><pre>
+if constexpr (<i>sends-stopped</i>) {
+  <i>on_stop</i>.reset();
+  set_stopped(std::move(rcvr));
+}
+</pre></blockquote>
+<p>
+where <tt><i>sends-stopped</i></tt> equals true if and only if there exists an element `S` of `Sndrs` 
+such that <tt>completion_signatures_of_t&lt;S, 
+<i>when-all-env</i>&lt;<del>Env</del><ins>env_of_t&lt;Rcvr&gt;</ins>&gt;&gt;</tt> contains `set_stopped_t()`.
+</p>
+</li>
+</ol>
+</blockquote>
+
+</li>
+
+ </ol>
+</resolution>
+
+</issue>
