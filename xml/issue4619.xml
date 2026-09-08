@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8' standalone='no'?>
+<!DOCTYPE issue SYSTEM "lwg-issue.dtd">
+
+<issue num="4619" status="New">
+<title>Freestanding atomic floating-point minimum/maximum is poorly specified</title>
+<section><sref ref="[cmath.syn]"/><sref ref="[atomics.types.float]"/></section>
+<submitter>Jan Schultke</submitter>
+<date>07 Sep 2026</date>
+<priority>99</priority>
+
+<discussion>
+<p>
+In <sref ref="[cmath.syn]"/>, none of `fmin`, `fminimum`, or `fminimum_num` are marked freestanding; 
+the same applies to the `maximum` functions. <paper num="P3008R6"/> never acknowledges this issue in 
+the context of making the atomic counterparts freestanding, and <sref ref="[version.syn]"/> advertises 
+`__cpp_lib_atomic_min_max` as a test for a freestanding feature.
+<p/>
+The wording in <sref ref="[atomics.types.float]"/> is also problematic:
+</p>
+<blockquote>
+<p>
+For `fetch_fmaximum` and `fetch_fminimum`, the maximum and minimum computation is performed as if by 
+`fmaximum` and `fminimum`, respectively, with the value pointed to by this and the first parameter as 
+the arguments.
+</p>
+</blockquote>
+<p>
+Since `fminimum` is only used for the "minimum computation", there is seemingly no requirement to modify 
+the floating-point environment or `errno` (for a signaling NaN argument), which makes sense for a freestanding 
+implementation.
+<p/>
+Unfortunately, a freestanding implementation does not provide the `fminimum` function in the first place, 
+which makes it questionable to say that the computation happens "as if by" something that doesn't exist. 
+The intent might be that the computation merely follows the same restrictions as `fminimum`. However, that 
+also raises the question whether the computation results of `fminimum` and `fetch_fminimum` have to be bitwise 
+identical (as implied by "as if by", and applying only if `fminimum` actually exists) or merely follow the 
+same rules for determining the result, while yielding potentially different NaN payloads and handling excess 
+precision differently..
+<p/>
+Possible directions:
+</p>
+<ol>
+<li><p>
+Make atomic floating-point minimum and maximum freestanding-deleted.
+</p></li>
+<li><p>
+Make the underlying <tt>&lt;cmath&gt;</tt> functions freestanding.
+</p></li>
+<li><p>
+Clarify that the computation of the atomic operations follows the same rules as that 
+of the <tt>&lt;cmath&gt;</tt> functions, without relying on their existence. Also clarify 
+whether `fminimum` computations have to produce bitwise identical results to `fetch_fminimum` 
+computations.
+</p></li>
+</ol>
+</discussion>
+
+<resolution>
+</resolution>
+
+</issue>
